@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh ha:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(if [ -f \"automations.yaml\" ])",
+      "Bash(then echo \"automations.yaml exists\")",
+      "Bash(fi)",
+      "Bash(if [ -f \"groups.yaml\" ])",
+      "Bash(then echo \"groups.yaml exists\")",
+      "Bash(if [ -f \"scenes.yaml\" ])",
+      "Bash(then echo \"scenes.yaml exists\")",
+      "Bash(cat:*)",
+      "Bash(make pull:*)",
+      "Bash(source:*)",
+      "Bash(source .env)",
+      "Bash(python check_sensors.py:*)",
+      "Bash(echo:*)",
+      "Bash(curl:*)",
+      "Bash(./venv/bin/python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
