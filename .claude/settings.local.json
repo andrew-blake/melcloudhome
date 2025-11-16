@@ -26,7 +26,12 @@
       "mcp__chrome-devtools__get_network_request",
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__click",
-      "mcp__chrome-devtools__fill_form"
+      "mcp__chrome-devtools__fill_form",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__press_key",
+      "mcp__chrome-devtools__fill",
+      "mcp__chrome-devtools__evaluate_script"
     ],
     "deny": [],
     "ask": []
