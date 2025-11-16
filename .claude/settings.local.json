@@ -31,7 +31,15 @@
       "mcp__chrome-devtools__take_screenshot",
       "mcp__chrome-devtools__press_key",
       "mcp__chrome-devtools__fill",
-      "mcp__chrome-devtools__evaluate_script"
+      "mcp__chrome-devtools__evaluate_script",
+      "Bash(test:*)",
+      "Bash(uv init:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(lsof:*)",
+      "Bash(pip show:*)"
     ],
     "deny": [],
     "ask": []

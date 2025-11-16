@@ -1,0 +1,743 @@
+openapi: 3.0.3
+info:
+  title: MELCloud Home API
+  description: |
+    API for controlling Mitsubishi Electric MELCloud Home air conditioning systems.
+
+    **Authentication:** Uses AWS Cognito OAuth 2.0 with PKCE flow.
+
+    **Important:** All requests must include a proper Chrome User-Agent header to avoid bot detection.
+
+    **API Coverage:** ~87% documented and verified through UI observation.
+
+    **CRITICAL: API Type Inconsistencies**
+    - **Control API** (PUT /api/ataunit/{unitId}): Uses STRING enums
+      - Modes: "Heat", "Cool", "Automatic", "Dry", "Fan"
+      - Fan speeds: "Auto", "One", "Two", "Three", "Four", "Five"
+      - Vanes: "Auto", "Swing", "One"-"Five", "Left", "Center*", "Right"
+    - **Schedule API** (POST /api/cloudschedule/{unitId}): Uses INTEGER enums
+      - Modes: 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
+      - Fan speeds: 0=Auto, 1-5=speed levels
+      - Vanes: 1-5=positions, 6=Auto, 7=Swing
+
+    Based on reverse engineering and documentation version 1.1 (2025-11-16).
+  version: 1.0.0
+  contact:
+    name: API Documentation
+    url: https://melcloudhome.com
+
+servers:
+  - url: https://melcloudhome.com
+    description: Production API
+
+security:
+  - cookieAuth: []
+  - oauth2: []
+
+tags:
+  - name: devices
+    description: Device information and control
+  - name: schedules
+    description: Schedule management
+  - name: telemetry
+    description: Telemetry and monitoring data
+
+paths:
+  /api/user/context:
+    get:
+      summary: Get user context including all devices and schedules
+      description: |
+        Returns complete user context including buildings, devices, current states,
+        capabilities, and schedules.
+      tags:
+        - devices
+      responses:
+        '200':
+          description: User context retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserContext'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/ataunit/{unitId}:
+    put:
+      summary: Control air conditioning unit
+      description: |
+        Update device settings. Supports partial updates - only send changed fields,
+        set others to null.
+
+        **Important:**
+        - Fan speeds are STRINGS ("Auto", "One"-"Five"), not integers
+        - AUTO mode is "Automatic", not "Auto"
+      tags:
+        - devices
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "0efce33f-5847-4042-88eb-aaf3ff6a76db"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceControlRequest'
+      responses:
+        '200':
+          description: Device updated successfully (empty response body)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/ataunit/{unitId}/errorlog:
+    get:
+      summary: Get device error log
+      tags:
+        - devices
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Error log retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ErrorLogEntry'
+
+  /api/cloudschedule/{unitId}:
+    post:
+      summary: Create a schedule
+      description: |
+        Create a new schedule for the specified unit. The schedule ID must be
+        client-generated (UUID v4).
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+      responses:
+        '200':
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                type: string
+                format: uuid
+                description: Returns the schedule ID
+
+  /api/cloudschedule/{unitId}/{scheduleId}:
+    delete:
+      summary: Delete a schedule
+      description: |
+        Delete an existing schedule.
+
+        **Note:** There is no UPDATE endpoint. To modify a schedule, delete it and
+        create a new one with the updated parameters.
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Schedule deleted successfully
+
+  /api/cloudschedule/{unitId}/enabled:
+    put:
+      summary: Enable or disable all schedules for a unit
+      description: |
+        Master enable/disable switch for all schedules.
+
+        **Note:** May return 500 if schedules are invalid or prerequisites not met.
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+              required:
+                - enabled
+      responses:
+        '200':
+          description: Schedule state updated
+        '500':
+          description: |
+            Unable to update schedule state. Common causes:
+            - Invalid or incomplete schedules exist
+            - Schedule validation failed (e.g., setPoint missing when power=true)
+            - Backend validation requirements not met
+
+            **Resolution:** Delete invalid schedules before enabling.
+
+  /api/telemetry/actual:
+    get:
+      summary: Get actual temperature telemetry
+      description: Returns historical room temperature and set temperature data
+      tags:
+        - telemetry
+      parameters:
+        - name: unitId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Temperature data retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureTelemetry'
+
+  /api/telemetry/operationmode/{unitId}:
+    get:
+      summary: Get operation mode history
+      tags:
+        - telemetry
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Operation mode history retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OperationModeHistoryEntry'
+
+  /api/telemetry/energy/{unitId}:
+    get:
+      summary: Get energy consumption data
+      description: Returns cumulative energy consumption data
+      tags:
+        - telemetry
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [hourly, daily, monthly]
+      responses:
+        '200':
+          description: Energy data retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyTelemetry'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_cookie
+      description: Session cookie from AWS Cognito authentication
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://cognito-url/oauth2/authorize
+          tokenUrl: https://cognito-url/oauth2/token
+          scopes: {}
+
+  schemas:
+    UserContext:
+      type: object
+      properties:
+        buildings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Building'
+
+    Building:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        airToAirUnits:
+          type: array
+          items:
+            $ref: '#/components/schemas/AirToAirUnit'
+
+    AirToAirUnit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        power:
+          type: boolean
+        operationMode:
+          $ref: '#/components/schemas/OperationMode'
+        setTemperature:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 31
+        roomTemperature:
+          type: number
+          format: float
+        setFanSpeed:
+          $ref: '#/components/schemas/FanSpeed'
+        vaneVerticalDirection:
+          $ref: '#/components/schemas/VaneDirection'
+        vaneHorizontalDirection:
+          $ref: '#/components/schemas/VaneDirection'
+        inStandbyMode:
+          type: boolean
+        isInError:
+          type: boolean
+        capabilities:
+          $ref: '#/components/schemas/DeviceCapabilities'
+        schedule:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+        scheduleEnabled:
+          type: boolean
+
+    DeviceCapabilities:
+      type: object
+      properties:
+        numberOfFanSpeeds:
+          type: integer
+          example: 5
+        minTempHeat:
+          type: number
+          example: 10
+        maxTempHeat:
+          type: number
+          example: 31
+        minTempCoolDry:
+          type: number
+          example: 16
+        maxTempCoolDry:
+          type: number
+          example: 31
+        minTempAutomatic:
+          type: number
+          example: 16
+        maxTempAutomatic:
+          type: number
+          example: 31
+        hasHalfDegreeIncrements:
+          type: boolean
+        hasExtendedTemperatureRange:
+          type: boolean
+        hasAutomaticFanSpeed:
+          type: boolean
+        hasSwing:
+          type: boolean
+        hasAirDirection:
+          type: boolean
+        hasCoolOperationMode:
+          type: boolean
+        hasHeatOperationMode:
+          type: boolean
+        hasAutoOperationMode:
+          type: boolean
+        hasDryOperationMode:
+          type: boolean
+        hasStandby:
+          type: boolean
+        hasDemandSideControl:
+          type: boolean
+        supportsWideVane:
+          type: boolean
+      example:
+        numberOfFanSpeeds: 5
+        minTempHeat: 10
+        maxTempHeat: 31
+        minTempCoolDry: 16
+        maxTempCoolDry: 31
+        minTempAutomatic: 16
+        maxTempAutomatic: 31
+        hasHalfDegreeIncrements: true
+        hasExtendedTemperatureRange: true
+        hasAutomaticFanSpeed: true
+        hasSwing: true
+        hasAirDirection: true
+        hasCoolOperationMode: true
+        hasHeatOperationMode: true
+        hasAutoOperationMode: true
+        hasDryOperationMode: true
+        hasStandby: true
+        hasDemandSideControl: false
+        supportsWideVane: false
+
+    DeviceControlRequest:
+      type: object
+      description: Partial update - set unchanged fields to null
+      properties:
+        power:
+          type: boolean
+          nullable: true
+        operationMode:
+          allOf:
+            - $ref: '#/components/schemas/OperationMode'
+            - nullable: true
+        setTemperature:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 31
+          nullable: true
+          description: |
+            Target temperature in Celsius.
+            Supports 0.5° increments when hasHalfDegreeIncrements capability is true.
+
+            Mode-specific ranges (enforce based on device capabilities):
+            - Heat: 10-31°C
+            - Cool/Dry: 16-31°C
+            - Automatic: 16-31°C
+        setFanSpeed:
+          allOf:
+            - $ref: '#/components/schemas/FanSpeed'
+            - nullable: true
+        vaneVerticalDirection:
+          allOf:
+            - $ref: '#/components/schemas/VaneDirection'
+            - nullable: true
+        vaneHorizontalDirection:
+          allOf:
+            - $ref: '#/components/schemas/VaneDirection'
+            - nullable: true
+        inStandbyMode:
+          type: boolean
+          nullable: true
+        temperatureIncrementOverride:
+          type: string
+          nullable: true
+          description: Purpose unknown, always null in observations
+      example:
+        power: null
+        operationMode: "Heat"
+        setTemperature: 21.5
+        setFanSpeed: "Auto"
+        vaneVerticalDirection: "Swing"
+        vaneHorizontalDirection: "Auto"
+        inStandbyMode: null
+        temperatureIncrementOverride: null
+
+    Schedule:
+      type: object
+      description: |
+        Schedule entry for automated device control.
+
+        **Validation Note:** setPoint must be provided and non-null when power=true,
+        but should be null when power=false. This conditional requirement cannot be
+        expressed in OpenAPI 3.0.3 schema validation - implement client-side validation.
+
+        **Integer Enums:** Schedule API uses integers for modes/speeds/vanes, unlike
+        the Control API which uses strings. See API description for mappings.
+      required:
+        - id
+        - days
+        - time
+        - power
+        - operationMode
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated UUID
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: Array of day numbers (0=Sunday, 6=Saturday)
+          example: [1, 2, 3, 4, 5]
+        time:
+          type: string
+          pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+          example: "07:00:00"
+        enabled:
+          type: boolean
+          nullable: true
+          description: |
+            DEPRECATED/UNUSED: This field appears unused at individual schedule level.
+            Always set to null or false when creating schedules.
+            Use unit-level 'scheduleEnabled' field to enable/disable all schedules.
+        power:
+          type: boolean
+        operationMode:
+          type: integer
+          enum: [1, 2, 3, 4, 5]
+          description: |
+            1 = Heat
+            2 = Dry
+            3 = Cool
+            4 = Fan
+            5 = Automatic
+        setPoint:
+          type: number
+          format: float
+          nullable: true
+          minimum: 10
+          maximum: 31
+          description: Required when power=true, nullable when power=false
+        vaneVerticalDirection:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 7
+          description: |
+            Vertical vane position (Schedule API uses integers):
+            - 1-5: Position One through Five
+            - 6: Auto
+            - 7: Swing
+
+            Maps to Control API string values: One/Two/Three/Four/Five/Auto/Swing
+        vaneHorizontalDirection:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 7
+          description: |
+            Horizontal vane position (Schedule API uses integers):
+            - 1: Left (inferred)
+            - 2: CenterLeft (inferred)
+            - 3: Center (inferred)
+            - 4: CenterRight (inferred)
+            - 5: Right (inferred)
+            - 6: Auto
+            - 7: Swing
+
+            Note: Positional mappings 1-5 are inferred from Control API values
+        setFanSpeed:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 5
+          description: 0=Auto, 1-5=speed levels
+      example:
+        id: "66b7ec57-d718-495e-a2f1-98f84c0b5443"
+        days: [1, 2, 3, 4, 5]
+        time: "07:00:00"
+        enabled: null
+        power: true
+        operationMode: 1
+        setPoint: 20.5
+        vaneVerticalDirection: 6
+        vaneHorizontalDirection: 7
+        setFanSpeed: 0
+
+    OperationMode:
+      type: string
+      enum:
+        - Heat
+        - Cool
+        - Automatic
+        - Dry
+        - Fan
+      description: |
+        Operation mode strings (Control API).
+        Note: AUTO mode is "Automatic", not "Auto"
+
+    FanSpeed:
+      type: string
+      enum:
+        - Auto
+        - One
+        - Two
+        - Three
+        - Four
+        - Five
+      description: |
+        Fan speed strings (NOT integers).
+        Important: These are strings, not numeric values.
+
+    VaneDirection:
+      type: string
+      enum:
+        - Auto
+        - Swing
+        - One
+        - Two
+        - Three
+        - Four
+        - Five
+        - Left
+        - CenterLeft
+        - Center
+        - CenterRight
+        - Right
+      description: |
+        Vane direction values. Vertical uses One-Five, Horizontal uses Left-Right positions.
+
+    ErrorLogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        errorCode:
+          type: string
+        description:
+          type: string
+
+    TemperatureTelemetry:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              roomTemperature:
+                type: number
+                format: float
+              setTemperature:
+                type: number
+                format: float
+              rssi:
+                type: integer
+                description: Wi-Fi signal strength
+
+    OperationModeHistoryEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        mode:
+          $ref: '#/components/schemas/OperationMode'
+
+    EnergyTelemetry:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              energyConsumed:
+                type: number
+                format: float
+                description: Cumulative energy in kWh
+
+  responses:
+    UnauthorizedError:
+      description: Authentication failed or session expired
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+  parameters:
+    unitIdPath:
+      name: unitId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "0efce33f-5847-4042-88eb-aaf3ff6a76db"
