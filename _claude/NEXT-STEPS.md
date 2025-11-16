@@ -2,7 +2,14 @@
 
 ## What's Done ✅
 
-### Phase 1: Complete API Discovery ✅ COMPLETE
+### Phase 1: Complete API Discovery ✅ MOSTLY COMPLETE (87%)
+
+**⚠️ IMPORTANT: Scenes API Not Yet Captured**
+- ❌ Scenes menu exists in UI but API endpoints NOT documented
+- ❌ Scene data structure unknown
+- ❌ Scene CRUD operations not captured
+- **Recommendation:** Defer to v2.0 or capture before v1.0 release
+- See `melcloudhome-knowledge-gaps.md` GAP-006 for details
 
 **Authentication & Base APIs:**
 - ✅ Captured complete authentication flow (OAuth + AWS Cognito)
@@ -44,9 +51,9 @@
 
 ## What's Next 🎯
 
-### ✅ Phase 1: API Discovery - COMPLETE!
+### ✅ Phase 1: API Discovery - MOSTLY COMPLETE (87%)
 
-All API endpoints have been discovered and documented. The MELCloud Home API is now fully mapped:
+Core API endpoints discovered and documented. Scenes API deferred:
 
 **Completed (2025-11-16):**
 1. ✅ Authentication flow (OAuth + AWS Cognito)
@@ -398,6 +405,22 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
 
 ---
 
+## Implementation Approach Decided (2025-11-16)
+
+**Decision: Bundled API Client (KISS/YAGNI)**
+- API client bundled in `custom_components/melcloudhome/api/`
+- No separate PyPI package (premature)
+- Single folder deployment
+- Fast iteration, zero publishing overhead
+- Can migrate to PyPI later if needed
+
+**Next Phase: Build Home Assistant Integration**
+- Create `custom_components/melcloudhome/` structure
+- Implement bundled API client
+- Build climate entity and coordinator
+- Test with real credentials
+- Iterate and refine
+
 ## Completed in This Session (2025-11-16)
 
 **Actions Completed:**
@@ -407,12 +430,15 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
 4. ✅ Investigated JavaScript (not helpful - Blazor WebAssembly)
 5. ✅ Established UI-driven testing methodology
 6. ✅ Created 4-phase gap-filling plan
-7. ✅ Updated all documentation
+7. ✅ Created comprehensive OpenAPI 3.0.3 specification
+8. ✅ Compared and validated OpenAPI spec against docs
+9. ✅ Decided on bundled implementation approach (KISS)
+10. ✅ Updated all documentation
 
-**API Discovery Progress: 85% Complete**
-- Ready for implementation OR gap-filling
-- 3 critical gaps (P0) recommended to resolve first
-- All documentation ready for next session
+**API Discovery Progress: 87% Complete**
+- Ready for implementation
+- Scenes API deferred to v2.0
+- All core functionality documented
 
 ---
 

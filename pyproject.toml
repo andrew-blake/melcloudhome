@@ -1,14 +1,84 @@
 [project]
-name = "pymelcloudhome"
+name = "melcloudhome-integration"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Home Assistant custom component for MELCloud Home"
 authors = [
     { name = "Andrew Blake", email = "a.blake01@gmail.com" }
 ]
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Enable linting rules
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.melcloudhome"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.12"
+show_error_codes = true
+follow_imports = "silent"
+ignore_missing_imports = true
+strict_equality = true
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Relax strictness for specific paths
+[[tool.mypy.overrides]]
+module = "custom_components.melcloudhome.api.*"
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+
+[tool.codespell]
+skip = '*.json,*.yaml,.git'
+ignore-words-list = 'hass'
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pre-commit>=4.4.0",
+    "ruff>=0.14.5",
+]

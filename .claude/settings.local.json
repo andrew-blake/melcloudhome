@@ -39,7 +39,14 @@
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
       "Bash(lsof:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(pip install:*)",
+      "Bash(pre-commit install:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv add:*)",
+      "Bash(make format:*)"
     ],
     "deny": [],
     "ask": []
