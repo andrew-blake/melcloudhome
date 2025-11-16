@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Home Assistant configuration repository for a home automation system running on a remote server accessible via SSH. T
+This is a Home Assistant configuration repository for a home automation system running on a remote server accessible via SSH.
+
 ## Remote System Access
 
 The Home Assistant system runs in Docker on a remote server:

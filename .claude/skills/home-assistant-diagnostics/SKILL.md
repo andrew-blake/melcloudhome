@@ -38,18 +38,54 @@ Note: Use `-k` flag to skip SSL certificate verification for local access.
 
 ### Configuration Management Repository
 
-A local repository is available at `~/Development/home-automation/home-assistant/claude-homeassistant` with:
-- **Entity explorer tool** for searching available entities
-- **Validation tools** for testing configurations
-- **Pulled configuration** synced from HA instance
-- **Entity registry** in `.storage/core.entity_registry`
+A local repository is available at `~/Development/home-automation/home-assistant/claude-homeassistant` with validation and diagnostic tools.
 
-**Search for entities:**
+**Available Tools:**
+
+All tools should be run from the repository root with venv activated:
 ```bash
 cd ~/Development/home-automation/home-assistant/claude-homeassistant
 source venv/bin/activate
-python tools/entity_explorer.py --search "keyword"
 ```
+
+**1. Entity Explorer** - Search and explore entities from registry
+```bash
+python tools/entity_explorer.py --search "keyword"
+python tools/entity_explorer.py --domain sensor
+python tools/entity_explorer.py --area kitchen --full
+```
+
+**2. Validation Tools:**
+```bash
+# Run all validators with comprehensive report
+python tools/run_tests.py
+
+# Individual validators
+python tools/yaml_validator.py config/
+python tools/reference_validator.py config/
+python tools/ha_official_validator.py config/
+```
+
+**3. Configuration Management:**
+```bash
+# Pull latest config from HA
+make pull
+
+# Push validated config to HA
+make push
+
+# Reload HA configuration via API
+python tools/reload_config.py
+```
+
+**4. Quick Makefile Commands:**
+```bash
+make entities ARGS='--search zappi'  # Search entities
+make validate                         # Run all tests
+make backup                          # Backup config
+```
+
+**Note:** All API tools now have SSL verification disabled (`verify=False`) for local HTTPS access and will work with self-signed certificates.
 
 ## Diagnostic Workflow
 
