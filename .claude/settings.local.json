@@ -48,7 +48,11 @@
       "Bash(uv add:*)",
       "Bash(make format:*)",
       "Bash(python test_auth.py:*)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(pytest:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run pre-commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -99,3 +99,4 @@ cp -r custom_components/melcloudhome /path/to/ha/config/custom_components/
 ## VSCode Configuration
 
 The repository includes VSCode settings that associate `*.yaml` files with the `home-assistant` file type for proper syntax highlighting and validation.
+- NEVER work around pre-commit hooks. They are important code quality checks.

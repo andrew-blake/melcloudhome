@@ -76,6 +76,12 @@ module = "custom_components.melcloudhome.api.*"
 disallow_untyped_calls = false
 disallow_untyped_defs = false
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
 [tool.codespell]
 skip = '*.json,*.yaml,.git'
 ignore-words-list = 'hass'
@@ -84,5 +90,9 @@ ignore-words-list = 'hass'
 dev = [
     "mypy>=1.18.2",
     "pre-commit>=4.4.0",
+    "pytest-recording>=0.13.4",
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
     "ruff>=0.14.5",
+    "vcrpy>=7.0.0",
 ]

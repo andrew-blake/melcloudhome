@@ -128,25 +128,50 @@ class AirToAirUnit:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":
-        """Create from API response dict."""
+        """Create from API response dict.
+
+        The API returns device state as a list of name-value pairs in the 'settings' array.
+        Example: [{"name": "Power", "value": "False"}, {"name": "SetTemperature", "value": "20"}, ...]
+        """
         capabilities_data = data.get("capabilities", {})
         capabilities = DeviceCapabilities.from_dict(capabilities_data)
 
         schedules_data = data.get("schedule", [])
         schedules = [Schedule.from_dict(s) for s in schedules_data]
 
+        # Parse settings array into dict for easy access
+        settings_list = data.get("settings", [])
+        settings = {item["name"]: item["value"] for item in settings_list}
+
+        # Helper to parse boolean from string
+        def parse_bool(value: str | bool | None) -> bool:
+            if isinstance(value, bool):
+                return value
+            if value is None:
+                return False
+            return str(value).lower() == "true"
+
+        # Helper to parse float from string
+        def parse_float(value: str | float | None) -> float | None:
+            if value is None or value == "":
+                return None
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+
         return cls(
             id=data["id"],
-            name=data.get("name", "Unknown"),
-            power=data.get("power", False),
-            operation_mode=data.get("operationMode", "Heat"),
-            set_temperature=data.get("setTemperature"),
-            room_temperature=data.get("roomTemperature"),
-            set_fan_speed=data.get("setFanSpeed"),
-            vane_vertical_direction=data.get("vaneVerticalDirection"),
-            vane_horizontal_direction=data.get("vaneHorizontalDirection"),
-            in_standby_mode=data.get("inStandbyMode", False),
-            is_in_error=data.get("isInError", False),
+            name=data.get("givenDisplayName", "Unknown"),
+            power=parse_bool(settings.get("Power")),
+            operation_mode=settings.get("OperationMode", "Heat"),
+            set_temperature=parse_float(settings.get("SetTemperature")),
+            room_temperature=parse_float(settings.get("RoomTemperature")),
+            set_fan_speed=settings.get("SetFanSpeed"),
+            vane_vertical_direction=settings.get("VaneVerticalDirection"),
+            vane_horizontal_direction=settings.get("VaneHorizontalDirection"),
+            in_standby_mode=parse_bool(settings.get("InStandbyMode")),
+            is_in_error=parse_bool(settings.get("IsInError")),
             capabilities=capabilities,
             schedule=schedules,
             schedule_enabled=data.get("scheduleEnabled", False),
