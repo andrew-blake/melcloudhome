@@ -177,18 +177,19 @@ TEMP_STEP = 0.5
 # CRITICAL: Minimum 60 seconds to avoid rate limiting
 DEFAULT_SCAN_INTERVAL = 60
 
-# Headers
+# Headers for API requests
+# CRITICAL: ALL API requests require x-csrf: 1 and referer headers or they return 401
 HEADERS_JSON = {
     "Content-Type": "application/json; charset=utf-8",
     "User-Agent": USER_AGENT,
     "Accept": "application/json",
     "Accept-Language": "en-US,en;q=0.9",
+    "x-csrf": "1",
+    "referer": f"{BASE_URL}/dashboard",
 }
 
-HEADERS_CSRF = {
-    **HEADERS_JSON,
-    "x-csrf": "1",
-}
+# For state-changing operations (PUT, POST, DELETE)
+HEADERS_CSRF = HEADERS_JSON  # Same as HEADERS_JSON since x-csrf is always required
 
 # Schedule Days (0 = Sunday)
 SCHEDULE_DAY_SUNDAY = 0
