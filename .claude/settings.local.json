@@ -46,7 +46,9 @@
       "Bash(pre-commit install:*)",
       "Bash(uv pip install:*)",
       "Bash(uv add:*)",
-      "Bash(make format:*)"
+      "Bash(make format:*)",
+      "Bash(python test_auth.py:*)",
+      "Bash(uv run:*)"
     ],
     "deny": [],
     "ask": []

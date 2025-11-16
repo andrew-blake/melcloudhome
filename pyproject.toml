@@ -6,6 +6,9 @@ authors = [
     { name = "Andrew Blake", email = "a.blake01@gmail.com" }
 ]
 requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.13.2",
+]
 
 [tool.ruff]
 target-version = "py312"

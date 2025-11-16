@@ -413,17 +413,30 @@ Core API endpoints discovered and documented. Scenes API deferred:
 - Single folder deployment
 - Fast iteration, zero publishing overhead
 - Can migrate to PyPI later if needed
+- See [ADR-001](../docs/decisions/001-bundled-api-client.md) for rationale
+
+**Code Generation Considered:**
+- ❌ **Decision: Manual implementation** (not using swagger-codegen/openapi-generator)
+- **Rationale:**
+  - Small API surface (8 endpoints) - not worth generation overhead
+  - Custom auth (AWS Cognito OAuth) requires special handling
+  - HA async patterns need careful implementation
+  - Generated code often bloated/not idiomatic
+  - KISS/YAGNI - manual is simpler and more maintainable
+  - Already have models and constants implemented
+- **Note:** Could reconsider if API grows significantly (30+ endpoints)
 
 **Next Phase: Build Home Assistant Integration**
-- Create `custom_components/melcloudhome/` structure
-- Implement bundled API client
-- Build climate entity and coordinator
-- Test with real credentials
-- Iterate and refine
+- ✅ API client foundation complete (const, exceptions, models)
+- 🔄 Implement auth.py (AWS Cognito OAuth) - **START NEW SESSION**
+- 🔄 Implement client.py (main API methods)
+- 🔄 Build HA integration (manifest, config_flow, climate)
+- 🔄 Test with real credentials
+- 🔄 Iterate and refine
 
-## Completed in This Session (2025-11-16)
+## Session 1 Completed (2025-11-16)
 
-**Actions Completed:**
+**API Discovery & Foundation:**
 1. ✅ Authenticated to MELCloud Home
 2. ✅ Completed schedule API discovery (CRUD operations)
 3. ✅ Documented 14 knowledge gaps with testing plan
@@ -435,10 +448,104 @@ Core API endpoints discovered and documented. Scenes API deferred:
 9. ✅ Decided on bundled implementation approach (KISS)
 10. ✅ Updated all documentation
 
+**Implementation Foundation:**
+11. ✅ Set up project structure (`custom_components/melcloudhome/`)
+12. ✅ Implemented API client foundation:
+    - const.py (API constants, enums, mappings)
+    - exceptions.py (custom exceptions)
+    - models.py (data models with from_dict/to_dict)
+13. ✅ Set up development environment:
+    - uv dependency management
+    - ruff (linting & formatting)
+    - mypy (type checking)
+    - pre-commit hooks
+14. ✅ Created documentation:
+    - ADR-001 (bundled architecture decision)
+    - Updated README.md and CLAUDE.md
+    - docs/ structure with navigation
+15. ✅ Committed to git (~1,158 additions)
+
 **API Discovery Progress: 87% Complete**
 - Ready for implementation
 - Scenes API deferred to v2.0
 - All core functionality documented
+
+---
+
+## Session 2 - Implementation (TODO)
+
+**Focus: API Client Implementation**
+
+### Before Starting Session 2:
+
+Review these files to understand the foundation:
+- `custom_components/melcloudhome/api/const.py` - All API constants and mappings
+- `custom_components/melcloudhome/api/models.py` - Data structures
+- `openapi.yaml` - Complete API specification
+- `_claude/melcloudhome-api-reference.md` - Control API details
+- `_claude/melcloudhome-schedule-api.md` - Schedule API details
+- `.env` file - Contains OAuth credentials (email, password)
+
+### Tasks for Session 2:
+
+**Priority 1: Authentication (auth.py)**
+1. Implement AWS Cognito OAuth 2.0 + PKCE flow
+2. Handle token storage and refresh
+3. Manage session cookies (~8 hour expiry)
+4. Implement User-Agent header management (critical for bot detection)
+5. Handle authentication errors and re-auth flow
+
+**Reference Documentation:**
+- Authentication flow documented in `_claude/melcloudhome-api-discovery.md`
+- OAuth endpoints and flow details available
+- Test credentials in `.env` file
+
+**Priority 2: API Client (client.py)**
+1. Implement `MELCloudHomeClient` class
+2. Device operations:
+   - `async def get_devices()` - Fetch all devices
+   - `async def set_power(unit_id, power)`
+   - `async def set_temperature(unit_id, temp)`
+   - `async def set_mode(unit_id, mode)`
+   - `async def set_fan_speed(unit_id, speed)`
+   - `async def set_vanes(unit_id, vertical, horizontal)`
+3. Schedule operations:
+   - `async def create_schedule(unit_id, schedule)`
+   - `async def delete_schedule(unit_id, schedule_id)`
+   - `async def set_schedules_enabled(unit_id, enabled)`
+4. Telemetry operations (optional for v1.0):
+   - `async def get_temperature_history(...)`
+   - `async def get_energy_data(...)`
+
+**Priority 3: Module Export (__init__.py)**
+1. Create `custom_components/melcloudhome/api/__init__.py`
+2. Export main classes: `MELCloudHomeClient`, exceptions, models
+
+**Key Implementation Notes:**
+- Use `aiohttp` for async HTTP requests
+- Implement exponential backoff for rate limiting
+- Conservative 60-second minimum polling interval
+- Handle partial updates (null for unchanged fields)
+- Remember: Fan speeds are STRINGS, not integers
+- Remember: AUTO mode is "Automatic" not "Auto"
+
+**Testing During Development:**
+- Test authentication with real credentials
+- Test device control operations
+- Verify enum mappings work correctly
+- Test error handling and rate limiting
+
+---
+
+## Session 3 - Home Assistant Integration (TODO)
+
+After Session 2 completes the API client, Session 3 will implement the HA integration:
+- manifest.json
+- config_flow.py (OAuth UI flow)
+- coordinator.py (data updates)
+- climate.py (climate entity)
+- const.py (HA constants)
+- strings.json (UI translations)
 
 ---
 
