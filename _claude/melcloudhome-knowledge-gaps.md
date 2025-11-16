@@ -142,65 +142,47 @@ Test 4: Error Response Analysis
 
 ### GAP-003: Rate Limiting and API Quotas
 
-**Status:** 🟡 HIGH RISK - Unknown Limits
+**Status:** ⚫ DEFERRED - Do Not Test
+
+**⚠️ CRITICAL: NEVER PERFORM RATE LIMIT TESTING ⚠️**
+
+**Reason:** Aggressive rate limit testing could result in account suspension or permanent blocking from the MELCloud Home API. This would render the entire system unusable.
 
 **What We Know:**
 - API uses HTTPS REST endpoints
 - CSRF token required via `x-csrf: 1` header
-- No rate limit errors encountered during testing (low volume)
+- No rate limit errors encountered during normal testing (low volume)
 
 **What We DON'T Know:**
-- Requests per minute/hour/day limits
+- Exact requests per minute/hour/day limits
 - Rate limit response codes (429? 503?)
 - Rate limit headers (X-RateLimit-*?)
 - Per-endpoint vs global limits
 - Penalty for exceeding (temporary ban? permanent?)
 - Whether limits differ for different endpoints
 
-**Impact:**
-- HA polling could hit rate limits
-- Multi-unit systems multiply request volume
-- Could get account blocked
-- Need backoff strategy
-- May need WebSocket for real-time updates instead
+**Conservative Implementation Strategy:**
+1. ✅ Use conservative polling intervals (60 seconds minimum)
+2. ✅ Implement exponential backoff on any errors
+3. ✅ Monitor for 429/503 errors in production
+4. ✅ Investigate WebSocket alternative (GET /ws/token endpoint exists)
+5. ✅ Document safe polling recommendations for users
+6. ⚠️ NEVER attempt to find limits through testing
 
-**Testing Plan:**
-```
-Test 1: Rapid Polling
-- [ ] Poll /api/user/context 100 times in 1 minute
-- [ ] Monitor for error responses
-- [ ] Check response headers for rate limit info
-- [ ] Document any 429/503 responses
+**Recommended Polling Intervals:**
+- Single unit: 60 seconds (safe baseline)
+- Multiple units: 90-120 seconds per unit
+- Implement jitter to avoid thundering herd
+- Back off immediately on any HTTP errors
 
-Test 2: Sustained Load
-- [ ] Poll every 10 seconds for 1 hour
-- [ ] Poll every 30 seconds for 6 hours
-- [ ] Monitor for degradation or blocking
-- [ ] Document sustainable polling rate
+**WebSocket Investigation (Safe):**
+- Observe /ws/token endpoint in normal UI usage
+- Check DevTools for WebSocket connections
+- Document protocol if discovered passively
+- WebSocket would eliminate polling entirely
 
-Test 3: Burst Control
-- [ ] Send 10 control commands in 10 seconds
-- [ ] Send 50 control commands in 1 minute
-- [ ] Check for rejection or throttling
-- [ ] Verify commands execute successfully
-
-Test 4: WebSocket Investigation
-- [ ] Monitor /ws/token endpoint usage
-- [ ] Check for WebSocket connections in DevTools
-- [ ] Analyze real-time update mechanism
-- [ ] Determine if polling can be replaced
-```
-
-**Resolution Path:**
-1. Start with conservative polling (every 60 seconds)
-2. Gradually increase frequency while monitoring
-3. Document first signs of throttling
-4. Implement exponential backoff
-5. Investigate WebSocket alternative
-6. Recommend polling intervals in documentation
-
-**Estimated Time:** 2-3 hours (requires sustained testing)
-**Priority:** P0 - Must know before production deployment
+**Estimated Time:** N/A - Testing explicitly forbidden
+**Priority:** P0 - Use conservative defaults, do NOT test limits
 
 ---
 
@@ -1132,7 +1114,7 @@ If testing causes issues:
 |--------|----------|--------|---------------|----------------|-------|
 | GAP-001 | P0 | 🔴 Open | - | - | Schedule enable broken |
 | GAP-002 | P0 | 🟢 Resolved | 2025-11-16 | 2025-11-16 | Mode enum mapping verified |
-| GAP-003 | P0 | 🔴 Open | - | - | Unknown rate limits |
+| GAP-003 | P0 | ⚫ Deferred | - | - | NEVER test - use 60s polling |
 | GAP-004 | P1 | 🔴 Open | - | - | Vane enum mapping |
 | GAP-005 | P1 | 🔴 Open | - | - | Missing UPDATE endpoint |
 | GAP-006 | P1 | 🔴 Open | - | - | Scenes completely unknown |

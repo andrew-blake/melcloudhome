@@ -80,6 +80,88 @@ Multiple redirects occur server-side:
 
 ---
 
+## HTTP Headers for API Requests
+
+### Required Headers (All API Requests)
+
+**User-Agent (CRITICAL for avoiding bot detection):**
+```
+Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+```
+
+**Client Hints (Chrome Specific):**
+```
+sec-ch-ua: "Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "macOS"
+```
+
+**CSRF Protection (POST/PUT/DELETE requests):**
+```
+x-csrf: 1
+```
+
+**Content Type (JSON payloads):**
+```
+Content-Type: application/json; charset=utf-8
+```
+
+### Python Implementation Example
+
+```python
+import requests
+
+# Base headers for all requests
+BASE_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+}
+
+# For API requests
+API_HEADERS = {
+    **BASE_HEADERS,
+    'x-csrf': '1',
+    'Content-Type': 'application/json; charset=utf-8',
+}
+
+# Example usage
+session = requests.Session()
+session.headers.update(BASE_HEADERS)
+
+# For API calls, add CSRF header
+response = session.put(
+    f'https://melcloudhome.com/api/ataunit/{unit_id}',
+    json=payload,
+    headers={'x-csrf': '1', 'Content-Type': 'application/json; charset=utf-8'}
+)
+```
+
+### Header Notes
+
+**Why User-Agent is Critical:**
+- AWS Cognito uses Advanced Security Features (ASF) for bot detection
+- Mismatched or missing User-Agent may trigger additional verification
+- Chrome on macOS has been tested and works reliably
+
+**CSRF Protection:**
+- The `x-csrf: 1` header is required for all state-changing operations
+- GET requests don't require this header
+- Server validates CSRF token from session cookie
+
+**Client Hints:**
+- Optional but recommended for full browser impersonation
+- Help avoid triggering security features
+- Match the User-Agent platform (macOS in this case)
+
+**Session Management:**
+- All requests use session cookies (HTTP-only)
+- No Authorization header needed after login
+- Session expires in ~8 hours
+
+---
+
 ## API Endpoints
 
 ### Configuration

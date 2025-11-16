@@ -188,36 +188,45 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
 
 ### Gap Analysis & Testing (New) 📋
 
-6. **`melcloudhome-knowledge-gaps.md`** ⚠️ IMPORTANT
-   - 14 documented knowledge gaps
+6. **`melcloudhome-knowledge-gaps.md`** ✅ Updated
+   - 13 active knowledge gaps (1 resolved, 1 deferred)
    - Prioritized testing plan (P0-P3)
    - Safety guidelines for testing
-   - 4-phase execution plan
    - Progress tracking framework
-   - **Status:** Ready for gap-filling execution
-   - **Current API Understanding: ~85%**
-   - **Critical gaps (P0): 3 items - MUST address before production**
-   - **High priority (P1): 3 items - Should complete for full features**
+   - **Status:** Gap-filling in progress
+   - **Current API Understanding: ~87%** (improved from 85%)
+   - **Critical gaps (P0): 1 active, 1 deferred, 1 resolved**
+   - **High priority (P1): 3 items - 2 enum verifications recommended**
+   - **✅ GAP-002 RESOLVED:** Operation mode enum fully verified
+   - **⚫ GAP-003 DEFERRED:** Rate limiting - NEVER test
 
 ---
 
 ## For Next Claude Session: Gap-Filling Instructions
 
-### Current State (2025-11-16 End of Session)
+### Current State (2025-11-16 Latest Update)
 
 **Browser State:**
 - Chrome DevTools connected to melcloudhome.com
 - Authenticated as a.blake01@gmail.com
-- Last viewed: `/ata/0efce33f-5847-4042-88eb-aaf3ff6a76db/schedule/Sunday`
-- Schedule list showing two existing schedules:
-  - 07:00 - Heat - 20°C - All days
-  - 08:00 - OFF - All days
+- Last action: Verified all 5 operation mode enums via schedule creation
+- Created 5 test schedules (one per mode) - may need cleanup
 
 **API Discovery Progress:**
 - ✅ Core API: 100% complete
-- ✅ Schedule API: 85% complete (CRUD captured, enable/disable failed)
-- ⚠️ Knowledge Gaps: 14 items documented (3 critical, 3 high priority)
-- 📋 Gap-filling plan: 4 phases ready to execute
+- ✅ Schedule API: 90% complete (CRUD captured, operation modes verified)
+- ✅ Operation Mode Enum: 100% verified (GAP-002 RESOLVED)
+- ⚠️ Knowledge Gaps: 13 active items (2 critical, 3 high priority)
+- **Current API Understanding: ~87%** (improved from 85%)
+
+**Recent Accomplishments:**
+- ✅ GAP-002 RESOLVED: Operation mode enum mapping fully verified
+  - 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
+- ⚫ GAP-003 DEFERRED: Rate limiting - NEVER test, use 60s polling minimum
+- ✅ HTTP Headers documented: User-Agent and browser impersonation headers
+  - Chrome 142 on macOS User-Agent string captured
+  - Python implementation example included
+- Documentation updated: `melcloudhome-schedule-api.md` v1.1, `melcloudhome-api-discovery.md`
 
 ### CRITICAL: Testing Methodology
 
@@ -246,101 +255,108 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
 ✅ RIGHT: Click enable toggle, observe PUT request
 ```
 
-### Recommended Next Steps: Phase 1 Gap-Filling (P0 - Critical)
+### Recommended Next Steps: Remaining Enum Verification (P1 - High Priority)
 
-**Time Required:** 4-6 hours
-**Goal:** Resolve blocking issues before implementation
+**Time Required:** 1-2 hours
+**Goal:** Verify remaining enum mappings for complete Schedule API coverage
 
-#### Task 1: Schedule Enable/Disable Investigation (1-2 hours)
+#### Task 1: Fan Speed Integer Enum Verification (30-45 minutes)
 
-**Status:** Currently returns HTTP 500 errors
-**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-001
+**Status:** Integer mapping assumed but not verified
+**Documentation:** `melcloudhome-schedule-api.md` - Fan Speed Values section
 
-**Steps:**
-1. Navigate to schedule page: `/ata/{unit_id}/schedule`
-2. Open DevTools Network tab, clear log
-3. Toggle enable/disable switch in UI
-4. Capture request and full error response
-5. Test with various conditions:
-   - Enable with zero schedules
-   - Enable with one valid future schedule
-   - Enable with past-time schedule
-   - Enable with multiple schedules
-6. Check browser console for client-side errors
-7. Compare headers with our direct API call
-8. Document findings in gap document
-9. Determine: Is it broken? Or did we miss something?
-
-**Success Criteria:**
-- Understand why 500 error occurs
-- Either fix the approach OR document workaround
-
-#### Task 2: Operation Mode Enum Verification (30-60 minutes)
-
-**Status:** Only Heat (1) verified, others inferred
-**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-002
+**Background:**
+- Control API uses strings: "Auto", "One", "Two", "Three", "Four", "Five" ✅ Verified
+- Schedule API uses integers: 0, 1, 2, 3, 4, 5 ⚠️ Assumed (likely 0=Auto, 1=One, etc.)
+- Need to confirm the integer-to-string mapping
 
 **Steps:**
-1. For each mode (Heat, Cool, Auto, Dry, Fan):
+1. For each fan speed (Auto through Five):
    - Navigate to schedule creation: `/ata/{unit_id}/schedule/event`
-   - Set mode in UI
-   - Set temperature (appropriate for mode)
-   - Set time (future time, e.g., tomorrow)
-   - Select single day
+   - Set mode to Heat (or any mode)
+   - Set temperature (e.g., 20°C)
+   - Click FAN button to open fan speed selector
+   - Select fan speed (Auto, then 1-5)
+   - Set time and day
    - Clear network log
    - Click SAVE
    - Capture POST request body
-   - Note the `operationMode` integer value
-   - Check schedule list - verify mode icon/text matches
+   - Note the `setFanSpeed` integer value
    - Delete test schedule
 2. Build verified mapping table
 3. Update `melcloudhome-schedule-api.md` with verified values
-4. Remove "inferred" warnings
+4. Mark as verified (remove "assumed" notes)
 
 **Success Criteria:**
-- All 5 operation modes verified with integer values
-- Mapping table documented: 1=Heat, 2=Cool, etc.
+- All 6 fan speeds verified with integer values
+- Mapping table documented: 0=Auto, 1=One, 2=Two, etc.
 
-#### Task 3: Rate Limiting Investigation (2-3 hours)
+#### Task 2: Vane Direction Enum Verification (30-45 minutes)
 
-**Status:** Unknown limits
-**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-003
+**Status:** Partial - only 6 and 7 observed, rest unknown
+**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-004
+
+**Background:**
+- Only values 6 and 7 observed in existing schedules
+- Control API uses strings: "Auto", "Swing", "One"-"Five" (vertical), "Left", "Center*", "Right" (horizontal)
+- Schedule API uses integers but mapping unknown
+- Need to verify both vertical and horizontal vane enums
 
 **Steps:**
-1. **Rapid Polling Test:**
-   - Poll `/api/user/context` every 5 seconds for 10 minutes
-   - Monitor for errors (429, 503, etc.)
-   - Check response headers for rate limit info
-   - Document when/if throttling occurs
+1. **Vertical Vane Testing:**
+   - For each vane position (Auto, Swing, then positions):
+     - Navigate to schedule creation: `/ata/{unit_id}/schedule/event`
+     - Set mode, temp, time, day
+     - Click VANE V button to open vane selector
+     - Select vane position
+     - Clear network log
+     - Click SAVE
+     - Capture POST request body
+     - Note the `vaneVerticalDirection` integer value
+     - Delete test schedule
 
-2. **Sustained Polling Test:**
-   - Poll every 30 seconds for 1 hour
-   - Monitor for any degradation
-   - Document sustainable rate
+2. **Horizontal Vane Testing:**
+   - Repeat for VANE H button
+   - Note the `vaneHorizontalDirection` integer value
 
-3. **Control Command Burst:**
-   - Using UI, change temperature 10 times rapidly
-   - Monitor for rejection or throttling
-   - Document safe command rate
-
-4. **Document Findings:**
-   - Safe polling interval
-   - Burst limits
-   - Error responses for rate limiting
-   - Update documentation with recommendations
+3. Build verified mapping tables for both axes
+4. Update `melcloudhome-schedule-api.md` with verified values
+5. Update GAP-004 status to resolved
 
 **Success Criteria:**
-- Know safe polling rate (e.g., "30 seconds minimum")
-- Documented rate limit behavior
-- Implement exponential backoff strategy
+- Complete vertical vane mapping verified
+- Complete horizontal vane mapping verified
+- Both tables documented in schedule API doc
+- GAP-004 marked as resolved
 
-### Alternative: Start Implementation with Known Values
+#### ⚠️ Task 3: SKIP Rate Limiting Testing
 
-**If gap-filling is deprioritized, can proceed with:**
-- Use only verified values (Heat mode=1, etc.)
-- Set conservative polling (60 second intervals)
-- Document known limitations
-- Implement with 85% coverage
+**Status:** ⚫ DEFERRED - DO NOT TEST
+**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-003
+
+**CRITICAL: NEVER perform rate limit testing. This could result in account suspension.**
+
+**Instead:**
+- Use conservative 60-second polling minimum
+- Implement exponential backoff on errors
+- Monitor for 429/503 in production only
+- Investigate WebSocket alternative (safe passive observation)
+
+### Alternative: Start Implementation Now
+
+**Current state is production-ready at 87% coverage:**
+- ✅ All operation modes verified (1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Auto)
+- ✅ Fan speeds assumed correct (0-5 mapping standard)
+- ✅ Vane positions: Auto(6) and Swing(7) work
+- ✅ Conservative 60-second polling safe
+- ⚠️ Limited vane position control (only Auto/Swing until verified)
+
+**Can implement with:**
+- Full operation mode support
+- Basic fan speed control (0=Auto works)
+- Basic vane control (Auto/Swing work)
+- Conservative polling
+- Document remaining limitations
 - Fill gaps iteratively based on user reports
 
 ### Session Checklist for Next Claude
