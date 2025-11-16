@@ -140,7 +140,9 @@ class MELCloudHomeAuth:
 
     async def login(self, username: str, password: str) -> bool:
         """
-        Authenticate with MELCloud Home via AWS Cognito OAuth.
+        Authenticate with MELCloud Home using Playwright.
+
+        Uses headless browser to complete OAuth flow and extract session cookies.
 
         Args:
             username: Email address
@@ -152,104 +154,150 @@ class MELCloudHomeAuth:
         Raises:
             AuthenticationError: If authentication fails
         """
-        _LOGGER.debug("Starting authentication flow for user: %s", username)
+        _LOGGER.debug("Starting Playwright authentication for user: %s", username)
 
         try:
-            session = await self._ensure_session()
+            from playwright.async_api import async_playwright
 
-            # Step 1: Initiate login flow
-            # GET /bff/login redirects to auth service
-            _LOGGER.debug("Step 1: Initiating login flow")
-            async with session.get(
-                f"{BASE_URL}/bff/login",
-                params={"returnUrl": "/dashboard"},
-                allow_redirects=True,
-            ) as resp:
-                # Follow redirects to Cognito login page
-                # Final URL should be cognito login page
-                final_url = str(resp.url)
-                _LOGGER.debug("Redirected to: %s", final_url)
+            async with async_playwright() as p:
+                # Launch browser (headless=False for debugging)
+                _LOGGER.debug("Launching browser")
+                browser = await p.chromium.launch(headless=False, slow_mo=1000)
 
-                if "amazoncognito.com/login" not in final_url:
-                    raise AuthenticationError(f"Unexpected redirect URL: {final_url}")
+                # Create browser context with standard user agent
+                context = await browser.new_context(
+                    user_agent=USER_AGENT,
+                    viewport={"width": 1280, "height": 720},
+                )
 
-                # Extract CSRF token from login page HTML
-                html = await resp.text()
-                csrf_token = self._extract_csrf_token(html)
-                if not csrf_token:
-                    raise AuthenticationError(
-                        "Failed to extract CSRF token from login page"
+                page = await context.new_page()
+
+                try:
+                    # Navigate to login page
+                    _LOGGER.debug("Navigating to login page")
+                    await page.goto(
+                        f"{BASE_URL}/bff/login?returnUrl=/dashboard", timeout=30000
                     )
 
-                _LOGGER.debug("Extracted CSRF token: %s...", csrf_token[:10])
+                    # Wait for page to load
+                    await page.wait_for_load_state("load")
+                    _LOGGER.debug("Page loaded")
 
-            # Step 2: Submit credentials to Cognito
-            # Need to preserve all query parameters from the login page URL
-            _LOGGER.debug("Step 2: Submitting credentials")
+                    # Check if there are iframes
+                    iframes = page.frames
+                    _LOGGER.debug(f"Found {len(iframes)} frames on page")
 
-            login_data = {
-                "_csrf": csrf_token,
-                "username": username,
-                "password": password,
-                # cognitoAsfData: AWS Advanced Security Features fingerprint
-                # We'll try without it first - server may accept requests without it
-                # or with a minimal value
-                "cognitoAsfData": self._generate_cognito_asf_data(),
-            }
+                    # Wait for the username input to be visible (try all frames)
+                    username_input = None
+                    for frame in iframes:
+                        try:
+                            username_input = await frame.wait_for_selector(
+                                "#signInFormUsername", state="attached", timeout=2000
+                            )
+                            if username_input:
+                                _LOGGER.debug(
+                                    f"Found username input in frame: {frame.url}"
+                                )
+                                # Fill credentials in this frame
+                                await frame.fill("#signInFormUsername", username)
+                                await frame.fill("#signInFormPassword", password)
+                                _LOGGER.debug("Credentials filled successfully")
 
-            # POST to Cognito login endpoint with original query params
-            async with session.post(
-                final_url,  # Use the full URL with query params
-                data=login_data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Origin": self._cognito_base,
-                    "Referer": final_url,
-                },
-                allow_redirects=True,
-            ) as resp:
-                # Successful login should redirect back to melcloudhome.com
-                final_url = str(resp.url)
-                _LOGGER.debug("After login redirect: %s", final_url)
+                                # Click submit button
+                                await frame.click('input[name="signInSubmitButton"]')
+                                _LOGGER.debug("Submit button clicked")
+                                break
+                        except Exception as e:
+                            _LOGGER.debug(f"Input not in frame {frame.url}: {e}")
+                            continue
 
-                # Check if we ended up on the dashboard (success)
-                if "melcloudhome.com" in final_url and (
-                    "/dashboard" in final_url or "/error" not in final_url.lower()
-                ):
-                    _LOGGER.info("Authentication successful - session established")
+                    if not username_input:
+                        raise AuthenticationError(
+                            "Could not find login form in any frame"
+                        )
+
+                    # Wait for redirect to dashboard
+                    _LOGGER.debug("Waiting for authentication redirect")
+                    try:
+                        await page.wait_for_url("**/dashboard", timeout=30000)
+                        _LOGGER.info("Successfully reached dashboard")
+                    except Exception as e:
+                        # Check where we actually ended up
+                        current_url = page.url
+                        _LOGGER.warning(
+                            "Did not reach dashboard. Current URL: %s", current_url
+                        )
+                        _LOGGER.debug("Wait exception: %s", e)
+
+                        # Take a screenshot for debugging
+                        await page.screenshot(path="/tmp/melcloud_after_login.png")
+                        _LOGGER.debug(
+                            "Screenshot saved to /tmp/melcloud_after_login.png"
+                        )
+
+                        if (
+                            "amazoncognito.com/login" in current_url
+                            or "error" in current_url.lower()
+                        ):
+                            raise AuthenticationError(
+                                f"Login failed - still at: {current_url}"
+                            ) from e
+                        # If we're at melcloudhome.com but not /dashboard, continue anyway
+                        if "melcloudhome.com" in current_url:
+                            _LOGGER.warning("Continuing despite not reaching dashboard")
+                        else:
+                            raise AuthenticationError(
+                                f"Unexpected URL after login: {current_url}"
+                            ) from e
+
+                    # Extract cookies from browser context
+                    _LOGGER.debug("Extracting cookies from browser")
+                    playwright_cookies = await context.cookies()
+
+                    # Filter and transfer session cookies to aiohttp
+                    session = await self._ensure_session()
+                    cookie_count = 0
+
+                    for cookie in playwright_cookies:
+                        # Only transfer __Secure- cookies from melcloudhome.com
+                        if cookie.get("domain") == "melcloudhome.com" and cookie[
+                            "name"
+                        ].startswith("__Secure-"):
+                            # Add to aiohttp cookie jar
+                            session.cookie_jar.update_cookies(
+                                {cookie["name"]: cookie["value"]},
+                                response_url=f"https://melcloudhome.com{cookie.get('path', '/')}",
+                            )
+                            cookie_count += 1
+                            _LOGGER.debug("Transferred cookie: %s", cookie["name"])
+
+                    _LOGGER.info(
+                        "Transferred %d session cookies to aiohttp", cookie_count
+                    )
+
+                    if cookie_count == 0:
+                        raise AuthenticationError(
+                            "No session cookies found after login"
+                        )
+
                     self._authenticated = True
                     return True
 
-                # Check for error in URL or response
-                if "/error" in final_url.lower() or resp.status >= 400:
-                    error_html = await resp.text()
-                    # Try to extract error message
-                    error_msg = self._extract_error_message(error_html)
-                    raise AuthenticationError(
-                        f"Authentication failed: {error_msg or 'Invalid credentials'}"
-                    )
+                finally:
+                    # Clean up browser resources
+                    await context.close()
+                    await browser.close()
+                    _LOGGER.debug("Browser closed")
 
-                # If we're still on Cognito, credentials were wrong
-                if "amazoncognito.com" in final_url:
-                    raise AuthenticationError(
-                        "Authentication failed: Invalid username or password"
-                    )
-
-                # Unexpected state
-                raise AuthenticationError(
-                    f"Authentication failed: Unexpected redirect to {final_url}"
-                )
-
-        except aiohttp.ClientError as err:
+        except ImportError as err:
             raise AuthenticationError(
-                f"Network error during authentication: {err}"
+                "Playwright not installed. Run: pip install playwright && playwright install chromium"
             ) from err
         except Exception as err:
             if isinstance(err, AuthenticationError):
                 raise
-            raise AuthenticationError(
-                f"Unexpected error during authentication: {err}"
-            ) from err
+            _LOGGER.error("Unexpected error during Playwright authentication: %s", err)
+            raise AuthenticationError(f"Authentication failed: {err}") from err
 
     def _get_session_cookies(self) -> dict[str, str]:
         """
@@ -287,22 +335,11 @@ class MELCloudHomeAuth:
         try:
             session = await self._ensure_session()
 
-            # Get session cookies manually (aiohttp has issues with __Secure- cookies)
-            cookies = self._get_session_cookies()
-            _LOGGER.debug("Extracted %d session cookies", len(cookies))
-
-            # Build Cookie header manually
-            cookie_header = "; ".join(f"{k}={v}" for k, v in cookies.items())
-            _LOGGER.debug("Cookie header: %d characters", len(cookie_header))
-
             # Check session by calling main API endpoint
-            # This is more reliable than /bff/user for session validation
+            # Cookies should now be sent automatically by aiohttp
             async with session.get(
                 f"{BASE_URL}/api/user/context",
-                headers={
-                    "Accept": "application/json",
-                    "Cookie": cookie_header,  # Manually pass Cookie header
-                },
+                headers={"Accept": "application/json"},
             ) as resp:
                 if resp.status == 200:
                     _LOGGER.debug("Session is valid (API returned 200)")
@@ -310,12 +347,7 @@ class MELCloudHomeAuth:
 
                 # 401 = session expired
                 if resp.status == 401:
-                    # Get response body for debugging
-                    body = await resp.text()
-                    _LOGGER.debug(
-                        "Session check returned 401. Body: %s",
-                        body[:200] if body else "empty",
-                    )
+                    _LOGGER.debug("Session expired (401)")
                     self._authenticated = False
                     return False
 
