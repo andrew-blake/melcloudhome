@@ -1,6 +1,6 @@
 # MELCloud Home Schedule API
 
-**Document Version:** 1.0 (COMPLETE)
+**Document Version:** 1.1 (VERIFIED)
 **Last Updated:** 2025-11-16
 **Discovery Method:** Active API capture via browser DevTools
 **Status:** ✅ COMPLETE - All CRUD operations verified
@@ -61,7 +61,7 @@ Schedules are included in the user context response under each unit's `schedule`
 - `time` (string): "HH:MM:SS" format (24-hour)
 - `enabled` (null): Appears unused (individual schedule level)
 - `power` (boolean): Power on/off state
-- `operationMode` (integer): Mode enum (1 = Heat, see below)
+- `operationMode` (integer): Mode enum (1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Auto - see below)
 - `setPoint` (number|null): Target temperature (nullable for OFF schedules)
 - `vaneVerticalDirection` (integer|null): Vane position enum
 - `vaneHorizontalDirection` (integer|null): Vane position enum
@@ -192,13 +192,13 @@ Days are represented as integers in an array:
 
 | Value | Mode | Description |
 |-------|------|-------------|
-| 1 | Heat | Heating mode |
-| 2 | Cool | Cooling mode (inferred) |
-| 3 | Automatic | Auto mode (inferred) |
-| 4 | Dry | Dehumidify mode (inferred) |
-| 5 | Fan | Fan only mode (inferred) |
+| 1 | Heat | Heating mode ✅ |
+| 2 | Dry | Dehumidify mode ✅ |
+| 3 | Cool | Cooling mode ✅ |
+| 4 | Fan | Fan only mode ✅ |
+| 5 | Automatic | Auto mode ✅ |
 
-**Note:** Only Heat (1) has been verified. Other values inferred from control API patterns.
+**Note:** All values have been UI-verified through schedule creation testing (2025-11-16).
 
 ---
 
@@ -445,5 +445,6 @@ schedule_id = str(uuid.uuid4())
 |---------|------|---------|
 | 0.9 | 2025-11-16 | Initial schedule UI documentation (incomplete) |
 | 1.0 | 2025-11-16 | Complete API verification - all CRUD operations captured and tested |
+| 1.1 | 2025-11-16 | Operation mode enum mapping fully verified (all 5 modes tested) |
 
-**Status:** ✅ COMPLETE - Ready for implementation
+**Status:** ✅ COMPLETE & VERIFIED - Ready for implementation

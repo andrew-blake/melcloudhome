@@ -151,7 +151,7 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
 
 ## Documentation Files Reference
 
-### All Documentation Complete ✅
+### Core API Documentation (Complete) ✅
 
 1. **`melcloudhome-api-reference.md`**
    - Control API with ALL parameters UI-verified
@@ -186,28 +186,217 @@ All API endpoints have been discovered and documented. The MELCloud Home API is 
    - Client-side GUID generation documented
    - **Status:** v1.0 COMPLETE
 
+### Gap Analysis & Testing (New) 📋
+
+6. **`melcloudhome-knowledge-gaps.md`** ⚠️ IMPORTANT
+   - 14 documented knowledge gaps
+   - Prioritized testing plan (P0-P3)
+   - Safety guidelines for testing
+   - 4-phase execution plan
+   - Progress tracking framework
+   - **Status:** Ready for gap-filling execution
+   - **Current API Understanding: ~85%**
+   - **Critical gaps (P0): 3 items - MUST address before production**
+   - **High priority (P1): 3 items - Should complete for full features**
+
 ---
 
-## Session State (Final - 2025-11-16)
+## For Next Claude Session: Gap-Filling Instructions
+
+### Current State (2025-11-16 End of Session)
 
 **Browser State:**
 - Chrome DevTools connected to melcloudhome.com
+- Authenticated as a.blake01@gmail.com
 - Last viewed: `/ata/0efce33f-5847-4042-88eb-aaf3ff6a76db/schedule/Sunday`
 - Schedule list showing two existing schedules:
   - 07:00 - Heat - 20°C - All days
   - 08:00 - OFF - All days
 
-**Completed Actions:**
-1. ✅ Authenticated to MELCloud Home
-2. ✅ Navigated to schedule page
-3. ✅ Inspected existing schedules via `/api/user/context`
-4. ✅ Tested enable/disable toggle (captured PUT endpoint)
-5. ✅ Created test schedule (Sunday 09:09, Heat, 19.5°C)
-6. ✅ Captured POST creation endpoint
-7. ✅ Deleted test schedule via API
-8. ✅ Verified deletion successful
+**API Discovery Progress:**
+- ✅ Core API: 100% complete
+- ✅ Schedule API: 85% complete (CRUD captured, enable/disable failed)
+- ⚠️ Knowledge Gaps: 14 items documented (3 critical, 3 high priority)
+- 📋 Gap-filling plan: 4 phases ready to execute
 
-**All API Discovery Complete - Ready for Implementation Phase**
+### CRITICAL: Testing Methodology
+
+**⚠️ ALWAYS use UI-driven observation - NEVER POST directly to API**
+
+**Correct Process:**
+1. Navigate to feature in UI
+2. Open Chrome DevTools → Network tab
+3. Clear network log
+4. Perform action in UI (click, toggle, save)
+5. Observe network request(s) triggered
+6. Inspect request/response details
+7. Document findings
+8. Repeat to verify
+
+**Why:**
+- ✅ UI includes proper validation
+- ✅ Shows complete flow (may be multiple API calls)
+- ✅ Handles auth/CSRF correctly
+- ✅ Safer - won't send malformed requests
+- ✅ Shows real-world behavior
+
+**Example:**
+```
+❌ WRONG: evaluate_script to POST {"enabled": true}
+✅ RIGHT: Click enable toggle, observe PUT request
+```
+
+### Recommended Next Steps: Phase 1 Gap-Filling (P0 - Critical)
+
+**Time Required:** 4-6 hours
+**Goal:** Resolve blocking issues before implementation
+
+#### Task 1: Schedule Enable/Disable Investigation (1-2 hours)
+
+**Status:** Currently returns HTTP 500 errors
+**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-001
+
+**Steps:**
+1. Navigate to schedule page: `/ata/{unit_id}/schedule`
+2. Open DevTools Network tab, clear log
+3. Toggle enable/disable switch in UI
+4. Capture request and full error response
+5. Test with various conditions:
+   - Enable with zero schedules
+   - Enable with one valid future schedule
+   - Enable with past-time schedule
+   - Enable with multiple schedules
+6. Check browser console for client-side errors
+7. Compare headers with our direct API call
+8. Document findings in gap document
+9. Determine: Is it broken? Or did we miss something?
+
+**Success Criteria:**
+- Understand why 500 error occurs
+- Either fix the approach OR document workaround
+
+#### Task 2: Operation Mode Enum Verification (30-60 minutes)
+
+**Status:** Only Heat (1) verified, others inferred
+**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-002
+
+**Steps:**
+1. For each mode (Heat, Cool, Auto, Dry, Fan):
+   - Navigate to schedule creation: `/ata/{unit_id}/schedule/event`
+   - Set mode in UI
+   - Set temperature (appropriate for mode)
+   - Set time (future time, e.g., tomorrow)
+   - Select single day
+   - Clear network log
+   - Click SAVE
+   - Capture POST request body
+   - Note the `operationMode` integer value
+   - Check schedule list - verify mode icon/text matches
+   - Delete test schedule
+2. Build verified mapping table
+3. Update `melcloudhome-schedule-api.md` with verified values
+4. Remove "inferred" warnings
+
+**Success Criteria:**
+- All 5 operation modes verified with integer values
+- Mapping table documented: 1=Heat, 2=Cool, etc.
+
+#### Task 3: Rate Limiting Investigation (2-3 hours)
+
+**Status:** Unknown limits
+**Documentation:** `melcloudhome-knowledge-gaps.md` GAP-003
+
+**Steps:**
+1. **Rapid Polling Test:**
+   - Poll `/api/user/context` every 5 seconds for 10 minutes
+   - Monitor for errors (429, 503, etc.)
+   - Check response headers for rate limit info
+   - Document when/if throttling occurs
+
+2. **Sustained Polling Test:**
+   - Poll every 30 seconds for 1 hour
+   - Monitor for any degradation
+   - Document sustainable rate
+
+3. **Control Command Burst:**
+   - Using UI, change temperature 10 times rapidly
+   - Monitor for rejection or throttling
+   - Document safe command rate
+
+4. **Document Findings:**
+   - Safe polling interval
+   - Burst limits
+   - Error responses for rate limiting
+   - Update documentation with recommendations
+
+**Success Criteria:**
+- Know safe polling rate (e.g., "30 seconds minimum")
+- Documented rate limit behavior
+- Implement exponential backoff strategy
+
+### Alternative: Start Implementation with Known Values
+
+**If gap-filling is deprioritized, can proceed with:**
+- Use only verified values (Heat mode=1, etc.)
+- Set conservative polling (60 second intervals)
+- Document known limitations
+- Implement with 85% coverage
+- Fill gaps iteratively based on user reports
+
+### Session Checklist for Next Claude
+
+**Before Starting:**
+- [ ] Read `melcloudhome-knowledge-gaps.md` for full context
+- [ ] Verify Chrome DevTools is available
+- [ ] Confirm melcloudhome.com login works
+
+**During Testing:**
+- [ ] ALWAYS use UI to drive actions (never POST directly)
+- [ ] Clear network log before each test
+- [ ] Document every finding immediately
+- [ ] Test during moderate weather only
+- [ ] Keep MELCloud app accessible for emergency control
+
+**After Testing:**
+- [ ] Update gap status in knowledge-gaps.md
+- [ ] Update API documentation with verified values
+- [ ] Mark gaps as resolved (🟢) or documented limitation
+- [ ] Update NEXT-STEPS.md for next session
+
+### Browser Access Notes
+
+**Authentication:**
+- Username: a.blake01@gmail.com
+- Password: Available in $MELCLOUD_PASSWORD env variable
+- Auth flow: OAuth + AWS Cognito (auto-handled by UI)
+
+**Key URLs:**
+- Schedule: `/ata/0efce33f-5847-4042-88eb-aaf3ff6a76db/schedule`
+- New Schedule: `/ata/0efce33f-5847-4042-88eb-aaf3ff6a76db/schedule/event`
+- Dashboard: `/dashboard`
+- Scenes: Hamburger menu → Scenes (undiscovered)
+
+**Units:**
+- Dining Room: `0efce33f-5847-4042-88eb-aaf3ff6a76db`
+- Living Room: `bf8d1e84-95cc-44d8-ab9b-25b87a945119`
+
+---
+
+## Completed in This Session (2025-11-16)
+
+**Actions Completed:**
+1. ✅ Authenticated to MELCloud Home
+2. ✅ Completed schedule API discovery (CRUD operations)
+3. ✅ Documented 14 knowledge gaps with testing plan
+4. ✅ Investigated JavaScript (not helpful - Blazor WebAssembly)
+5. ✅ Established UI-driven testing methodology
+6. ✅ Created 4-phase gap-filling plan
+7. ✅ Updated all documentation
+
+**API Discovery Progress: 85% Complete**
+- Ready for implementation OR gap-filling
+- 3 critical gaps (P0) recommended to resolve first
+- All documentation ready for next session
 
 ---
 
@@ -286,7 +475,17 @@ All API endpoints have been discovered and documented. Choose your next step:
 3. Easier to test, debug, and maintain
 4. Can publish Python library for community use
 
-**Recommendation:** Option C for best practices, Option B for fastest path to working HA integration.
+**Option D: Fill Critical Gaps First, Then Implement (Most Thorough)**
+1. Execute Phase 1 gap-filling (P0 items) - 4-6 hours
+2. Build Python client with verified values - 2-4 hours
+3. Execute Phase 2 gap-filling (P1 items) - 4-5 hours
+4. Build HA integration with complete features - 2-3 hours
+5. Phases 3-4 can be done incrementally
+
+**Recommendation:**
+- **Option B** for fastest working integration (3-5 hours, ~85% functionality)
+- **Option D** for production-ready integration (12-18 hours, ~95% functionality)
+- Option C for balance (use with conservative values, fill gaps iteratively)
 
 ---
 
