@@ -472,35 +472,459 @@ Core API endpoints discovered and documented. Scenes API deferred:
 
 ---
 
-## Session 2 - Implementation (TODO)
+## Session 2 Completed (2025-11-16) - BLOCKED ON AUTHENTICATION
 
-**Focus: API Client Implementation**
+**Authentication Implementation - Technical Challenges Encountered:**
 
-### Before Starting Session 2:
+**What Was Built:**
+1. ✅ Complete auth.py module structure
+2. ✅ aiohttp-based AWS Cognito OAuth 2.0 + PKCE flow
+3. ✅ Request/response debug logging
+4. ✅ Session management and cookie handling
+5. ✅ Playwright integration attempt
+6. ✅ Comprehensive error handling
+7. ✅ Test suite (test_auth.py)
 
-Review these files to understand the foundation:
-- `custom_components/melcloudhome/api/const.py` - All API constants and mappings
-- `custom_components/melcloudhome/api/models.py` - Data structures
-- `openapi.yaml` - Complete API specification
-- `_claude/melcloudhome-api-reference.md` - Control API details
-- `_claude/melcloudhome-schedule-api.md` - Schedule API details
-- `.env` file - Contains OAuth credentials (email, password)
+**What Was Discovered:**
+1. ⚠️ aiohttp OAuth works but sessions unusable (API returns 401)
+2. ⚠️ Playwright blocked by Cognito anti-bot protection
+3. ⚠️ AWS Cognito Advanced Security Features (ASF) prevents automation
+4. ⚠️ Blazor WebAssembly + BFF pattern adds complexity
+5. ⚠️ `__Secure-` cookies created but not accepted by API
 
-### Tasks for Session 2:
+**Technical Debt:**
+- Authentication not yet functional
+- Need to choose pragmatic approach for v1.0
+- Recommend manual cookie export approach
+- Can improve automation in future versions
 
-**Priority 1: Authentication (auth.py)**
-1. Implement AWS Cognito OAuth 2.0 + PKCE flow
-2. Handle token storage and refresh
-3. Manage session cookies (~8 hour expiry)
-4. Implement User-Agent header management (critical for bot detection)
-5. Handle authentication errors and re-auth flow
+**Commits:**
+- `f585af9` - WIP auth (aiohttp implementation)
+- `a822eb4` - WIP: Playwright auth attempts
 
-**Reference Documentation:**
-- Authentication flow documented in `_claude/melcloudhome-api-discovery.md`
-- OAuth endpoints and flow details available
-- Test credentials in `.env` file
+**Dependencies Added:**
+- aiohttp==3.13.2
+- playwright==1.56.0
 
-**Priority 2: API Client (client.py)**
+---
+
+## Session 2 - Authentication Implementation (IN PROGRESS - BLOCKED)
+
+**Focus: AWS Cognito OAuth Authentication**
+
+**Status: BLOCKED** - Authentication flow implementation encountered technical challenges
+
+### Session 2 Progress (2025-11-16):
+
+✅ **Completed:**
+1. Implemented `custom_components/melcloudhome/api/auth.py` foundation
+2. Added comprehensive request/response debug logging
+3. Added aiohttp session management with cookie handling
+4. Implemented AWS Cognito OAuth flow with aiohttp
+5. Added Playwright as alternative approach
+6. Tested both approaches extensively
+
+❌ **Blocking Issues:**
+1. **aiohttp approach**: Successfully completes OAuth flow and reaches dashboard, but subsequent API calls return 401
+2. **Playwright approach**: Cognito form elements exist but are not interactable (anti-bot protection)
+
+### Critical Findings - Authentication Challenges:
+
+#### Issue 1: aiohttp OAuth Works But Session Unusable
+
+**What Works:**
+- ✅ Complete OAuth 2.0 + PKCE flow with AWS Cognito
+- ✅ CSRF token extraction from Cognito login page
+- ✅ Credential submission to Cognito
+- ✅ Redirect chain completes successfully
+- ✅ Reaches `/dashboard` with 200 OK response
+- ✅ Acquires all session cookies (10 total, including 3 `__Secure-*` cookies)
+
+**What Doesn't Work:**
+- ❌ API endpoints return 401 immediately after successful login
+- ❌ Tried automatic cookie handling: cookies not sent by aiohttp
+- ❌ Tried manual Cookie header (10 cookies): still 401
+- ❌ Tried filtered cookies (3 `__Secure-*` only): still 401
+- ❌ Tried with proper Accept headers: still 401
+- ❌ Tried delay after login: still 401
+
+**Evidence:**
+```
+Login: GET /bff/login → [redirects] → GET /dashboard [200 OK]
+API: GET /api/user/context [401 Unauthorized]
+Cookies: 3x __Secure-monitorandcontrol* present in jar
+Cookie Header: Built manually with 4497 characters, sent in request
+Result: 401 (empty body)
+```
+
+#### Issue 2: Playwright Cannot Interact With Cognito Form
+
+**What Works:**
+- ✅ Playwright installed and browser launching
+- ✅ Navigation to login page successful
+- ✅ Form elements detected in DOM
+- ✅ Screenshot confirms form is visually rendered
+
+**What Doesn't Work:**
+- ❌ Elements considered "not visible" by Playwright despite being visible
+- ❌ `.fill()` fails with "element is not visible"
+- ❌ `.fill(force=True)` appears to succeed but doesn't actually fill fields
+- ❌ JavaScript `.value` assignment doesn't work
+- ❌ Multiple selector strategies all fail:
+  - By ID (`#signInFormUsername`)
+  - By name (`input[name="username"]`)
+  - By placeholder
+  - By label
+  - By role
+  - Across all frames/iframes
+
+**Root Cause:** AWS Cognito Advanced Security Features (ASF) uses anti-bot protection that makes form elements appear non-interactable to automation tools.
+
+### Hypotheses for Why API Returns 401:
+
+1. **cognitoAsfData Validation** (MOST LIKELY)
+   - AWS ASF generates device fingerprint during login
+   - Server validates this on subsequent requests
+   - We sent empty string for `cognitoAsfData`
+   - Session might be flagged as invalid/suspicious
+
+2. **Blazor WASM Initialization Required**
+   - Client-side Blazor code might need to execute after OAuth
+   - Simply reaching /dashboard isn't enough
+   - Need to wait for Blazor to initialize and "activate" session
+   - WebSocket connection might be part of activation
+
+3. **Session Not Fully Propagated**
+   - BFF (Backend-for-Frontend) might have async session creation
+   - OAuth completes but session not yet available to API endpoints
+   - Needs time or specific API call to activate
+
+4. **Missing Required Headers**
+   - API might need headers we're not sending
+   - Even GET requests might need `x-csrf: 1`
+   - Might need `Referer` or `Origin` headers
+
+5. **Cookie Domain/Attributes Mismatch**
+   - `__Secure-` cookies have strict requirements
+   - aiohttp might be mishandling them despite being in jar
+
+### Recommended Solutions (Ordered by Likelihood of Success):
+
+#### SOLUTION 1: Manual Browser Login + Cookie Export (RECOMMENDED ⭐)
+
+**Approach:** Extract cookies from real browser session instead of automating login
+
+**Why This Works:**
+- ✅ Bypasses all anti-bot detection (real browser, real user)
+- ✅ Cookies guaranteed valid (from successful browser session)
+- ✅ Simple implementation (no complex automation)
+- ✅ Standard pattern for many HA integrations
+- ✅ Session lasts 8 hours - only refresh occasionally
+
+**Implementation Options:**
+
+**Option A: browser-cookie3 library**
+```python
+import browser_cookie3
+# Extract cookies from Chrome/Firefox automatically
+cookies = browser_cookie3.chrome(domain_name='melcloudhome.com')
+```
+
+**Option B: Playwright CDP (Connect to existing Chrome)**
+```bash
+# User runs: chrome --remote-debugging-port=9222
+# Script connects and extracts cookies
+```
+
+**Option C: Manual cookie export via DevTools**
+```python
+# User copies cookies from Chrome DevTools
+# Script parses and saves to ~/.melcloud_cookies.json
+# aiohttp loads from file
+```
+
+**Implementation Steps:**
+1. Create `_extract_cookies_from_browser()` helper
+2. Save cookies to `~/.melcloud_cookies.json`
+3. Load cookies in `login()` or have separate `login_with_cookies()`
+4. Check cookie expiry, prompt for re-login when expired
+5. Optionally: auto-refresh by opening browser when needed
+
+**Pros:**
+- Guaranteed to work
+- Simple code
+- Fast (no browser automation on every login)
+- Standard HA pattern
+
+**Cons:**
+- Requires manual step first time
+- Need to handle cookie refresh
+- Not fully automated
+
+#### SOLUTION 2: Fix cognitoAsfData Generation
+
+**Approach:** Reverse-engineer or capture real cognitoAsfData value
+
+**Why It Might Work:**
+- This is the missing piece in our OAuth flow
+- AWS ASF uses this for bot detection
+- Without it, session might be considered suspicious
+
+**Implementation:**
+1. Use browser DevTools to capture real cognitoAsfData during manual login
+2. Analyze the structure (base64-encoded JSON)
+3. Implement generator that creates valid fingerprint
+4. Include in aiohttp OAuth flow
+
+**Pros:**
+- Fully automated
+- Proper OAuth implementation
+
+**Cons:**
+- Complex reverse engineering
+- AWS may change format
+- Might be detecting other signals too
+
+#### SOLUTION 3: Wait for Blazor Initialization After Login
+
+**Approach:** After OAuth completes, wait for Blazor WASM to initialize
+
+**Implementation:**
+```python
+# After reaching /dashboard:
+1. Wait 2-3 seconds for Blazor to load
+2. Check for WebSocket connection
+3. Or make initial API call to "prime" the session
+4. Then proceed with normal API calls
+```
+
+**Why It Might Work:**
+- Blazor WASM might initialize session client-side
+- We were checking session too quickly after redirect
+
+**Pros:**
+- Simple fix to existing code
+- Keeps full automation
+
+**Cons:**
+- Speculative - no evidence this is the issue
+- Still doesn't explain why cookies weren't being sent
+
+#### SOLUTION 4: Selenium Instead of Playwright
+
+**Approach:** Try Selenium WebDriver (might handle Cognito differently)
+
+**Why It Might Work:**
+- Different automation approach
+- Might evade detection better
+- More mature cookie handling
+
+**Pros:**
+- Worth a quick try
+- Similar API to Playwright
+
+**Cons:**
+- Likely same issues (Cognito ASF detects all automation)
+- More dependencies
+
+#### SOLUTION 5: Use Existing Chrome DevTools MCP
+
+**Approach:** Since you have Chrome DevTools MCP available, use it!
+
+**Why This Is Actually Perfect:**
+- ✅ Real browser session (no anti-bot issues)
+- ✅ You're already logged in to melcloudhome.com
+- ✅ Can extract cookies directly via MCP tools
+- ✅ No Playwright/Selenium complexity
+- ✅ Same approach as manual but scriptable
+
+**Implementation:**
+```python
+async def login_via_mcp(self):
+    """Login using existing Chrome session via MCP."""
+    # 1. Check if Chrome has melcloudhome.com session (user logged in)
+    # 2. Extract cookies via MCP
+    # 3. Transfer to aiohttp
+    # 4. Done!
+```
+
+### Recommended Approach for Next Session:
+
+**HYBRID: Manual Cookie Export + Auto-Refresh**
+
+1. **Initial setup** (one-time):
+   - User logs in manually via browser
+   - Extract cookies using `browser_cookie3` or DevTools
+   - Save to config
+
+2. **Runtime**:
+   - Load cookies from config
+   - Use with aiohttp for all API calls
+   - Monitor session expiry
+   - When expired: prompt for re-login or auto-refresh
+
+3. **Optional enhancement**:
+   - Use Playwright/Selenium only for cookie refresh
+   - Keep manual login as fallback
+   - Try fixing the automation later
+
+**Why This Is Best:**
+- Gets us working code FAST
+- Proven pattern (many HA integrations use this)
+- Can iterate on automation later
+- Focus on API client functionality first
+
+### Current Code State (After Session 2):
+
+**Files Modified:**
+- `custom_components/melcloudhome/api/auth.py` - Has both aiohttp and Playwright implementations (both blocked)
+- `test_auth.py` - Test script for authentication
+- `pyproject.toml` - Added aiohttp and playwright dependencies
+
+**Commits:**
+- `f585af9` - WIP auth (initial aiohttp implementation)
+- `a822eb4` - WIP: Playwright auth - Cognito form elements not interactable
+
+**What's Ready:**
+- ✅ API client foundation (const.py, models.py, exceptions.py)
+- ✅ Complete API documentation
+- ✅ Project structure and tooling
+- ⚠️ Authentication module (blocked)
+
+---
+
+## Session 3 - Authentication Resolution (TODO)
+
+**Focus: Resolve Authentication and Build API Client**
+
+### CRITICAL DECISION POINT: Authentication Strategy
+
+Before proceeding with API client implementation, must resolve authentication. Choose one:
+
+#### Option A: Quick Win - Manual Cookie Export (RECOMMENDED for v1.0)
+
+**Time Required:** 30 minutes
+
+**Steps:**
+1. Install `browser-cookie3`: `uv add browser-cookie3`
+2. Modify `auth.py` to add `login_from_browser()` method
+3. Extract cookies from user's Chrome/Firefox session
+4. Save to `~/.melcloud_cookies.json`
+5. Load cookies on startup
+6. Handle expiry (8 hour sessions)
+
+**Code Snippet:**
+```python
+import browser_cookie3
+import json
+
+def export_cookies():
+    """Export cookies from browser."""
+    cookies = browser_cookie3.chrome(domain_name='melcloudhome.com')
+    secure_cookies = [c for c in cookies if c.name.startswith('__Secure-')]
+    # Save to file...
+```
+
+**Advantages:**
+- ✅ Works immediately
+- ✅ No anti-bot issues
+- ✅ Standard HA pattern
+- ✅ Can build rest of API client while this works
+
+**Disadvantages:**
+- User must log in manually first time
+- Need cookie refresh mechanism
+
+**Recommendation:** Use this for v1.0, improve automation in v2.0
+
+#### Option B: Debug Existing aiohttp Implementation
+
+**Time Required:** 2-4 hours (uncertain)
+
+**What to Try:**
+1. Capture real `cognitoAsfData` from browser login
+2. Add delay after OAuth completion for Blazor init
+3. Try connecting to WebSocket after login
+4. Add more headers to API requests (x-csrf, Referer, etc.)
+5. Check if /dashboard needs to be fetched before API works
+
+**Advantages:**
+- Fully automated if it works
+- No manual steps
+
+**Disadvantages:**
+- Uncertain if fixable
+- Already spent significant time
+- Might hit more anti-bot measures
+
+#### Option C: Try Chrome DevTools MCP Approach
+
+**Time Required:** 1-2 hours
+
+Since Chrome DevTools MCP is available and you're already logged into melcloudhome.com:
+1. Use MCP to navigate to melcloudhome.com
+2. Confirm user is logged in
+3. Use MCP to extract cookies
+4. Transfer to aiohttp
+5. Test API calls
+
+**Advantages:**
+- Uses existing tools
+- Real browser session
+- May be scriptable for refresh
+
+**Disadvantages:**
+- Requires Chrome MCP session active
+- Still semi-manual
+
+### Recommended Path: Start With Option A
+
+**Rationale:**
+- Get working code quickly
+- Unblock API client development (main goal)
+- Can refine authentication later
+- Many production HA integrations use manual cookie approach
+- Focus on value delivery (device control) not perfect auth
+
+### Session 2 Conclusion & Recommendation:
+
+After extensive testing of both aiohttp and Playwright automation approaches, both encountered different but equally blocking technical challenges:
+
+**aiohttp Limitation:**
+- OAuth flow completes successfully (confirmed by /dashboard 200 response)
+- Session cookies acquired but not accepted by API endpoints (401 responses)
+- Unknown whether this is due to missing cognitoAsfData, session timing, required headers, or other factors
+- Further debugging would require reverse-engineering AWS Cognito session validation
+
+**Playwright Limitation:**
+- Cognito form elements render but are non-interactable to automation
+- Multiple interaction strategies attempted (force mode, JavaScript, various selectors)
+- Unknown whether this is Cognito-specific rendering, shadow DOM, or other technical factors
+- Would require deep investigation into Cognito form implementation
+
+**Pragmatic Decision for v1.0:**
+
+Rather than spending additional time debugging automation challenges, **recommend using manual cookie extraction approach** (Solution 1 above). This allows us to:
+1. Get working authentication immediately
+2. Focus development effort on API client and HA integration (core value)
+3. Deliver functional integration to users
+4. Revisit full automation in future version if desired
+
+This approach is well-established in HA community for integrations with complex authentication flows.
+
+### Files to Review Before Session 3:
+- `custom_components/melcloudhome/api/auth.py` - Current state (has partial implementations)
+- `_claude/melcloudhome-api-reference.md` - For API client implementation
+- `_claude/melcloudhome-schedule-api.md` - For schedule features
+- This document - Section on Solution 1 (browser cookie extraction)
+
+---
+
+## Session 3 - API Client Implementation (TODO - UNBLOCKED)
+
+**Focus: Build API Client (Can Start Once Auth Works)**
+
+### Priority: API Client (client.py)
 1. Implement `MELCloudHomeClient` class
 2. Device operations:
    - `async def get_devices()` - Fetch all devices
