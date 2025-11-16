@@ -508,11 +508,11 @@ Core API endpoints discovered and documented. Scenes API deferred:
 
 ---
 
-## Session 2 - Authentication Implementation (IN PROGRESS - BLOCKED)
+## Session 2 - Authentication Implementation (COMPLETE ✅)
 
 **Focus: AWS Cognito OAuth Authentication**
 
-**Status: BLOCKED** - Authentication flow implementation encountered technical challenges
+**Status: COMPLETE** - Authentication fully working via aiohttp
 
 ### Session 2 Progress (2025-11-16):
 
@@ -886,31 +886,47 @@ Since Chrome DevTools MCP is available and you're already logged into melcloudho
 - Many production HA integrations use manual cookie approach
 - Focus on value delivery (device control) not perfect auth
 
-### Session 2 Conclusion & Recommendation:
+### Session 2 RESOLUTION ✅ - Authentication Fixed!
 
-After extensive testing of both aiohttp and Playwright automation approaches, both encountered different but equally blocking technical challenges:
+**SOLUTION DISCOVERED via Chrome DevTools MCP Testing:**
 
-**aiohttp Limitation:**
-- OAuth flow completes successfully (confirmed by /dashboard 200 response)
-- Session cookies acquired but not accepted by API endpoints (401 responses)
-- Unknown whether this is due to missing cognitoAsfData, session timing, required headers, or other factors
-- Further debugging would require reverse-engineering AWS Cognito session validation
+After testing with real browser session via MCP, discovered that API endpoints returning 401 was due to **missing required headers**, not authentication failure.
 
-**Playwright Limitation:**
-- Cognito form elements render but are non-interactable to automation
-- Multiple interaction strategies attempted (force mode, JavaScript, various selectors)
-- Unknown whether this is Cognito-specific rendering, shadow DOM, or other technical factors
-- Would require deep investigation into Cognito form implementation
+**Root Cause:**
+1. ALL API endpoints require `x-csrf: 1` header (not just mutations)
+2. ALL API endpoints require `referer: https://melcloudhome.com/dashboard` header
+3. Session needs 3 seconds after OAuth redirect for Blazor WASM initialization
+4. The `/bff/user` endpoint returning 401 during page load is NORMAL (not a failure)
 
-**Pragmatic Decision for v1.0:**
+**What We Learned:**
+- Original aiohttp OAuth implementation was 95% correct
+- Login flow worked perfectly (reached /dashboard successfully)
+- Session cookies were acquired correctly
+- Only missing: initialization wait + required headers
 
-Rather than spending additional time debugging automation challenges, **recommend using manual cookie extraction approach** (Solution 1 above). This allows us to:
-1. Get working authentication immediately
-2. Focus development effort on API client and HA integration (core value)
-3. Deliver functional integration to users
-4. Revisit full automation in future version if desired
+**The Fix:**
+```python
+# After successful OAuth redirect to /dashboard:
+await asyncio.sleep(3)  # Wait for Blazor WASM initialization
 
-This approach is well-established in HA community for integrations with complex authentication flows.
+# For ALL API requests:
+headers = {
+    "Accept": "application/json",
+    "x-csrf": "1",
+    "referer": "https://melcloudhome.com/dashboard"
+}
+```
+
+**Testing Results:**
+- ✅ AWS Cognito OAuth 2.0 + PKCE flow
+- ✅ Session validation via /api/user/context [200]
+- ✅ Cookie management working automatically
+- ✅ Logout functional
+
+**Final Commits:**
+- `640b24b` - Working authentication implementation
+
+**Authentication is now READY for API client implementation!**
 
 ### Files to Review Before Session 3:
 - `custom_components/melcloudhome/api/auth.py` - Current state (has partial implementations)
