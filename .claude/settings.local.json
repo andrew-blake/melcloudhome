@@ -59,7 +59,8 @@
       "Bash(chmod:*)",
       "Bash(make type-check:*)",
       "Bash(pre-commit run:*)",
-      "Bash(python tools/deploy_custom_component.py:*)"
+      "Bash(python tools/deploy_custom_component.py:*)",
+      "mcp__chrome-devtools__list_console_messages"
     ],
     "deny": [],
     "ask": []

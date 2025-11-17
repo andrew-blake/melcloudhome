@@ -6,7 +6,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.0.0 DEPLOYED AND WORKING!
+**Current Status:** ✅ v1.0.1 DEPLOYED AND WORKING!
 
 **What's Working:**
 - ✅ Integration deployed and configured
@@ -14,17 +14,27 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - ✅ HVAC controls working (power, temp, mode, fan, swing)
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
+- ✅ Comprehensive README with dashboard setup guide
 
-**Known Issues:** See `_claude/KNOWN-ISSUES.md` for v1.1 improvements
+**v1.0.1 Improvements:**
+- ✅ Email removed from integration title (privacy)
+- ✅ Device attribution added (transparency)
+- ✅ Dashboard setup documented
+- ✅ README created with automation examples
 
 **What to do next:**
 1. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload` (fast)
 2. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 3. **Monitor:** Integration → MELCloud Home → Logs
 
-**Next session:** v1.1 improvements (cosmetic/UX fixes)
+**Next session:** v1.1 implementation (WebSocket + sensors)
 
-**Jump to:** [Session 8 details](#session-8-v11-improvements-next) below
+**Jump to:** [Session 8 details](#session-8-v11-real-time--sensors-next) below
+
+**Reference Documents:**
+- `_claude/v1.1-requirements.md` - Complete v1.1 requirements specification
+- `_claude/ROADMAP.md` - v1.2+ planning and long-term roadmap
+- `_claude/KNOWN-ISSUES.md` - Current open issues (only icon remaining)
 
 ---
 
@@ -214,88 +224,112 @@ See Session 7 in Completed Sessions above for full details.
 
 ---
 
-## Session 8: v1.1 Improvements 🎯 NEXT
+## Session 8: v1.1 Real-Time & Sensors 🎯 NEXT
 
-**Goal:** Address cosmetic/UX issues identified during deployment
+**Goal:** Add WebSocket real-time updates, sensors, and diagnostic data
 
-**Status:** Ready to implement
+**Status:** Requirements complete, ready for implementation
+**Timeline:** 7 hours estimated
+**Reference:** `_claude/v1.1-requirements.md` (complete specification)
 
-**Reference:** See `_claude/KNOWN-ISSUES.md` for detailed issue analysis
+### Phase 1: Research (1 hour)
 
-### High Priority (Must Fix)
+**WebSocket Protocol Investigation:**
+- [ ] Capture WebSocket authentication method (browser DevTools)
+- [ ] Document handshake protocol
+- [ ] Identify subscription model (per-device? auto-subscribe?)
+- [ ] Capture ping/pong keepalive messages
+- [ ] Answer open questions OQ-1 through OQ-4
 
-1. **Remove Email from Integration Title**
-   - **Issue:** Title shows "MELCloud Home v2 (a.blake01@gmail.com)"
-   - **Fix:** Change to just "MELCloud Home"
-   - **File:** `config_flow.py:50`
-   - **Impact:** Privacy/cosmetic
-   - **Breaking:** No - only affects new installations
+**Tools:** Chrome DevTools on MELCloud Home reports page
 
-### Medium Priority (Should Fix)
+### Phase 2: Implementation (4 hours)
 
-2. **Document Dashboard Setup**
-   - **Issue:** Default entity card shows minimal info
-   - **Fix:** Add README section on using thermostat card
-   - **Files:** New `README.md` or update documentation
-   - **Impact:** UX improvement
+**Core Features:**
+- [ ] WebSocket manager (`websocket.py`)
+  - Connection lifecycle
+  - Message parsing (3 types)
+  - Reconnection with exponential backoff
+  - Token refresh handling
+- [ ] Energy tracker (`energy_tracker.py`)
+  - Finalized vs current hour separation
+  - No double-counting logic
+  - Persistence across restarts
+- [ ] Coordinator updates (`coordinator.py`)
+  - WebSocket integration
+  - Energy polling (15 min intervals)
+  - Hybrid fallback logic
+- [ ] Sensor platform (`sensor.py`)
+  - WiFi signal sensor (WebSocket)
+  - Current temperature sensor (WebSocket)
+  - Target temperature sensor (WebSocket)
+  - Energy consumption sensor (REST API polling)
+- [ ] Binary sensor platform (`binary_sensor.py`)
+  - Error state monitoring (WebSocket)
+- [ ] Diagnostic data (`diagnostics.py`)
+  - Export integration state
+  - WebSocket statistics
+  - Energy tracking info
+- [ ] Integration icon
+  - Download/create icon.png and logo.png
+  - Add attribution to README
 
-3. **Add Local Integration Icon**
-   - **Issue:** Icon shows 404 error
-   - **Fix:** Add `icon.png` and `logo.png` to integration
-   - **Impact:** Cosmetic only
+**File Changes:**
+- NEW: 5 files (websocket.py, energy_tracker.py, sensor.py, binary_sensor.py, diagnostics.py)
+- MODIFY: 3 files (coordinator.py, const.py, manifest.json)
+- NEW: 2 images (icon.png, logo.png)
 
-### Implementation Plan
+### Phase 3: Testing (1 hour)
 
-**Step 1: Fix Email in Title (5 min)**
-```python
-# custom_components/melcloudhome/config_flow.py:50
-# Change from:
-title=f"MELCloud Home v2 ({email})",
-# To:
-title="MELCloud Home",
-```
+**Unit Tests:**
+- [ ] WebSocket connection and message parsing
+- [ ] Energy tracking algorithm (deduplication)
+- [ ] Type coercion (string → bool, int)
+- [ ] Delta merge logic
+- [ ] Sensor entity creation
 
-**Step 2: Add Integration Icon (10 min)**
-- Create or download Mitsubishi Electric logo
-- Save as `custom_components/melcloudhome/icon.png` (256x256)
-- Save as `custom_components/melcloudhome/logo.png` (256x256)
+**Integration Tests:**
+- [ ] Deploy to HA and verify WebSocket connects
+- [ ] Test all 3 message types received
+- [ ] Verify state updates < 1 second
+- [ ] Test energy tracking (no double-counting)
+- [ ] Test reconnection on disconnect
+- [ ] Verify diagnostic data export
+- [ ] Check icon appears
 
-**Step 3: Create README (15 min)**
-```markdown
-# MELCloud Home v2 Integration
+### Phase 4: Documentation (1 hour)
 
-## Dashboard Setup
-
-To get full climate controls:
-1. Add to dashboard
-2. Click "Show As" → "Thermostat Card"
-3. Or use YAML:
-   ```yaml
-   type: thermostat
-   entity: climate.home_dining_room_heatpump
-   ```
-```
-
-**Step 4: Deploy Updates**
-```bash
-uv run python tools/deploy_custom_component.py melcloudhome --reload
-```
-
-**Step 5: Test**
-- Remove integration from HA
-- Re-add and verify new title (no email)
-- Check icon appears
-- Verify functionality unchanged
+- [ ] Update README with WebSocket and sensor info
+- [ ] Create ADR-005: WebSocket Real-Time Updates
+- [ ] Create `_claude/websocket-implementation.md` (technical details)
+- [ ] Update KNOWN-ISSUES.md (close icon issue)
+- [ ] Update this file (mark Session 8 complete)
 
 ### Success Criteria
 
-- [ ] Integration title is "MELCloud Home" (no email)
-- [ ] Icon loads without 404
-- [ ] README documents dashboard setup
-- [ ] All functionality still works
-- [ ] No breaking changes
+**Functional:**
+- [ ] WebSocket connects and receives messages
+- [ ] State updates within 1 second
+- [ ] 5 sensor entities created per device
+- [ ] Energy tracking accurate (no double-counting)
+- [ ] Falls back to polling if WebSocket fails
+- [ ] Diagnostic data exports successfully
+- [ ] Integration icon shows (no 404)
 
-**Next:** v1.2 features based on usage feedback (schedules, sensors, options flow)
+**Quality:**
+- [ ] All tests passing (>80% coverage)
+- [ ] No memory leaks (24+ hour test)
+- [ ] Code quality checks passing (ruff, mypy)
+- [ ] Documentation complete
+
+**New Entities per Device:**
+1. `sensor.{}_current_temperature` - Room temp
+2. `sensor.{}_target_temperature` - Setpoint
+3. `sensor.{}_wifi_signal` - Signal strength
+4. `sensor.{}_energy` - Cumulative kWh
+5. `binary_sensor.{}_error` - Error state
+
+**Next:** v1.2 HACS distribution (see `_claude/ROADMAP.md`)
 
 ---
 
