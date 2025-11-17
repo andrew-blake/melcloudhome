@@ -1,13 +1,18 @@
 # Known Issues & Improvements
 
-**Version:** 1.1.0
-**Status:** Production - All known issues resolved!
+**Version:** 1.1.2
+**Status:** Production - Minor cosmetic issue with images
 
 ---
 
 ## 🐛 Open Issues
 
-**None!** All issues have been resolved as of v1.1.0.
+### #7 - Missing Images in Integration UI
+- **Issue:** Missing/broken images when adding and managing the integration
+- **Impact:** Cosmetic only - functionality not affected
+- **Investigation:** Requires Chrome DevTools MCP to diagnose image loading
+- **Priority:** LOW
+- **Next Steps:** Use Chrome MCP in next session to inspect network requests and identify missing assets
 
 ---
 
@@ -43,6 +48,12 @@
 
 ## 📋 Version Summary
 
+**v1.1.2 (2025-11-17):**
+- [x] Stable entity IDs based on unit UUIDs ✅
+- [x] Removed via_device deprecation warning ✅
+- [x] Renamed from "MELCloud Home v2" to "MELCloud Home" ✅
+- [ ] #7 - Missing images in integration UI (open, cosmetic)
+
 **v1.1.0 (2025-11-17):**
 - [x] #1 - Added integration icon (icons.json) ✅
 - [x] Added diagnostics support ✅
@@ -54,4 +65,4 @@
 - [x] #2 & #3 - Dashboard documentation ✅
 - [x] #6 - Document turn_on behavior ✅
 
-**Integration is production-ready with all known issues resolved!**
+**Integration is production-ready with one minor cosmetic issue remaining.**

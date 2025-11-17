@@ -6,7 +6,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.0.1 DEPLOYED AND WORKING!
+**Current Status:** ✅ v1.1.2 DEPLOYED AND WORKING!
 
 **What's Working:**
 - ✅ Integration deployed and configured
@@ -14,27 +14,31 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - ✅ HVAC controls working (power, temp, mode, fan, swing)
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
-- ✅ Comprehensive README with dashboard setup guide
+- ✅ Stable entity IDs based on unit UUIDs
+- ✅ Diagnostics export support
+- ✅ Custom integration icon
+- ✅ Comprehensive documentation
 
-**v1.0.1 Improvements:**
-- ✅ Email removed from integration title (privacy)
-- ✅ Device attribution added (transparency)
-- ✅ Dashboard setup documented
-- ✅ README created with automation examples
+**v1.1.2 Improvements:**
+- ✅ Stable entity IDs (format: `climate.melcloud_0efc_76db`)
+- ✅ Diagnostics support for troubleshooting
+- ✅ Integration icon (mdi:heat-pump)
+- ✅ Fixed via_device deprecation warning
+- ✅ Renamed from "MELCloud Home v2" to "MELCloud Home"
 
 **What to do next:**
 1. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload` (fast)
 2. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 3. **Monitor:** Integration → MELCloud Home → Logs
 
-**Next session:** v1.1 implementation (WebSocket + sensors)
+**Next session:** Pre-v1.2 review and planning
 
-**Jump to:** [Session 8 details](#session-8-v11-real-time--sensors-next) below
+**Jump to:** [Session 9 details](#session-9-pre-v12-review-next) below
 
 **Reference Documents:**
-- `_claude/v1.1-requirements.md` - Complete v1.1 requirements specification
-- `_claude/ROADMAP.md` - v1.2+ planning and long-term roadmap
-- `_claude/KNOWN-ISSUES.md` - Current open issues (only icon remaining)
+- `_claude/ROADMAP.md` - v1.2+ planning and pre-implementation review tasks
+- `_claude/KNOWN-ISSUES.md` - Current open issues (#7 - missing images, cosmetic)
+- `_claude/websocket-research-defer.md` - WebSocket investigation findings
 
 ---
 
@@ -192,6 +196,35 @@ This document tracks implementation progress for the MELCloud Home custom compon
   - Known issues documented for v1.1
   - Ready for daily use
 
+### Session 8: v1.1 Polish & Stable Entity IDs (2025-11-17)
+- ✅ Researched legacy MELCloud integration for patterns
+  - Found icons.json approach (modern HA pattern)
+  - Found diagnostics.py implementation reference
+  - Identified sensor platform patterns for v1.2
+- ✅ Implemented stable entity IDs based on unit UUIDs
+  - Format: `climate.melcloud_0efc_76db` (first 4 + last 4 chars)
+  - Ensures stability across building/room renames
+  - Changed `has_entity_name` from True to False for explicit control
+- ✅ Created diagnostics.py with comprehensive export
+  - Exports config, entities, coordinator, device info
+  - Automatic redaction of email/password
+  - Accessible via Integration → ⋮ → Download diagnostics
+- ✅ Added integration icon (icons.json)
+  - Used Material Design Icon (mdi:heat-pump)
+  - Modern JSON approach instead of PNG files
+- ✅ Fixed deprecation warning
+  - Removed via_device reference
+  - Eliminates HA 2025.12.0 warning
+- ✅ Polish improvements
+  - Renamed from "MELCloud Home v2" to "MELCloud Home"
+  - Updated all documentation
+  - Updated KNOWN-ISSUES.md and ROADMAP.md
+- 📁 **Deliverables:**
+  - v1.1.2 deployed and working
+  - 2 new files: diagnostics.py, icons.json
+  - Updated: climate.py, manifest.json, strings.json, README.md
+  - All issues resolved except #7 (missing images, cosmetic)
+
 ---
 
 ## ~~Session 5: Home Assistant Integration~~ ✅ COMPLETED
@@ -224,86 +257,92 @@ See Session 7 in Completed Sessions above for full details.
 
 ---
 
-## Session 8: v1.1 Polish & Diagnostics 🎯 NEXT
+## ~~Session 8: v1.1 Polish & Diagnostics~~ ✅ COMPLETED
 
 **Goal:** Polish integration with diagnostics, icon, and documentation improvements
 
-**Status:** WebSocket research complete - DEFERRED to v1.2+
-**Timeline:** 1-2 hours estimated
-**Reference:** `_claude/v1.1-simplified-scope.md`, `_claude/websocket-research-defer.md`
+**Status:** Complete - v1.1.2 deployed with stable entity IDs!
+**Timeline:** 2 hours actual
 
-**Why WebSocket Deferred:**
-- ⚠️ Inconsistent message delivery (only one device receiving updates)
-- ⚠️ Needs more investigation to understand reliability
-- ✅ Current 60s polling works well and is reliable
-- See `_claude/websocket-research-defer.md` for full research findings
+See Session 8 in Completed Sessions above for full details.
 
-### Implementation Tasks
+---
 
-**1. Integration Icon (30 minutes)**
-- [ ] Download/create icon.png (256x256)
-- [ ] Download/create logo.png (256x256)
-- [ ] Add to `custom_components/melcloudhome/`
-- [ ] Add attribution to README
-- [ ] Verify icon shows in HA (no 404)
+## Session 9: Pre-v1.2 Review & Planning 🎯 NEXT
 
-**2. Diagnostics Export (30 minutes)**
-- [ ] Create `diagnostics.py`
-- [ ] Export integration state:
-  - Integration version
-  - Config entry details
-  - Device count and types
-  - Coordinator status
-  - Entity counts
-- [ ] Add to manifest.json platforms
-- [ ] Test download via HA UI
+**Goal:** Critical review of best practices before v1.2 implementation
 
-**3. Entity Naming Improvements (15 minutes)**
-- [ ] Review current entity IDs
-- [ ] Remove redundant suffixes if any
-- [ ] Ensure clean, consistent naming
-- [ ] Document naming convention
+**Status:** Ready to start
+**Timeline:** 2-3 hours estimated
+**Reference:** `_claude/ROADMAP.md` (Pre-Implementation Review section)
 
-**4. Documentation Updates (15 minutes)**
-- [ ] Update README with new features
-- [ ] Document diagnostics export
-- [ ] Add troubleshooting section
-- [ ] Update KNOWN-ISSUES.md
+### Review Tasks
 
-### File Changes
+**1. Diagnose Missing Images Issue (30 minutes)**
+- [ ] Use Chrome DevTools MCP to inspect integration UI
+- [ ] Check network requests for failed image loads
+- [ ] Identify what images are expected vs. what's missing
+- [ ] Determine if it's icons.json config or actual image files
+- [ ] Document findings in KNOWN-ISSUES.md
+- [ ] Create fix plan if needed
 
-**NEW:**
-- `custom_components/melcloudhome/diagnostics.py`
-- `custom_components/melcloudhome/icon.png`
-- `custom_components/melcloudhome/logo.png`
+**2. Legacy MELCloud Integration Analysis (1 hour)**
+- [ ] Review: https://github.com/home-assistant/core/tree/master/homeassistant/components/melcloud
+- [ ] Compare their sensor platform implementation
+- [ ] Review their services.yaml for custom services
+- [ ] Evaluate their error handling patterns
+- [ ] Check their device/entity naming conventions
+- [ ] Critical assessment: Are their patterns best practices or legacy?
+- [ ] Document decisions in ADR if we diverge
 
-**MODIFIED:**
-- `custom_components/melcloudhome/manifest.json` (add diagnostics)
-- `README.md` (documentation updates)
-- `_claude/KNOWN-ISSUES.md` (close icon issue)
+**3. HA Climate Integration Best Practices (1 hour)**
+- [ ] Review official HA climate integration documentation
+- [ ] Check HA developer docs for modern patterns
+- [ ] Review 2-3 well-maintained climate integrations:
+  - Nest
+  - Ecobee
+  - Generic Thermostat
+- [ ] Identify patterns we should adopt
+- [ ] Identify patterns we should avoid
+- [ ] Document findings
 
-### Testing
+**4. Create v1.2 Implementation Plan (30 minutes)**
+- [ ] Based on review findings, finalize v1.2 scope
+- [ ] Decide: WebSocket implementation approach
+- [ ] Decide: Sensor platform implementation approach
+- [ ] Decide: Any refactoring needed before v1.2
+- [ ] Create detailed implementation checklist
+- [ ] Update ROADMAP.md with final v1.2 plan
 
-**Manual Testing:**
-- [ ] Icon appears in HA (no 404)
-- [ ] Diagnostics download works
-- [ ] Entity names are clean
-- [ ] All documentation accurate
+### Deliverables
+
+**Documentation:**
+- Updated KNOWN-ISSUES.md (#7 resolution or detailed findings)
+- New ADR if we diverge from legacy MELCloud patterns
+- v1.2 implementation plan in ROADMAP.md
+- Best practices summary document
+
+**Decisions:**
+- WebSocket: Implement now or defer further?
+- Sensor platform: Which sensors to implement?
+- Services: Custom services needed?
+- Architecture: Any refactoring needed?
 
 ### Success Criteria
 
-**Functional:**
-- [ ] Integration icon shows (no 404)
-- [ ] Diagnostic data exports successfully
-- [ ] Entity naming is clean and consistent
-- [ ] Documentation is complete and accurate
+**Understanding:**
+- [ ] Clear understanding of missing images issue
+- [ ] Comprehensive knowledge of legacy MELCloud approach
+- [ ] Deep understanding of HA climate best practices
+- [ ] Confidence in v1.2 architecture decisions
 
-**Quality:**
-- [ ] All existing tests passing
-- [ ] Code quality checks passing (ruff, mypy)
-- [ ] No regressions in existing functionality
+**Planning:**
+- [ ] Detailed v1.2 implementation plan ready
+- [ ] All architectural decisions documented
+- [ ] Potential issues identified proactively
+- [ ] Time estimates for v1.2 tasks
 
-**Next:** v1.2 WebSocket investigation (see `_claude/ROADMAP.md`)
+**Next:** Session 10 - v1.2 Implementation (WebSocket + Sensors)
 
 ---
 

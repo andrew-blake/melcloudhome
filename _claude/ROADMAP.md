@@ -42,6 +42,33 @@
 **Secondary Goal:** Prepare for HACS distribution
 **Reference:** Legacy MELCloud integration for sensor patterns
 
+### Pre-Implementation Review
+
+**Before v1.2 implementation, review and evaluate:**
+
+1. **Legacy MELCloud Integration Analysis**
+   - Review: https://github.com/home-assistant/core/tree/master/homeassistant/components/melcloud
+   - Identify features we're missing (sensor platform, services, etc.)
+   - Evaluate if their patterns are best practices or legacy approaches
+   - Critical assessment: Not all "official" patterns are necessarily better
+   - Document decisions in ADR if we diverge from their approach
+
+2. **Home Assistant Climate Best Practices**
+   - Review official climate integration guidelines
+   - Check for modern patterns we should adopt
+   - Compare our implementation against current HA standards
+   - Look at other well-maintained climate integrations for patterns
+
+3. **Integration Quality Checklist**
+   - Entity naming conventions (stable IDs ✅)
+   - Device registry patterns
+   - State management and coordinator patterns
+   - Error handling and recovery
+   - Diagnostics support ✅
+   - Testing coverage
+
+**Outcome:** Document findings and create v1.2 implementation plan based on critical review
+
 ### WebSocket Real-Time Updates (Investigation Required)
 
 **Status:** Deferred from v1.1 - needs reliability investigation
