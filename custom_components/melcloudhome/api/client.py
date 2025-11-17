@@ -105,6 +105,10 @@ class MELCloudHomeClient:
                     raise ApiError(f"API request failed: {error_msg}")
 
                 # Parse and return JSON response
+                # Some endpoints (like control) return empty body
+                if resp.content_length == 0 or resp.content_type == "":
+                    return {}
+
                 result: dict[str, Any] = await resp.json()
                 return result
 
@@ -161,3 +165,195 @@ class MELCloudHomeClient:
         """
         context = await self.get_user_context()
         return context.get_unit_by_id(unit_id)
+
+    async def set_power(self, unit_id: str, power: bool) -> None:
+        """
+        Turn device on or off.
+
+        Args:
+            unit_id: Device ID (UUID)
+            power: True to turn on, False to turn off
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+        """
+        payload = {
+            "power": power,
+            "operationMode": None,
+            "setFanSpeed": None,
+            "vaneHorizontalDirection": None,
+            "vaneVerticalDirection": None,
+            "setTemperature": None,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+
+        await self._api_request(
+            "PUT",
+            f"/api/ataunit/{unit_id}",
+            json=payload,
+        )
+
+    async def set_temperature(self, unit_id: str, temperature: float) -> None:
+        """
+        Set target temperature.
+
+        Args:
+            unit_id: Device ID (UUID)
+            temperature: Target temperature in Celsius (10.0-31.0, 0.5° increments)
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If temperature is out of range
+        """
+        if not 10.0 <= temperature <= 31.0:
+            raise ValueError("Temperature must be between 10.0 and 31.0°C")
+
+        # Check if temperature is in 0.5° increments
+        if (temperature * 2) % 1 != 0:
+            raise ValueError("Temperature must be in 0.5° increments")
+
+        payload = {
+            "power": None,
+            "operationMode": None,
+            "setFanSpeed": None,
+            "vaneHorizontalDirection": None,
+            "vaneVerticalDirection": None,
+            "setTemperature": temperature,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+
+        await self._api_request(
+            "PUT",
+            f"/api/ataunit/{unit_id}",
+            json=payload,
+        )
+
+    async def set_mode(self, unit_id: str, mode: str) -> None:
+        """
+        Set operation mode.
+
+        Args:
+            unit_id: Device ID (UUID)
+            mode: Operation mode - "Heat", "Cool", "Automatic", "Dry", or "Fan"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If mode is invalid
+        """
+        valid_modes = {"Heat", "Cool", "Automatic", "Dry", "Fan"}
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+
+        payload = {
+            "power": None,
+            "operationMode": mode,
+            "setFanSpeed": None,
+            "vaneHorizontalDirection": None,
+            "vaneVerticalDirection": None,
+            "setTemperature": None,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+
+        await self._api_request(
+            "PUT",
+            f"/api/ataunit/{unit_id}",
+            json=payload,
+        )
+
+    async def set_fan_speed(self, unit_id: str, speed: str) -> None:
+        """
+        Set fan speed.
+
+        Args:
+            unit_id: Device ID (UUID)
+            speed: Fan speed - "Auto", "One", "Two", "Three", "Four", or "Five"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If speed is invalid
+        """
+        valid_speeds = {"Auto", "One", "Two", "Three", "Four", "Five"}
+        if speed not in valid_speeds:
+            raise ValueError(
+                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
+            )
+
+        payload = {
+            "power": None,
+            "operationMode": None,
+            "setFanSpeed": speed,
+            "vaneHorizontalDirection": None,
+            "vaneVerticalDirection": None,
+            "setTemperature": None,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+
+        await self._api_request(
+            "PUT",
+            f"/api/ataunit/{unit_id}",
+            json=payload,
+        )
+
+    async def set_vanes(self, unit_id: str, vertical: str, horizontal: str) -> None:
+        """
+        Set vane directions.
+
+        Args:
+            unit_id: Device ID (UUID)
+            vertical: Vertical direction - "Auto", "Swing", "One", "Two", "Three",
+                      "Four", or "Five"
+            horizontal: Horizontal direction - "Auto", "Swing", "Left", "CenterLeft",
+                        "Center", "CenterRight", or "Right"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If vertical or horizontal is invalid
+        """
+        valid_vertical = {"Auto", "Swing", "One", "Two", "Three", "Four", "Five"}
+        valid_horizontal = {
+            "Auto",
+            "Swing",
+            "Left",
+            "CenterLeft",
+            "Center",
+            "CenterRight",
+            "Right",
+        }
+
+        if vertical not in valid_vertical:
+            raise ValueError(
+                f"Invalid vertical direction: {vertical}. "
+                f"Must be one of {valid_vertical}"
+            )
+
+        if horizontal not in valid_horizontal:
+            raise ValueError(
+                f"Invalid horizontal direction: {horizontal}. "
+                f"Must be one of {valid_horizontal}"
+            )
+
+        payload = {
+            "power": None,
+            "operationMode": None,
+            "setFanSpeed": None,
+            "vaneHorizontalDirection": horizontal,
+            "vaneVerticalDirection": vertical,
+            "setTemperature": None,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+
+        await self._api_request(
+            "PUT",
+            f"/api/ataunit/{unit_id}",
+            json=payload,
+        )

@@ -1,4 +1,15 @@
 .env
 claude-homeassistant/
 
+# Python
 *.pyc
+__pycache__/
+.pytest_cache/
+
+# Testing
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/

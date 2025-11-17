@@ -35,9 +35,27 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - ✅ Proper type annotations throughout
 - 📁 **Deliverables:** `client.py`, `tests/`, VCR cassettes
 
+### Session 4: Control APIs (2025-01-17)
+- ✅ Implemented all device control methods in `client.py`
+  - `set_power()`: Turn device on/off
+  - `set_temperature()`: Set target temperature (10-31°C, 0.5° increments)
+  - `set_mode()`: Set operation mode (Heat, Cool, Automatic, Dry, Fan)
+  - `set_fan_speed()`: Set fan speed (Auto, One-Five)
+  - `set_vanes()`: Control vane directions
+- ✅ Created comprehensive test suite (`test_client_control.py`)
+  - 12 passing control operation tests
+  - Tested against real Dining Room device with VCR recording
+  - Verified state changes after each control operation
+- ✅ Fixed API response handling
+  - Empty response handling for control endpoint (returns 200 with no body)
+  - Value normalization in models (API returns "0"-"5", client uses "Auto", "One"-"Five")
+- ✅ All 16 tests passing (12 control + 4 read)
+- ✅ All pre-commit hooks passing
+- 📁 **Deliverables:** Control methods, `test_client_control.py`, 12 VCR cassettes
+
 ---
 
-## 🎯 Session 4: Control APIs (Device Control)
+## ~~Session 4: Control APIs (Device Control)~~ ✅ COMPLETED
 
 **Goal:** Add write operations to control devices
 
@@ -152,9 +170,23 @@ custom_components/melcloudhome/
 ### Implementation Priority
 1. `manifest.json` + `__init__.py`: Integration setup
 2. `config_flow.py`: OAuth authentication flow
-3. `climate.py`: Climate entity (power, temp, mode, fan, vanes)
-4. `coordinator.py`: Polling coordinator (60s minimum)
+3. `coordinator.py`: Polling coordinator (60s minimum) with session refresh
+4. `climate.py`: Climate entity (power, temp, mode, fan, vanes)
 5. `sensor.py`: Optional sensors (energy, errors, Wi-Fi signal)
+
+### Authentication Handling
+**Decision:** See [ADR-002](../docs/decisions/002-authentication-refresh-strategy.md)
+
+**v1.0 Implementation:**
+- Store username/password (encrypted by HA)
+- Coordinator catches `AuthenticationError` on 401
+- Automatically re-login and retry operation
+- Transparent to user (no manual re-authentication)
+
+**Future (v1.1+):**
+- Migrate to OAuth refresh tokens
+- Remove password storage requirement
+- Enhanced security following OAuth best practices
 
 ---
 
@@ -163,26 +195,33 @@ custom_components/melcloudhome/
 ### What's Working ✅
 - Authentication (AWS Cognito OAuth)
 - Read operations (get devices, get device state)
-- Comprehensive testing infrastructure
+- Write operations (power, temperature, mode, fan speed, vanes)
+- Comprehensive testing infrastructure (16 tests, all passing)
+- VCR cassette recording/replay for fast tests
 - Type-safe code with all checks passing
 
 ### Next Priority 🎯
-- **Implement control operations** (Session 4)
-- Test with VCR recording
-- Verify state changes on real device
+- **Home Assistant Integration** (Session 7)
+- Build custom component with climate entity
+- Implement coordinator with automatic re-authentication
 
 ### Future Work 📋
-- Schedule management (v1.1)
-- Telemetry/energy monitoring (v1.1)
-- Home Assistant integration (after API client complete)
-- Scenes API (v2.0 - deferred)
+- Schedule management (v1.1 - Optional)
+- Telemetry/energy monitoring (v1.1 - Optional)
+- OAuth refresh tokens (v1.1 - See ADR-002)
+- Scenes API (v2.0 - Deferred)
 
 ---
 
 ## Reference Documentation
 
+### API Documentation
 - `melcloudhome-api-reference.md`: Complete API reference with verified values
 - `melcloudhome-schedule-api.md`: Schedule management endpoints
 - `melcloudhome-telemetry-endpoints.md`: Monitoring and reporting APIs
 - `openapi.yaml`: OpenAPI 3.0.3 specification
+
+### Project Documentation
 - `CLAUDE.md`: Development workflow and project structure
+- `../docs/decisions/001-bundled-api-client.md`: ADR for bundled architecture
+- `../docs/decisions/002-authentication-refresh-strategy.md`: ADR for auth handling
