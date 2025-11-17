@@ -74,7 +74,7 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
             identifiers={(DOMAIN, unit.id)},
             name=f"{building.name} {unit.name}",
             manufacturer="Mitsubishi Electric",
-            model="Air-to-Air Heat Pump",
+            model="Air-to-Air Heat Pump (via MELCloud Home)",
             suggested_area=building.name,
             via_device=(DOMAIN, entry.entry_id),
         )

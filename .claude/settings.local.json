@@ -58,7 +58,8 @@
       "Bash(uv sync:*)",
       "Bash(chmod:*)",
       "Bash(make type-check:*)",
-      "Bash(pre-commit run:*)"
+      "Bash(pre-commit run:*)",
+      "Bash(python tools/deploy_custom_component.py:*)"
     ],
     "deny": [],
     "ask": []

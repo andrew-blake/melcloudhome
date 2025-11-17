@@ -5,6 +5,7 @@
 ### `deploy_custom_component.py`
 
 Automates the complete deployment cycle for custom Home Assistant integrations:
+
 - Copies component to remote HA instance
 - Installs into Docker container
 - Restarts Home Assistant
@@ -20,6 +21,7 @@ Automates the complete deployment cycle for custom Home Assistant integrations:
 ### Setup
 
 1. Configure `.env` file in project root:
+
    ```bash
    # Required for deployment
    HA_SSH_HOST=ha                    # SSH hostname
@@ -38,21 +40,25 @@ Automates the complete deployment cycle for custom Home Assistant integrations:
 ### Usage
 
 **Basic deployment:**
+
 ```bash
 python tools/deploy_custom_component.py melcloudhome
 ```
 
 **Deploy + API testing:**
+
 ```bash
 python tools/deploy_custom_component.py melcloudhome --test
 ```
 
 **Deploy + watch logs:**
+
 ```bash
 python tools/deploy_custom_component.py melcloudhome --watch
 ```
 
 **Deploy different component:**
+
 ```bash
 python tools/deploy_custom_component.py my_other_integration
 ```
@@ -129,12 +135,14 @@ python tools/deploy_custom_component.py melcloudhome --test
 ### API Testing Features
 
 When using `--test` flag, the tool:
+
 - Connects to Home Assistant REST API
 - Lists all entities from your integration
 - Shows entity states and attributes
 - Verifies integration is working
 
 Example output:
+
 ```
 🧪 Testing integration via API...
 ✓ Found 3 entity(s)
@@ -146,6 +154,7 @@ Example output:
 ### Troubleshooting
 
 **SSH connection fails:**
+
 ```bash
 # Test SSH access
 ssh ha "echo 'Connection OK'"
@@ -155,6 +164,7 @@ cat ~/.ssh/config
 ```
 
 **Container not found:**
+
 ```bash
 # List containers
 ssh ha "sudo docker ps -a"
@@ -163,6 +173,7 @@ ssh ha "sudo docker ps -a"
 ```
 
 **API testing fails:**
+
 ```bash
 # Verify HA_URL is correct
 curl -k https://homeassistant.local:8123/api/
@@ -172,6 +183,7 @@ curl -k https://homeassistant.local:8123/api/
 ```
 
 **Integration not loading:**
+
 - Check logs with `--watch` flag
 - Look for Python syntax errors
 - Verify all required files exist
@@ -180,6 +192,7 @@ curl -k https://homeassistant.local:8123/api/
 ### Integration with Existing Tools
 
 This tool follows the same patterns as other HA tools in this project:
+
 - Loads `.env` from project root
 - Uses same environment variables (`HA_URL`, `HA_TOKEN`)
 - Compatible with existing `claude-homeassistant/` tools
@@ -188,6 +201,7 @@ This tool follows the same patterns as other HA tools in this project:
 ### Related Tools
 
 See also:
+
 - `claude-homeassistant/tools/reload_config.py` - Reload HA config without restart
 - `claude-homeassistant/tools/ha_api_diagnostic.py` - Comprehensive API testing
 - `claude-homeassistant/tools/entity_explorer.py` - Explore entities in detail
@@ -195,9 +209,11 @@ See also:
 ## Other Tools
 
 ### `test_auth.py`
+
 Test MELCloud Home authentication (for API client development).
 
 ### Future Tools
+
 - Integration validation
 - Entity testing
 - Performance profiling

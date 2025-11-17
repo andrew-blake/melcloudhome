@@ -47,7 +47,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             else:
                 # Success - create entry
                 return self.async_create_entry(
-                    title=f"MELCloud Home v2 ({email})",
+                    title="MELCloud Home",
                     data={
                         CONF_EMAIL: email,
                         CONF_PASSWORD: password,

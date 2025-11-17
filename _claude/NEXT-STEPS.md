@@ -6,17 +6,25 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** Integration refactored and ready for deployment
+**Current Status:** ✅ v1.0.0 DEPLOYED AND WORKING!
+
+**What's Working:**
+- ✅ Integration deployed and configured
+- ✅ All devices discovered and controllable
+- ✅ HVAC controls working (power, temp, mode, fan, swing)
+- ✅ 60s polling with auto-refresh
+- ✅ Standard HA climate entity UI
+
+**Known Issues:** See `_claude/KNOWN-ISSUES.md` for v1.1 improvements
 
 **What to do next:**
-1. **Deploy:** `python tools/deploy_custom_component.py melcloudhome --reload`
-2. **Configure:** Add integration via HA UI (Configuration → Integrations)
-3. **Test:** Manual testing checklist in `ha-integration-requirements.md`
-4. **Monitor:** Watch logs and verify all devices appear
+1. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload` (fast)
+2. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
+3. **Monitor:** Integration → MELCloud Home → Logs
 
-**Next session:** Manual testing and v1.1 planning
+**Next session:** v1.1 improvements (cosmetic/UX fixes)
 
-**Jump to:** [Session 7 details](#session-7-deployment--testing--next) below
+**Jump to:** [Session 8 details](#session-8-v11-improvements-next) below
 
 ---
 
@@ -137,6 +145,43 @@ This document tracks implementation progress for the MELCloud Home custom compon
   - ADR-004: Integration Refactoring
   - Full backwards compatibility maintained
 
+### Session 7: Deployment & Testing (2025-11-17)
+- ✅ Deployed integration to Home Assistant
+  - Used deployment tool: `uv run python tools/deploy_custom_component.py melcloudhome`
+  - Container restarted successfully
+  - Integration files installed
+- ✅ Configured via Home Assistant UI
+  - Configuration → Integrations → Add Integration
+  - Searched for "MELCloud Home v2"
+  - Entered credentials and authenticated successfully
+  - Unique ID prevents duplicate accounts
+- ✅ All devices discovered automatically
+  - All climate entities created
+  - Entity naming: `climate.home_[room]_heatpump`
+  - Device registry populated with building info
+- ✅ Manual testing completed
+  - Power on/off: ✅ Working
+  - Temperature adjustment: ✅ Working (0.5° increments)
+  - HVAC modes: ✅ Working (Heat, Cool, Auto, Dry, Fan)
+  - Fan speeds: ✅ Working (Auto, One-Five)
+  - Swing modes: ✅ Working (vane positions)
+  - 60s polling: ✅ Working (state updates)
+  - Error handling: ✅ Working (entities become unavailable)
+- ✅ Standard HA climate UI confirmed
+  - Native thermostat card
+  - All controls visible and functional
+  - Automation support working
+- ✅ Identified known issues for v1.1
+  - Integration icon 404 (cosmetic)
+  - Dashboard default widget (UX)
+  - Email in integration title (privacy/cosmetic)
+  - Documented in `_claude/KNOWN-ISSUES.md`
+- 📁 **Deliverables:**
+  - v1.0.0 deployed and working in production
+  - Manual testing completed successfully
+  - Known issues documented for v1.1
+  - Ready for daily use
+
 ---
 
 ## ~~Session 5: Home Assistant Integration~~ ✅ COMPLETED
@@ -159,64 +204,98 @@ See Session 6 in Completed Sessions above for full details.
 
 ---
 
-## Session 7: Deployment & Testing 🎯 NEXT
+## ~~Session 7: Deployment & Testing~~ ✅ COMPLETED
 
 **Goal:** Deploy to Home Assistant and verify all functionality
 
-**Status:** Ready to deploy
+**Status:** Complete - v1.0.0 deployed and working perfectly!
 
-### Deployment Steps
+See Session 7 in Completed Sessions above for full details.
 
-1. **Deploy integration:**
-   ```bash
-   python tools/deploy_custom_component.py melcloudhome
+---
+
+## Session 8: v1.1 Improvements 🎯 NEXT
+
+**Goal:** Address cosmetic/UX issues identified during deployment
+
+**Status:** Ready to implement
+
+**Reference:** See `_claude/KNOWN-ISSUES.md` for detailed issue analysis
+
+### High Priority (Must Fix)
+
+1. **Remove Email from Integration Title**
+   - **Issue:** Title shows "MELCloud Home v2 (a.blake01@gmail.com)"
+   - **Fix:** Change to just "MELCloud Home"
+   - **File:** `config_flow.py:50`
+   - **Impact:** Privacy/cosmetic
+   - **Breaking:** No - only affects new installations
+
+### Medium Priority (Should Fix)
+
+2. **Document Dashboard Setup**
+   - **Issue:** Default entity card shows minimal info
+   - **Fix:** Add README section on using thermostat card
+   - **Files:** New `README.md` or update documentation
+   - **Impact:** UX improvement
+
+3. **Add Local Integration Icon**
+   - **Issue:** Icon shows 404 error
+   - **Fix:** Add `icon.png` and `logo.png` to integration
+   - **Impact:** Cosmetic only
+
+### Implementation Plan
+
+**Step 1: Fix Email in Title (5 min)**
+```python
+# custom_components/melcloudhome/config_flow.py:50
+# Change from:
+title=f"MELCloud Home v2 ({email})",
+# To:
+title="MELCloud Home",
+```
+
+**Step 2: Add Integration Icon (10 min)**
+- Create or download Mitsubishi Electric logo
+- Save as `custom_components/melcloudhome/icon.png` (256x256)
+- Save as `custom_components/melcloudhome/logo.png` (256x256)
+
+**Step 3: Create README (15 min)**
+```markdown
+# MELCloud Home v2 Integration
+
+## Dashboard Setup
+
+To get full climate controls:
+1. Add to dashboard
+2. Click "Show As" → "Thermostat Card"
+3. Or use YAML:
+   ```yaml
+   type: thermostat
+   entity: climate.home_dining_room_heatpump
    ```
-
-2. **Add via HA UI:**
-   - Configuration → Integrations → Add Integration
-   - Search for "MELCloud Home v2"
-   - Enter credentials: a.blake01@gmail.com / screech-POPULAR7marissa
-
-3. **Verify devices loaded:**
-   - Check all devices appear
-   - Verify entity names follow pattern: `climate.home_[room]_heatpump`
-
-4. **Manual testing checklist:**
-   - [ ] Power on/off via UI
-   - [ ] Temperature adjustment (0.5° increments)
-   - [ ] All HVAC modes: Heat, Cool, Auto, Dry, Fan
-   - [ ] Fan speeds: Auto, One-Five
-   - [ ] Swing modes (vane positions)
-   - [ ] Verify 60s polling updates
-   - [ ] Test error recovery (disconnect/reconnect)
-   - [ ] Check device info shows building names
-
-### Troubleshooting
-
-**View logs:**
-```bash
-python tools/deploy_custom_component.py melcloudhome --watch
 ```
 
-**Or directly:**
+**Step 4: Deploy Updates**
 ```bash
-ssh ha "sudo docker logs -f homeassistant 2>&1" | grep melcloudhome
+uv run python tools/deploy_custom_component.py melcloudhome --reload
 ```
 
-**Common issues:**
-- Integration not appearing: Check logs for Python errors
-- Entities not loading: Verify credentials in config entry
-- States not updating: Check 60s polling interval
+**Step 5: Test**
+- Remove integration from HA
+- Re-add and verify new title (no email)
+- Check icon appears
+- Verify functionality unchanged
 
 ### Success Criteria
 
-- [ ] All devices discovered
-- [ ] All controls working (power, temp, mode, fan, swing)
-- [ ] State updates after 60s
-- [ ] No errors in logs
-- [ ] Entity names follow naming convention
+- [ ] Integration title is "MELCloud Home" (no email)
+- [ ] Icon loads without 404
+- [ ] README documents dashboard setup
+- [ ] All functionality still works
+- [ ] No breaking changes
 
-**Next:** v1.1 planning based on usage feedback
+**Next:** v1.2 features based on usage feedback (schedules, sensors, options flow)
 
 ---
 
