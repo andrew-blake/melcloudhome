@@ -114,6 +114,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - API client: `custom_components/melcloudhome/api/` (complete)
 - Requirements: `_claude/ha-integration-requirements.md`
 - ADR-002: Authentication refresh strategy
+- ADR-003: Entity naming strategy (modern HA pattern)
 - Test patterns: See requirements doc Testing Strategy section
 
 ---
@@ -276,3 +277,4 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - `CLAUDE.md`: Development workflow and project structure
 - `../docs/decisions/001-bundled-api-client.md`: ADR for bundled architecture
 - `../docs/decisions/002-authentication-refresh-strategy.md`: ADR for auth handling
+- `../docs/decisions/003-entity-naming-strategy.md`: ADR for entity naming and device registry

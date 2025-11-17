@@ -91,6 +91,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 - Device name: `f"{building.name} {unit.name}"` (always include building)
 - Entity name: `None` (uses device name) or specific like "Climate"
 - Result: `climate.home_living_room_climate` or similar (HA generates)
+- **See:** [ADR-003](../../docs/decisions/003-entity-naming-strategy.md) for full rationale
 
 **Class Structure**:
 
