@@ -4,6 +4,22 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ---
 
+## 🚀 Quick Start for New Session
+
+**Current Status:** API client complete, ready to build Home Assistant integration
+
+**What to do next:**
+1. **Read:** `_claude/ha-integration-requirements.md` (complete spec)
+2. **Implement:** 7 files in `custom_components/melcloudhome/`
+3. **Test:** Write tests alongside (fixtures provided in spec)
+4. **Verify:** Run manual testing checklist
+
+**Estimated time:** 3-4 hours
+
+**Jump to:** [Session 5 details](#session-5-home-assistant-integration--next) below
+
+---
+
 ## ✅ Completed Sessions
 
 ### Session 1: API Discovery & Documentation (2025-01-09)
@@ -57,6 +73,48 @@ This document tracks implementation progress for the MELCloud Home custom compon
   - Updated .gitignore for test artifacts
 - ✅ Documentation: ADR-002 (authentication refresh strategy)
 - 📁 **Deliverables:** Control methods, 3 test files, 22 VCR cassettes, ADR-002
+
+---
+
+## ~~Session 5: Home Assistant Integration~~ 🎯 NEXT
+
+**Goal:** Build Home Assistant custom component for MELCloud Home devices
+
+**Status:** Requirements complete, ready for implementation
+
+### Prerequisites ✅
+- API client fully functional (Sessions 1-4 complete)
+- Requirements documented in `ha-integration-requirements.md`
+- All critical design decisions made (entity naming, error handling, testing)
+
+### Implementation Guide
+
+**📖 Read First:** `_claude/ha-integration-requirements.md` - Complete specification with:
+- 7 files to create (manifest, config_flow, coordinator, climate, etc.)
+- Modern HA best practices (entity naming, device registry, etc.)
+- Comprehensive testing strategy (50+ test cases specified)
+- Critical notes and common pitfalls
+
+**⚡ Quick Start:**
+1. Read requirements doc thoroughly
+2. Create files in order: manifest → const → strings → config_flow → coordinator → __init__ → climate
+3. Write tests alongside each component (TDD approach)
+4. Use existing API client (no changes needed)
+5. Follow modern HA patterns (`_attr_has_entity_name`, device info, etc.)
+
+**🎯 Deliverables:**
+- 7 core files in `custom_components/melcloudhome/`
+- 4 test files with >80% coverage
+- All files type-checked (mypy) and formatted (ruff)
+- Manual testing completed (15-item checklist in requirements)
+
+**⏱️ Estimated Time:** 3-4 hours for experienced HA developer
+
+**🔗 References:**
+- API client: `custom_components/melcloudhome/api/` (complete)
+- Requirements: `_claude/ha-integration-requirements.md`
+- ADR-002: Authentication refresh strategy
+- Test patterns: See requirements doc Testing Strategy section
 
 ---
 
@@ -133,9 +191,9 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ---
 
-## Session 5: Schedule Operations (Optional for v1.0)
+## Session 6: Schedule Operations (Optional - v1.1+)
 
-**Priority:** Medium - Can defer to v1.1
+**Priority:** Low - Defer to v1.1
 
 - `create_schedule(unit_id, schedule)`: POST `/api/cloudschedule/{unit_id}`
 - `delete_schedule(unit_id, schedule_id)`: DELETE
@@ -145,9 +203,9 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ---
 
-## Session 6: Telemetry Operations (Optional for v1.0)
+## Session 7: Telemetry Operations (Optional - v1.1+)
 
-**Priority:** Low - Nice to have for energy monitoring
+**Priority:** Low - Nice to have for energy monitoring sensors
 
 - `get_temperature_history()`: Temperature data over time
 - `get_energy_data()`: Energy consumption metrics
@@ -155,49 +213,11 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ---
 
-## Session 7: Home Assistant Integration
-
-After API client is complete, build the HA custom component:
-
-### Structure
-```
-custom_components/melcloudhome/
-├── manifest.json
-├── __init__.py
-├── config_flow.py      # OAuth UI flow
-├── coordinator.py      # Data update coordinator
-├── climate.py          # Climate entity
-├── sensor.py           # Energy, error, signal sensors
-├── const.py            # HA-specific constants
-└── strings.json        # UI translations
-```
-
-### Implementation Priority
-1. `manifest.json` + `__init__.py`: Integration setup
-2. `config_flow.py`: OAuth authentication flow
-3. `coordinator.py`: Polling coordinator (60s minimum) with session refresh
-4. `climate.py`: Climate entity (power, temp, mode, fan, vanes)
-5. `sensor.py`: Optional sensors (energy, errors, Wi-Fi signal)
-
-### Authentication Handling
-**Decision:** See [ADR-002](../docs/decisions/002-authentication-refresh-strategy.md)
-
-**v1.0 Implementation:**
-- Store username/password (encrypted by HA)
-- Coordinator catches `AuthenticationError` on 401
-- Automatically re-login and retry operation
-- Transparent to user (no manual re-authentication)
-
-**Future (v1.1+):**
-- Migrate to OAuth refresh tokens
-- Remove password storage requirement
-- Enhanced security following OAuth best practices
-
----
-
 ## Current State Summary
 
 ### What's Working ✅
+
+**API Client (Complete)**:
 - Authentication (AWS Cognito OAuth)
 - Read operations (get devices, get device state)
 - Write operations (power, temperature, mode, fan speed, vanes)
@@ -210,14 +230,35 @@ custom_components/melcloudhome/
 - Type-safe code with all checks passing
 - Development workflow tools (make test, make test-cov)
 
+**Documentation (Complete)**:
+- API reference with verified values
+- OpenAPI 3.0.3 specification
+- HA integration requirements (comprehensive)
+- ADR-001: Bundled API client architecture
+- ADR-002: Authentication refresh strategy
+
 ### Next Priority 🎯
-- **Home Assistant Integration** (Session 7)
-- Build custom component with climate entity
-- Implement coordinator with automatic re-authentication
+
+**Session 5: Home Assistant Integration** 🚀
+
+**Ready to implement:**
+- Complete requirements spec in `_claude/ha-integration-requirements.md`
+- 7 files to create (manifest, config_flow, coordinator, climate, etc.)
+- 50+ test cases specified
+- All design decisions made
+- Modern HA best practices documented
+
+**Start here:**
+1. Read `_claude/ha-integration-requirements.md`
+2. Create files in order: manifest → const → strings → config_flow → coordinator → __init__ → climate
+3. Write tests alongside (TDD)
+4. Run manual testing checklist
 
 ### Future Work 📋
+
 - Schedule management (v1.1 - Optional)
 - Telemetry/energy monitoring (v1.1 - Optional)
+- Sensor platform (v1.1 - Optional)
 - OAuth refresh tokens (v1.1 - See ADR-002)
 - Scenes API (v2.0 - Deferred)
 
