@@ -1,0 +1,11 @@
+{
+  "domain": "melcloudhome",
+  "name": "MELCloud Home v2",
+  "codeowners": ["@ablake"],
+  "config_flow": true,
+  "documentation": "https://github.com/ablake/home-automation",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
