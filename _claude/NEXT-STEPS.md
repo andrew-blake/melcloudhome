@@ -224,112 +224,86 @@ See Session 7 in Completed Sessions above for full details.
 
 ---
 
-## Session 8: v1.1 Real-Time & Sensors 🎯 NEXT
+## Session 8: v1.1 Polish & Diagnostics 🎯 NEXT
 
-**Goal:** Add WebSocket real-time updates, sensors, and diagnostic data
+**Goal:** Polish integration with diagnostics, icon, and documentation improvements
 
-**Status:** Requirements complete, ready for implementation
-**Timeline:** 7 hours estimated
-**Reference:** `_claude/v1.1-requirements.md` (complete specification)
+**Status:** WebSocket research complete - DEFERRED to v1.2+
+**Timeline:** 1-2 hours estimated
+**Reference:** `_claude/v1.1-simplified-scope.md`, `_claude/websocket-research-defer.md`
 
-### Phase 1: Research (1 hour)
+**Why WebSocket Deferred:**
+- ⚠️ Inconsistent message delivery (only one device receiving updates)
+- ⚠️ Needs more investigation to understand reliability
+- ✅ Current 60s polling works well and is reliable
+- See `_claude/websocket-research-defer.md` for full research findings
 
-**WebSocket Protocol Investigation:**
-- [ ] Capture WebSocket authentication method (browser DevTools)
-- [ ] Document handshake protocol
-- [ ] Identify subscription model (per-device? auto-subscribe?)
-- [ ] Capture ping/pong keepalive messages
-- [ ] Answer open questions OQ-1 through OQ-4
+### Implementation Tasks
 
-**Tools:** Chrome DevTools on MELCloud Home reports page
+**1. Integration Icon (30 minutes)**
+- [ ] Download/create icon.png (256x256)
+- [ ] Download/create logo.png (256x256)
+- [ ] Add to `custom_components/melcloudhome/`
+- [ ] Add attribution to README
+- [ ] Verify icon shows in HA (no 404)
 
-### Phase 2: Implementation (4 hours)
+**2. Diagnostics Export (30 minutes)**
+- [ ] Create `diagnostics.py`
+- [ ] Export integration state:
+  - Integration version
+  - Config entry details
+  - Device count and types
+  - Coordinator status
+  - Entity counts
+- [ ] Add to manifest.json platforms
+- [ ] Test download via HA UI
 
-**Core Features:**
-- [ ] WebSocket manager (`websocket.py`)
-  - Connection lifecycle
-  - Message parsing (3 types)
-  - Reconnection with exponential backoff
-  - Token refresh handling
-- [ ] Energy tracker (`energy_tracker.py`)
-  - Finalized vs current hour separation
-  - No double-counting logic
-  - Persistence across restarts
-- [ ] Coordinator updates (`coordinator.py`)
-  - WebSocket integration
-  - Energy polling (15 min intervals)
-  - Hybrid fallback logic
-- [ ] Sensor platform (`sensor.py`)
-  - WiFi signal sensor (WebSocket)
-  - Current temperature sensor (WebSocket)
-  - Target temperature sensor (WebSocket)
-  - Energy consumption sensor (REST API polling)
-- [ ] Binary sensor platform (`binary_sensor.py`)
-  - Error state monitoring (WebSocket)
-- [ ] Diagnostic data (`diagnostics.py`)
-  - Export integration state
-  - WebSocket statistics
-  - Energy tracking info
-- [ ] Integration icon
-  - Download/create icon.png and logo.png
-  - Add attribution to README
+**3. Entity Naming Improvements (15 minutes)**
+- [ ] Review current entity IDs
+- [ ] Remove redundant suffixes if any
+- [ ] Ensure clean, consistent naming
+- [ ] Document naming convention
 
-**File Changes:**
-- NEW: 5 files (websocket.py, energy_tracker.py, sensor.py, binary_sensor.py, diagnostics.py)
-- MODIFY: 3 files (coordinator.py, const.py, manifest.json)
-- NEW: 2 images (icon.png, logo.png)
+**4. Documentation Updates (15 minutes)**
+- [ ] Update README with new features
+- [ ] Document diagnostics export
+- [ ] Add troubleshooting section
+- [ ] Update KNOWN-ISSUES.md
 
-### Phase 3: Testing (1 hour)
+### File Changes
 
-**Unit Tests:**
-- [ ] WebSocket connection and message parsing
-- [ ] Energy tracking algorithm (deduplication)
-- [ ] Type coercion (string → bool, int)
-- [ ] Delta merge logic
-- [ ] Sensor entity creation
+**NEW:**
+- `custom_components/melcloudhome/diagnostics.py`
+- `custom_components/melcloudhome/icon.png`
+- `custom_components/melcloudhome/logo.png`
 
-**Integration Tests:**
-- [ ] Deploy to HA and verify WebSocket connects
-- [ ] Test all 3 message types received
-- [ ] Verify state updates < 1 second
-- [ ] Test energy tracking (no double-counting)
-- [ ] Test reconnection on disconnect
-- [ ] Verify diagnostic data export
-- [ ] Check icon appears
+**MODIFIED:**
+- `custom_components/melcloudhome/manifest.json` (add diagnostics)
+- `README.md` (documentation updates)
+- `_claude/KNOWN-ISSUES.md` (close icon issue)
 
-### Phase 4: Documentation (1 hour)
+### Testing
 
-- [ ] Update README with WebSocket and sensor info
-- [ ] Create ADR-005: WebSocket Real-Time Updates
-- [ ] Create `_claude/websocket-implementation.md` (technical details)
-- [ ] Update KNOWN-ISSUES.md (close icon issue)
-- [ ] Update this file (mark Session 8 complete)
+**Manual Testing:**
+- [ ] Icon appears in HA (no 404)
+- [ ] Diagnostics download works
+- [ ] Entity names are clean
+- [ ] All documentation accurate
 
 ### Success Criteria
 
 **Functional:**
-- [ ] WebSocket connects and receives messages
-- [ ] State updates within 1 second
-- [ ] 5 sensor entities created per device
-- [ ] Energy tracking accurate (no double-counting)
-- [ ] Falls back to polling if WebSocket fails
-- [ ] Diagnostic data exports successfully
 - [ ] Integration icon shows (no 404)
+- [ ] Diagnostic data exports successfully
+- [ ] Entity naming is clean and consistent
+- [ ] Documentation is complete and accurate
 
 **Quality:**
-- [ ] All tests passing (>80% coverage)
-- [ ] No memory leaks (24+ hour test)
+- [ ] All existing tests passing
 - [ ] Code quality checks passing (ruff, mypy)
-- [ ] Documentation complete
+- [ ] No regressions in existing functionality
 
-**New Entities per Device:**
-1. `sensor.{}_current_temperature` - Room temp
-2. `sensor.{}_target_temperature` - Setpoint
-3. `sensor.{}_wifi_signal` - Signal strength
-4. `sensor.{}_energy` - Cumulative kWh
-5. `binary_sensor.{}_error` - Error state
-
-**Next:** v1.2 HACS distribution (see `_claude/ROADMAP.md`)
+**Next:** v1.2 WebSocket investigation (see `_claude/ROADMAP.md`)
 
 ---
 
