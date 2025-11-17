@@ -1,5 +1,6 @@
 """Shared test fixtures."""
 
+import contextlib
 import os
 from collections.abc import AsyncIterator
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
+from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
 
@@ -167,6 +169,52 @@ async def authenticated_client() -> AsyncIterator[MELCloudHomeClient]:
         pass  # Best effort cleanup
     finally:
         await client.close()
+
+
+@pytest.fixture
+def credentials() -> tuple[str, str]:
+    """Provide test credentials from environment variables.
+
+    Returns:
+        Tuple of (username, password)
+
+    Raises:
+        pytest.skip: If credentials not available for cassette recording
+    """
+    username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
+    password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
+
+    if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
+        pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required for recording")
+
+    return username, password
+
+
+@pytest_asyncio.fixture
+async def authenticated_auth() -> AsyncIterator[MELCloudHomeAuth]:
+    """Provide authenticated MELCloudHomeAuth instance.
+
+    Uses credentials from environment variables:
+    - MELCLOUD_USER: Email address
+    - MELCLOUD_PASSWORD: Password
+
+    Note: When using VCR, credentials are only needed for initial recording.
+    Subsequent runs replay from cassettes.
+    """
+    username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
+    password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
+
+    if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
+        pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required for recording")
+
+    auth = MELCloudHomeAuth()
+    await auth.login(username, password)
+
+    yield auth
+
+    # Cleanup
+    with contextlib.suppress(Exception):
+        await auth.close()
 
 
 @pytest.fixture

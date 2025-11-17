@@ -5,7 +5,6 @@ Uses VCR to record/replay OAuth interactions with AWS Cognito.
 """
 
 import contextlib
-import os
 from collections.abc import AsyncIterator
 
 import pytest
@@ -17,7 +16,7 @@ from custom_components.melcloudhome.api.exceptions import AuthenticationError
 
 @pytest_asyncio.fixture
 async def auth() -> AsyncIterator[MELCloudHomeAuth]:
-    """Provide a fresh auth instance."""
+    """Provide a fresh (unauthenticated) auth instance."""
     auth_instance = MELCloudHomeAuth()
     yield auth_instance
     # Cleanup
@@ -37,27 +36,21 @@ class TestAuthenticationState:
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_authenticated_after_login(self, auth: MELCloudHomeAuth) -> None:
+    async def test_authenticated_after_login(
+        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
+    ) -> None:
         """Auth instance should be authenticated after successful login."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
+        username, password = credentials
         await auth.login(username, password)
         assert auth.is_authenticated
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_not_authenticated_after_logout(self, auth: MELCloudHomeAuth) -> None:
+    async def test_not_authenticated_after_logout(
+        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
+    ) -> None:
         """Auth instance should not be authenticated after logout."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
+        username, password = credentials
         await auth.login(username, password)
         assert auth.is_authenticated
 
@@ -70,28 +63,22 @@ class TestLoginSuccess:
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_login_with_valid_credentials(self, auth: MELCloudHomeAuth) -> None:
+    async def test_login_with_valid_credentials(
+        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
+    ) -> None:
         """Login should succeed with valid credentials."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
+        username, password = credentials
         result = await auth.login(username, password)
         assert result is True
         assert auth.is_authenticated
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_login_returns_true(self, auth: MELCloudHomeAuth) -> None:
+    async def test_login_returns_true(
+        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
+    ) -> None:
         """Login should return True on success."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
+        username, password = credentials
         result = await auth.login(username, password)
         assert result is True
 
@@ -124,9 +111,11 @@ class TestLoginFailure:
 
     @pytest.mark.skip(reason="Requires live bad-credential testing")
     @pytest.mark.asyncio
-    async def test_login_with_empty_password(self, auth: MELCloudHomeAuth) -> None:
+    async def test_login_with_empty_password(
+        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
+    ) -> None:
         """Login should fail with empty password."""
-        username = os.getenv("MELCLOUD_USER", "test@example.com")
+        username, _ = credentials
         with pytest.raises(AuthenticationError):
             await auth.login(username, "")
 
@@ -144,49 +133,34 @@ class TestSessionManagement:
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_get_session_after_login(self, auth: MELCloudHomeAuth) -> None:
+    async def test_get_session_after_login(
+        self, authenticated_auth: MELCloudHomeAuth
+    ) -> None:
         """get_session should return session after login."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
-        await auth.login(username, password)
-        session = await auth.get_session()
+        session = await authenticated_auth.get_session()
         assert session is not None
         assert not session.closed
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_session_persists_across_calls(self, auth: MELCloudHomeAuth) -> None:
+    async def test_session_persists_across_calls(
+        self, authenticated_auth: MELCloudHomeAuth
+    ) -> None:
         """Same session should be returned across multiple get_session calls."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
-        await auth.login(username, password)
-        session1 = await auth.get_session()
-        session2 = await auth.get_session()
+        session1 = await authenticated_auth.get_session()
+        session2 = await authenticated_auth.get_session()
         assert session1 is session2  # Same instance
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_close_closes_session(self, auth: MELCloudHomeAuth) -> None:
+    async def test_close_closes_session(
+        self, authenticated_auth: MELCloudHomeAuth
+    ) -> None:
         """close() should close the session."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
-        await auth.login(username, password)
-        session = await auth.get_session()
+        session = await authenticated_auth.get_session()
         assert not session.closed
 
-        await auth.close()
+        await authenticated_auth.close()
         assert session.closed
 
 
@@ -195,20 +169,15 @@ class TestLogout:
 
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_logout_after_login(self, auth: MELCloudHomeAuth) -> None:
+    async def test_logout_after_login(
+        self, authenticated_auth: MELCloudHomeAuth
+    ) -> None:
         """Logout should succeed after login."""
-        username = os.getenv("MELCLOUD_USER", "***PLACEHOLDER***")
-        password = os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***")
-
-        if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
-            pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required")
-
-        await auth.login(username, password)
-        assert auth.is_authenticated
+        assert authenticated_auth.is_authenticated
 
         # Logout should not raise
-        await auth.logout()
-        assert not auth.is_authenticated
+        await authenticated_auth.logout()
+        assert not authenticated_auth.is_authenticated
 
     @pytest.mark.asyncio
     async def test_logout_when_not_authenticated(self, auth: MELCloudHomeAuth) -> None:
