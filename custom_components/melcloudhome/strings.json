@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to MELCloud Home v2",
+        "title": "Connect to MELCloud Home",
         "description": "Enter your MELCloud Home credentials",
         "data": {
           "email": "Email",

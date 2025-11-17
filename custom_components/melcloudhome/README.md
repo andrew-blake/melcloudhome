@@ -1,4 +1,4 @@
-# MELCloud Home v2 Integration
+# MELCloud Home Integration
 
 Custom Home Assistant integration for Mitsubishi Electric MELCloud Home heat pumps.
 
@@ -11,6 +11,8 @@ Custom Home Assistant integration for Mitsubishi Electric MELCloud Home heat pum
 - ✅ Multi-device support
 - ✅ Device registry with building context
 - ✅ Works with automations, scripts, and voice assistants
+- ✅ Diagnostics support for troubleshooting
+- ✅ Custom integration icon
 
 ---
 
@@ -20,7 +22,7 @@ Custom Home Assistant integration for Mitsubishi Electric MELCloud Home heat pum
 1. Open HACS
 2. Go to Integrations
 3. Click "+ Explore & Download Repositories"
-4. Search for "MELCloud Home v2"
+4. Search for "MELCloud Home"
 5. Click "Download"
 6. Restart Home Assistant
 
@@ -29,7 +31,7 @@ Custom Home Assistant integration for Mitsubishi Electric MELCloud Home heat pum
 2. Restart Home Assistant
 3. Go to Configuration → Integrations
 4. Click "+ Add Integration"
-5. Search for "MELCloud Home v2"
+5. Search for "MELCloud Home"
 
 ---
 
@@ -39,7 +41,7 @@ Custom Home Assistant integration for Mitsubishi Electric MELCloud Home heat pum
 
 1. **Configuration → Integrations**
 2. Click **"+ Add Integration"**
-3. Search for **"MELCloud Home v2"**
+3. Search for **"MELCloud Home"**
 4. Enter your MELCloud credentials:
    - Email: Your MELCloud Home account email
    - Password: Your MELCloud Home password
@@ -53,15 +55,20 @@ The integration will:
 
 ### Entity Names
 
-Entities are named following Home Assistant conventions:
-```
-climate.home_[room_name]_heatpump
-```
+**Stable Entity IDs:** Entity IDs are generated from the MELCloud Home unit ID (not the room name), ensuring they remain stable even if you rename buildings or rooms in MELCloud Home.
 
-Examples:
-- `climate.home_dining_room_heatpump`
-- `climate.home_bedroom_heatpump`
-- `climate.home_living_room_heatpump`
+**Format:** `climate.melcloud_[first4]_[last4]`
+
+The entity ID uses the first 4 and last 4 characters of the unit's UUID from the MELCloud Home API. This ensures:
+- ✅ **Stability** - IDs never change, even if you rename rooms or buildings
+- ✅ **Traceability** - Can be matched back to API unit IDs for debugging
+- ✅ **Uniqueness** - Each device has a unique, deterministic ID
+
+**Examples:**
+- Unit ID: `0efce33f-5847-4042-88eb-aaf3ff6a76db` → Entity: `climate.melcloud_0efc_76db`
+- Unit ID: `bf8d1e84-95cc-44d8-ab9b-25b87a945119` → Entity: `climate.melcloud_bf8d_5119`
+
+**Friendly Names:** The device name shows the friendly building + room name (e.g., "Orchard Cottage Dining Room"). You can also customize entity friendly names in the Home Assistant UI without affecting the stable entity ID.
 
 ---
 
@@ -275,6 +282,24 @@ Each heat pump appears as a device with:
 
 ## Troubleshooting
 
+### Download Diagnostics
+
+Get detailed diagnostic information for bug reports:
+
+1. **Configuration → Integrations**
+2. Find **"MELCloud Home"**
+3. Click the **three dots menu** (⋮)
+4. Select **"Download diagnostics"**
+5. Save the JSON file
+
+The diagnostics file contains:
+- Integration configuration (with credentials redacted)
+- Entity states and attributes
+- Coordinator status
+- Device information (units, buildings, capabilities)
+
+**Privacy:** Email and password are automatically removed before export.
+
 ### View Logs
 
 **Via UI:**
@@ -330,6 +355,11 @@ MIT License - See LICENSE file for details
 ---
 
 ## Version History
+
+### v1.1.0 (2025-11-17)
+- ✅ Added diagnostics support for troubleshooting
+- ✅ Added custom integration icon (heat pump MDI icon)
+- ✅ Updated documentation with diagnostics guide
 
 ### v1.0.0 (2025-11-17)
 - ✅ Initial release

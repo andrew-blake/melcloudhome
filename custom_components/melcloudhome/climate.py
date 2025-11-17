@@ -49,8 +49,7 @@ async def async_setup_entry(
 class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
     """Representation of a MELCloud Home climate device."""
 
-    _attr_has_entity_name = True
-    _attr_name = None  # Use device name
+    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
     _attr_temperature_unit = "°C"
     _attr_target_temperature_step = TEMP_STEP
     _attr_max_temp = TEMP_MAX_HEAT
@@ -69,6 +68,14 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         self._attr_unique_id = unit.id
         self._entry = entry
 
+        # Generate stable entity ID from unit ID (format: melcloud_0efc_76db)
+        # Using first 4 and last 4 chars of UUID for stability + traceability
+        unit_id_clean = unit.id.replace("-", "")  # Remove dashes from UUID
+
+        # Set entity name (HA will normalize this to entity_id)
+        # Format: "MELCloud 0efc 76db" -> entity_id: "climate.melcloud_0efc_76db"
+        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]}"
+
         # Device info (modern HA pattern)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, unit.id)},
@@ -76,7 +83,6 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
             manufacturer="Mitsubishi Electric",
             model="Air-to-Air Heat Pump (via MELCloud Home)",
             suggested_area=building.name,
-            via_device=(DOMAIN, entry.entry_id),
         )
 
         # HVAC modes

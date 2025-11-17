@@ -1,33 +1,31 @@
 # MELCloud Home Integration Roadmap
 
-**Current Version:** v1.0.1
-**Status:** Production-ready with minor cosmetic improvements
-**Next Release:** v1.1 (WebSocket + Sensors)
+**Current Version:** v1.1.0 ✅
+**Status:** Production-ready with all core features
+**Next Release:** v1.2 (WebSocket + Sensors)
 
 ---
 
-## v1.1: Real-Time Updates & Sensors 🎯 IN PROGRESS
+## v1.1: Polish & Diagnostics ✅ COMPLETED
 
-**Status:** Simplified scope approved, ready for implementation
-**Timeline:** 4 hours (reduced from 7)
-**Reference:** `_claude/v1.1-simplified-scope.md`
+**Status:** Released (2025-11-17)
+**Reference:** `_claude/NEXT-STEPS.md`, `_claude/websocket-research-defer.md`
 
 **What's IN v1.1:**
-- ✅ WebSocket real-time updates (< 1 second)
-- ✅ WiFi signal sensor
-- ✅ Error state binary sensor
-- ✅ Integration icon (no more 404)
-- ✅ Basic diagnostic data export
-- ✅ Entity naming fix (remove "heatpump_" redundancy)
+- ✅ Integration icon (icons.json with mdi:heat-pump)
+- ✅ Diagnostics data export
+- ✅ Entity naming confirmed (already clean and modern)
+- ✅ Documentation updates
 
 **Benefits:**
-- Instant state updates (no 60s delay)
-- Connectivity monitoring
-- Proactive error notifications
-- Professional appearance
-- Simplified entity names
+- Professional appearance (custom icon)
+- Easy troubleshooting (diagnostics export)
+- Complete documentation
 
 **What's DEFERRED to v1.2:**
+- ⏸️ WebSocket real-time updates (needs reliability investigation)
+- ⏸️ WiFi signal sensor
+- ⏸️ Error state binary sensor
 - ⏸️ Current temperature sensor (already in climate entity attributes)
 - ⏸️ Target temperature sensor (already in climate entity attributes)
 - ⏸️ Energy consumption sensor (complex, needs simplification)
@@ -38,12 +36,65 @@
 
 ---
 
-## v1.2: HACS Distribution + Optional Features 🚀
+## v1.2: WebSocket + Sensors 🎯 NEXT
 
-**Primary Goal:** Publish to HACS for easier installation and updates
-**Secondary Goal:** Add deferred v1.1 features if users request them
+**Primary Goal:** Add real-time updates and sensor platform
+**Secondary Goal:** Prepare for HACS distribution
+**Reference:** Legacy MELCloud integration for sensor patterns
 
-### HACS Distribution (Required)
+### WebSocket Real-Time Updates (Investigation Required)
+
+**Status:** Deferred from v1.1 - needs reliability investigation
+**Effort:** 4-6 hours (investigation + implementation)
+**Reference:** `_claude/websocket-research-defer.md`
+
+**Issue Discovered:**
+- WebSocket messages not consistently delivered to all devices
+- Only one device receiving updates in testing
+- Needs deeper protocol investigation
+
+**What to investigate:**
+- Message format and routing logic
+- Why only one device receives updates
+- Reliability and connection handling
+- Fallback to polling if WebSocket fails
+
+**Implementation Plan (once reliable):**
+- WebSocket connection management
+- Message parsing and handling
+- State update propagation
+- Graceful degradation to polling
+
+### Sensor Platform (Based on MELCloud Integration)
+
+**Status:** New feature for v1.2
+**Effort:** 4-6 hours
+**Reference:** Legacy MELCloud integration sensor.py
+
+**Inspired by MELCloud Integration:**
+- Room temperature sensor (for statistics/history)
+- Energy consumption sensor (kWh, total_increasing)
+- WiFi signal strength sensor (connectivity monitoring)
+- Error state binary sensor (proactive alerts)
+
+**Benefits:**
+- Long-term statistics for temperature
+- Energy monitoring and tracking
+- Connectivity troubleshooting
+- Automation triggers for errors
+
+**Implementation:**
+- Create `sensor.py` platform
+- Add sensor entities for each device
+- Use appropriate device classes
+- State class: `measurement` (temp, wifi) and `total_increasing` (energy)
+
+---
+
+## v1.3: HACS Distribution 🚀
+
+**Goal:** Publish to HACS for easier installation and updates
+**Effort:** 4-6 hours
 
 **Approach:** HACS with bundled library (keep current architecture)
 - ✅ Keep API library bundled in `api/` subfolder (KISS principle)
@@ -72,70 +123,9 @@
 - Community visibility
 - Easier bug reporting
 
-**Effort:** 4-6 hours
-- HACS preparation (2 hours)
-- Testing (1 hour)
-- Documentation (1 hour)
-- Submission (1-2 hours)
-
-### Optional: Temperature Sensors (Deferred from v1.1)
-
-**Add only if users request it**
-
-**Features:**
-- `sensor.{building}_{room}_current_temperature` - Room temperature
-- `sensor.{building}_{room}_target_temperature` - Setpoint
-
-**Rationale:**
-- Already available via climate entity attributes
-- Users can create template sensors if needed
-- Only worth adding if users want easier statistics access
-
-**Effort:** 1-2 hours
-**Trigger:** User feedback after v1.1 release
-
-**Alternative (for users):**
-```yaml
-template:
-  - sensor:
-      - name: "Bedroom Temperature"
-        state: "{{ state_attr('climate.home_bedroom', 'current_temperature') }}"
-        device_class: temperature
-        state_class: measurement
-```
-
-### Optional: Energy Consumption Sensor (Deferred from v1.1)
-
-**Add only if users request it AND after simplifying algorithm**
-
-**Feature:**
-- `sensor.{building}_{room}_energy` - Cumulative kWh consumption
-
-**Why Deferred:**
-- Original design over-engineered (100+ lines of edge cases)
-- Needs simplified algorithm using HA's `total_increasing` state class
-- Unknown if users prefer this vs. smart plug monitoring
-- Requires separate 15-minute polling schedule
-
-**Simplified Approach (if implemented):**
-```python
-# Store last processed hour timestamp
-# Poll API every 15 minutes
-# Add new hours to cumulative total
-# Let HA's total_increasing handle the rest
-# ~20 lines max instead of 100+
-```
-
-**Effort:** 3-4 hours (with simplified algorithm)
-**Trigger:** User demand + simplified design approval
-
-**Alternative (for users):** Smart plugs with power monitoring
-
-**Trigger:** After v1.1 is stable and tested
-
 ---
 
-## v1.3: Library Split (Optional)
+## v1.4: Library Split (Optional)
 
 **Goal:** Split Python library to PyPI package (only if needed)
 
@@ -215,15 +205,13 @@ template:
 
 | Feature | Value | Effort | Priority | Target |
 |---------|-------|--------|----------|--------|
-| WebSocket + WiFi/Error Sensors | High | 4h | P0 | v1.1 |
-| Icon + Diagnostics | Medium | 1h | P0 | v1.1 |
-| Entity Naming Fix | Low | 15m | P0 | v1.1 |
-| HACS Distribution | High | 4-6h | P1 | v1.2 |
-| Temperature Sensors | Low | 1-2h | P2 | v1.2 (if requested) |
-| Energy Sensor (simplified) | Medium | 3-4h | P2 | v1.2 (if requested) |
+| Icon + Diagnostics | Medium | 2h | P0 | ✅ v1.1 |
+| WebSocket Investigation | High | 4-6h | P1 | v1.2 |
+| Sensor Platform | High | 4-6h | P1 | v1.2 |
+| HACS Distribution | High | 4-6h | P2 | v1.3 |
 | Options Flow | Low | 2-3h | P2 | v1.x |
 | Schedule Management | Medium | 6-8h | P2 | v1.x |
-| Library Split | Low | 8-10h | P3 | v1.3+ |
+| Library Split | Low | 8-10h | P3 | v1.4+ |
 | Translations | Low | 2-4h | P3 | v1.x |
 | Multi-Account | Low | 4-6h | P3 | v2.0 |
 | Scenes API | Low | 6-8h | P3 | v2.0 |
@@ -237,19 +225,29 @@ template:
 
 ## Release Strategy
 
-### v1.1 Release
-**Target:** After WebSocket implementation complete
+### v1.1 Release ✅ COMPLETE
+**Released:** 2025-11-17
+**Criteria Met:**
+- ✅ Icon and diagnostics working
+- ✅ Tests passing (>80% coverage)
+- ✅ Manual testing complete
+- ✅ Documentation updated
+- ✅ No critical bugs
+
+### v1.2 Release (WebSocket + Sensors)
+**Target:** After WebSocket investigation and sensor platform complete
 **Criteria:**
-- All v1.1 features working
+- WebSocket reliability confirmed
+- Sensor platform implemented
 - Tests passing (>80% coverage)
 - Manual testing complete
 - Documentation updated
 - No critical bugs
 
-### v1.2 Release (HACS)
-**Target:** 2-4 weeks after v1.1 stable
+### v1.3 Release (HACS)
+**Target:** 2-4 weeks after v1.2 stable
 **Criteria:**
-- v1.1 proven stable in production
+- v1.2 proven stable in production
 - No major bugs reported
 - HACS requirements met
 - Release workflow automated
@@ -287,15 +285,21 @@ template:
 
 ## Success Metrics
 
-**v1.1 Success:**
-- WebSocket connects reliably (>99% uptime)
-- State updates appear < 1 second
-- WiFi and error sensors working correctly
-- No memory leaks (24+ hour runs)
-- User satisfaction (controls work instantly)
-- Clean entity naming (no "heatpump_" redundancy)
+**v1.1 Success:** ✅ ACHIEVED
+- ✅ Icon shows correctly in HA UI
+- ✅ Diagnostics export works with redacted credentials
+- ✅ Entity naming is clean and modern
+- ✅ Documentation complete and accurate
+- ✅ No critical bugs reported
 
 **v1.2 Success:**
+- WebSocket connects reliably (>99% uptime)
+- State updates appear < 1 second
+- Sensor platform working (temp, energy, wifi, errors)
+- No memory leaks (24+ hour runs)
+- User satisfaction (instant updates, useful sensors)
+
+**v1.3 Success:**
 - HACS installation works first time
 - 10+ HACS installations
 - Positive community feedback

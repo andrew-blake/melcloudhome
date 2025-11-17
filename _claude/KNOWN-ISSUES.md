@@ -1,21 +1,22 @@
-# Known Issues & v1.1 Improvements
+# Known Issues & Improvements
 
-**Version:** 1.0.0
-**Status:** Production - Working with minor cosmetic issues
+**Version:** 1.1.0
+**Status:** Production - All known issues resolved!
 
 ---
 
 ## 🐛 Open Issues
 
-### #1 - Missing Integration Icon
-- **Issue:** Icon shows 404 error
-- **Impact:** Cosmetic only
-- **Fix:** Add local icon files (icon.png, logo.png)
-- **Priority:** LOW
+**None!** All issues have been resolved as of v1.1.0.
 
 ---
 
 ## ✅ Resolved Issues
+
+### #1 - Missing Integration Icon
+- **Issue:** Icon shows 404 error
+- **Solution:** ✅ Created icons.json with Material Design Icon (mdi:heat-pump)
+- **Status:** RESOLVED (2025-11-17 - v1.1.0)
 
 ### #2 & #3 - Dashboard Setup
 - **Issue:** Default entity card shows only temperature
@@ -40,15 +41,17 @@
 
 ---
 
-## 📋 v1.1 Plan
+## 📋 Version Summary
 
-**Remaining:**
-- [ ] #1 - Add integration icon (low priority, cosmetic only)
+**v1.1.0 (2025-11-17):**
+- [x] #1 - Added integration icon (icons.json) ✅
+- [x] Added diagnostics support ✅
+- [x] Updated documentation ✅
 
-**Fixed in v1.0.1:**
+**v1.0.1 (2025-11-17):**
 - [x] #4 - Remove email from title ✅
 - [x] #5 - Add attribution to device model ✅
 - [x] #2 & #3 - Dashboard documentation ✅
 - [x] #6 - Document turn_on behavior ✅
 
-**Integration is production-ready!** Only minor icon issue remains.
+**Integration is production-ready with all known issues resolved!**

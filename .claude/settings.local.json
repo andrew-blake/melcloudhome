@@ -60,7 +60,10 @@
       "Bash(make type-check:*)",
       "Bash(pre-commit run:*)",
       "Bash(python tools/deploy_custom_component.py:*)",
-      "mcp__chrome-devtools__list_console_messages"
+      "mcp__chrome-devtools__list_console_messages",
+      "WebFetch(domain:www.home-assistant.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python -m mypy:*)"
     ],
     "deny": [],
     "ask": []

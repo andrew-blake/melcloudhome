@@ -1,0 +1,13 @@
+{
+  "entity": {
+    "climate": {
+      "heatpump": {
+        "default": "mdi:heat-pump"
+      }
+    }
+  },
+  "services": {
+    "set_vane_horizontal": "mdi:arrow-left-right",
+    "set_vane_vertical": "mdi:arrow-up-down"
+  }
+}
