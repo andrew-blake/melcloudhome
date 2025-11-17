@@ -35,23 +35,28 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - ✅ Proper type annotations throughout
 - 📁 **Deliverables:** `client.py`, `tests/`, VCR cassettes
 
-### Session 4: Control APIs (2025-01-17)
+### Session 4: Control APIs + Comprehensive Testing (2025-01-17)
 - ✅ Implemented all device control methods in `client.py`
   - `set_power()`: Turn device on/off
   - `set_temperature()`: Set target temperature (10-31°C, 0.5° increments)
   - `set_mode()`: Set operation mode (Heat, Cool, Automatic, Dry, Fan)
   - `set_fan_speed()`: Set fan speed (Auto, One-Five)
   - `set_vanes()`: Control vane directions
-- ✅ Created comprehensive test suite (`test_client_control.py`)
-  - 12 passing control operation tests
-  - Tested against real Dining Room device with VCR recording
-  - Verified state changes after each control operation
+- ✅ Comprehensive test suite (82 tests total)
+  - `test_client_control.py`: 12 control operation tests with VCR
+  - `test_client_validation.py`: 46 parameter validation tests (fast, no VCR)
+  - `test_auth.py`: 20 authentication tests (17 passing, 3 skipped)
+  - All tests verified against real Dining Room device
 - ✅ Fixed API response handling
-  - Empty response handling for control endpoint (returns 200 with no body)
+  - Empty response handling for control endpoint (200 OK with no body)
   - Value normalization in models (API returns "0"-"5", client uses "Auto", "One"-"Five")
-- ✅ All 16 tests passing (12 control + 4 read)
-- ✅ All pre-commit hooks passing
-- 📁 **Deliverables:** Control methods, `test_client_control.py`, 12 VCR cassettes
+- ✅ Test infrastructure improvements
+  - Added pytest-cov for coverage reporting (82% overall)
+  - Centralized credentials in conftest.py fixtures (DRY principle)
+  - Updated Makefile: `make test`, `make test-cov` commands
+  - Updated .gitignore for test artifacts
+- ✅ Documentation: ADR-002 (authentication refresh strategy)
+- 📁 **Deliverables:** Control methods, 3 test files, 22 VCR cassettes, ADR-002
 
 ---
 
@@ -196,9 +201,14 @@ custom_components/melcloudhome/
 - Authentication (AWS Cognito OAuth)
 - Read operations (get devices, get device state)
 - Write operations (power, temperature, mode, fan speed, vanes)
-- Comprehensive testing infrastructure (16 tests, all passing)
-- VCR cassette recording/replay for fast tests
+- Comprehensive testing infrastructure
+  - 82 tests total (79 passing, 3 skipped)
+  - 82% code coverage
+  - Control tests (12) + Read tests (4) + Validation tests (46) + Auth tests (20)
+  - VCR cassette recording/replay for fast tests
+  - Centralized fixtures following DRY principle
 - Type-safe code with all checks passing
+- Development workflow tools (make test, make test-cov)
 
 ### Next Priority 🎯
 - **Home Assistant Integration** (Session 7)
