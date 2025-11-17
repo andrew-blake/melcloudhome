@@ -55,7 +55,8 @@
       "Bash(uv run pre-commit:*)",
       "Bash(make help:*)",
       "Bash(make test:*)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

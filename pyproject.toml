@@ -93,6 +93,13 @@ disallow_untyped_decorators = false
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 
+[[tool.mypy.overrides]]
+module = "tools.*"
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+
 [tool.codespell]
 skip = '*.json,*.yaml,.git'
 ignore-words-list = 'hass'

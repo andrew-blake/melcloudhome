@@ -3,26 +3,30 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
-from .const import DOMAIN
-from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
-PLATFORMS: list[Platform] = [Platform.CLIMATE]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
+    from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+
+    from .const import DOMAIN
+    from .coordinator import MELCloudHomeCoordinator
+
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
+
+    platforms: list[Platform] = [Platform.CLIMATE]
 
     # Create API client
     client = MELCloudHomeClient()
@@ -58,15 +62,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     # Forward setup to platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    from homeassistant.const import Platform
+
+    from .const import DOMAIN
+    from .coordinator import MELCloudHomeCoordinator
+
+    platforms: list[Platform] = [Platform.CLIMATE]
+
     # Unload platforms
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, platforms):
         # Close client and clean up
         coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
         await coordinator.async_shutdown()

@@ -2,11 +2,16 @@
 
 import contextlib
 import os
+import sys
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import pytest
 import pytest_asyncio
+
+# Add custom_components to path to allow direct API imports without loading HA integration
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient

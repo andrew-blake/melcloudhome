@@ -76,6 +76,11 @@ make type-check                  # Type check with mypy
 make all                         # Run all checks
 
 # Pre-commit hooks run automatically on git commit
+
+# Deployment & Testing (see tools/README.md for details)
+python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
+python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
+python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
 
 ### Critical API Details
@@ -88,12 +93,40 @@ make all                         # Run all checks
 
 See `_claude/melcloudhome-api-reference.md` for complete API details.
 
-### Testing Integration
+### Deployment & Testing
 
-Copy to Home Assistant config directory:
+**Automated Deployment Tool** (Recommended):
+
+The repository includes an automated deployment tool that handles the complete cycle:
+
 ```bash
-cp -r custom_components/melcloudhome /path/to/ha/config/custom_components/
-# Restart Home Assistant
+# Deploy to remote HA instance
+python tools/deploy_custom_component.py melcloudhome
+
+# Deploy + test via API
+python tools/deploy_custom_component.py melcloudhome --test
+
+# Deploy + watch logs
+python tools/deploy_custom_component.py melcloudhome --watch
+```
+
+The tool automatically:
+- Copies integration to remote server via SSH
+- Installs into Docker container
+- Restarts Home Assistant
+- Monitors logs for errors
+- Tests entities via API (with `--test`)
+
+**Configuration:** Set `HA_SSH_HOST`, `HA_CONTAINER`, `HA_URL`, and `HA_TOKEN` in `.env`
+
+**Full documentation:** See [tools/README.md](tools/README.md)
+
+**Manual deployment:**
+```bash
+# Copy to HA config directory
+scp -r custom_components/melcloudhome ha:/tmp/
+ssh ha "sudo docker cp /tmp/melcloudhome homeassistant:/config/custom_components/"
+ssh ha "sudo docker restart homeassistant"
 ```
 
 ## VSCode Configuration
