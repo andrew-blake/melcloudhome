@@ -6,7 +6,7 @@ from typing import Any
 import aiohttp
 
 from .auth import MELCloudHomeAuth
-from .const import BASE_URL
+from .const import BASE_URL, TEMP_MAX_HEAT, TEMP_MIN_HEAT, TEMP_STEP
 from .exceptions import ApiError, AuthenticationError
 from .models import AirToAirUnit, UserContext
 
@@ -208,12 +208,14 @@ class MELCloudHomeClient:
             ApiError: If API request fails
             ValueError: If temperature is out of range
         """
-        if not 10.0 <= temperature <= 31.0:
-            raise ValueError("Temperature must be between 10.0 and 31.0°C")
+        if not TEMP_MIN_HEAT <= temperature <= TEMP_MAX_HEAT:
+            raise ValueError(
+                f"Temperature must be between {TEMP_MIN_HEAT} and {TEMP_MAX_HEAT}°C"
+            )
 
-        # Check if temperature is in 0.5° increments
-        if (temperature * 2) % 1 != 0:
-            raise ValueError("Temperature must be in 0.5° increments")
+        # Check if temperature is in correct increments
+        if (temperature / TEMP_STEP) % 1 != 0:
+            raise ValueError(f"Temperature must be in {TEMP_STEP}° increments")
 
         payload = {
             "power": None,

@@ -9,7 +9,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.data_entry_flow import FlowResult
 
-from .api.auth import MELCloudHomeAuth
+from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
 from .const import DOMAIN
 
@@ -35,9 +35,9 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
 
             # Validate credentials by attempting login
             try:
-                auth = MELCloudHomeAuth()
-                await auth.login(email, password)
-                await auth.close()
+                client = MELCloudHomeClient()
+                await client.login(email, password)
+                await client.close()
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
             except ApiError:

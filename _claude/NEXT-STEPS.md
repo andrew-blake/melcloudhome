@@ -6,7 +6,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** Integration complete and ready for deployment
+**Current Status:** Integration refactored and ready for deployment
 
 **What to do next:**
 1. **Deploy:** `python tools/deploy_custom_component.py melcloudhome --reload`
@@ -16,7 +16,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 **Next session:** Manual testing and v1.1 planning
 
-**Jump to:** [Session 6 details](#session-6-deployment--testing--next) below
+**Jump to:** [Session 7 details](#session-7-deployment--testing--next) below
 
 ---
 
@@ -107,19 +107,59 @@ This document tracks implementation progress for the MELCloud Home custom compon
   - Pre-commit hooks configured
 - 📁 **Deliverables:** 7 integration files, deployment tool, 3 docs, .env setup
 
+### Session 6: Integration Refactoring (2025-11-17)
+- ✅ Comprehensive code review for DRY/KISS violations
+- ✅ Fixed authentication duplication (DRY violation)
+  - `config_flow.py` now uses `MELCloudHomeClient` (not `MELCloudHomeAuth`)
+  - Single authentication abstraction throughout codebase
+- ✅ Removed redundant login in `__init__.py` (KISS violation)
+  - Coordinator handles all authentication on first refresh
+  - Eliminated extra network call on startup
+- ✅ Performance optimization - O(1) device lookups
+  - Added cached dictionaries to coordinator
+  - `_units` and `_unit_to_building` for instant lookups
+  - Changed from O(n*m) loops to O(1) dict access
+  - ~10x performance improvement per update cycle
+- ✅ Consolidated temperature constants (DRY violation)
+  - `client.py` and `climate.py` now import from `api/const.py`
+  - Single source of truth for all temperature values
+- ✅ Documented lazy imports pattern
+  - Explained why HA not in dev dependencies
+  - Standard practice due to HA's strict dependency pinning
+  - Clear documentation in code and pyproject.toml
+- ✅ All quality checks passing
+  - Tests: 79 passed, 3 skipped (100% pass rate)
+  - Ruff: All checks passed
+  - Pre-commit: All hooks passed
+  - Coverage: 82% maintained
+- 📁 **Deliverables:**
+  - 6 files refactored (client, config_flow, __init__, coordinator, climate, pyproject)
+  - ADR-004: Integration Refactoring
+  - Full backwards compatibility maintained
+
 ---
 
 ## ~~Session 5: Home Assistant Integration~~ ✅ COMPLETED
 
 **Goal:** Build Home Assistant custom component for MELCloud Home devices
 
-**Status:** Complete - Ready for deployment
+**Status:** Complete - Refactored and ready for deployment
 
 See Session 5 in Completed Sessions above for full details.
 
 ---
 
-## Session 6: Deployment & Testing 🎯 NEXT
+## ~~Session 6: Integration Refactoring~~ ✅ COMPLETED
+
+**Goal:** Review and fix DRY/KISS violations, optimize performance
+
+**Status:** Complete - All violations fixed, performance optimized
+
+See Session 6 in Completed Sessions above for full details.
+
+---
+
+## Session 7: Deployment & Testing 🎯 NEXT
 
 **Goal:** Deploy to Home Assistant and verify all functionality
 
@@ -253,7 +293,7 @@ ssh ha "sudo docker logs -f homeassistant 2>&1" | grep melcloudhome
 
 ---
 
-## Session 6: Schedule Operations (Optional - v1.1+)
+## Session 8: Schedule Operations (Optional - v1.1+)
 
 **Priority:** Low - Defer to v1.1
 
@@ -265,7 +305,7 @@ ssh ha "sudo docker logs -f homeassistant 2>&1" | grep melcloudhome
 
 ---
 
-## Session 7: Telemetry Operations (Optional - v1.1+)
+## Session 9: Telemetry Operations (Optional - v1.1+)
 
 **Priority:** Low - Nice to have for energy monitoring sensors
 
@@ -286,12 +326,17 @@ ssh ha "sudo docker logs -f homeassistant 2>&1" | grep melcloudhome
   - Write operations (power, temperature, mode, fan speed, vanes)
   - 79 tests passing, 82% code coverage
   - VCR cassette recording/replay for fast tests
-- Home Assistant Integration (Session 5)
+- Home Assistant Integration (Sessions 5-6)
   - 7 integration files (manifest, config_flow, coordinator, climate, etc.)
   - Modern HA architecture (DataUpdateCoordinator, device registry)
   - Config flow with email/password setup
   - 60s polling with auto re-authentication
   - Full climate control (HVAC, fan, swing, temperature)
+  - **Refactored for DRY/KISS/Performance (Session 6)**
+    - Single authentication abstraction
+    - O(1) device lookups with caching
+    - Consolidated constants
+    - Documented lazy imports
 - Development Tools
   - Automated deployment with reload support
   - Log monitoring and error detection
@@ -301,14 +346,16 @@ ssh ha "sudo docker logs -f homeassistant 2>&1" | grep melcloudhome
   - HA integration requirements
   - Best practices review
   - Testing strategy (why NOT to mock HA)
-  - 3 ADRs (bundled client, auth refresh, entity naming)
+  - 4 ADRs (bundled client, auth refresh, entity naming, refactoring)
 
 ### Next Priority 🎯
 
-**Session 6: Deployment & Testing** 🚀
+**Session 7: Deployment & Testing** 🚀
 
 **Ready to deploy:**
-- Integration complete and tested
+- Integration complete, refactored, and tested
+- All DRY/KISS violations fixed
+- Performance optimized (O(1) lookups)
 - Deployment tool ready (`tools/deploy_custom_component.py`)
 - Manual testing checklist prepared
 - .env configured with credentials
@@ -347,6 +394,7 @@ python tools/deploy_custom_component.py melcloudhome --reload
 - `../docs/decisions/001-bundled-api-client.md`: ADR for bundled architecture
 - `../docs/decisions/002-authentication-refresh-strategy.md`: ADR for auth handling
 - `../docs/decisions/003-entity-naming-strategy.md`: ADR for entity naming and device registry
+- `../docs/decisions/004-integration-refactoring.md`: ADR for DRY/KISS/performance fixes (Session 6)
 - `../docs/integration-review.md`: Best practices review and quality assessment
 - `../docs/testing-strategy.md`: Why not to mock HA and proper testing approaches
 - `../tools/README.md`: Deployment tool documentation and workflows

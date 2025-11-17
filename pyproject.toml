@@ -106,6 +106,10 @@ ignore-words-list = 'hass'
 
 [dependency-groups]
 dev = [
+    # NOTE: homeassistant NOT included as dev dependency due to strict
+    # dependency pinning that conflicts with our aiohttp version.
+    # Integration files use lazy imports to allow testing API client independently.
+    # Integration testing happens via deployment to actual HA instance.
     "mypy>=1.18.2",
     "pre-commit>=4.4.0",
     "pytest-recording>=0.13.4",

@@ -16,6 +16,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api.const import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
 from .api.models import AirToAirUnit, Building
 from .const import (
     DOMAIN,
@@ -51,8 +52,8 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
     _attr_has_entity_name = True
     _attr_name = None  # Use device name
     _attr_temperature_unit = "°C"
-    _attr_target_temperature_step = 0.5
-    _attr_max_temp = 31.0
+    _attr_target_temperature_step = TEMP_STEP
+    _attr_max_temp = TEMP_MAX_HEAT
 
     def __init__(
         self,
@@ -96,20 +97,12 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
 
     @property
     def _device(self) -> AirToAirUnit | None:
-        """Get the current device from coordinator data."""
-        if not self.coordinator.data:
-            return None
-
-        for building in self.coordinator.data.buildings:
-            for unit in building.air_to_air_units:
-                if unit.id == self._unit_id:
-                    return unit  # type: ignore[no-any-return]
-
-        return None
+        """Get the current device from coordinator data - O(1) cached lookup."""
+        return self.coordinator.get_unit(self._unit_id)  # type: ignore[no-any-return]
 
     @property
     def _building(self) -> Building | None:
-        """Get the current building from coordinator data."""
+        """Get the current building from coordinator data - O(1) cached lookup."""
         return self.coordinator.get_building_for_unit(self._unit_id)  # type: ignore[no-any-return]
 
     @property
@@ -161,10 +154,10 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
     @property
     def min_temp(self) -> float:
         """Return the minimum temperature."""
-        # Heat mode allows 10°C minimum, others require 16°C
+        # Heat mode allows lower minimum than other modes
         if self.hvac_mode == HVACMode.HEAT:
-            return 10.0
-        return 16.0
+            return TEMP_MIN_HEAT
+        return TEMP_MIN_COOL_DRY
 
     @property
     def supported_features(self) -> ClimateEntityFeature:

@@ -1,4 +1,10 @@
-"""The MELCloud Home integration."""
+"""The MELCloud Home integration.
+
+NOTE: This module uses lazy imports (imports inside functions) for Home Assistant
+modules to allow testing the API client independently. Home Assistant has strict
+dependency pinning that conflicts with our aiohttp version, so HA is not installed
+in the dev environment. Integration testing happens via deployment to actual HA.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +16,13 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .api.client import MELCloudHomeClient
-from .api.exceptions import ApiError, AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
+    # Lazy imports - see module docstring for explanation
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
     from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
@@ -28,29 +34,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     platforms: list[Platform] = [Platform.CLIMATE]
 
-    # Create API client
+    # Create API client and coordinator
+    # Note: Coordinator will handle authentication on first refresh
     client = MELCloudHomeClient()
-
-    # Attempt initial login
-    try:
-        await client.login(email, password)
-    except AuthenticationError as err:
-        _LOGGER.error("Authentication failed for %s: %s", email, err)
-        raise ConfigEntryAuthFailed(
-            "Invalid credentials. Please reconfigure the integration."
-        ) from err
-    except ApiError as err:
-        _LOGGER.error("Failed to connect to MELCloud Home: %s", err)
-        raise ConfigEntryNotReady(
-            "Unable to connect to MELCloud Home. Please try again later."
-        ) from err
-
-    # Create coordinator
     coordinator = MELCloudHomeCoordinator(hass, client, email, password)
 
-    # Fetch initial data
+    # Fetch initial data (coordinator handles login automatically)
     try:
         await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryAuthFailed:
+        # Re-raise auth failures for HA to handle
+        await client.close()
+        raise
     except Exception as err:
         await client.close()
         raise ConfigEntryNotReady(
@@ -69,6 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    # Lazy imports - see module docstring for explanation
     from homeassistant.const import Platform
 
     from .const import DOMAIN
