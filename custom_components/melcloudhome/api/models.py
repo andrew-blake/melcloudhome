@@ -179,11 +179,11 @@ class AirToAirUnit:
             # Otherwise map from numeric string
             return fan_speed_map.get(value, value)
 
-        # Helper to normalize vane direction (API may return numeric, we use word strings)
-        def normalize_vane_direction(value: str | None) -> str | None:
+        # Helper to normalize vertical vane direction (API returns numeric strings)
+        def normalize_vertical_vane(value: str | None) -> str | None:
             if value is None:
                 return None
-            # Map numeric strings to word strings for vertical vanes
+            # Map numeric strings to word strings
             vane_map = {
                 "0": "Auto",
                 "7": "Swing",
@@ -199,6 +199,34 @@ class AirToAirUnit:
             # Otherwise map from numeric string
             return vane_map.get(value, value)
 
+        # Helper to normalize horizontal vane direction
+        # API uses British-spelled named positions
+        def normalize_horizontal_vane(value: str | None) -> str | None:
+            if value is None:
+                return None
+            # Official API format (British spelling) - these are correct
+            valid_positions = {
+                "Auto",
+                "Swing",
+                "Left",
+                "LeftCentre",
+                "Centre",
+                "RightCentre",
+                "Right",
+            }
+            if value in valid_positions:
+                return value
+            # Handle American spelling variants
+            american_to_british = {
+                "CenterLeft": "LeftCentre",
+                "Center": "Centre",
+                "CenterRight": "RightCentre",
+            }
+            if value in american_to_british:
+                return american_to_british[value]
+            # Return as-is (unknown value)
+            return value
+
         return cls(
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
@@ -207,10 +235,10 @@ class AirToAirUnit:
             set_temperature=parse_float(settings.get("SetTemperature")),
             room_temperature=parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),
-            vane_vertical_direction=normalize_vane_direction(
+            vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
             ),
-            vane_horizontal_direction=normalize_vane_direction(
+            vane_horizontal_direction=normalize_horizontal_vane(
                 settings.get("VaneHorizontalDirection")
             ),
             in_standby_mode=parse_bool(settings.get("InStandbyMode")),

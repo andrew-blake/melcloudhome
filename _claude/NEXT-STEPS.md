@@ -8,7 +8,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.2.0 IN PROGRESS (Sensor + Binary Sensor platforms deployed) | 🟡 Continue with v1.2
+**Current Status:** ✅ v1.2.0 COMPLETE (All platforms + enhanced features deployed) | 🎉 Ready for HACS
 
 ### What's Working
 
@@ -19,6 +19,8 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ Voice assistant commands working
 - ✅ **NEW: Sensor platform with room temperature sensors**
 - ✅ **NEW: Binary sensor platform (error state + connection monitoring)**
+- ✅ **NEW: HVAC action property (heating/cooling/idle/off feedback)**
+- ✅ **NEW: Horizontal swing mode support (independent vane control)**
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
 - ✅ Stable entity IDs based on unit UUIDs
@@ -34,20 +36,23 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ Binary sensor platform implemented (Session 11b)
 - ✅ Error state sensors deployed (2 entities)
 - ✅ Connection state sensors deployed (2 entities)
-- ⏸️ Enhanced climate features (pending - Session 11c)
-- ⏸️ HACS distribution (deferred to v1.3)
+- ✅ Enhanced climate features (Session 11c)
+- ✅ HVAC action property (heating/cooling/idle/off)
+- ✅ Horizontal swing mode support
+- ⏸️ HACS distribution (deferred - needs separate repository)
 
 ### What to do next
 
-1. **Session 11c:** Enhanced climate features (HVAC action, horizontal swing)
-2. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
-3. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
+1. **v1.2.0 Complete!** All planned features implemented and deployed
+2. **Next:** HACS distribution (requires separate repository setup - see ROADMAP.md)
+3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
+4. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 
 ### Next session
 
-**Session 11c:** Enhanced Climate Features (3-4 hours)
+**Session 12:** HACS Distribution Setup (7-9 hours)
 
-**Jump to:** [Session 11c details](#session-11c-enhanced-climate-features-🔮-future) below
+**Jump to:** [HACS details in ROADMAP.md](#) - Create separate repository and prepare for distribution
 
 ### Reference Documents
 
@@ -226,21 +231,49 @@ features = (
 
 ---
 
-## Session 11c: Enhanced Climate Features 🔮 FUTURE
+## Session 11c: Enhanced Climate Features ✅ COMPLETE
 
 **Goal:** Add HVAC action and horizontal swing mode support
 
-**Status:** Planned
-**Timeline:** 3-4 hours
+**Status:** Complete (2025-11-18)
+**Timeline:** 3 hours (actual)
 **Priority:** MEDIUM
 
-### Planned Features
+### Implemented Features
 
-- HVAC action property (heating/cooling/idle/off)
-- Horizontal swing mode support
-- Inferred from temperature difference and operation mode
+- ✅ HVAC action property (heating/cooling/idle/off/drying/fan)
+- ✅ Horizontal swing mode support (independent from vertical)
+- ✅ Temperature-based action inference with 0.5°C hysteresis
+- ✅ HA 2024.12+ SWING_HORIZONTAL_MODE feature support
 
-**See ROADMAP.md for complete details**
+### Implementation Complete
+
+1. ✅ Added `hvac_action` property with intelligent inference
+2. ✅ Implemented horizontal swing properties (`swing_horizontal_mode`, `swing_horizontal_modes`)
+3. ✅ Added `async_set_swing_horizontal_mode()` method
+4. ✅ Added `ClimateEntityFeature.SWING_HORIZONTAL_MODE` flag
+5. ✅ Updated `const.py` with horizontal vane positions
+6. ✅ Deployed and tested successfully
+
+### Deliverables
+
+- Updated: `custom_components/melcloudhome/climate.py` (+90 lines)
+- Updated: `custom_components/melcloudhome/const.py` (added horizontal positions)
+- HVAC action shows real-time heating/cooling/idle status
+- Horizontal swing independently controllable from vertical
+
+### Success Criteria
+
+- ✅ HVAC action property works correctly
+- ✅ Temperature-based inference with hysteresis prevents flapping
+- ✅ Horizontal swing modes available (7 positions)
+- ✅ No errors in Home Assistant logs
+- ✅ Code quality checks passed (ruff)
+- ✅ Integration loaded and entities active
+
+**Completed:** Session 11c Enhanced Climate Features (2025-11-18)
+
+**Next:** Session 12 - HACS Distribution (separate repository required)
 
 ---
 

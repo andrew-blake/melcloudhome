@@ -76,7 +76,9 @@
       "Bash(. .env)",
       "Bash(python3:*)",
       "Bash(if [ -f \".env\" ])",
-      "Bash(then source .env)"
+      "Bash(then source .env)",
+      "Bash(MELCLOUD_EMAIL=\"$MELCLOUD_USER\" uv run python tools/test_vane_positions.py)",
+      "Bash(MELCLOUD_EMAIL=\"$MELCLOUD_USER\" uv run python:*)"
     ],
     "deny": [],
     "ask": []

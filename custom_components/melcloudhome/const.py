@@ -30,5 +30,16 @@ HA_TO_MELCLOUD_MODE = {
 # Fan speed mappings
 FAN_SPEEDS = ["Auto", "One", "Two", "Three", "Four", "Five"]
 
-# Vane position mappings
+# Vane position mappings (vertical)
 VANE_POSITIONS = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
+
+# Horizontal vane position mappings (API uses British spelling)
+VANE_HORIZONTAL_POSITIONS = [
+    "Auto",
+    "Swing",
+    "Left",
+    "LeftCentre",
+    "Centre",
+    "RightCentre",
+    "Right",
+]

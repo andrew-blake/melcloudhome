@@ -312,8 +312,8 @@ class MELCloudHomeClient:
             unit_id: Device ID (UUID)
             vertical: Vertical direction - "Auto", "Swing", "One", "Two", "Three",
                       "Four", or "Five"
-            horizontal: Horizontal direction - "Auto", "Swing", "Left", "CenterLeft",
-                        "Center", "CenterRight", or "Right"
+            horizontal: Horizontal direction - "Auto", "Swing", "Left", "LeftCentre",
+                        "Centre", "RightCentre", or "Right" (British spelling)
 
         Raises:
             AuthenticationError: If not authenticated
@@ -321,13 +321,14 @@ class MELCloudHomeClient:
             ValueError: If vertical or horizontal is invalid
         """
         valid_vertical = {"Auto", "Swing", "One", "Two", "Three", "Four", "Five"}
+        # Horizontal uses British-spelled named positions (official API format)
         valid_horizontal = {
             "Auto",
             "Swing",
             "Left",
-            "CenterLeft",
-            "Center",
-            "CenterRight",
+            "LeftCentre",
+            "Centre",
+            "RightCentre",
             "Right",
         }
 
@@ -343,12 +344,29 @@ class MELCloudHomeClient:
                 f"Must be one of {valid_horizontal}"
             )
 
+        # Denormalize VERTICAL vane direction: convert word strings back to numeric
+        # strings that the API expects (API returns "0", "1", etc. which we normalize
+        # to "Auto", "One", etc. for HA, but need to convert back when sending)
+        vertical_to_numeric = {
+            "Auto": "0",
+            "Swing": "7",
+            "One": "1",
+            "Two": "2",
+            "Three": "3",
+            "Four": "4",
+            "Five": "5",
+        }
+
+        vertical_numeric = vertical_to_numeric.get(vertical, vertical)
+        # Horizontal uses named strings (British spelling) - send as-is
+        horizontal_string = horizontal
+
         payload = {
             "power": None,
             "operationMode": None,
             "setFanSpeed": None,
-            "vaneHorizontalDirection": horizontal,
-            "vaneVerticalDirection": vertical,
+            "vaneHorizontalDirection": horizontal_string,
+            "vaneVerticalDirection": vertical_numeric,
             "setTemperature": None,
             "temperatureIncrementOverride": None,
             "inStandbyMode": None,

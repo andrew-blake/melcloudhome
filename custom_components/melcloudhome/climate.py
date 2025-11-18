@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -23,6 +24,7 @@ from .const import (
     FAN_SPEEDS,
     HA_TO_MELCLOUD_MODE,
     MELCLOUD_TO_HA_MODE,
+    VANE_HORIZONTAL_POSITIONS,
     VANE_POSITIONS,
 )
 from .coordinator import MELCloudHomeCoordinator
@@ -134,6 +136,70 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         return MELCLOUD_TO_HA_MODE.get(device.operation_mode, HVACMode.AUTO)
 
     @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current HVAC action (what device is actually doing).
+
+        This is inferred from the operation mode and temperature difference.
+        Uses hysteresis (±0.5°C) to avoid state flapping.
+
+        Note: This is polling-based with 60s updates, so may not reflect
+        real-time device behavior. Will improve with WebSocket in v1.3.
+        """
+        device = self._device
+        if device is None:
+            return None
+
+        # If powered off, return OFF
+        if not device.power:
+            return HVACAction.OFF
+
+        # Get current and target temperatures
+        current_temp = device.room_temperature
+        target_temp = device.set_temperature
+
+        # If we don't have temperature data, can't infer action reliably
+        if current_temp is None or target_temp is None:
+            # Return best guess based on mode
+            if device.operation_mode == "Dry":
+                return HVACAction.DRYING
+            if device.operation_mode == "Fan":
+                return HVACAction.FAN
+            return HVACAction.IDLE
+
+        # Hysteresis threshold to avoid flapping
+        threshold = 0.5
+
+        # Determine action based on mode and temperature difference
+        if device.operation_mode == "Heat":
+            # Heating mode: if current is below target (with hysteresis), we're heating
+            if current_temp < target_temp - threshold:
+                return HVACAction.HEATING
+            return HVACAction.IDLE
+
+        if device.operation_mode == "Cool":
+            # Cooling mode: if current is above target (with hysteresis), we're cooling
+            if current_temp > target_temp + threshold:
+                return HVACAction.COOLING
+            return HVACAction.IDLE
+
+        if device.operation_mode == "Automatic":
+            # Auto mode: infer based on which direction we need to go
+            if current_temp < target_temp - threshold:
+                return HVACAction.HEATING
+            if current_temp > target_temp + threshold:
+                return HVACAction.COOLING
+            return HVACAction.IDLE
+
+        if device.operation_mode == "Dry":
+            return HVACAction.DRYING
+
+        if device.operation_mode == "Fan":
+            return HVACAction.FAN
+
+        # Default fallback
+        return HVACAction.IDLE
+
+    @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
         device = self._device
@@ -156,6 +222,17 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         """Return the current swing mode (vertical vane position)."""
         device = self._device
         return device.vane_vertical_direction if device else None
+
+    @property
+    def swing_horizontal_modes(self) -> list[str]:
+        """Return the list of available horizontal swing modes."""
+        return VANE_HORIZONTAL_POSITIONS
+
+    @property
+    def swing_horizontal_mode(self) -> str | None:
+        """Return the current horizontal swing mode (horizontal vane position)."""
+        device = self._device
+        return device.vane_horizontal_direction if device else None
 
     @property
     def min_temp(self) -> float:
@@ -187,6 +264,7 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
                 features |= ClimateEntityFeature.FAN_MODE
             if device.capabilities.has_swing or device.capabilities.has_air_direction:
                 features |= ClimateEntityFeature.SWING_MODE
+                features |= ClimateEntityFeature.SWING_HORIZONTAL_MODE
 
         return features
 
@@ -238,16 +316,39 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         await self.coordinator.async_request_refresh()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
-        """Set new swing mode."""
+        """Set new swing mode (vertical vane position)."""
         if swing_mode not in self.swing_modes:
             _LOGGER.warning("Invalid swing mode: %s", swing_mode)
             return
 
         # Get current horizontal vane position from device, default to "Auto"
+        # Handle legacy values (Left, Right, etc.) by defaulting to Auto
         device = self._device
         horizontal = device.vane_horizontal_direction if device else "Auto"
+        if horizontal not in self.swing_horizontal_modes:
+            _LOGGER.debug(
+                "Legacy horizontal position %s, defaulting to Auto", horizontal
+            )
+            horizontal = "Auto"
 
         await self.coordinator.client.set_vanes(self._unit_id, swing_mode, horizontal)
+
+        # Request data refresh
+        await self.coordinator.async_request_refresh()
+
+    async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
+        """Set new horizontal swing mode (horizontal vane position)."""
+        if swing_horizontal_mode not in self.swing_horizontal_modes:
+            _LOGGER.warning("Invalid horizontal swing mode: %s", swing_horizontal_mode)
+            return
+
+        # Get current vertical vane position from device, default to "Auto"
+        device = self._device
+        vertical = device.vane_vertical_direction if device else "Auto"
+
+        await self.coordinator.client.set_vanes(
+            self._unit_id, vertical, swing_horizontal_mode
+        )
 
         # Request data refresh
         await self.coordinator.async_request_refresh()
