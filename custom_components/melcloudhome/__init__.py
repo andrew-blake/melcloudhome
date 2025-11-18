@@ -32,7 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
 
-    platforms: list[Platform] = [Platform.CLIMATE]
+    platforms: list[Platform] = [Platform.CLIMATE, Platform.SENSOR]
 
     # Create API client and coordinator
     # Note: Coordinator will handle authentication on first refresh
@@ -70,7 +70,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .const import DOMAIN
     from .coordinator import MELCloudHomeCoordinator
 
-    platforms: list[Platform] = [Platform.CLIMATE]
+    platforms: list[Platform] = [Platform.CLIMATE, Platform.SENSOR]
 
     # Unload platforms
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, platforms):

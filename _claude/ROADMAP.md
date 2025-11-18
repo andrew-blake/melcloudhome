@@ -148,10 +148,10 @@ features = (
 - `docs/decisions/006-entity-description-pattern.md` - Sensor pattern decision
 - `docs/decisions/007-defer-websocket-implementation.md` - WebSocket deferral decision
 
-### Sensor Platform (Entity Description Pattern)
+### Sensor Platform (Entity Description Pattern) ✅ COMPLETE
 
-**Status:** New feature for v1.2
-**Effort:** 4-6 hours
+**Status:** Completed (Session 11a - 2025-11-18)
+**Effort:** 4 hours (actual)
 **Pattern:** Entity Description with lambda value extraction (ADR-006)
 
 **Implementation Plan:**
@@ -196,9 +196,22 @@ SENSOR_TYPES = (
 - Type-safe with dataclasses
 - Easy to add new sensors (just add to tuple)
 
-**Files to Create:**
-- `custom_components/melcloudhome/sensor.py`
-- `custom_components/melcloudhome/translations/en.json` (sensor keys)
+**Files Created:** ✅
+- `custom_components/melcloudhome/sensor.py` - 5.5KB, 165 lines
+- Updated: `__init__.py` (added Platform.SENSOR)
+- Updated: `manifest.json` (v1.2.0)
+
+**Implemented Sensors:**
+- ✅ Room Temperature (2 entities created)
+- ✅ Energy Consumed (placeholder, auto-enables when API provides data)
+- ⏸️ WiFi Signal (deferred - API doesn't provide data yet)
+
+**Deployment:**
+- ✅ Deployed to production (2025-11-18)
+- ✅ 2 temperature sensor entities active
+- ✅ No errors, properly linked to devices
+
+---
 
 ### Binary Sensor Platform (Error States)
 

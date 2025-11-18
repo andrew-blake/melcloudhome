@@ -8,7 +8,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.1.3 DEPLOYED | 🟢 Ready for v1.2 Planning
+**Current Status:** ✅ v1.2.0 IN PROGRESS (Sensor platform deployed) | 🟡 Continue with v1.2
 
 ### What's Working
 
@@ -17,6 +17,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ HVAC controls working (power, temp, mode, fan, swing)
 - ✅ TURN_ON/TURN_OFF support (HA 2025.1+ compliant)
 - ✅ Voice assistant commands working
+- ✅ **NEW: Sensor platform with room temperature sensors**
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
 - ✅ Stable entity IDs based on unit UUIDs
@@ -24,25 +25,28 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ Custom integration icon
 - ✅ Comprehensive documentation
 
-### ✅ v1.1.3 Complete
+### ✅ v1.2.0 Progress (Session 11a)
 
-- ✅ TURN_ON/TURN_OFF feature flags added (Session 10)
-- ✅ Voice commands ("turn on the AC") working
-- ✅ HA 2025.1+ compliance achieved
-- ✅ Zero breaking changes
+- ✅ Sensor platform implemented (Session 11a)
+- ✅ Room temperature sensors deployed (2 entities)
+- ✅ Energy sensor placeholder (future-ready)
+- ⏸️ Binary sensor platform (pending - Session 11b)
+- ⏸️ Enhanced climate features (pending - Session 11c)
+- ⏸️ HACS distribution (deferred to v1.3)
 
 ### What to do next
 
-1. **Development:** Plan v1.2 features (Sensors + HACS)
-2. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
-3. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
-4. **Monitor:** Integration → MELCloud Home → Logs
+1. **Session 11b:** Binary sensor platform (error states, connection)
+2. **Session 11c:** Enhanced climate features (HVAC action, horizontal swing)
+3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
+4. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 
 ### Next session
 
-v1.2 Planning and implementation (Session 11)
+**Session 11b:** Binary Sensor Platform (2 hours) OR
+**Session 11c:** Enhanced Climate Features (3-4 hours)
 
-**Jump to:** [Session 11 details](#session-11-v12-implementation-future) below
+**Jump to:** [Session 11b details](#session-11b-binary-sensor-platform-next) below
 
 ### Reference Documents
 
@@ -147,37 +151,71 @@ features = (
 
 ---
 
-## Session 11: v1.2 Implementation (Future)
+## Session 11a: Sensor Platform ✅ COMPLETE
 
-**Goal:** Add sensor platform, HACS support, and enhanced climate features
+**Goal:** Implement sensor platform with entity description pattern
 
-**Status:** Planned
-**Timeline:** TBD (see ROADMAP.md)
-**Priority:** Medium
+**Status:** Complete (2025-11-18)
+**Timeline:** 4 hours
+**Priority:** HIGH
+
+### Implementation Complete
+
+- ✅ Created `sensor.py` with modern entity description pattern (ADR-006)
+- ✅ Implemented room temperature sensor (2 entities created)
+- ✅ Added energy consumption placeholder (future-ready)
+- ✅ Updated `__init__.py` to register sensor platform
+- ✅ Updated manifest.json to v1.2.0
+- ✅ Deployed to production
+- ✅ No errors, properly linked to devices
+
+### Deliverables
+
+- New file: `custom_components/melcloudhome/sensor.py` (5.5KB)
+- Updated: `__init__.py`, `manifest.json`
+- 2 sensor entities: `sensor.melcloud_0efc_76db_room_temperature`, `sensor.melcloud_bf8d_5119_room_temperature`
+
+---
+
+## Session 11b: Binary Sensor Platform 🎯 NEXT
+
+**Goal:** Add binary sensors for error states and connection monitoring
+
+**Status:** Ready to implement
+**Timeline:** 2 hours
+**Priority:** MEDIUM
 
 ### Planned Features
 
-#### Sensor Platform
+- Error state binary sensor (device_class: PROBLEM)
+- Connection state binary sensor (device_class: CONNECTIVITY)
+- Entity description pattern (same as sensor.py)
 
-- Energy consumption monitoring
-- Current temperature sensors
-- HVAC action sensor (heating/cooling/idle)
-- Wi-Fi signal strength
+### Implementation Tasks
 
-#### HACS Distribution
+1. Create `binary_sensor.py` with entity descriptions
+2. Implement error state sensor (`unit.is_in_error`)
+3. Implement connection state sensor (coordinator status)
+4. Update `__init__.py` to add Platform.BINARY_SENSOR
+5. Deploy and test
 
-- Create separate repository for HACS
-- Add HACS metadata (hacs.json)
-- Set up release workflow
-- Submit to HACS default repository
+---
 
-#### Enhanced Climate Features
+## Session 11c: Enhanced Climate Features 🔮 FUTURE
 
+**Goal:** Add HVAC action and horizontal swing mode support
+
+**Status:** Planned
+**Timeline:** 3-4 hours
+**Priority:** MEDIUM
+
+### Planned Features
+
+- HVAC action property (heating/cooling/idle/off)
 - Horizontal swing mode support
-- HVAC action reporting
-- Preset modes (Eco, Boost, Sleep)
+- Inferred from temperature difference and operation mode
 
-**See ROADMAP.md for complete v1.2 planning**
+**See ROADMAP.md for complete details**
 
 ---
 

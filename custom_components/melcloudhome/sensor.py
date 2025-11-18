@@ -1,0 +1,157 @@
+"""Sensor platform for MELCloud Home integration."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfEnergy, UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .api.models import AirToAirUnit, Building
+from .const import DOMAIN
+from .coordinator import MELCloudHomeCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
+    """Sensor entity description with value extraction."""
+
+    value_fn: Callable[[AirToAirUnit], float | str | None]
+    """Function to extract sensor value from unit data."""
+
+    available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
+    """Function to determine if sensor is available."""
+
+
+SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
+    # Room temperature - for statistics and history
+    # Climate entity has this as an attribute, but separate sensor enables long-term statistics
+    MELCloudHomeSensorEntityDescription(
+        key="room_temperature",
+        translation_key="room_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.room_temperature,
+        available_fn=lambda unit: unit.room_temperature is not None,
+    ),
+    # Energy consumption - future sensor if API provides data
+    # Will only be created if the device has energy monitoring capability
+    MELCloudHomeSensorEntityDescription(
+        key="energy_consumed",
+        translation_key="energy_consumed",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda unit: (
+            unit.energy_consumed if hasattr(unit, "energy_consumed") else None
+        ),
+        available_fn=lambda unit: (
+            hasattr(unit, "energy_consumed") and unit.energy_consumed is not None
+        ),
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up MELCloud Home sensor entities."""
+    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    entities: list[MELCloudHomeSensor] = []
+    for building in coordinator.data.buildings:
+        for unit in building.air_to_air_units:
+            for description in SENSOR_TYPES:
+                # Only create sensor if data is available
+                if description.available_fn(unit):
+                    entities.append(
+                        MELCloudHomeSensor(
+                            coordinator, unit, building, entry, description
+                        )
+                    )
+
+    if entities:
+        _LOGGER.debug(
+            "Setting up %d sensor entities for %d units",
+            len(entities),
+            len([u for b in coordinator.data.buildings for u in b.air_to_air_units]),
+        )
+
+    async_add_entities(entities)
+
+
+class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
+    """Representation of a MELCloud Home sensor."""
+
+    entity_description: MELCloudHomeSensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: MELCloudHomeCoordinator,
+        unit: AirToAirUnit,
+        building: Building,
+        entry: ConfigEntry,
+        description: MELCloudHomeSensorEntityDescription,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._unit_id = unit.id
+        self._building_id = building.id
+        self._entry = entry
+
+        # Unique ID: unit_id + sensor key
+        self._attr_unique_id = f"{unit.id}_{description.key}"
+
+        # Generate stable entity ID from unit ID
+        # Format: sensor.melcloud_0efc_76db_room_temperature
+        unit_id_clean = unit.id.replace("-", "")
+        key_clean = description.key
+
+        # Entity name (HA will normalize this to entity_id)
+        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+
+        # Link to device (same device as climate entity)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, unit.id)},
+        }
+
+    @property
+    def native_value(self) -> float | str | None:
+        """Return the sensor value."""
+        unit = self.coordinator.get_unit(self._unit_id)
+        if unit is None:
+            return None
+        return self.entity_description.value_fn(unit)
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
+
+        unit = self.coordinator.get_unit(self._unit_id)
+        if unit is None:
+            return False
+
+        # Check if device is in error state
+        if unit.is_in_error:
+            return False
+
+        return self.entity_description.available_fn(unit)
