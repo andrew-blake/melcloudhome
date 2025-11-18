@@ -226,14 +226,50 @@ For current work and next steps, see [NEXT-STEPS.md](NEXT-STEPS.md).
 
 ---
 
+## Session 10: v1.1.3 Compliance Hotfix (2025-11-18)
+- ✅ **Critical Fix:** Added TURN_ON/TURN_OFF support for HA 2025.1+ compliance
+- ✅ Implemented `async_turn_on()` method in climate.py
+  - Calls `coordinator.client.set_power(unit_id, True)`
+  - Triggers automatic state refresh
+  - Device resumes previous mode/temperature settings
+- ✅ Implemented `async_turn_off()` method in climate.py
+  - Calls `coordinator.client.set_power(unit_id, False)`
+  - Triggers automatic state refresh
+  - Preserves settings for next turn_on
+- ✅ Added ClimateEntityFeature.TURN_ON and TURN_OFF flags
+  - Updated `supported_features` property
+  - Flags now properly exposed (verified: 425 = 256 + 128 + 32 + 8 + 1)
+  - Enables voice assistant commands ("turn on the AC")
+  - Enables automation service calls (climate.turn_on/turn_off)
+- ✅ Code quality checks passed
+  - Ruff format: Clean
+  - Ruff lint: All checks passed
+  - Mypy: No new type errors
+- ✅ Deployed to production successfully
+  - Used deployment tool with --reload flag
+  - Integration restarted without errors
+  - Entity feature flags verified via API
+- ✅ Testing completed
+  - Feature flags confirmed present (TURN_ON=256, TURN_OFF=128)
+  - Turn off functionality verified working
+  - No breaking changes or regressions
+- 📁 **Deliverables:**
+  - v1.1.3 deployed to production
+  - Updated: `custom_components/melcloudhome/climate.py`
+  - Created: `tools/test_turn_on_off.sh` (verification script)
+  - HA 2025.1+ compliance achieved
+  - Zero breaking changes
+
+---
+
 ## Summary Statistics
 
-- **Total Sessions:** 9 completed
+- **Total Sessions:** 10 completed
 - **Timeline:** November 2025 - November 2025
 - **Test Coverage:** 82%
 - **Tests Passing:** 79/82 (96%)
 - **Code Quality:** All pre-commit hooks passing
-- **Current Version:** v1.1.2 (deployed)
+- **Current Version:** v1.1.3 (deployed)
 - **Architecture Decisions:** 7 ADRs documented
 
 ## Key Achievements

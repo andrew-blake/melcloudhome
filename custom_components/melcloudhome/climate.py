@@ -168,7 +168,11 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
     @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
-        features = ClimateEntityFeature.TARGET_TEMPERATURE
+        features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
+        )
 
         device = self._device
         if device is None:
@@ -246,4 +250,14 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         await self.coordinator.client.set_vanes(self._unit_id, swing_mode, horizontal)
 
         # Request data refresh
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_on(self) -> None:
+        """Turn the entity on."""
+        await self.coordinator.client.set_power(self._unit_id, True)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self) -> None:
+        """Turn the entity off."""
+        await self.coordinator.client.set_power(self._unit_id, False)
         await self.coordinator.async_request_refresh()
