@@ -212,6 +212,81 @@ See also:
 
 Test MELCloud Home authentication (for API client development).
 
+### `list_entities.sh`
+
+List and inspect MELCloud Home entities via Home Assistant API. Useful for debugging and monitoring integration status.
+
+**Usage:**
+
+```bash
+# List all MELCloud entities
+./tools/list_entities.sh
+
+# List only sensors
+./tools/list_entities.sh sensor
+
+# List only climate entities
+./tools/list_entities.sh climate
+
+# List only binary sensors
+./tools/list_entities.sh binary_sensor
+```
+
+**Example output:**
+
+```
+🔍 Fetching MELCloud entities from Home Assistant...
+
+═══ CLIMATE Platform (1 entities) ═══
+
+climate.melcloud_0efc_76db
+  ✓ State: heat
+
+═══ SENSOR Platform (2 entities) ═══
+
+sensor.melcloud_0efc_76db_room_temperature
+  ✓ State: 19.0
+
+sensor.melcloud_bf8d_5119_room_temperature
+  ✓ State: 17.5
+
+═══ Summary ═══
+Total MELCloud entities: 3
+```
+
+### `test_turn_on_off.sh`
+
+Test TURN_ON/TURN_OFF feature flags and functionality for climate entities. Verifies HA 2025.1+ compliance.
+
+**Usage:**
+
+```bash
+./tools/test_turn_on_off.sh
+```
+
+**What it tests:**
+
+- Feature flags presence (TURN_ON=256, TURN_OFF=128)
+- `climate.turn_off` service call
+- `climate.turn_on` service call
+- Entity state changes
+
+**Example output:**
+
+```
+🔍 Finding MELCloud climate entities...
+✅ Found entities:
+climate.melcloud_0efc_76db
+
+Testing climate.melcloud_0efc_76db...
+  Supported Features: 425
+  ✅ TURN_ON and TURN_OFF features are supported
+  Testing climate.turn_off...
+  ✅ Successfully turned off
+  Testing climate.turn_on...
+  ✅ Successfully turned on (state: heat)
+```
+
 ### Future Tools
 
 - Integration validation
