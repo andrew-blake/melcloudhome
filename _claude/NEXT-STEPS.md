@@ -6,7 +6,7 @@ This document tracks implementation progress for the MELCloud Home custom compon
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.1.2 DEPLOYED AND WORKING!
+**Current Status:** ✅ v1.1.2 DEPLOYED | 🔴 v1.1.3 READY TO IMPLEMENT
 
 **What's Working:**
 - ✅ Integration deployed and configured
@@ -19,26 +19,30 @@ This document tracks implementation progress for the MELCloud Home custom compon
 - ✅ Custom integration icon
 - ✅ Comprehensive documentation
 
-**v1.1.2 Improvements:**
-- ✅ Stable entity IDs (format: `climate.melcloud_0efc_76db`)
-- ✅ Diagnostics support for troubleshooting
-- ✅ Integration icon (mdi:heat-pump)
-- ✅ Fixed via_device deprecation warning
-- ✅ Renamed from "MELCloud Home v2" to "MELCloud Home"
+**🔴 CRITICAL: v1.1.3 Hotfix Required**
+- ❌ Missing TURN_ON/TURN_OFF feature flags (HA 2025.1+ compliance)
+- ❌ Voice commands ("turn on the AC") may be broken
+- ⚡ Quick 1-2 hour fix required immediately
+- 📋 See Session 10 below
 
 **What to do next:**
-1. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload` (fast)
-2. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
-3. **Monitor:** Integration → MELCloud Home → Logs
+1. **IMMEDIATE:** Implement v1.1.3 hotfix (turn_on/turn_off)
+2. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
+3. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
+4. **Monitor:** Integration → MELCloud Home → Logs
 
-**Next session:** Pre-v1.2 review and planning
+**Next session:** v1.1.3 implementation (Session 10)
 
-**Jump to:** [Session 9 details](#session-9-pre-v12-review-next) below
+**Jump to:** [Session 10 details](#session-10-v113-compliance-hotfix-next) below
 
 **Reference Documents:**
-- `_claude/ROADMAP.md` - v1.2+ planning and pre-implementation review tasks
-- `_claude/KNOWN-ISSUES.md` - Current open issues (#7 - missing images, cosmetic)
-- `_claude/websocket-research-defer.md` - WebSocket investigation findings
+- `_claude/ROADMAP.md` - Complete roadmap with v1.1.3 and v1.2+ planning
+- `_claude/climate-entity-feature-research.md` - Missing features analysis (Session 9)
+- `_claude/repository-strategy.md` - HACS distribution strategy
+- `_claude/session-9-research-findings.md` - Complete Session 9 research
+- `_claude/websocket-research-defer.md` - WebSocket investigation (deferred to v1.3)
+- `_claude/KNOWN-ISSUES.md` - Current open issues
+- `docs/decisions/007-defer-websocket-implementation.md` - WebSocket deferral ADR
 
 ---
 
@@ -266,83 +270,121 @@ See Session 7 in Completed Sessions above for full details.
 
 See Session 8 in Completed Sessions above for full details.
 
+### Session 9: Pre-v1.2 Research & Planning (2025-11-17)
+- ✅ Researched legacy MELCloud integration patterns
+- ✅ Researched HA climate integration best practices
+- ✅ Researched HACS distribution requirements
+- ✅ **Critical Discovery:** Missing TURN_ON/TURN_OFF support (v1.1.3 hotfix needed)
+- ✅ **Decision:** Defer WebSocket to v1.3 due to reliability issues (ADR-007)
+- ✅ **Decision:** Maintain modern architecture (don't copy MELCloud's deprecated patterns) (ADR-005)
+- ✅ **Decision:** Adopt entity description pattern for sensors (ADR-006)
+- ✅ **Decision:** Create separate HACS repository, keep current as dev environment
+- ✅ **Decision:** Keep API bundled (KISS principle, no PyPI package)
+- ✅ Identified missing features: HVAC Action, Horizontal Swing Mode
+- ✅ Updated ROADMAP.md with v1.1.3 hotfix + v1.2 plan
+- 📁 **Deliverables:**
+  - `_claude/session-9-research-findings.md` - Comprehensive research report
+  - `_claude/climate-entity-feature-research.md` - Missing features analysis
+  - `_claude/repository-strategy.md` - HACS distribution strategy
+  - `docs/decisions/005-divergence-from-official-melcloud.md` - Architecture ADR
+  - `docs/decisions/006-entity-description-pattern.md` - Sensor pattern ADR
+  - `docs/decisions/007-defer-websocket-implementation.md` - WebSocket deferral ADR
+  - Updated ROADMAP.md with v1.1.3 and v1.2 scope
+
 ---
 
-## Session 9: Pre-v1.2 Review & Planning 🎯 NEXT
+## ~~Session 9: Pre-v1.2 Review & Planning~~ ✅ COMPLETED
 
 **Goal:** Critical review of best practices before v1.2 implementation
 
-**Status:** Ready to start
-**Timeline:** 2-3 hours estimated
-**Reference:** `_claude/ROADMAP.md` (Pre-Implementation Review section)
+**Status:** Complete - Research and planning complete!
+**Timeline:** 4 hours actual
+**Date:** 2025-11-17
 
-### Review Tasks
+See Session 9 in Completed Sessions above for full details.
 
-**1. Diagnose Missing Images Issue (30 minutes)**
-- [ ] Use Chrome DevTools MCP to inspect integration UI
-- [ ] Check network requests for failed image loads
-- [ ] Identify what images are expected vs. what's missing
-- [ ] Determine if it's icons.json config or actual image files
-- [ ] Document findings in KNOWN-ISSUES.md
-- [ ] Create fix plan if needed
+---
 
-**2. Legacy MELCloud Integration Analysis (1 hour)**
-- [ ] Review: https://github.com/home-assistant/core/tree/master/homeassistant/components/melcloud
-- [ ] Compare their sensor platform implementation
-- [ ] Review their services.yaml for custom services
-- [ ] Evaluate their error handling patterns
-- [ ] Check their device/entity naming conventions
-- [ ] Critical assessment: Are their patterns best practices or legacy?
-- [ ] Document decisions in ADR if we diverge
+## Session 10: v1.1.3 Compliance Hotfix 🔴 NEXT
 
-**3. HA Climate Integration Best Practices (1 hour)**
-- [ ] Review official HA climate integration documentation
-- [ ] Check HA developer docs for modern patterns
-- [ ] Review 2-3 well-maintained climate integrations:
-  - Nest
-  - Ecobee
-  - Generic Thermostat
-- [ ] Identify patterns we should adopt
-- [ ] Identify patterns we should avoid
-- [ ] Document findings
+**Goal:** Fix critical HA 2025.1 compliance issue with turn_on/turn_off
 
-**4. Create v1.2 Implementation Plan (30 minutes)**
-- [ ] Based on review findings, finalize v1.2 scope
-- [ ] Decide: WebSocket implementation approach
-- [ ] Decide: Sensor platform implementation approach
-- [ ] Decide: Any refactoring needed before v1.2
-- [ ] Create detailed implementation checklist
-- [ ] Update ROADMAP.md with final v1.2 plan
+**Status:** Ready to implement
+**Timeline:** 1-2 hours
+**Priority:** CRITICAL
+**Reference:** `_claude/climate-entity-feature-research.md`, `_claude/ROADMAP.md`
+
+### Critical Issue
+
+**Missing TURN_ON/TURN_OFF Support:**
+- Home Assistant 2025.1 requires `ClimateEntityFeature.TURN_ON` and `TURN_OFF` flags
+- Without these, voice commands and automations may fail
+- Simple 1-hour fix with high user impact
+
+### Implementation Tasks
+
+**1. Update climate.py (30 minutes)**
+- [ ] Add `async_turn_on()` method
+- [ ] Add `async_turn_off()` method
+- [ ] Add TURN_ON/TURN_OFF feature flags to `supported_features`
+- [ ] Test locally with deployment tool
+
+**Code to Add:**
+```python
+async def async_turn_on(self) -> None:
+    """Turn the entity on."""
+    await self.coordinator.client.set_power(self._unit_id, True)
+    await self.coordinator.async_request_refresh()
+
+async def async_turn_off(self) -> None:
+    """Turn the entity off."""
+    await self.coordinator.client.set_power(self._unit_id, False)
+    await self.coordinator.async_request_refresh()
+
+# Update supported_features
+features = (
+    ClimateEntityFeature.TARGET_TEMPERATURE
+    | ClimateEntityFeature.TURN_ON
+    | ClimateEntityFeature.TURN_OFF
+)
+```
+
+**2. Testing (30 minutes)**
+- [ ] Set HEAT mode, turn off, turn on → resumes HEAT
+- [ ] Set COOL at 24°C, turn off, turn on → resumes COOL at 24°C
+- [ ] Test voice command: "Hey Google, turn on bedroom AC"
+- [ ] Test automation using `climate.turn_on` service
+- [ ] Verify device resumes previous state (not forced to AUTO)
+
+**3. Deployment (15 minutes)**
+- [ ] Deploy to production via deployment tool
+- [ ] Monitor logs for errors
+- [ ] Test on actual devices
+- [ ] Verify voice assistants working
+
+**4. Documentation (15 minutes)**
+- [ ] Update session notes
+- [ ] Mark v1.1.3 as complete in ROADMAP.md
+- [ ] Update NEXT-STEPS.md for Session 11 (v1.2)
 
 ### Deliverables
 
-**Documentation:**
-- Updated KNOWN-ISSUES.md (#7 resolution or detailed findings)
-- New ADR if we diverge from legacy MELCloud patterns
-- v1.2 implementation plan in ROADMAP.md
-- Best practices summary document
-
-**Decisions:**
-- WebSocket: Implement now or defer further?
-- Sensor platform: Which sensors to implement?
-- Services: Custom services needed?
-- Architecture: Any refactoring needed?
+- Updated `custom_components/melcloudhome/climate.py`
+- v1.1.3 deployed to production
+- No breaking changes
+- HA 2025.1+ compliance achieved
 
 ### Success Criteria
 
-**Understanding:**
-- [ ] Clear understanding of missing images issue
-- [ ] Comprehensive knowledge of legacy MELCloud approach
-- [ ] Deep understanding of HA climate best practices
-- [ ] Confidence in v1.2 architecture decisions
+- [ ] TURN_ON/TURN_OFF methods implemented
+- [ ] Feature flags added
+- [ ] Voice commands working (Google Home, Alexa)
+- [ ] Automations using climate.turn_on working
+- [ ] Device resumes previous state correctly
+- [ ] Deployed to production
+- [ ] No breaking changes or regressions
 
-**Planning:**
-- [ ] Detailed v1.2 implementation plan ready
-- [ ] All architectural decisions documented
-- [ ] Potential issues identified proactively
-- [ ] Time estimates for v1.2 tasks
-
-**Next:** Session 10 - v1.2 Implementation (WebSocket + Sensors)
+**Next:** Session 11 - v1.2 Implementation (Sensors + HACS + Enhanced Features)
 
 ---
 

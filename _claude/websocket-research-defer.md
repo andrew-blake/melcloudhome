@@ -1,12 +1,18 @@
 # WebSocket Research Findings - DEFERRED
 
-**Date**: 2025-01-17
-**Status**: ⚠️ DEFERRED to v1.2+
+**Date**: 2025-01-17 (Initial investigation)
+**Updated**: 2025-11-17 (Session 9 - Formal deferral)
+**Status**: ⚠️ DEFERRED to v1.3+
 **Reason**: Inconsistent message delivery across devices
+**See**: [ADR-007: Defer WebSocket Implementation](/docs/decisions/007-defer-websocket-implementation.md)
 
 ---
 
 ## Decision: Defer WebSocket Implementation
+
+**Formal Decision (Session 9):** WebSocket removed from v1.2 scope. See ADR-007 for complete rationale.
+
+**v1.2 Focus:** Sensor platform + Binary sensors + HACS distribution (proven, stable features)
 
 **Why Defer:**
 - ⚠️ **Unreliable message delivery**: Only one device receiving updates
