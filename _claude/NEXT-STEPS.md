@@ -8,7 +8,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.2.0 IN PROGRESS (Sensor platform deployed) | 🟡 Continue with v1.2
+**Current Status:** ✅ v1.2.0 IN PROGRESS (Sensor + Binary Sensor platforms deployed) | 🟡 Continue with v1.2
 
 ### What's Working
 
@@ -18,6 +18,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ TURN_ON/TURN_OFF support (HA 2025.1+ compliant)
 - ✅ Voice assistant commands working
 - ✅ **NEW: Sensor platform with room temperature sensors**
+- ✅ **NEW: Binary sensor platform (error state + connection monitoring)**
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
 - ✅ Stable entity IDs based on unit UUIDs
@@ -25,28 +26,28 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ Custom integration icon
 - ✅ Comprehensive documentation
 
-### ✅ v1.2.0 Progress (Session 11a)
+### ✅ v1.2.0 Progress
 
 - ✅ Sensor platform implemented (Session 11a)
 - ✅ Room temperature sensors deployed (2 entities)
 - ✅ Energy sensor placeholder (future-ready)
-- ⏸️ Binary sensor platform (pending - Session 11b)
+- ✅ Binary sensor platform implemented (Session 11b)
+- ✅ Error state sensors deployed (2 entities)
+- ✅ Connection state sensors deployed (2 entities)
 - ⏸️ Enhanced climate features (pending - Session 11c)
 - ⏸️ HACS distribution (deferred to v1.3)
 
 ### What to do next
 
-1. **Session 11b:** Binary sensor platform (error states, connection)
-2. **Session 11c:** Enhanced climate features (HVAC action, horizontal swing)
-3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
-4. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
+1. **Session 11c:** Enhanced climate features (HVAC action, horizontal swing)
+2. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
+3. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 
 ### Next session
 
-**Session 11b:** Binary Sensor Platform (2 hours) OR
 **Session 11c:** Enhanced Climate Features (3-4 hours)
 
-**Jump to:** [Session 11b details](#session-11b-binary-sensor-platform-next) below
+**Jump to:** [Session 11c details](#session-11c-enhanced-climate-features-🔮-future) below
 
 ### Reference Documents
 
@@ -177,27 +178,51 @@ features = (
 
 ---
 
-## Session 11b: Binary Sensor Platform 🎯 NEXT
+## Session 11b: Binary Sensor Platform ✅ COMPLETE
 
 **Goal:** Add binary sensors for error states and connection monitoring
 
-**Status:** Ready to implement
+**Status:** Complete (2025-11-18)
 **Timeline:** 2 hours
 **Priority:** MEDIUM
 
-### Planned Features
+### Implemented Features
 
-- Error state binary sensor (device_class: PROBLEM)
-- Connection state binary sensor (device_class: CONNECTIVITY)
-- Entity description pattern (same as sensor.py)
+- ✅ Error state binary sensor (device_class: PROBLEM)
+- ✅ Connection state binary sensor (device_class: CONNECTIVITY)
+- ✅ Entity description pattern (same as sensor.py)
+- ✅ 4 binary sensor entities deployed (2 per unit)
 
-### Implementation Tasks
+### Implementation Complete
 
-1. Create `binary_sensor.py` with entity descriptions
-2. Implement error state sensor (`unit.is_in_error`)
-3. Implement connection state sensor (coordinator status)
-4. Update `__init__.py` to add Platform.BINARY_SENSOR
-5. Deploy and test
+1. ✅ Created `binary_sensor.py` with entity descriptions
+2. ✅ Implemented error state sensor (`unit.is_in_error`)
+3. ✅ Implemented connection state sensor (coordinator status)
+4. ✅ Updated `__init__.py` to add Platform.BINARY_SENSOR
+5. ✅ Updated `strings.json` with entity translations
+6. ✅ Deployed and tested successfully
+
+### Deliverables
+
+- New file: `custom_components/melcloudhome/binary_sensor.py` (4.4KB)
+- Updated: `__init__.py`, `strings.json`
+- 4 binary sensor entities created:
+  - `binary_sensor.melcloud_0efc_76db_error_state`
+  - `binary_sensor.melcloud_0efc_76db_connection_state`
+  - `binary_sensor.melcloud_bf8d_5119_error_state`
+  - `binary_sensor.melcloud_bf8d_5119_connection_state`
+
+### Success Criteria
+
+- ✅ Binary sensors created and linked to devices
+- ✅ Error state sensors showing "off" (no errors)
+- ✅ Connection state sensors showing "on" (connected)
+- ✅ No errors in Home Assistant logs
+- ✅ Code quality checks passed (ruff, mypy)
+
+**Completed:** Session 11b Binary Sensor Platform (2025-11-18)
+
+**Next:** Session 11c - Enhanced Climate Features (HVAC action, horizontal swing)
 
 ---
 

@@ -64,7 +64,19 @@
       "WebFetch(domain:www.home-assistant.io)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(python -m mypy:*)",
-      "WebFetch(domain:www.hacs.xyz)"
+      "WebFetch(domain:www.hacs.xyz)",
+      "Bash(make all:*)",
+      "Bash(./tools/test_turn_on_off.sh:*)",
+      "Bash(/tmp/check_sensors.sh:*)",
+      "Bash(for entity in \"sensor.melcloud_0efc_76db_room_temperature\" \"sensor.melcloud_bf8d_5119_room_temperature\")",
+      "Bash(do echo \"Entity: $entity\")",
+      "Bash(done)",
+      "Bash(./tools/list_entities.sh:*)",
+      "Bash(bash -x:*)",
+      "Bash(. .env)",
+      "Bash(python3:*)",
+      "Bash(if [ -f \".env\" ])",
+      "Bash(then source .env)"
     ],
     "deny": [],
     "ask": []

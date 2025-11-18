@@ -18,5 +18,23 @@
     "abort": {
       "already_configured": "This account is already configured"
     }
+  },
+  "entity": {
+    "sensor": {
+      "room_temperature": {
+        "name": "Room temperature"
+      },
+      "energy_consumed": {
+        "name": "Energy consumed"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Error state"
+      },
+      "connection_state": {
+        "name": "Connection state"
+      }
+    }
   }
 }
