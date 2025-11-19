@@ -8,7 +8,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.2.1 COMPLETE (WiFi signal monitoring added) | 🎯 Ready for Energy Monitoring (v1.3) or HACS
+**Current Status:** ✅ v1.3.0 COMPLETE (Energy monitoring with persistence) | 🎯 Ready for HACS Distribution (v1.4)
 
 ### What's Working
 
@@ -17,17 +17,19 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ HVAC controls working (power, temp, mode, fan, swing)
 - ✅ TURN_ON/TURN_OFF support (HA 2025.1+ compliant)
 - ✅ Voice assistant commands working
-- ✅ Sensor platform with room temperature sensors (2 entities)
-- ✅ **NEW: WiFi signal strength sensors (2 entities) - Session 12**
+- ✅ Sensor platform (room temperature, WiFi signal, energy)
+- ✅ **NEW: Energy monitoring with cumulative tracking (Session 13)**
 - ✅ Binary sensor platform (error state + connection monitoring)
 - ✅ HVAC action property (heating/cooling/idle/off feedback)
 - ✅ Horizontal swing mode support (independent vane control)
 - ✅ 60s polling with auto-refresh
+- ✅ 30min energy polling with persistent storage
 - ✅ Standard HA climate entity UI
 - ✅ Stable entity IDs based on unit UUIDs
 - ✅ Diagnostics export support
-- ✅ Custom integration icon
+- ✅ Complete icon support (integration + all entities)
 - ✅ Comprehensive documentation
+- ✅ Best practices compliance (Gold tier)
 
 ### ✅ v1.2.1 Progress (Session 12)
 
@@ -41,27 +43,26 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ### What to do next
 
-1. **v1.2.1 Complete!** WiFi signal monitoring deployed
+1. **v1.3.0 Complete!** Energy monitoring with persistence deployed
 2. **Choose path:**
-   - **Option A:** Energy monitoring implementation (v1.3) - 4-5 hours - See `_claude/energy-monitoring-requirements.md`
-   - **Option B:** HACS distribution (requires separate repository) - 7-9 hours - See ROADMAP.md
-3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
+   - **Option A:** HACS distribution (requires separate repository) - 8-11 hours - See ROADMAP.md
+   - **Option B:** Additional features (options flow, custom services, etc.)
+3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome`
 4. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 
 ### Next session options
 
-**Option A - Session 13:** Energy Monitoring (v1.3) - 4-5 hours
-- Implement telemetry API polling (30-minute intervals)
-- Add energy consumption sensors
-- Integrate with HA Energy Dashboard
-- **Entity ID format:** Use `sensor.melcloud_*_energy` (shorter, cleaner than `energy_consumed`)
-- **See:** `_claude/energy-monitoring-requirements.md` for complete implementation plan
-
-**Option B - Session 13:** HACS Distribution Setup - 8-11 hours
+**Option A - Session 14:** HACS Distribution Setup - 8-11 hours
 - **IMPORTANT:** Fix mypy type errors first (1-2 hours)
 - Create separate repository
 - Prepare for HACS submission
 - **See:** [HACS details in ROADMAP.md](#)
+
+**Option B - Session 14:** Additional Features - 3-5 hours
+- Options flow for reconfiguration
+- Custom services (schedule management)
+- Translations (multi-language support)
+- **See:** docs/integration-review.md for recommendations
 
 ### Reference Documents
 
@@ -337,54 +338,96 @@ features = (
 
 **Completed:** Session 12 WiFi Signal Monitoring (2025-11-19)
 
-**Next:** Session 13 - Energy Monitoring (v1.3) OR HACS Distribution
+**Next:** Session 13 - Energy Monitoring (v1.3)
 
 ---
 
-## 🎯 Session 13 Quick Start: Energy Monitoring (v1.3)
+## Session 13: Energy Monitoring ✅ COMPLETE
 
-**Decision Made:** Implement energy monitoring (Option A)
+**Goal:** Implement energy monitoring with cumulative tracking and persistence
 
-### Key Decisions Already Made:
-- ✅ Entity ID: `sensor.melcloud_*_energy` (not `energy_consumed` - keep it short)
-- ✅ Polling interval: 30 minutes
-- ✅ Architecture: Extend coordinator (Option A from requirements doc)
-- ✅ Time range: Last hour
-- ✅ Device class: `SensorDeviceClass.ENERGY`
-- ✅ State class: `SensorStateClass.TOTAL_INCREASING`
-- ✅ Unit: `UnitOfEnergy.KILO_WATT_HOUR`
+**Status:** Complete (2025-11-19)
+**Timeline:** 6 hours (including fixes)
+**Priority:** HIGH
+**Reference:** `_claude/energy-monitoring-requirements.md`, `docs/decisions/008-energy-monitoring-architecture.md`
 
-### Implementation Steps:
+### Implemented Features
 
-**Phase 1: Architecture & Testing (1 hour)**
-1. Read `_claude/energy-monitoring-requirements.md` for complete plan
-2. Test telemetry API endpoint with real device:
-   ```bash
-   # Check if energy data is available
-   curl "https://melcloudhome.com/api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-19%2000:00&to=2025-11-19%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload"
-   ```
-3. Determine unit conversion (Wh vs kWh)
-4. Create ADR-008: Energy Monitoring Architecture
+- ✅ Telemetry API integration (`get_energy_data`, `parse_energy_response`)
+- ✅ 30-minute energy polling via coordinator extension
+- ✅ Automatic Wh → kWh conversion
+- ✅ Hourly consumption accumulation into cumulative totals
+- ✅ Persistent storage (survives HA restarts)
+- ✅ Smart initialization (skips historical data inflation)
+- ✅ Double-counting prevention (tracks last processed hour)
+- ✅ Complete icon support (integration + all entities)
+- ✅ Entity ID format: `sensor.melcloud_*_energy`
 
-**Phase 2: Implementation (3 hours)**
-1. Add telemetry methods to `api/client.py`
-2. Extend coordinator with energy polling
-3. Update `api/models.py` - add `energy_consumed` property
-4. Update `sensor.py` - change key from `"energy_consumed"` to `"energy"` ⚠️
-5. Test and deploy
+### Implementation Complete
 
-**Files to Modify:**
-- `custom_components/melcloudhome/api/client.py` - Add `get_energy_data()` and `_parse_energy_response()`
-- `custom_components/melcloudhome/coordinator.py` - Add energy polling
-- `custom_components/melcloudhome/api/models.py` - Add energy property
-- `custom_components/melcloudhome/sensor.py` - Update energy sensor key to `"energy"`
-- `custom_components/melcloudhome/strings.json` - Change translation key to `"energy"`
-- `docs/decisions/008-energy-monitoring-architecture.md` - New ADR
+1. ✅ Created ADR-008: Energy Monitoring Architecture
+2. ✅ Added telemetry methods to `api/client.py`
+3. ✅ Extended coordinator with energy polling and persistence
+4. ✅ Added `energy_consumed` property to `AirToAirUnit` model
+5. ✅ Added `has_energy_consumed_meter` capability flag
+6. ✅ Updated sensor platform with energy sensor
+7. ✅ Fixed `@callback` decorator bug (prevented polling)
+8. ✅ Implemented hourly accumulation logic
+9. ✅ Added persistent storage for cumulative totals
+10. ✅ Fixed icons.json (added all entity icons)
+11. ✅ Added integration brand icon (icon.png)
+12. ✅ Best practices review completed
 
-**Expected Result:**
-- 2 new sensors: `sensor.melcloud_0efc_76db_energy` and `sensor.melcloud_bf8d_5119_energy`
-- Integration with HA Energy Dashboard
-- 30-minute polling for energy data
+### Bug Fixes During Session
+
+- ✅ Fixed `@callback` on async function (was blocking energy polling)
+- ✅ Fixed sensor creation logic (`should_create_fn` for devices without data)
+- ✅ Fixed accumulation to prevent double-counting within same hour
+- ✅ Fixed historical data inflation (starts at 0.0 kWh)
+- ✅ Added persistence to prevent reset on HA restart
+
+### Deliverables
+
+- Updated: `api/client.py` (+107 lines - telemetry methods)
+- Updated: `coordinator.py` (+130 lines - polling, accumulation, persistence)
+- Updated: `api/models.py` (+3 lines - energy property + capability)
+- Updated: `sensor.py` (+15 lines - energy sensor with should_create_fn)
+- Updated: `icons.json` (complete icon set for all entities)
+- Updated: `__init__.py`, `strings.json`, `manifest.json` (v1.3.0)
+- New: `icon.png` (256x256 integration brand icon)
+- New: `docs/decisions/008-energy-monitoring-architecture.md`
+- New: `tools/test_energy_accumulation.py`
+- New: `tools/check_energy_status.py`
+- New: `tools/test_energy_endpoint.py`
+- New: `tools/check_device_capabilities.py`
+
+### Success Criteria
+
+- ✅ Energy sensor created for devices with capability
+- ✅ Accumulates hourly values into cumulative total
+- ✅ Starts at 0.0 kWh on first initialization
+- ✅ Prevents double-counting within same hour
+- ✅ Persists across HA restarts (uses Store helper)
+- ✅ TOTAL_INCREASING state class for Energy Dashboard
+- ✅ Proper Wh → kWh conversion
+- ✅ Complete icon support (Gold tier compliance)
+- ✅ Best practices review passed
+
+### Known Issues
+
+- ⚠️ Living Room device has energy capability but no telemetry data from MELCloud API
+- ⚠️ Confirmed in official MELCloud Home app - device not reporting energy data
+- ⚠️ Sensor correctly shows "unavailable" until device uploads telemetry
+
+**Completed:** Session 13 Energy Monitoring (2025-11-19)
+
+**Next:** Session 14 - HACS Distribution OR Additional Features
+
+---
+
+## 🎯 Session 14 Options
+
+See Session 14 options above for next steps.
 
 ---
 

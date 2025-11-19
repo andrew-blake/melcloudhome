@@ -1,9 +1,9 @@
 # MELCloud Home Integration Roadmap
 
-**Current Version:** v1.1.3 ✅
-**Status:** Production-ready with HA 2025.1+ compliance
-**Next Release:** v1.2 (Sensors + HACS + Enhanced Features)
-**Research Complete:** Session 9 findings documented
+**Current Version:** v1.3.0 ✅
+**Status:** Production-ready with energy monitoring and Gold-tier compliance
+**Next Release:** v1.4 (HACS Distribution)
+**Latest Session:** Session 13 - Energy Monitoring (2025-11-19)
 
 ---
 
@@ -108,15 +108,99 @@ features = (
 
 ---
 
-## v1.2: Sensors + HACS + Enhanced Features 🎯 NEXT
+## v1.2: Sensors + Enhanced Features ✅ COMPLETED
 
-**Primary Goal:** Sensor platform with modern entity descriptions
-**Secondary Goal:** HACS distribution for wider adoption
-**Enhanced Features:** HVAC Action + Horizontal Swing Mode
-**Additional:** Binary sensors for error states
-**Timeline:** 16-20 hours estimated
-**Reference:** Session 9 research findings, ADR-005, ADR-006, ADR-007
-**WebSocket Status:** ⏸️ Deferred to v1.3+ (see ADR-007)
+**Status:** Released (2025-11-18)
+**Timeline:** Sessions 11a, 11b, 11c (9 hours total)
+**Reference:** ADR-006 (Entity Description Pattern)
+
+### Features Implemented
+
+**Sensor Platform (Session 11a):**
+- ✅ Room temperature sensors (2 entities)
+- ✅ WiFi signal strength sensors (2 entities) - Session 12
+- ✅ Energy sensor placeholder (activated in v1.3)
+- ✅ Modern entity description pattern
+
+**Binary Sensor Platform (Session 11b):**
+- ✅ Error state sensors (2 entities)
+- ✅ Connection state sensors (2 entities)
+- ✅ PROBLEM and CONNECTIVITY device classes
+
+**Enhanced Climate Features (Session 11c):**
+- ✅ HVAC action property (heating/cooling/idle/off)
+- ✅ Temperature-based action inference with hysteresis
+- ✅ Horizontal swing mode support (SWING_HORIZONTAL_MODE feature)
+- ✅ Independent vertical and horizontal vane control
+
+### Deliverables
+
+- New: `custom_components/melcloudhome/sensor.py`
+- New: `custom_components/melcloudhome/binary_sensor.py`
+- Updated: `climate.py` (HVAC action + horizontal swing)
+- Updated: `const.py` (horizontal vane positions)
+- Updated: `strings.json` (entity translations)
+- Updated: `manifest.json` (v1.2.0)
+
+---
+
+## v1.3: Energy Monitoring ✅ COMPLETED
+
+**Status:** Released (2025-11-19)
+**Timeline:** Session 13 (6 hours including fixes)
+**Reference:** ADR-008 (Energy Monitoring Architecture)
+
+### Features Implemented
+
+**Energy Monitoring:**
+- ✅ Telemetry API integration (30-minute polling)
+- ✅ Automatic Wh → kWh conversion
+- ✅ Hourly consumption accumulation into cumulative totals
+- ✅ Persistent storage (survives HA restarts)
+- ✅ Smart initialization (skips historical data inflation)
+- ✅ Double-counting prevention
+- ✅ Energy Dashboard integration
+- ✅ Entity ID: `sensor.melcloud_*_energy`
+
+**Icon Support:**
+- ✅ Complete icons.json for all entity types
+- ✅ Integration brand icon (icon.png 256x256)
+- ✅ State-specific icons for binary sensors
+
+**Best Practices:**
+- ✅ Comprehensive review vs HA 2025.10 standards
+- ✅ Gold-tier quality scale compliance
+- ✅ Modern patterns throughout
+
+### Bug Fixes
+
+- ✅ Fixed `@callback` decorator on async function
+- ✅ Fixed sensor creation for devices without initial data
+- ✅ Fixed energy accumulation logic
+- ✅ Fixed historical data inflation
+- ✅ Added persistent storage for cumulative totals
+
+### Deliverables
+
+- Updated: `api/client.py` (+107 lines - telemetry methods)
+- Updated: `coordinator.py` (+164 lines - polling, accumulation, persistence)
+- Updated: `api/models.py` (+3 lines - energy capability)
+- Updated: `sensor.py` (+15 lines - energy sensor)
+- Updated: `icons.json` (complete icon set)
+- Updated: `__init__.py`, `strings.json`
+- Updated: `manifest.json` (v1.3.0)
+- New: `icon.png` (integration brand icon)
+- New: `docs/decisions/008-energy-monitoring-architecture.md`
+- New: Debug tools in `tools/` directory
+
+---
+
+## v1.4: HACS Distribution 🎯 NEXT
+
+**Primary Goal:** HACS distribution for wider adoption
+**Status:** Planned
+**Effort:** 8-11 hours estimated
+**Prerequisites:** All features complete (v1.3.0), mypy type errors fixed
 
 ### Pre-Implementation Review ✅ COMPLETED (Session 9)
 
