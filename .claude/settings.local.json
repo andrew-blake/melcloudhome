@@ -78,7 +78,11 @@
       "Bash(if [ -f \".env\" ])",
       "Bash(then source .env)",
       "Bash(MELCLOUD_EMAIL=\"$MELCLOUD_USER\" uv run python tools/test_vane_positions.py)",
-      "Bash(MELCLOUD_EMAIL=\"$MELCLOUD_USER\" uv run python:*)"
+      "Bash(MELCLOUD_EMAIL=\"$MELCLOUD_USER\" uv run python:*)",
+      "Bash(tools/test_turn_on_off.sh:*)",
+      "Bash(tools/list_entities.sh)",
+      "Bash(for entity in sensor.melcloud_0efc_76db_wifi_signal sensor.melcloud_bf8d_5119_wifi_signal)",
+      "Bash(do echo '=== $entity ===')"
     ],
     "deny": [],
     "ask": []
