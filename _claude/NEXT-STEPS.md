@@ -51,10 +51,11 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 ### Next session options
 
 **Option A - Session 13:** Energy Monitoring (v1.3) - 4-5 hours
-- Implement telemetry API polling
+- Implement telemetry API polling (30-minute intervals)
 - Add energy consumption sensors
 - Integrate with HA Energy Dashboard
-- **See:** `_claude/energy-monitoring-requirements.md` for complete plan
+- **Entity ID format:** Use `sensor.melcloud_*_energy` (shorter, cleaner than `energy_consumed`)
+- **See:** `_claude/energy-monitoring-requirements.md` for complete implementation plan
 
 **Option B - Session 13:** HACS Distribution Setup - 7-9 hours
 - Create separate repository
@@ -336,6 +337,53 @@ features = (
 **Completed:** Session 12 WiFi Signal Monitoring (2025-11-19)
 
 **Next:** Session 13 - Energy Monitoring (v1.3) OR HACS Distribution
+
+---
+
+## 🎯 Session 13 Quick Start: Energy Monitoring (v1.3)
+
+**Decision Made:** Implement energy monitoring (Option A)
+
+### Key Decisions Already Made:
+- ✅ Entity ID: `sensor.melcloud_*_energy` (not `energy_consumed` - keep it short)
+- ✅ Polling interval: 30 minutes
+- ✅ Architecture: Extend coordinator (Option A from requirements doc)
+- ✅ Time range: Last hour
+- ✅ Device class: `SensorDeviceClass.ENERGY`
+- ✅ State class: `SensorStateClass.TOTAL_INCREASING`
+- ✅ Unit: `UnitOfEnergy.KILO_WATT_HOUR`
+
+### Implementation Steps:
+
+**Phase 1: Architecture & Testing (1 hour)**
+1. Read `_claude/energy-monitoring-requirements.md` for complete plan
+2. Test telemetry API endpoint with real device:
+   ```bash
+   # Check if energy data is available
+   curl "https://melcloudhome.com/api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-19%2000:00&to=2025-11-19%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload"
+   ```
+3. Determine unit conversion (Wh vs kWh)
+4. Create ADR-008: Energy Monitoring Architecture
+
+**Phase 2: Implementation (3 hours)**
+1. Add telemetry methods to `api/client.py`
+2. Extend coordinator with energy polling
+3. Update `api/models.py` - add `energy_consumed` property
+4. Update `sensor.py` - change key from `"energy_consumed"` to `"energy"` ⚠️
+5. Test and deploy
+
+**Files to Modify:**
+- `custom_components/melcloudhome/api/client.py` - Add `get_energy_data()` and `_parse_energy_response()`
+- `custom_components/melcloudhome/coordinator.py` - Add energy polling
+- `custom_components/melcloudhome/api/models.py` - Add energy property
+- `custom_components/melcloudhome/sensor.py` - Update energy sensor key to `"energy"`
+- `custom_components/melcloudhome/strings.json` - Change translation key to `"energy"`
+- `docs/decisions/008-energy-monitoring-architecture.md` - New ADR
+
+**Expected Result:**
+- 2 new sensors: `sensor.melcloud_0efc_76db_energy` and `sensor.melcloud_bf8d_5119_energy`
+- Integration with HA Energy Dashboard
+- 30-minute polling for energy data
 
 ---
 
