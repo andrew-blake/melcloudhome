@@ -10,14 +10,14 @@ install:  ## Install development dependencies
 	pre-commit install
 
 lint:  ## Run ruff linter
-	ruff check custom_components/
+	uv run ruff check custom_components/
 
 format:  ## Format code with ruff
-	ruff format custom_components/
-	ruff check --fix custom_components/
+	uv run ruff format custom_components/
+	uv run ruff check --fix custom_components/
 
 type-check:  ## Run mypy type checker
-	mypy custom_components/melcloudhome/
+	uv run mypy custom_components/melcloudhome/
 
 test:  ## Run tests
 	uv run pytest tests/ -v

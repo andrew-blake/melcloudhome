@@ -82,7 +82,13 @@
       "Bash(tools/test_turn_on_off.sh:*)",
       "Bash(tools/list_entities.sh)",
       "Bash(for entity in sensor.melcloud_0efc_76db_wifi_signal sensor.melcloud_bf8d_5119_wifi_signal)",
-      "Bash(do echo '=== $entity ===')"
+      "Bash(do echo '=== $entity ===')",
+      "Bash(python test_energy_endpoint.py:*)",
+      "Bash(make lint:*)",
+      "Bash(uv python install:*)",
+      "Bash(uv python:*)",
+      "Bash(~/.local/bin/uv sync:*)",
+      "WebFetch(domain:pypi.org)"
     ],
     "deny": [],
     "ask": []

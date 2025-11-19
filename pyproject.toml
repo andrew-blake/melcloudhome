@@ -5,14 +5,14 @@ description = "Home Assistant custom component for MELCloud Home"
 authors = [
     { name = "Andrew Blake", email = "a.blake01@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.2",
     "playwright>=1.56.0",
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 line-length = 88
 
 # Exclude directories
@@ -52,7 +52,7 @@ known-first-party = ["custom_components.melcloudhome"]
 combine-as-imports = true
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 show_error_codes = true
 follow_imports = "silent"
 ignore_missing_imports = true
@@ -106,9 +106,10 @@ ignore-words-list = 'hass'
 
 [dependency-groups]
 dev = [
-    # NOTE: homeassistant NOT included as dev dependency due to strict
-    # dependency pinning that conflicts with our aiohttp version.
-    # Integration files use lazy imports to allow testing API client independently.
+    # NOTE: homeassistant-stubs NOT included as dev dependency due to unsolvable
+    # dependency conflicts with aiohttp, vcrpy, and voluptuous versions.
+    # This is a known limitation for custom component development outside the HA Core monorepo.
+    # Integration files use lazy imports and mypy overrides to allow testing API client independently.
     # Integration testing happens via deployment to actual HA instance.
     "mypy>=1.18.2",
     "pre-commit>=4.4.0",
