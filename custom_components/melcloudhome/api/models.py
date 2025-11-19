@@ -27,6 +27,7 @@ class DeviceCapabilities:
     has_standby: bool = False
     has_demand_side_control: bool = False
     supports_wide_vane: bool = False
+    has_energy_consumed_meter: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DeviceCapabilities":
@@ -57,6 +58,7 @@ class DeviceCapabilities:
             has_standby=data.get("hasStandby", False),
             has_demand_side_control=data.get("hasDemandSideControl", False),
             supports_wide_vane=data.get("supportsWideVane", False),
+            has_energy_consumed_meter=data.get("hasEnergyConsumedMeter", False),
         )
 
 
@@ -126,6 +128,8 @@ class AirToAirUnit:
     capabilities: DeviceCapabilities
     schedule: list[Schedule] = field(default_factory=list)
     schedule_enabled: bool = False
+    # Energy monitoring (set by coordinator, not from main API)
+    energy_consumed: float | None = None  # kWh
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":

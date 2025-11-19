@@ -40,6 +40,9 @@ class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ign
     available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
     """Function to determine if sensor is available."""
 
+    should_create_fn: Callable[[AirToAirUnit], bool] | None = None
+    """Function to determine if sensor should be created. If None, uses available_fn."""
+
 
 SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
     # Room temperature - for statistics and history
@@ -66,21 +69,18 @@ SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
         value_fn=lambda unit: unit.rssi,
         available_fn=lambda unit: unit.rssi is not None,
     ),
-    # Energy consumption - future sensor if API provides data
-    # Will only be created if the device has energy monitoring capability
-    # Implementation planned for v1.3 (requires telemetry API polling)
+    # Energy consumption sensor (v1.3)
+    # Created if device has energy meter capability, even if no initial data
+    # Becomes available once energy data is fetched (polls every 30 minutes)
     MELCloudHomeSensorEntityDescription(
-        key="energy_consumed",
-        translation_key="energy_consumed",
+        key="energy",  # Entity ID: sensor.melcloud_*_energy
+        translation_key="energy",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        value_fn=lambda unit: (
-            unit.energy_consumed if hasattr(unit, "energy_consumed") else None
-        ),
-        available_fn=lambda unit: (
-            hasattr(unit, "energy_consumed") and unit.energy_consumed is not None
-        ),
+        value_fn=lambda unit: unit.energy_consumed,
+        should_create_fn=lambda unit: unit.capabilities.has_energy_consumed_meter,
+        available_fn=lambda unit: unit.energy_consumed is not None,
     ),
 )
 
@@ -97,8 +97,13 @@ async def async_setup_entry(
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             for description in SENSOR_TYPES:
-                # Only create sensor if data is available
-                if description.available_fn(unit):
+                # Use should_create_fn if defined, otherwise use available_fn
+                create_check = (
+                    description.should_create_fn
+                    if description.should_create_fn
+                    else description.available_fn
+                )
+                if create_check(unit):
                     entities.append(
                         MELCloudHomeSensor(
                             coordinator, unit, building, entry, description

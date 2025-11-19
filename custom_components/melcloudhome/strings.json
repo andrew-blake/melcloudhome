@@ -27,8 +27,8 @@
       "wifi_signal": {
         "name": "WiFi signal"
       },
-      "energy_consumed": {
-        "name": "Energy consumed"
+      "energy": {
+        "name": "Energy"
       }
     },
     "binary_sensor": {

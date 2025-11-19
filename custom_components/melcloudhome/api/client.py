@@ -377,3 +377,110 @@ class MELCloudHomeClient:
             f"/api/ataunit/{unit_id}",
             json=payload,
         )
+
+    async def get_energy_data(
+        self,
+        unit_id: str,
+        from_time: Any,  # datetime
+        to_time: Any,  # datetime
+        interval: str = "Hour",
+    ) -> dict[str, Any] | None:
+        """
+        Get energy consumption data for a unit.
+
+        Args:
+            unit_id: Unit UUID
+            from_time: Start time (UTC-aware datetime)
+            to_time: End time (UTC-aware datetime)
+            interval: Aggregation interval - "Hour", "Day", "Week", or "Month"
+
+        Returns:
+            Energy telemetry data, or None if no data available (304)
+
+        Raises:
+            AuthenticationError: If session expired
+            ApiError: If API request fails
+        """
+        endpoint = f"/api/telemetry/energy/{unit_id}"
+        params = {
+            "from": from_time.strftime("%Y-%m-%d %H:%M"),
+            "to": to_time.strftime("%Y-%m-%d %H:%M"),
+            "interval": interval,
+            "measure": "cumulative_energy_consumed_since_last_upload",
+        }
+
+        try:
+            # Use _api_request but need to handle 304 specially
+            session = await self._auth.get_session()
+            headers = {
+                "Accept": "application/json",
+                "x-csrf": "1",
+                "referer": f"{BASE_URL}/dashboard",
+            }
+
+            url = f"{BASE_URL}{endpoint}"
+            _LOGGER.debug("Energy API Request: GET %s", endpoint)
+
+            async with session.get(url, params=params, headers=headers) as resp:
+                _LOGGER.debug("Energy API Response: GET %s [%d]", endpoint, resp.status)
+
+                if resp.status == 304:
+                    # No new data available
+                    return None
+
+                if resp.status == 401:
+                    raise AuthenticationError("Session expired - please login again")
+
+                if resp.status >= 400:
+                    try:
+                        error_data = await resp.json()
+                        error_msg = error_data.get("message", f"HTTP {resp.status}")
+                    except Exception:
+                        error_msg = f"HTTP {resp.status}"
+
+                    raise ApiError(f"Energy API request failed: {error_msg}")
+
+                result: dict[str, Any] = await resp.json()
+                return result
+
+        except aiohttp.ClientError as err:
+            raise ApiError(f"Network error: {err}") from err
+
+    def parse_energy_response(self, data: dict[str, Any] | None) -> float | None:
+        """
+        Parse energy telemetry response.
+
+        Returns the most recent energy value in kWh.
+        Converts from Wh (watt-hours) to kWh.
+
+        Args:
+            data: Energy telemetry response from API
+
+        Returns:
+            Energy value in kWh, or None if no data
+        """
+        if not data or "measureData" not in data:
+            return None
+
+        measure_data = data.get("measureData", [])
+        if not measure_data:
+            return None
+
+        values = measure_data[0].get("values", [])
+        if not values:
+            return None
+
+        # Get most recent value
+        latest = values[-1]
+        value_str = latest.get("value")
+        if not value_str:
+            return None
+
+        try:
+            # API returns values in Wh (watt-hours)
+            # Convert to kWh for Home Assistant Energy Dashboard
+            value_wh = float(value_str)
+            return value_wh / 1000.0  # Convert Wh to kWh
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning("Failed to parse energy value '%s': %s", value_str, err)
+            return None
