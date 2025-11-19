@@ -24,6 +24,9 @@
       "room_temperature": {
         "name": "Room temperature"
       },
+      "wifi_signal": {
+        "name": "WiFi signal"
+      },
       "energy_consumed": {
         "name": "Energy consumed"
       }

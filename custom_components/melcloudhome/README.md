@@ -101,13 +101,13 @@ When adding climate entities to your dashboard, **DO NOT** search for the entity
 - Only shows current temperature
 - No controls
 
-### YAML Configuration
+### Basic YAML Configuration
 
 If you prefer YAML:
 
 ```yaml
 type: thermostat
-entity: climate.home_dining_room_heatpump
+entity: climate.melcloud_bf8d_5119
 ```
 
 **With multiple devices:**
@@ -116,10 +116,41 @@ type: entities
 title: Climate Control
 entities:
   - type: thermostat
-    entity: climate.home_dining_room_heatpump
+    entity: climate.melcloud_bf8d_5119
   - type: thermostat
-    entity: climate.home_bedroom_heatpump
+    entity: climate.melcloud_0efc_76db
 ```
+
+### Advanced Features (Home Assistant 2024.12+)
+
+For more control over the thermostat card UI, you can customize which features appear and how they're displayed:
+
+```yaml
+type: thermostat
+entity: climate.melcloud_bf8d_5119
+features:
+  - type: climate-hvac-modes
+    style: dropdown  # or "icons" (default)
+  - type: climate-fan-modes
+    style: dropdown  # or "icons" (default)
+  - type: climate-swing-modes
+    style: dropdown  # Vertical vane position (swing_mode)
+  - type: climate-swing-horizontal-modes
+    style: dropdown  # Horizontal vane position (Home Assistant 2024.12+)
+```
+
+**Feature Types Available:**
+- `climate-hvac-modes` - HVAC mode selection (Heat, Cool, Auto, Dry, Fan, Off)
+- `climate-fan-modes` - Fan speed control (Auto, One-Five)
+- `climate-swing-modes` - Vertical vane position control
+- `climate-swing-horizontal-modes` - Horizontal vane position control (HA 2024.12+)
+- `target-temperature` - Temperature controls (included by default)
+
+**Display Styles:**
+- `dropdown` - Compact dropdown menu (recommended for 5+ options)
+- `icons` - Icon buttons (default, good for 2-4 options)
+
+**Note:** The MELCloud Home integration exposes both vertical (`swing_mode`) and horizontal (`swing_horizontal_mode`) vane controls independently as of v1.2.0, making it fully compatible with Home Assistant 2024.12's enhanced climate features. This is similar to other modern climate integrations like LG ThinQ.
 
 ---
 

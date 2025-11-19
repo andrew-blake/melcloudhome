@@ -8,7 +8,7 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 
 ## 🚀 Quick Start for New Session
 
-**Current Status:** ✅ v1.2.0 COMPLETE (All platforms + enhanced features deployed) | 🎉 Ready for HACS
+**Current Status:** ✅ v1.2.1 COMPLETE (WiFi signal monitoring added) | 🎯 Ready for Energy Monitoring (v1.3) or HACS
 
 ### What's Working
 
@@ -17,10 +17,11 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ HVAC controls working (power, temp, mode, fan, swing)
 - ✅ TURN_ON/TURN_OFF support (HA 2025.1+ compliant)
 - ✅ Voice assistant commands working
-- ✅ **NEW: Sensor platform with room temperature sensors**
-- ✅ **NEW: Binary sensor platform (error state + connection monitoring)**
-- ✅ **NEW: HVAC action property (heating/cooling/idle/off feedback)**
-- ✅ **NEW: Horizontal swing mode support (independent vane control)**
+- ✅ Sensor platform with room temperature sensors (2 entities)
+- ✅ **NEW: WiFi signal strength sensors (2 entities) - Session 12**
+- ✅ Binary sensor platform (error state + connection monitoring)
+- ✅ HVAC action property (heating/cooling/idle/off feedback)
+- ✅ Horizontal swing mode support (independent vane control)
 - ✅ 60s polling with auto-refresh
 - ✅ Standard HA climate entity UI
 - ✅ Stable entity IDs based on unit UUIDs
@@ -28,31 +29,37 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - ✅ Custom integration icon
 - ✅ Comprehensive documentation
 
-### ✅ v1.2.0 Progress
+### ✅ v1.2.1 Progress (Session 12)
 
-- ✅ Sensor platform implemented (Session 11a)
-- ✅ Room temperature sensors deployed (2 entities)
-- ✅ Energy sensor placeholder (future-ready)
-- ✅ Binary sensor platform implemented (Session 11b)
-- ✅ Error state sensors deployed (2 entities)
-- ✅ Connection state sensors deployed (2 entities)
-- ✅ Enhanced climate features (Session 11c)
-- ✅ HVAC action property (heating/cooling/idle/off)
-- ✅ Horizontal swing mode support
-- ⏸️ HACS distribution (deferred - needs separate repository)
+- ✅ WiFi signal strength sensor implemented
+- ✅ Updated `api/models.py` to parse `rssi` field
+- ✅ Added WiFi signal sensor to `sensor.py`
+- ✅ Device class: `SIGNAL_STRENGTH` with dBm unit
+- ✅ Entity category: `DIAGNOSTIC`
+- ✅ 2 WiFi signal sensors deployed and working
+- ✅ Energy monitoring requirements documented for v1.3
 
 ### What to do next
 
-1. **v1.2.0 Complete!** All planned features implemented and deployed
-2. **Next:** HACS distribution (requires separate repository setup - see ROADMAP.md)
+1. **v1.2.1 Complete!** WiFi signal monitoring deployed
+2. **Choose path:**
+   - **Option A:** Energy monitoring implementation (v1.3) - 4-5 hours - See `_claude/energy-monitoring-requirements.md`
+   - **Option B:** HACS distribution (requires separate repository) - 7-9 hours - See ROADMAP.md
 3. **Quick Updates:** `uv run python tools/deploy_custom_component.py melcloudhome --reload`
 4. **Check Logs:** `ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome`
 
-### Next session
+### Next session options
 
-**Session 12:** HACS Distribution Setup (7-9 hours)
+**Option A - Session 13:** Energy Monitoring (v1.3) - 4-5 hours
+- Implement telemetry API polling
+- Add energy consumption sensors
+- Integrate with HA Energy Dashboard
+- **See:** `_claude/energy-monitoring-requirements.md` for complete plan
 
-**Jump to:** [HACS details in ROADMAP.md](#) - Create separate repository and prepare for distribution
+**Option B - Session 13:** HACS Distribution Setup - 7-9 hours
+- Create separate repository
+- Prepare for HACS submission
+- **See:** [HACS details in ROADMAP.md](#)
 
 ### Reference Documents
 
@@ -273,7 +280,62 @@ features = (
 
 **Completed:** Session 11c Enhanced Climate Features (2025-11-18)
 
-**Next:** Session 12 - HACS Distribution (separate repository required)
+**Next:** Session 12 - WiFi Signal Monitoring
+
+---
+
+## Session 12: WiFi Signal Monitoring ✅ COMPLETE
+
+**Goal:** Add WiFi signal strength sensors for diagnostic troubleshooting
+
+**Status:** Complete (2025-11-19)
+**Timeline:** 1.5 hours
+**Priority:** HIGH
+**Reference:** `_claude/energy-monitoring-requirements.md` for v1.3 planning
+
+### Implemented Features
+
+- ✅ WiFi signal strength sensor (device_class: SIGNAL_STRENGTH)
+- ✅ Shows RSSI in dBm (typical range: -30 excellent to -90 poor)
+- ✅ Entity category: DIAGNOSTIC
+- ✅ 2 WiFi signal sensors deployed
+
+### Implementation Complete
+
+1. ✅ Updated `api/models.py` to parse `rssi` field from API response (`api/models.py:125,247`)
+2. ✅ Added WiFi signal sensor entity description to `sensor.py`
+3. ✅ Added translation key to `strings.json`
+4. ✅ Deployed and verified sensors registered successfully
+5. ✅ Code quality checks passed (ruff, mypy)
+
+### Deliverables
+
+- Updated: `custom_components/melcloudhome/api/models.py` (added rssi field)
+- Updated: `custom_components/melcloudhome/sensor.py` (added WiFi signal sensor)
+- Updated: `custom_components/melcloudhome/strings.json` (added translation)
+- 2 WiFi signal sensor entities created:
+  - `sensor.melcloud_0efc_76db_wifi_signal`
+  - `sensor.melcloud_bf8d_5119_wifi_signal`
+
+### Success Criteria
+
+- ✅ WiFi signal sensors created and linked to devices
+- ✅ Correct device_class (signal_strength) and unit (dBm)
+- ✅ Entity category set to DIAGNOSTIC
+- ✅ No errors in Home Assistant logs
+- ✅ Code quality checks passed (ruff, mypy)
+- ✅ Integration loaded and entities registered
+
+### Research & Documentation
+
+- ✅ Researched Home Assistant WiFi signal patterns
+- ✅ Confirmed API provides `rssi` field in `/api/user/context` response
+- ✅ Documented energy monitoring requirements for v1.3
+- ✅ Created comprehensive `_claude/energy-monitoring-requirements.md`
+
+**Completed:** Session 12 WiFi Signal Monitoring (2025-11-19)
+
+**Next:** Session 13 - Energy Monitoring (v1.3) OR HACS Distribution
 
 ---
 
@@ -300,6 +362,7 @@ features = (
 - `_claude/melcloudhome-api-reference.md`: Complete API reference with verified values
 - `_claude/melcloudhome-schedule-api.md`: Schedule management endpoints
 - `_claude/melcloudhome-telemetry-endpoints.md`: Monitoring and reporting APIs
+- `_claude/energy-monitoring-requirements.md`: Energy monitoring requirements and implementation plan (v1.3)
 - `_claude/openapi.yaml`: OpenAPI 3.0.3 specification
 
 ### Quality & Testing

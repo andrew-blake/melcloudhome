@@ -122,6 +122,7 @@ class AirToAirUnit:
     vane_horizontal_direction: str | None
     in_standby_mode: bool
     is_in_error: bool
+    rssi: int | None
     capabilities: DeviceCapabilities
     schedule: list[Schedule] = field(default_factory=list)
     schedule_enabled: bool = False
@@ -243,6 +244,7 @@ class AirToAirUnit:
             ),
             in_standby_mode=parse_bool(settings.get("InStandbyMode")),
             is_in_error=parse_bool(settings.get("IsInError")),
+            rssi=data.get("rssi"),
             capabilities=capabilities,
             schedule=schedules,
             schedule_enabled=data.get("scheduleEnabled", False),
