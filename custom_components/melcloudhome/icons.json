@@ -4,10 +4,33 @@
       "heatpump": {
         "default": "mdi:heat-pump"
       }
+    },
+    "sensor": {
+      "room_temperature": {
+        "default": "mdi:thermometer"
+      },
+      "wifi_signal": {
+        "default": "mdi:wifi"
+      },
+      "energy": {
+        "default": "mdi:lightning-bolt"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "default": "mdi:alert-circle",
+        "state": {
+          "on": "mdi:alert-circle",
+          "off": "mdi:check-circle"
+        }
+      },
+      "connection_state": {
+        "default": "mdi:lan-connect",
+        "state": {
+          "on": "mdi:lan-connect",
+          "off": "mdi:lan-disconnect"
+        }
+      }
     }
-  },
-  "services": {
-    "set_vane_horizontal": "mdi:arrow-left-right",
-    "set_vane_vertical": "mdi:arrow-up-down"
   }
 }
