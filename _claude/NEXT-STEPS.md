@@ -57,7 +57,8 @@ This document tracks current and upcoming work for the MELCloud Home custom comp
 - **Entity ID format:** Use `sensor.melcloud_*_energy` (shorter, cleaner than `energy_consumed`)
 - **See:** `_claude/energy-monitoring-requirements.md` for complete implementation plan
 
-**Option B - Session 13:** HACS Distribution Setup - 7-9 hours
+**Option B - Session 13:** HACS Distribution Setup - 8-11 hours
+- **IMPORTANT:** Fix mypy type errors first (1-2 hours)
 - Create separate repository
 - Prepare for HACS submission
 - **See:** [HACS details in ROADMAP.md](#)

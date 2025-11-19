@@ -324,6 +324,14 @@ melcloudhome/                      # New dedicated repository
 
 **Implementation Tasks:**
 
+0. **Fix Type Errors** (1-2 hours) ⚠️ MUST DO FIRST
+   - Fix mypy errors in coordinator.py (subclassing DataUpdateCoordinator)
+   - Fix mypy errors in config_flow.py (subclassing ConfigFlow)
+   - Fix mypy errors in climate.py (subclassing ClimateEntity)
+   - Fix untyped decorator in coordinator energy polling
+   - Add proper type: ignore comments with justification where needed
+   - Ensure all GitHub Actions checks will pass
+
 1. **Create New Repository** (30 min)
    - Create `andrew-blake/melcloudhome` on GitHub
    - Initialize with proper settings
@@ -362,6 +370,7 @@ melcloudhome/                      # New dedicated repository
    - Create PR and wait for approval
 
 **HACS Requirements Checklist:**
+- [ ] **Fix mypy type errors** (coordinator.py, config_flow.py, climate.py subclassing issues)
 - [ ] Separate repository created
 - [ ] `hacs.json` in repository root
 - [ ] GitHub Actions passing (HACS + Hassfest)
