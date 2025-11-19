@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api.client import MELCloudHomeClient
@@ -22,6 +23,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # Energy update interval (30 minutes)
 ENERGY_UPDATE_INTERVAL = timedelta(minutes=30)
+
+# Storage version for energy data persistence
+STORAGE_VERSION = 1
+STORAGE_KEY = "melcloudhome_energy_data"
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -54,6 +59,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._energy_cumulative: dict[str, float] = {}
         # Last processed hour timestamp per device (to avoid double-counting)
         self._energy_last_hour: dict[str, str] = {}
+        # Persistent storage for energy data
+        self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
@@ -108,6 +115,18 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     async def async_setup(self) -> None:
         """Set up the coordinator with energy polling."""
         _LOGGER.info("Setting up energy polling for MELCloud Home")
+
+        # Load persisted energy data from storage
+        stored_data = await self._store.async_load()
+        if stored_data:
+            self._energy_cumulative = stored_data.get("cumulative", {})
+            self._energy_last_hour = stored_data.get("last_hour", {})
+            _LOGGER.info(
+                "Restored energy data for %d device(s) from storage",
+                len(self._energy_cumulative),
+            )
+        else:
+            _LOGGER.info("No stored energy data found, starting fresh")
 
         # Perform initial energy fetch
         try:
@@ -235,11 +254,26 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             # Update unit objects with new energy data
             self._update_unit_energy_data()
 
+            # Save energy data to persistent storage
+            await self._save_energy_data()
+
             # Notify listeners (sensors) of energy update
             self.async_update_listeners()
 
         except Exception as err:
             _LOGGER.error("Error updating energy data: %s", err)
+
+    async def _save_energy_data(self) -> None:
+        """Save energy cumulative totals and last hour timestamps to storage."""
+        try:
+            data = {
+                "cumulative": self._energy_cumulative,
+                "last_hour": self._energy_last_hour,
+            }
+            await self._store.async_save(data)
+            _LOGGER.debug("Saved energy data to storage")
+        except Exception as err:
+            _LOGGER.error("Error saving energy data: %s", err)
 
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh)."""
