@@ -321,7 +321,7 @@ def hvac_action(self) -> HVACAction | None:
 **What's Missing:**
 
 - ❌ Horizontal swing (left-right vane control)
-- API supports: "Auto", "Swing", "Left", "CenterLeft", "Center", "CenterRight", "Right"
+- API supports: "Auto", "Swing", "Left", "LeftCentre", "Centre", "RightCentre", "Right"
 
 **What Happens Now:**
 
@@ -342,9 +342,9 @@ VANE_HORIZONTAL_POSITIONS = [
     "Auto",
     "Swing",
     "Left",
-    "CenterLeft",
-    "Center",
-    "CenterRight",
+    "LeftCentre",
+    "Centre",
+    "RightCentre",
     "Right"
 ]
 
@@ -421,7 +421,7 @@ class MELCloudHomeClimate(...):
 - [ ] Set horizontal swing to "Right" - vanes move right
 - [ ] Set horizontal swing to "Auto" - vanes auto-position
 - [ ] Set vertical swing to "One" - vertical changes, horizontal unchanged
-- [ ] Set horizontal to "Center", vertical to "Three" - both set correctly
+- [ ] Set horizontal to "Centre", vertical to "Three" - both set correctly
 - [ ] Verify both can be controlled independently in HA UI
 
 ---
@@ -743,9 +743,9 @@ VANE_HORIZONTAL_POSITIONS = [
     "Auto",
     "Swing",
     "Left",
-    "CenterLeft",
-    "Center",
-    "CenterRight",
+    "LeftCentre",
+    "Centre",
+    "RightCentre",
     "Right"
 ]
 ```
@@ -837,7 +837,7 @@ async def test_horizontal_swing_independent(hass, climate_entity):
 
 - [ ] Set horizontal to "Left" → vanes move left
 - [ ] Set horizontal to "Right" → vanes move right
-- [ ] Set horizontal to "Center" → vanes center
+- [ ] Set horizontal to "Centre" → vanes center
 - [ ] Set horizontal to "Swing" → vanes oscillate left-right
 - [ ] Change vertical, horizontal unchanged → works
 - [ ] Change horizontal, vertical unchanged → works

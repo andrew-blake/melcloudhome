@@ -320,7 +320,7 @@ Body (partial update - only include fields to change):
   "power": true,                          // true/false
   "operationMode": "Heat",                // "Heat", "Cool", "Auto", "Dry", "Fan"
   "setFanSpeed": 3,                       // 0=Auto, 1-5 for manual speeds
-  "vaneHorizontalDirection": "Swing",     // "Swing", "Left", "CenterLeft", "Center", "CenterRight", "Right"
+  "vaneHorizontalDirection": "Swing",     // "Swing", "Left", "LeftCentre", "Centre", "RightCentre", "Right"
   "vaneVerticalDirection": "Auto",        // "Auto", "One", "Two", "Three", "Four", "Five"
   "setTemperature": 21.5,                 // Temperature (supports 0.5 increments)
   "temperatureIncrementOverride": null,   // Override increment size (optional)
@@ -384,9 +384,9 @@ Available modes (from capabilities):
 **Horizontal:**
 - `Swing` - Auto swing
 - `Left`
-- `CenterLeft`
+- `LeftCentre`
 - `Center`
-- `CenterRight`
+- `RightCentre`
 - `Right`
 
 **Vertical:**

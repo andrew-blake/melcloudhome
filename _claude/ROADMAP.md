@@ -361,7 +361,7 @@ SENSOR_TYPES = (
 ```python
 @property
 def swing_horizontal_modes(self) -> list[str]:
-    return ["Auto", "Swing", "Left", "CenterLeft", "Center", "CenterRight", "Right"]
+    return ["Auto", "Swing", "Left", "LeftCentre", "Centre", "RightCentre", "Right"]
 
 @property
 def swing_horizontal_mode(self) -> str:

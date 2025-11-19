@@ -102,11 +102,11 @@ VANE_POSITION_THREE = "Three"
 VANE_POSITION_FOUR = "Four"
 VANE_POSITION_FIVE = "Five"
 
-# Horizontal-specific positions
+# Horizontal-specific positions (British spelling per API)
 VANE_LEFT = "Left"
-VANE_CENTER_LEFT = "CenterLeft"
-VANE_CENTER = "Center"
-VANE_CENTER_RIGHT = "CenterRight"
+VANE_CENTER_LEFT = "LeftCentre"
+VANE_CENTER = "Centre"
+VANE_CENTER_RIGHT = "RightCentre"
 VANE_RIGHT = "Right"
 
 VANE_VERTICAL_DIRECTIONS = [
