@@ -6,7 +6,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -50,6 +50,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Energy data cache and polling
         self._energy_data: dict[str, float | None] = {}
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
+        # Cumulative energy tracking (running totals in kWh)
+        self._energy_cumulative: dict[str, float] = {}
+        # Last processed hour timestamp per device (to avoid double-counting)
+        self._energy_last_hour: dict[str, str] = {}
 
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
@@ -103,8 +107,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     async def async_setup(self) -> None:
         """Set up the coordinator with energy polling."""
+        _LOGGER.info("Setting up energy polling for MELCloud Home")
+
         # Perform initial energy fetch
-        await self._async_update_energy_data()
+        try:
+            await self._async_update_energy_data()
+            _LOGGER.info("Initial energy fetch completed")
+        except Exception as err:
+            _LOGGER.error("Error during initial energy fetch: %s", err, exc_info=True)
 
         # Schedule periodic energy updates (30 minutes)
         self._cancel_energy_updates = async_track_time_interval(
@@ -112,16 +122,21 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._async_update_energy_data,
             ENERGY_UPDATE_INTERVAL,
         )
+        _LOGGER.info("Energy polling scheduled (every 30 minutes)")
 
-    @callback  # type: ignore[misc]
     async def _async_update_energy_data(self, now: datetime | None = None) -> None:
-        """Update energy data for all units (called every 30 minutes)."""
+        """Update energy data for all units (called every 30 minutes).
+
+        Accumulates hourly energy values into cumulative totals.
+        Prevents double-counting by tracking last processed hour per device.
+        """
         if not self.data:
             return
 
         try:
             to_time = datetime.now(UTC)
-            from_time = to_time - timedelta(hours=1)
+            # Fetch last 2 hours to ensure we don't miss any data
+            from_time = to_time - timedelta(hours=2)
 
             for building in self.data.buildings:
                 for unit in building.air_to_air_units:
@@ -139,20 +154,75 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             unit.id, from_time, to_time, "Hour"
                         )
 
-                        energy = self.client.parse_energy_response(data)
-                        self._energy_data[unit.id] = energy
-
-                        if energy is not None:
+                        if not data or not data.get("measureData"):
                             _LOGGER.debug(
-                                "Energy data for unit %s: %.3f kWh",
+                                "No energy data available for unit %s", unit.name
+                            )
+                            continue
+
+                        # Process all hourly values
+                        values = data["measureData"][0].get("values", [])
+                        if not values:
+                            continue
+
+                        # Get last processed hour for this device
+                        last_hour = self._energy_last_hour.get(unit.id)
+                        is_first_init = last_hour is None
+
+                        # Initialize cumulative total if first time
+                        if unit.id not in self._energy_cumulative:
+                            self._energy_cumulative[unit.id] = 0.0
+
+                        if is_first_init:
+                            # First initialization: mark all current hours as processed
+                            # but DON'T add them (avoid inflating with historical data)
+                            latest_hour = values[-1]["time"]
+                            self._energy_last_hour[unit.id] = latest_hour
+                            _LOGGER.info(
+                                "Initializing energy tracking for %s at 0.0 kWh "
+                                "(skipping %d hours of historical data, will track from %s)",
                                 unit.name,
-                                energy,
+                                len(values),
+                                latest_hour[:16],
                             )
                         else:
-                            _LOGGER.debug(
-                                "No energy data available for unit %s",
-                                unit.name,
-                            )
+                            # Normal operation: process each hourly value
+                            for value_entry in values:
+                                hour_timestamp = value_entry["time"]
+                                wh_value = float(value_entry["value"])
+                                kwh_value = wh_value / 1000.0
+
+                                # Only process NEW hours we haven't seen before
+                                if hour_timestamp > last_hour:
+                                    # Add this hour's consumption to cumulative total
+                                    self._energy_cumulative[unit.id] += kwh_value
+
+                                    _LOGGER.info(
+                                        "Energy: %s - Hour %s: +%.3f kWh (cumulative: %.3f kWh)",
+                                        unit.name,
+                                        hour_timestamp[:16],
+                                        kwh_value,
+                                        self._energy_cumulative[unit.id],
+                                    )
+
+                                    # Update last processed hour
+                                    self._energy_last_hour[unit.id] = hour_timestamp
+                                else:
+                                    # Already processed this hour
+                                    _LOGGER.debug(
+                                        "Skipping already-processed hour %s for %s",
+                                        hour_timestamp[:16],
+                                        unit.name,
+                                    )
+
+                        # Store cumulative total for this unit
+                        self._energy_data[unit.id] = self._energy_cumulative[unit.id]
+
+                        _LOGGER.debug(
+                            "Total energy for %s: %.3f kWh",
+                            unit.name,
+                            self._energy_cumulative[unit.id],
+                        )
 
                     except Exception as err:
                         _LOGGER.error(
@@ -160,7 +230,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             unit.name,
                             err,
                         )
-                        # Keep previous value in cache on error
+                        # Keep previous cumulative value on error
 
             # Update unit objects with new energy data
             self._update_unit_energy_data()
