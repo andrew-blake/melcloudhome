@@ -11,26 +11,13 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-005: Divergence from Official MELCloud](decisions/005-divergence-from-official-melcloud.md) - Why we target different API
 - [ADR-006: Entity Description Pattern](decisions/006-entity-description-pattern.md) - Sensor/binary_sensor implementation
 - [ADR-007: Defer WebSocket Implementation](decisions/007-defer-websocket-implementation.md) - Real-time updates deferral
+- [ADR-008: Energy Monitoring Architecture](decisions/008-energy-monitoring-architecture.md) - Energy tracking with persistence
 
-## Integration Comparisons
+## Quality Reviews
 
-- [LG ThinQ vs MELCloud Home](lg-thinq-comparison.md) - Architecture comparison with official HA integration
-
-## API Documentation
-
-Complete API documentation is in the `_claude/` directory:
-
-- **melcloudhome-api-reference.md** - Control API with UI-verified parameters
-- **melcloudhome-schedule-api.md** - Schedule management CRUD operations
-- **melcloudhome-telemetry-endpoints.md** - Monitoring and reporting APIs
-- **melcloudhome-knowledge-gaps.md** - Known gaps and testing plan (~87% coverage)
-- **NEXT-STEPS.md** - Project status and roadmap
+- [Integration Review](integration-review.md) - Best practices compliance assessment
+- [Testing Strategy](testing-strategy.md) - Testing approach and philosophy
 
 ## OpenAPI Specification
 
-- **openapi.yaml** - Complete OpenAPI 3.0.3 specification
-- View at: http://localhost:8080/scalar-docs.html (when server running)
-
-## Project Status
-
-See [NEXT-STEPS.md](../_claude/NEXT-STEPS.md) for current implementation status and roadmap.
+- [openapi.yaml](../openapi.yaml) - Complete OpenAPI 3.0.3 specification for MELCloud Home API

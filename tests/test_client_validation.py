@@ -329,11 +329,11 @@ class TestVaneValidation:
 
     @pytest.mark.asyncio
     async def test_valid_horizontal_positions(self) -> None:
-        """Valid horizontal position 'Center' should pass validation."""
+        """Valid horizontal position 'Centre' should pass validation."""
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Auto", "Center")
+            await client.set_vanes("unit-id", "Auto", "Centre")
 
 
 class TestPowerValidation:

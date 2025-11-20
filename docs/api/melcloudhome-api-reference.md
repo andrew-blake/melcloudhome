@@ -275,9 +275,9 @@ VANE_VERTICAL_MAP = {
 | AUTO | `"Auto"` | ✅ Observed |
 | SWING | `"Swing"` | ✅ Observed |
 | LEFT | `"Left"` | 📝 From earlier docs |
-| CENTER LEFT | `"CenterLeft"` | 📝 From earlier docs |
-| CENTER | `"Center"` | 📝 From earlier docs |
-| CENTER RIGHT | `"CenterRight"` | 📝 From earlier docs |
+| CENTER LEFT | `"LeftCentre"` | 📝 From earlier docs |
+| CENTER | `"Centre"` | 📝 From earlier docs |
+| CENTER RIGHT | `"RightCentre"` | 📝 From earlier docs |
 | RIGHT | `"Right"` | 📝 From earlier docs |
 
 **Note:** Positional values documented in earlier API discovery. Auto and Swing confirmed through UI observation.
@@ -302,9 +302,9 @@ VANE_HORIZONTAL_MAP = {
     "Auto": "auto",
     "Swing": "swing",
     "Left": "left",
-    "CenterLeft": "center_left",
-    "Center": "center",
-    "CenterRight": "center_right",
+    "LeftCentre": "center_left",
+    "Centre": "center",
+    "RightCentre": "center_right",
     "Right": "right"
 }
 ```

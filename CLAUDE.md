@@ -4,10 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This repository contains:
-1. **MELCloud Home Integration** - Custom component for Home Assistant (in development)
-2. **Home Assistant Configuration** - Running on remote Docker server
-3. **API Documentation** - Complete MELCloud Home API docs in `_claude/`
+This repository is the MELCloud Home integration for Home Assistant, distributed via HACS.
+
+**Repository:** <https://github.com/andrew-blake/melcloudhome>
+
+**What's included:**
+
+1. **MELCloud Home Integration** - Custom component with full HVAC control and energy monitoring
+2. **API Client** - Bundled API client library in `custom_components/melcloudhome/api/`
+3. **Tests** - Comprehensive test suite with pytest and VCR cassettes
+4. **Documentation** - Architecture decision records (ADRs), API reference, research notes
+5. **Development Tools** - Deployment scripts, debugging utilities
 
 ## Remote System Access
 
@@ -41,18 +48,33 @@ See `.claude/skills/home-assistant-diagnostics/skill.md` for detailed diagnostic
 
 ### Project Structure
 
-```
+```text
 custom_components/melcloudhome/  # Custom component (bundled approach)
 ├── api/                         # Bundled API client library
+│   ├── auth.py                  # AWS Cognito OAuth authentication
+│   ├── client.py                # Main API client
 │   ├── const.py                 # API constants & enum mappings
 │   ├── exceptions.py            # Custom exceptions
-│   ├── models.py                # Data models
-│   ├── auth.py                  # AWS Cognito OAuth (TODO)
-│   └── client.py                # Main API client (TODO)
-└── [HA integration files]       # TODO
+│   └── models.py                # Data models
+├── climate.py                   # Climate platform (HVAC control)
+├── sensor.py                    # Sensor platform (temperature, WiFi, energy)
+├── binary_sensor.py             # Binary sensors (error, connection)
+├── config_flow.py               # Configuration UI
+├── coordinator.py               # Data update coordinator
+└── diagnostics.py               # Diagnostic data export
 
-_claude/                         # API documentation (~87% complete)
+docs/
+├── api/                         # API documentation
+│   ├── melcloudhome-api-reference.md
+│   └── melcloudhome-telemetry-endpoints.md
+├── decisions/                   # Architecture Decision Records (ADRs)
+├── research/                    # Research and planning documents
+└── ROADMAP.md                   # Project roadmap
+
+tests/                           # Test suite with VCR cassettes
+tools/                           # Development and deployment tools
 openapi.yaml                     # OpenAPI 3.0.3 specification
+_claude/                         # Session notes (local only, not in git)
 ```
 
 ### Key Decisions
@@ -91,7 +113,7 @@ python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch l
 - **Auto Mode:** "Automatic" NOT "Auto"
 - **Rate Limiting:** Minimum 60-second polling interval
 
-See `_claude/melcloudhome-api-reference.md` for complete API details.
+See `docs/api/melcloudhome-api-reference.md` for complete API details.
 
 ### Deployment & Testing
 
@@ -111,6 +133,7 @@ python tools/deploy_custom_component.py melcloudhome --watch
 ```
 
 The tool automatically:
+
 - Copies integration to remote server via SSH
 - Installs into Docker container
 - Restarts Home Assistant
@@ -122,6 +145,7 @@ The tool automatically:
 **Full documentation:** See [tools/README.md](tools/README.md)
 
 **Manual deployment:**
+
 ```bash
 # Copy to HA config directory
 scp -r custom_components/melcloudhome ha:/tmp/
@@ -132,4 +156,5 @@ ssh ha "sudo docker restart homeassistant"
 ## VSCode Configuration
 
 The repository includes VSCode settings that associate `*.yaml` files with the `home-assistant` file type for proper syntax highlighting and validation.
+
 - NEVER work around pre-commit hooks. They are important code quality checks.

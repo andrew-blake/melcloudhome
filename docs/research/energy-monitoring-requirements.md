@@ -78,7 +78,7 @@ GET /api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2
 - Timestamps include nanosecond precision
 - Empty response or 304 if no data available
 
-**Reference:** `_claude/melcloudhome-telemetry-endpoints.md:128`
+**Reference:** `../api/melcloudhome-telemetry-endpoints.md:128`
 
 ---
 
@@ -635,8 +635,8 @@ To enable energy tracking:
 
 ## References
 
-- **Telemetry API:** `_claude/melcloudhome-telemetry-endpoints.md`
-- **API Discovery:** `_claude/melcloudhome-api-discovery.md:271` (hasEnergyConsumedMeter)
+- **Telemetry API:** `../api/melcloudhome-telemetry-endpoints.md`
+- **API Discovery:** Local `_claude/melcloudhome-api-discovery.md:271` (hasEnergyConsumedMeter)
 - **HA Sensor Docs:** https://developers.home-assistant.io/docs/core/entity/sensor/
 - **HA Energy Dashboard:** https://www.home-assistant.io/docs/energy/
 - **State Classes:** https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes

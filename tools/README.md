@@ -208,10 +208,6 @@ See also:
 
 ## Other Tools
 
-### `test_auth.py`
-
-Test MELCloud Home authentication (for API client development).
-
 ### `list_entities.sh`
 
 List and inspect MELCloud Home entities via Home Assistant API. Useful for debugging and monitoring integration status.

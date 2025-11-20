@@ -14,7 +14,7 @@ info:
     - **Control API** (PUT /api/ataunit/{unitId}): Uses STRING enums
       - Modes: "Heat", "Cool", "Automatic", "Dry", "Fan"
       - Fan speeds: "Auto", "One", "Two", "Three", "Four", "Five"
-      - Vanes: "Auto", "Swing", "One"-"Five", "Left", "Center*", "Right"
+      - Vanes: "Auto", "Swing", "One"-"Five", "Left", "Centre*", "Right"
     - **Schedule API** (POST /api/cloudschedule/{unitId}): Uses INTEGER enums
       - Modes: 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
       - Fan speeds: 0=Auto, 1-5=speed levels
@@ -595,9 +595,9 @@ components:
           description: |
             Horizontal vane position (Schedule API uses integers):
             - 1: Left (inferred)
-            - 2: CenterLeft (inferred)
-            - 3: Center (inferred)
-            - 4: CenterRight (inferred)
+            - 2: LeftCentre (inferred)
+            - 3: Centre (inferred)
+            - 4: RightCentre (inferred)
             - 5: Right (inferred)
             - 6: Auto
             - 7: Swing
@@ -657,9 +657,9 @@ components:
         - Four
         - Five
         - Left
-        - CenterLeft
-        - Center
-        - CenterRight
+        - LeftCentre
+        - Centre
+        - RightCentre
         - Right
       description: |
         Vane direction values. Vertical uses One-Five, Horizontal uses Left-Right positions.

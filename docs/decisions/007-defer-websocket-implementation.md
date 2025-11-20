@@ -221,9 +221,8 @@ To address negative consequences:
 
 ## References
 
-- [WebSocket Research (v1.1 Investigation)](/_claude/websocket-research-defer.md) - Initial findings
-- [Session 9 Research Findings](/_claude/session-9-research-findings.md) - WebSocket patterns from Nest
-- [ROADMAP.md](/_claude/ROADMAP.md) - Updated v1.2/v1.3 scope
+- [WebSocket Research (v1.1 Investigation)](../research/websocket-research-defer.md) - Initial findings
+- [Session 9 Research Findings](../research/session-9-research-findings.md) - WebSocket patterns from Nest
 
 ## Timeline
 

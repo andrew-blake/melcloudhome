@@ -143,7 +143,7 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         Uses hysteresis (±0.5°C) to avoid state flapping.
 
         Note: This is polling-based with 60s updates, so may not reflect
-        real-time device behavior. Will improve with WebSocket in v1.3.
+        real-time device behavior.
         """
         device = self._device
         if device is None:

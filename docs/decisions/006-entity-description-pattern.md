@@ -303,7 +303,7 @@ Since this is a new platform, no migration is needed. Future binary sensor and o
 - [Home Assistant Entity Description Pattern](https://developers.home-assistant.io/docs/core/entity#entity-description)
 - [MELCloud Sensor Implementation](https://github.com/home-assistant/core/blob/master/homeassistant/components/melcloud/sensor.py)
 - [Ecobee Sensor Implementation](https://github.com/home-assistant/core/blob/master/homeassistant/components/ecobee/sensor.py)
-- [Session 9 Research Findings](/_claude/session-9-research-findings.md)
+- [Session 9 Research Findings](../research/session-9-research-findings.md)
 
 ## Notes
 

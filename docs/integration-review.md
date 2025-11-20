@@ -39,7 +39,7 @@
 
 ### 5. **Documentation** ✓
 - ✅ Comprehensive CLAUDE.md
-- ✅ API documentation in _claude/
+- ✅ API documentation in api/ and research/
 - ✅ ADRs for key decisions
 - ✅ Deployment tool documented
 - ✅ Code comments where needed

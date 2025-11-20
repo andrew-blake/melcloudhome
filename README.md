@@ -1,82 +1,182 @@
-# MELCloud Home Integration
+# MELCloud Home
 
-Home Assistant custom component for Mitsubishi Electric MELCloud Home air conditioning systems.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![GitHub Release](https://img.shields.io/github/release/andrew-blake/melcloudhome.svg)](https://github.com/andrew-blake/melcloudhome/releases)
+[![License](https://img.shields.io/github/license/andrew-blake/melcloudhome.svg)](LICENSE)
 
-## Status
+Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Electric air conditioning units via the MELCloud Home API.
 
-🚧 **In Development** - Core API client foundation complete (~87% API coverage)
+## Features
 
-**Completed:**
-- ✅ API discovery and documentation
-- ✅ OpenAPI 3.0 specification
-- ✅ Bundled API client (const, exceptions, models)
-- ✅ Development environment (ruff, mypy, pre-commit)
+- **Full HVAC Control**: Power, temperature, mode (heat/cool/dry/fan/auto), fan speed, and swing modes
+- **Energy Monitoring**: Track cumulative energy consumption with persistent storage
+- **Comprehensive Sensors**:
+  - Room temperature
+  - WiFi signal strength
+  - Energy consumption
+  - Error state monitoring
+  - Connection status
+- **Real-time Status**: HVAC action feedback (heating/cooling/idle/off)
+- **Independent Vane Control**: Both vertical and horizontal swing modes
+- **Voice Assistant Ready**: Full support for Google Home, Alexa, and Home Assistant voice commands
+- **Automatic Updates**: 60-second polling for climate/sensors, 30-minute polling for energy data
+- **Diagnostics Support**: Export integration diagnostics for troubleshooting
 
-**In Progress:**
-- 🔄 API client implementation (auth, client)
-- 🔄 Home Assistant integration (climate entity)
+## Requirements
 
-**Deferred:**
-- ⏸️ Scenes API (v2.0)
+- Home Assistant 2024.11.0 or newer
+- MELCloud Home account with configured devices
+- Internet connection for cloud API access
 
-## Project Structure
+## Installation
 
-```
-custom_components/melcloudhome/  # HA custom component
-├── api/                         # Bundled API client
-│   ├── const.py                 # API constants & enums
-│   ├── exceptions.py            # Custom exceptions
-│   ├── models.py                # Data models
-│   ├── auth.py                  # OAuth authentication (TODO)
-│   └── client.py                # Main API client (TODO)
-├── manifest.json                # Integration metadata (TODO)
-├── climate.py                   # Climate entity (TODO)
-└── ...
+### HACS (Recommended)
 
-_claude/                         # API documentation
-openapi.yaml                     # OpenAPI specification
-```
+1. Open HACS in Home Assistant
+2. Click on "Integrations"
+3. Click the three dots in the top right corner
+4. Select "Custom repositories"
+5. Add repository URL: `https://github.com/andrew-blake/melcloudhome`
+6. Select category: "Integration"
+7. Click "Add"
+8. Find "MELCloud Home" in HACS and click "Download"
+9. Restart Home Assistant
 
-## Development
+### Manual Installation
 
-**Setup:**
-```bash
-uv sync                          # Install dependencies
-source .venv/bin/activate        # Activate venv
-pre-commit install               # Install git hooks
-```
+1. Download the latest release from [GitHub](https://github.com/andrew-blake/melcloudhome/releases)
+2. Extract the `melcloudhome` folder to your `custom_components` directory
+3. Restart Home Assistant
 
-**Commands:**
-```bash
-make format                      # Format code
-make lint                        # Run linter
-make type-check                  # Type checking
-make all                         # Run all checks
-```
+## Configuration
 
-**API Documentation:**
-```bash
-# View OpenAPI spec with Scalar UI
-open http://localhost:8080/scalar-docs.html
-```
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for "MELCloud Home"
+4. Enter your MELCloud Home credentials (email and password)
+5. Click **Submit**
 
-## Architecture
+Your devices will be automatically discovered and added.
 
-**Approach:** Bundled API client (KISS/YAGNI)
-- API client bundled in `custom_components/melcloudhome/api/`
-- No separate PyPI package (can migrate later if needed)
-- Single folder deployment
-- Fast iteration
+## Entities Created
 
-See [ADR-001](docs/decisions/001-bundled-api-client.md) for decision rationale.
+For each air conditioning unit, the following entities are created:
 
-## Resources
+### Climate Entity
 
-- **API Docs:** `_claude/` directory
-- **OpenAPI Spec:** `openapi.yaml`
-- **Pre-commit:** `.pre-commit-config.yaml`
-- **Linting:** `pyproject.toml` (ruff, mypy)
+- **Entity ID**: `climate.melcloud_<unit_id>`
+- **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
+- **HVAC Action**: Real-time heating/cooling/idle status
+
+### Sensors
+
+- **Room Temperature**: `sensor.melcloud_<unit_id>_room_temperature`
+- **WiFi Signal**: `sensor.melcloud_<unit_id>_wifi_signal` (diagnostic)
+- **Energy**: `sensor.melcloud_<unit_id>_energy` (cumulative kWh)
+
+### Binary Sensors
+
+- **Error State**: `binary_sensor.melcloud_<unit_id>_error_state`
+- **Connection**: `binary_sensor.melcloud_<unit_id>_connection_state`
+
+## Supported HVAC Modes
+
+- **Off**: Unit powered off
+- **Heat**: Heating mode
+- **Cool**: Cooling mode
+- **Dry**: Dehumidification mode
+- **Fan Only**: Fan only (no heating/cooling)
+- **Auto**: Automatic mode
+
+## Fan Speeds
+
+- Auto
+- Level 1 (Quiet)
+- Level 2 (Low)
+- Level 3 (Medium)
+- Level 4 (High)
+- Level 5 (Very High)
+
+## Swing Modes
+
+### Vertical (Standard Swing)
+
+- Auto
+- Swing
+- One (Top)
+- Two
+- Three (Middle)
+- Four
+- Five (Bottom)
+
+### Horizontal (Swing Horizontal Mode)
+
+- Auto
+- Swing
+- Left
+- LeftCentre
+- Centre
+- RightCentre
+- Right
+
+## Energy Dashboard Integration
+
+Energy consumption sensors are compatible with Home Assistant's Energy Dashboard:
+
+1. Go to **Settings** → **Dashboards** → **Energy**
+2. Add your devices under "Individual devices"
+3. Select the energy sensor for each unit
+4. Energy data accumulates over time and persists across restarts
+
+## Troubleshooting
+
+### Integration Not Loading
+
+- Check Home Assistant logs for errors
+- Verify your MELCloud Home credentials
+- Ensure devices are configured in the MELCloud Home app
+
+### Entities Not Updating
+
+- Check your internet connection
+- Verify MELCloud Home service is accessible
+- Review the integration logs for API errors
+
+### Energy Sensor Unavailable
+
+- Some devices may not report energy data
+- Check if device shows energy consumption in the MELCloud Home app
+- Energy sensors require 30 minutes for initial data
+
+### Export Diagnostics
+
+1. Go to **Settings** → **Devices & Services**
+2. Find "MELCloud Home" integration
+3. Click the three dots and select "Download diagnostics"
+4. Share the file when reporting issues
+
+## API Rate Limiting
+
+The integration uses conservative polling intervals to respect API limits:
+
+- **Climate/Sensors**: 60 seconds
+- **Energy Data**: 30 minutes
+
+These intervals provide responsive control while preventing API throttling.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/andrew-blake/melcloudhome/issues)
+- **Documentation**: [GitHub Repository](https://github.com/andrew-blake/melcloudhome)
 
 ## License
 
-See LICENSE file.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+This is an unofficial integration and is not affiliated with, endorsed by, or connected to Mitsubishi Electric or MELCloud. Use at your own risk.
+
+## Credits
+
+Developed by Andrew Blake ([@andrew-blake](https://github.com/andrew-blake))
