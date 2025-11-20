@@ -1,15 +1,47 @@
+# Environment
 .env
-claude-homeassistant/
+.claude/settings.local.json
+
+# Home Assistant Configuration (not part of HACS distribution)
+automations.yaml
+configuration.yaml
+home-assistant.log
+home-assistant_v2.db
+secrets.yaml
+.storage/
+groups.yaml
+scenes.yaml
+scripts.yaml
+
+# Development tools (not part of HACS distribution)
+tools/deploy_custom_component.py
 
 # Python
 *.pyc
 __pycache__/
 .pytest_cache/
+.mypy_cache/
+*.py[cod]
+*$py.class
 
 # Testing
 .coverage
 htmlcov/
+*.cover
+.tox/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
 
 # IDE
 .vscode/
 .idea/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

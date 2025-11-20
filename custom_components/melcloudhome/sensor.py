@@ -69,7 +69,7 @@ SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
         value_fn=lambda unit: unit.rssi,
         available_fn=lambda unit: unit.rssi is not None,
     ),
-    # Energy consumption sensor (v1.3)
+    # Energy consumption sensor
     # Created if device has energy meter capability, even if no initial data
     # Becomes available once energy data is fetched (polls every 30 minutes)
     MELCloudHomeSensorEntityDescription(
