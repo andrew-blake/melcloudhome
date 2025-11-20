@@ -365,8 +365,8 @@ ssh ha "sudo docker logs -f homeassistant" | grep melcloudhome
 
 ## Support
 
-- **Issues:** Report bugs at [GitHub Issues](https://github.com/ablake/home-automation/issues)
-- **Documentation:** See `_claude/` folder for API documentation
+- **Issues:** Report bugs at [GitHub Issues](https://github.com/andrew-blake/melcloudhome/issues)
+- **Documentation:** See `docs/` folder for technical documentation and API reference
 - **Updates:** Check GitHub for new releases
 
 ---

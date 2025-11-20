@@ -193,7 +193,7 @@ To address the negative consequences:
 
 - [Home Assistant Data Update Coordinator](https://developers.home-assistant.io/docs/integration_fetching_data/)
 - [MELCloud Integration Source](https://github.com/home-assistant/core/tree/master/homeassistant/components/melcloud)
-- [Session 9 Research Findings](/_claude/session-9-research-findings.md)
+- [Session 9 Research Findings](../research/session-9-research-findings.md)
 - [ADR-004: Integration Refactoring](./004-integration-refactoring.md) - Previous performance improvements
 
 ## Notes

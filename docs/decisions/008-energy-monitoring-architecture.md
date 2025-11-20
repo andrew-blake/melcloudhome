@@ -374,8 +374,8 @@ MELCloudHomeSensorEntityDescription(
 
 ## References
 
-- [Energy Monitoring Requirements](_claude/energy-monitoring-requirements.md)
-- [Telemetry API Documentation](_claude/melcloudhome-telemetry-endpoints.md)
+- [Energy Monitoring Requirements](../research/energy-monitoring-requirements.md)
+- [Telemetry API Documentation](../api/melcloudhome-telemetry-endpoints.md)
 - [ADR-006: Entity Description Pattern](006-entity-description-pattern.md)
 - [ADR-003: Entity Naming Strategy](003-entity-naming-strategy.md)
 - [HA Sensor Documentation](https://developers.home-assistant.io/docs/core/entity/sensor/)

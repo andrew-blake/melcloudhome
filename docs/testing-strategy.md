@@ -182,7 +182,7 @@ uv run pytest tests/ --cov
 python tools/deploy_custom_component.py melcloudhome
 
 # 3. Manual testing checklist
-# See _claude/ha-integration-requirements.md
+# See local development notes
 
 # 4. Monitor logs
 python tools/deploy_custom_component.py melcloudhome --watch

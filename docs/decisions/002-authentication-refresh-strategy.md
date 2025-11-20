@@ -189,7 +189,7 @@ Future enhancement to implement proper refresh token flow.
 - AWS Cognito OAuth Documentation
 - Home Assistant Authentication Best Practices
 - `custom_components/melcloudhome/api/client.py:94-95` - Current 401 handling
-- Session lifetime: ~8 hours (documented in `_claude/NEXT-STEPS.md`)
+- Session lifetime: ~8 hours (documented in local development notes)
 
 ## Notes
 
