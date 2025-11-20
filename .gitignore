@@ -2,6 +2,9 @@
 .env
 .claude/settings.local.json
 
+# Internal development documentation
+_claude/
+
 # Home Assistant Configuration (not part of HACS distribution)
 automations.yaml
 configuration.yaml
