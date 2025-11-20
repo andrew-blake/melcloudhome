@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository is the MELCloud Home integration for Home Assistant, distributed via HACS.
 
-**Repository:** https://github.com/andrew-blake/melcloudhome
+**Repository:** <https://github.com/andrew-blake/melcloudhome>
 
 **What's included:**
+
 1. **MELCloud Home Integration** - Custom component with full HVAC control and energy monitoring
 2. **API Client** - Bundled API client library in `custom_components/melcloudhome/api/`
 3. **Tests** - Comprehensive test suite with pytest and VCR cassettes
