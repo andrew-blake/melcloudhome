@@ -72,13 +72,13 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         self._attr_unique_id = unit.id
         self._entry = entry
 
-        # Generate stable entity ID from unit ID (format: melcloud_0efc_76db)
+        # Generate stable entity ID from unit ID (format: melcloudhome_0efc_76db)
         # Using first 4 and last 4 chars of UUID for stability + traceability
         unit_id_clean = unit.id.replace("-", "")  # Remove dashes from UUID
 
         # Set entity name (HA will normalize this to entity_id)
-        # Format: "MELCloud 0efc 76db" -> entity_id: "climate.melcloud_0efc_76db"
-        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]}"
+        # Format: "MELCloudHome 0efc 76db" -> entity_id: "climate.melcloudhome_0efc_76db"
+        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]}"
 
         # Device info (modern HA pattern)
         self._attr_device_info = DeviceInfo(

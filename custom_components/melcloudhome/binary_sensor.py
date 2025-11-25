@@ -27,7 +27,11 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeBinarySensorEntityDescription(
     BinarySensorEntityDescription  # type: ignore[misc]
 ):
-    """Binary sensor entity description with value extraction."""
+    """Binary sensor entity description with value extraction.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees BinarySensorEntityDescription as 'Any'.
+    """
 
     value_fn: Callable[[AirToAirUnit], bool]
     """Function to extract binary sensor value from unit data."""
@@ -92,7 +96,11 @@ class MELCloudHomeBinarySensor(
     CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
     BinarySensorEntity,  # type: ignore[misc]
 ):
-    """Representation of a MELCloud Home binary sensor."""
+    """Representation of a MELCloud Home binary sensor.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
+    """
 
     entity_description: MELCloudHomeBinarySensorEntityDescription
 
@@ -115,12 +123,12 @@ class MELCloudHomeBinarySensor(
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
         # Generate stable entity ID from unit ID
-        # Format: binary_sensor.melcloud_0efc_76db_error_state
+        # Format: binary_sensor.melcloudhome_0efc_76db_error_state
         unit_id_clean = unit.id.replace("-", "")
         key_clean = description.key
 
         # Entity name (HA will normalize this to entity_id)
-        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
 
         # Link to device (same device as climate entity)
         self._attr_device_info = {

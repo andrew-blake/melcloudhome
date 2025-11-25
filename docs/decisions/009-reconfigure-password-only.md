@@ -30,7 +30,7 @@ The reconfigure flow:
 
 1. **Home Assistant best practice**: The `unique_id` should be immutable. The March 2025 HA developer docs explicitly state that unique_id changes are deprecated behavior and integrations should not rely on them.
 
-2. **Entity ID stability**: Entity IDs are based on device MAC addresses (e.g., `climate.melcloud_0efc_76db`), not the email. Deleting and re-adding the integration with a different email will preserve entity IDs and history as long as the same physical devices are discovered.
+2. **Entity ID stability**: Entity IDs are based on device UUIDs (e.g., `climate.melcloud_0efc_76db`), not the email. Deleting and re-adding the integration with a different email will preserve entity IDs and history as long as the same physical devices are discovered.
 
 3. **Simpler implementation**: Changing `unique_id` requires special handling (`async_update_entry` with explicit `unique_id` parameter) and conflict checking against other entries. Password-only updates use the standard `async_update_reload_and_abort` helper.
 

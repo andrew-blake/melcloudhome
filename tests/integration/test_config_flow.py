@@ -51,6 +51,9 @@ async def test_reconfigure_flow_success(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
 
+    # Wait for the reload task to complete
+    await hass.async_block_till_done()
+
     # Verify entry updated
     assert entry.data[CONF_PASSWORD] == "new_password"
     assert entry.data[CONF_EMAIL] == "test@example.com"  # Email unchanged
