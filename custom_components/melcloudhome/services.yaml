@@ -1,0 +1,3 @@
+force_refresh:
+  name: Force refresh
+  description: Immediately refresh device data from MELCloud servers

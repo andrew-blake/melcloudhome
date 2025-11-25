@@ -20,7 +20,9 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id][
+        "coordinator"
+    ]
 
     # Get all entities for this config entry
     entity_reg = er.async_get(hass)

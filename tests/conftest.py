@@ -1,4 +1,4 @@
-"""Shared test fixtures."""
+"""Shared test fixtures for API tests."""
 
 import contextlib
 import os
@@ -116,8 +116,8 @@ def scrub_sensitive_data(response: dict[str, Any]) -> dict[str, Any]:
 def vcr_config() -> dict[str, Any]:
     """VCR configuration."""
     return {
-        # Store cassettes in tests/cassettes/
-        "cassette_library_dir": "tests/cassettes",
+        # Store cassettes in tests/api/cassettes/
+        "cassette_library_dir": "tests/api/cassettes",
         # Match requests on method and URI (ignore body/headers for simplicity)
         "match_on": ["method", "scheme", "host", "port", "path", "query"],
         # Filter out sensitive headers/data

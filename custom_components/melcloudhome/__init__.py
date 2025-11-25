@@ -59,9 +59,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up energy polling
     await coordinator.async_setup()
 
-    # Store coordinator
+    # Store coordinator in per-entry dict (supports future Phase 2 additions)
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+    # Register force refresh service (domain-level, refreshes all coordinators)
+    # Note: Handler defined inside function to match lazy import pattern
+    # The has_service check prevents re-registration, so only first handler is used
+    from homeassistant.core import ServiceCall
+
+    async def handle_force_refresh(_call: ServiceCall) -> None:
+        """Handle force refresh service call."""
+        for entry_data in hass.data[DOMAIN].values():
+            if isinstance(entry_data, dict) and "coordinator" in entry_data:
+                await entry_data["coordinator"].async_refresh()
+        _LOGGER.debug("Forced refresh for %s coordinator(s)", len(hass.data[DOMAIN]))
+
+    # Register service if not already registered
+    if not hass.services.has_service(DOMAIN, "force_refresh"):
+        hass.services.async_register(
+            DOMAIN,
+            "force_refresh",
+            handle_force_refresh,
+            schema=None,  # No parameters
+        )
 
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
@@ -86,8 +107,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Unload platforms
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, platforms):
         # Close client and clean up
-        coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator: MELCloudHomeCoordinator = entry_data["coordinator"]
         await coordinator.async_shutdown()
-        hass.data[DOMAIN].pop(entry.entry_id)
+
+        # Unregister service if no entries remain
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, "force_refresh")
+            hass.data.pop(DOMAIN)
 
     return unload_ok  # type: ignore[no-any-return]
