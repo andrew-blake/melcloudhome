@@ -382,7 +382,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             )
             return
 
-        _LOGGER.info("🔌 COORDINATOR: Setting power for %s to %s", unit_id[-8:], power)
+        _LOGGER.info("Setting power for %s to %s", unit_id[-8:], power)
         await self._execute_with_retry(
             lambda: self.client.set_power(unit_id, power),
             f"set_power({unit_id}, {power})",
@@ -398,7 +398,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             )
             return
 
-        _LOGGER.info("🌡️  COORDINATOR: Setting mode for %s to %s", unit_id[-8:], mode)
+        _LOGGER.info("Setting mode for %s to %s", unit_id[-8:], mode)
         await self._execute_with_retry(
             lambda: self.client.set_mode(unit_id, mode),
             f"set_mode({unit_id}, {mode})",
@@ -416,11 +416,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             )
             return
 
-        _LOGGER.info(
-            "🌡️  COORDINATOR: Setting temperature for %s to %.1f°C",
-            unit_id[-8:],
-            temperature,
-        )
+        _LOGGER.info("Setting temperature for %s to %.1f°C", unit_id[-8:], temperature)
         await self._execute_with_retry(
             lambda: self.client.set_temperature(unit_id, temperature),
             f"set_temperature({unit_id}, {temperature})",
@@ -438,9 +434,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             )
             return
 
-        _LOGGER.info(
-            "💨 COORDINATOR: Setting fan speed for %s to %s", unit_id[-8:], fan_speed
-        )
+        _LOGGER.info("Setting fan speed for %s to %s", unit_id[-8:], fan_speed)
         await self._execute_with_retry(
             lambda: self.client.set_fan_speed(unit_id, fan_speed),
             f"set_fan_speed({unit_id}, {fan_speed})",
@@ -469,10 +463,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             return
 
         _LOGGER.info(
-            "🎚️  COORDINATOR: Setting vanes for %s to V:%s H:%s",
-            unit_id[-8:],
-            vertical,
-            horizontal,
+            "Setting vanes for %s to V:%s H:%s", unit_id[-8:], vertical, horizontal
         )
         await self._execute_with_retry(
             lambda: self.client.set_vanes(unit_id, vertical, horizontal),
