@@ -358,9 +358,9 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
         await self.coordinator.async_set_power(self._unit_id, True)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_turn_off(self) -> None:
         """Turn the entity off."""
         await self.coordinator.async_set_power(self._unit_id, False)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh_debounced()
