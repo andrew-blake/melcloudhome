@@ -20,7 +20,9 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id][
+        "coordinator"
+    ]
 
     # Get all entities for this config entry
     entity_reg = er.async_get(hass)
@@ -44,9 +46,6 @@ async def async_get_config_entry_diagnostics(
         },
         "coordinator": {
             "last_update_success": coordinator.last_update_success,
-            "last_update_time": coordinator.last_update_success_time.isoformat()
-            if coordinator.last_update_success_time
-            else None,
             "update_interval": coordinator.update_interval.total_seconds()
             if coordinator.update_interval
             else None,
@@ -66,7 +65,6 @@ async def async_get_config_entry_diagnostics(
                         {
                             "id": unit.id,
                             "name": unit.name,
-                            "model": unit.model,
                             "power": unit.power,
                             "operation_mode": unit.operation_mode,
                             "set_temperature": unit.set_temperature,
@@ -74,7 +72,9 @@ async def async_get_config_entry_diagnostics(
                             "set_fan_speed": unit.set_fan_speed,
                             "vane_vertical_direction": unit.vane_vertical_direction,
                             "vane_horizontal_direction": unit.vane_horizontal_direction,
-                            "has_energy_consumed_meter": unit.has_energy_consumed_meter,
+                            "has_energy_consumed_meter": unit.capabilities.has_energy_consumed_meter
+                            if unit.capabilities
+                            else None,
                         }
                         for unit in building.air_to_air_units
                     ],

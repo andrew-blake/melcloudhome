@@ -64,20 +64,20 @@ For each air conditioning unit, the following entities are created:
 
 ### Climate Entity
 
-- **Entity ID**: `climate.melcloud_<unit_id>`
+- **Entity ID**: `climate.melcloudhome_<unit_id>`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
 ### Sensors
 
-- **Room Temperature**: `sensor.melcloud_<unit_id>_room_temperature`
-- **WiFi Signal**: `sensor.melcloud_<unit_id>_wifi_signal` (diagnostic)
-- **Energy**: `sensor.melcloud_<unit_id>_energy` (cumulative kWh)
+- **Room Temperature**: `sensor.melcloudhome_<unit_id>_room_temperature`
+- **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal` (diagnostic)
+- **Energy**: `sensor.melcloudhome_<unit_id>_energy` (cumulative kWh)
 
 ### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloud_<unit_id>_error_state`
-- **Connection**: `binary_sensor.melcloud_<unit_id>_connection_state`
+- **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
+- **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
 
 ## Supported HVAC Modes
 

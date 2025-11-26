@@ -8,6 +8,13 @@
           "email": "Email",
           "password": "Password"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure",
+        "description": "Update credentials for {email}",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -16,7 +23,8 @@
       "unknown": "An unexpected error occurred. Please try again."
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "This account is already configured",
+      "reconfigure_successful": "Credentials updated successfully"
     }
   },
   "entity": {
@@ -38,6 +46,12 @@
       "connection_state": {
         "name": "Connection state"
       }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Force refresh",
+      "description": "Immediately refresh device data from MELCloud servers (for testing/development)"
     }
   }
 }

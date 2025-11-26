@@ -32,7 +32,11 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, kw_only=True)
 class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
-    """Sensor entity description with value extraction."""
+    """Sensor entity description with value extraction.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees SensorEntityDescription as 'Any'.
+    """
 
     value_fn: Callable[[AirToAirUnit], float | str | None]
     """Function to extract sensor value from unit data."""
@@ -91,7 +95,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up MELCloud Home sensor entities."""
-    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id][
+        "coordinator"
+    ]
 
     entities: list[MELCloudHomeSensor] = []
     for building in coordinator.data.buildings:
@@ -121,7 +127,11 @@ async def async_setup_entry(
 
 
 class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
-    """Representation of a MELCloud Home sensor."""
+    """Representation of a MELCloud Home sensor.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
+    """
 
     entity_description: MELCloudHomeSensorEntityDescription
 
@@ -144,12 +154,12 @@ class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntit
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
         # Generate stable entity ID from unit ID
-        # Format: sensor.melcloud_0efc_76db_room_temperature
+        # Format: sensor.melcloudhome_0efc_76db_room_temperature
         unit_id_clean = unit.id.replace("-", "")
         key_clean = description.key
 
         # Entity name (HA will normalize this to entity_id)
-        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
 
         # Link to device (same device as climate entity)
         self._attr_device_info = {

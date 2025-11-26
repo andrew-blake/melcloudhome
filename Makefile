@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-cov pre-commit clean
+.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -17,10 +17,14 @@ format:  ## Format code with ruff
 	uv run ruff check --fix custom_components/
 
 type-check:  ## Run mypy type checker
-	uv run mypy custom_components/melcloudhome/
+	uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-test:  ## Run tests
-	uv run pytest tests/ -v
+test:  ## Run API tests (no HA dependency)
+	uv run pytest tests/api/ -v
+
+test-ha:  ## Run HA integration tests in Docker (fast with caching)
+	@docker build -q -t melcloudhome-test:latest -f tests/integration/Dockerfile . 2>/dev/null || true
+	docker run --rm -v $(PWD):/app -w /app melcloudhome-test:latest pytest tests/integration/ -v -c tests/integration/pytest.ini
 
 test-cov:  ## Run tests with coverage report
 	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing
