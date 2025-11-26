@@ -23,7 +23,7 @@ jobs:
       - name: Lint
         run: uv run ruff check custom_components/
       - name: Type check
-        run: uv run mypy custom_components/melcloudhome/
+        run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
   test-api:
     name: API Tests

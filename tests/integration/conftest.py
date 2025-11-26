@@ -3,14 +3,9 @@
 These fixtures require pytest-homeassistant-custom-component.
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-# Add custom_components to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Import fixtures from pytest-homeassistant-custom-component
 pytest_plugins = ["pytest_homeassistant_custom_component"]

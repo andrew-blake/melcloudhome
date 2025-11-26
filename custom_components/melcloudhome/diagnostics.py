@@ -72,7 +72,9 @@ async def async_get_config_entry_diagnostics(
                             "set_fan_speed": unit.set_fan_speed,
                             "vane_vertical_direction": unit.vane_vertical_direction,
                             "vane_horizontal_direction": unit.vane_horizontal_direction,
-                            "has_energy_consumed_meter": unit.capabilities.has_energy_consumed_meter,
+                            "has_energy_consumed_meter": unit.capabilities.has_energy_consumed_meter
+                            if unit.capabilities
+                            else None,
                         }
                         for unit in building.air_to_air_units
                     ],
