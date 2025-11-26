@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
@@ -61,38 +64,27 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._energy_last_hour: dict[str, str] = {}
         # Persistent storage for energy data
         self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        # Re-authentication lock to prevent concurrent re-auth attempts
+        self._reauth_lock = asyncio.Lock()
+        # Debounced refresh to prevent race conditions from rapid service calls
+        self._refresh_debounce_task: asyncio.Task | None = None
 
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
-        try:
-            # If not authenticated yet, login first
-            if not self.client.is_authenticated:
-                _LOGGER.debug("Not authenticated, logging in")
-                await self.client.login(self._email, self._password)
+        # If not authenticated yet, login first
+        if not self.client.is_authenticated:
+            _LOGGER.debug("Not authenticated, logging in")
+            await self.client.login(self._email, self._password)
 
-            context = await self.client.get_user_context()
+        # Use retry helper for consistency
+        context: UserContext = await self._execute_with_retry(
+            self.client.get_user_context,
+            "coordinator_update",
+        )
 
-            # Update caches for O(1) lookups
-            self._rebuild_caches(context)
-
-            return context
-        except AuthenticationError:
-            # Session expired - try to re-authenticate
-            _LOGGER.info("Session expired, attempting to re-authenticate")
-            try:
-                await self.client.login(self._email, self._password)
-                context = await self.client.get_user_context()
-                self._rebuild_caches(context)
-                return context
-            except AuthenticationError as err:
-                # Re-authentication failed - credentials are invalid
-                _LOGGER.error("Re-authentication failed: %s", err)
-                raise UpdateFailed(
-                    "Re-authentication failed. Please reconfigure the integration."
-                ) from err
-        except ApiError as err:
-            _LOGGER.error("Error communicating with API: %s", err)
-            raise UpdateFailed(f"Error communicating with API: {err}") from err
+        # Update caches for O(1) lookups
+        self._rebuild_caches(context)
+        return context
 
     def _rebuild_caches(self, context: UserContext) -> None:
         """Rebuild lookup caches from context data."""
@@ -169,8 +161,20 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             unit.id,
                         )
 
-                        data = await self.client.get_energy_data(
-                            unit.id, from_time, to_time, "Hour"
+                        # V4: Wrap with retry for automatic session recovery
+                        # Capture loop variable with default argument
+                        async def fetch_energy(
+                            _unit_id: str = unit.id,
+                            _from: datetime = from_time,
+                            _to: datetime = to_time,
+                        ) -> dict[str, Any] | None:
+                            return await self.client.get_energy_data(
+                                _unit_id, _from, _to, "Hour"
+                            )
+
+                        data = await self._execute_with_retry(
+                            fetch_energy,
+                            f"get_energy_data({unit.name})",
                         )
 
                         if not data or not data.get("measureData"):
@@ -243,7 +247,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             self._energy_cumulative[unit.id],
                         )
 
+                    except (ConfigEntryAuthFailed, HomeAssistantError):
+                        # V4 FIX: Re-raise auth failures - must trigger repair UI
+                        # Don't swallow these - user needs to know credentials are broken
+                        raise
                     except Exception as err:
+                        # Keep broad handling for non-critical errors (network, parsing, etc.)
                         _LOGGER.error(
                             "Error fetching energy for unit %s: %s",
                             unit.name,
@@ -292,3 +301,206 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     def get_building_for_unit(self, unit_id: str) -> Building | None:
         """Get the building that contains the specified unit - O(1) lookup."""
         return self._unit_to_building.get(unit_id)
+
+    async def _execute_with_retry(
+        self,
+        operation: Callable[[], Awaitable[Any]],
+        operation_name: str = "API operation",
+    ) -> Any:
+        """
+        Execute operation with automatic re-auth on session expiry.
+
+        Uses double-check pattern to prevent concurrent re-auth attempts:
+        1. Try operation
+        2. If 401, acquire lock
+        3. Try again (double-check - another task may have fixed it)
+        4. If still 401, re-authenticate
+        5. Retry after successful re-auth
+
+        Args:
+            operation: Async callable to execute (no arguments)
+            operation_name: Human-readable name for logging
+
+        Returns:
+            Result of operation
+
+        Raises:
+            ConfigEntryAuthFailed: If re-authentication fails (triggers HA repair UI)
+            HomeAssistantError: For other API errors
+
+        Note: This changes behavior from UpdateFailed to ConfigEntryAuthFailed,
+        which immediately shows repair UI instead of retrying with backoff.
+        """
+        try:
+            # First attempt
+            return await operation()
+
+        except AuthenticationError:
+            # Session expired - use lock to prevent concurrent re-auth
+            async with self._reauth_lock:
+                # Double-check: another task may have already re-authenticated
+                try:
+                    _LOGGER.debug(
+                        "%s failed with session expired, retrying after lock",
+                        operation_name,
+                    )
+                    return await operation()
+                except AuthenticationError:
+                    # Still expired, re-authenticate
+                    _LOGGER.info(
+                        "Session still expired, attempting re-authentication for %s",
+                        operation_name,
+                    )
+                    try:
+                        await self.client.login(self._email, self._password)
+                        _LOGGER.info("Re-authentication successful")
+                    except AuthenticationError as err:
+                        _LOGGER.error("Re-authentication failed: %s", err)
+                        raise ConfigEntryAuthFailed(
+                            "Re-authentication failed. Please reconfigure the integration."
+                        ) from err
+
+            # Retry operation after successful re-auth (outside lock)
+            _LOGGER.debug("Retrying %s after successful re-auth", operation_name)
+            try:
+                return await operation()
+            except AuthenticationError as err:
+                # Still failing after re-auth - credentials are invalid
+                _LOGGER.error("%s failed even after re-auth", operation_name)
+                raise ConfigEntryAuthFailed(
+                    "Authentication failed after re-auth. Please reconfigure."
+                ) from err
+
+        except ApiError as err:
+            _LOGGER.error("API error during %s: %s", operation_name, err)
+            raise HomeAssistantError(f"API error: {err}") from err
+
+    async def async_set_power(self, unit_id: str, power: bool) -> None:
+        """Set power state with automatic session recovery."""
+        # Skip if already in desired state (prevents duplicate API calls)
+        unit = self.get_unit(unit_id)
+        if unit and unit.power == power:
+            _LOGGER.debug(
+                "Power already %s for %s, skipping API call", power, unit_id[-8:]
+            )
+            return
+
+        _LOGGER.info("🔌 COORDINATOR: Setting power for %s to %s", unit_id[-8:], power)
+        await self._execute_with_retry(
+            lambda: self.client.set_power(unit_id, power),
+            f"set_power({unit_id}, {power})",
+        )
+
+    async def async_set_mode(self, unit_id: str, mode: str) -> None:
+        """Set operation mode with automatic session recovery."""
+        # Skip if already in desired state
+        unit = self.get_unit(unit_id)
+        if unit and unit.operation_mode == mode:
+            _LOGGER.debug(
+                "Mode already %s for %s, skipping API call", mode, unit_id[-8:]
+            )
+            return
+
+        _LOGGER.info("🌡️  COORDINATOR: Setting mode for %s to %s", unit_id[-8:], mode)
+        await self._execute_with_retry(
+            lambda: self.client.set_mode(unit_id, mode),
+            f"set_mode({unit_id}, {mode})",
+        )
+
+    async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
+        """Set target temperature with automatic session recovery."""
+        # Skip if already at desired temperature
+        unit = self.get_unit(unit_id)
+        if unit and unit.set_temperature == temperature:
+            _LOGGER.debug(
+                "Temperature already %.1f°C for %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "🌡️  COORDINATOR: Setting temperature for %s to %.1f°C",
+            unit_id[-8:],
+            temperature,
+        )
+        await self._execute_with_retry(
+            lambda: self.client.set_temperature(unit_id, temperature),
+            f"set_temperature({unit_id}, {temperature})",
+        )
+
+    async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
+        """Set fan speed with automatic session recovery."""
+        # Skip if already at desired fan speed
+        unit = self.get_unit(unit_id)
+        if unit and unit.set_fan_speed == fan_speed:
+            _LOGGER.debug(
+                "Fan speed already %s for %s, skipping API call",
+                fan_speed,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "💨 COORDINATOR: Setting fan speed for %s to %s", unit_id[-8:], fan_speed
+        )
+        await self._execute_with_retry(
+            lambda: self.client.set_fan_speed(unit_id, fan_speed),
+            f"set_fan_speed({unit_id}, {fan_speed})",
+        )
+
+    async def async_set_vanes(
+        self,
+        unit_id: str,
+        vertical: str,
+        horizontal: str,
+    ) -> None:
+        """Set vane positions with automatic session recovery."""
+        # Skip if already at desired vane positions
+        unit = self.get_unit(unit_id)
+        if (
+            unit
+            and unit.vane_vertical_direction == vertical
+            and unit.vane_horizontal_direction == horizontal
+        ):
+            _LOGGER.debug(
+                "Vanes already V:%s H:%s for %s, skipping API call",
+                vertical,
+                horizontal,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "🎚️  COORDINATOR: Setting vanes for %s to V:%s H:%s",
+            unit_id[-8:],
+            vertical,
+            horizontal,
+        )
+        await self._execute_with_retry(
+            lambda: self.client.set_vanes(unit_id, vertical, horizontal),
+            f"set_vanes({unit_id}, {vertical}, {horizontal})",
+        )
+
+    async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
+        """Request a coordinator refresh with debouncing.
+
+        Multiple rapid calls will cancel previous timers and only refresh once
+        after the last call settles. This prevents race conditions when scenes
+        or automations make multiple rapid service calls.
+
+        Args:
+            delay: Seconds to wait before refreshing (default 2.0)
+        """
+        # Cancel any pending refresh
+        if self._refresh_debounce_task and not self._refresh_debounce_task.done():
+            self._refresh_debounce_task.cancel()
+            _LOGGER.debug("Cancelled pending debounced refresh, resetting timer")
+
+        async def _delayed_refresh():
+            """Wait then refresh."""
+            await asyncio.sleep(delay)
+            _LOGGER.debug("Debounced refresh executing after %.1fs delay", delay)
+            await self.async_request_refresh()
+
+        self._refresh_debounce_task = self.hass.async_create_task(_delayed_refresh())
