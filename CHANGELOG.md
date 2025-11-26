@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- LICENSE badge link in README (corrected relative link to absolute GitHub URL to fix malformed display in HACS)
+- LICENSE badge in README (removed clickable link to prevent HACS from creating malformed URLs)
 
 ## [1.3.0] - 2025-11-26
 
