@@ -25,7 +25,6 @@ ssh ha "sudo <command>"
 
 The Home Assistant API can be accessed locally:
 - **Local URL:** `https://homeassistant.local:8123`
-- **External URL:** `https://ha.blakenet.co.uk` (behind Cloudflare Access - requires browser auth)
 - **API Token:** Available in `$HA_API_KEY` environment variable
 
 **Query sensor states:**
