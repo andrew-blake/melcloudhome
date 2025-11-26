@@ -83,7 +83,7 @@ def run_ssh_command(host, command):
     return result.returncode == 0, result.stdout, result.stderr
 
 
-def run_ssh_command_robust(host, command, retries=2):
+def run_ssh_command_with_retry(host, command, retries=2):
     """Run SSH command with retry logic for intermittent failures."""
     for attempt in range(retries):
         # Disable SSH multiplexing to avoid stale socket issues
@@ -184,7 +184,7 @@ def deploy_component(component_name, ssh_host, container_name, use_reload=False)
 
     # Step 1: Copy to remote temp directory
     print(f"{YELLOW}📦 Copying files to {ssh_host}...{NC}")
-    success, stdout, stderr = run_ssh_command_robust(
+    success, stdout, stderr = run_ssh_command_with_retry(
         ssh_host, f"mkdir -p /tmp/{component_name}"
     )
     if not success:

@@ -6,6 +6,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
@@ -162,18 +163,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                         )
 
                         # V4: Wrap with retry for automatic session recovery
-                        # Capture loop variable with default argument
-                        async def fetch_energy(
-                            _unit_id: str = unit.id,
-                            _from: datetime = from_time,
-                            _to: datetime = to_time,
-                        ) -> dict[str, Any] | None:
-                            return await self.client.get_energy_data(
-                                _unit_id, _from, _to, "Hour"
-                            )
-
                         data = await self._execute_with_retry(
-                            fetch_energy,
+                            partial(
+                                self.client.get_energy_data,
+                                unit.id,
+                                from_time,
+                                to_time,
+                                "Hour",
+                            ),
                             f"get_energy_data({unit.name})",
                         )
 

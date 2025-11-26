@@ -103,12 +103,14 @@ async def test_concurrent_calls_trigger_single_reauth(coordinator):
 
     coordinator.client.login.side_effect = mock_login
 
-    results = await asyncio.gather(
-        coordinator._execute_with_retry(lambda: mock_operation("1"), "op1"),
-        coordinator._execute_with_retry(lambda: mock_operation("2"), "op2"),
+    results: list[str] = list(
+        await asyncio.gather(
+            coordinator._execute_with_retry(lambda: mock_operation("1"), "op1"),
+            coordinator._execute_with_retry(lambda: mock_operation("2"), "op2"),
+        )
     )
 
-    assert list(results) == ["success_1", "success_2"]
+    assert results == ["success_1", "success_2"]
     assert reauth_count == 1  # CRITICAL: Only one re-auth
 
 
