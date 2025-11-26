@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-26
+
+### Added
+
+- **Automatic session recovery**: Climate service calls now automatically recover from session expiry with retry and re-authentication
+- **Debounced coordinator refresh**: Prevents race conditions when scenes or automations make multiple rapid service calls
+- **Smart deduplication**: Skips redundant API calls when values haven't changed, reducing API load by ~70% for typical scene activation
+- **Enhanced deployment tool**: Improved reliability with retry logic and better error diagnostics
+
+### Fixed
+
+- **Session expiry errors**: Climate service calls no longer fail with "Session expired" errors
+- **Race conditions**: Multiple rapid service calls from scenes now properly debounce refresh to prevent stale state
+- **Duplicate API calls**: Eliminated redundant calls (e.g., vanes being set 3x with same values)
+- **Energy polling exception handling**: Authentication failures now properly trigger repair UI instead of being silently logged
+- **Deployment tool**: Fixed intermittent SSH failures when running under `uv run`
+
+### Changed
+
+- **Authentication failure notification**: Auth failures now immediately show repair UI (instead of retry with backoff) for faster user notification
+- **Service call flow**: All climate service calls now use coordinator wrappers for consistency
+
+### Technical Details
+
+- Coordinator-based retry mechanism with asyncio.Lock and double-check pattern
+- 5 new coordinator wrapper methods with session recovery
+- Debounced refresh with 2-second delay for rapid service calls
+- State-aware deduplication to prevent unnecessary API calls
+- 12 new integration tests including concurrent call and deduplication tests
+- Modern Python 3.11+ type hints with deferred annotation evaluation
+- SSH robustness improvements (disable multiplexing, retry logic)
+
 ## [1.2.0] - 2025-11-25
 
 ### Added

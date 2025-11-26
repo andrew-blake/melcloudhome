@@ -274,15 +274,15 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         """Set new HVAC mode."""
         if hvac_mode == HVACMode.OFF:
             # Turn off the device
-            await self.coordinator.client.set_power(self._unit_id, False)
+            await self.coordinator.async_set_power(self._unit_id, False)
         else:
             # Turn on and set mode
-            await self.coordinator.client.set_power(self._unit_id, True)
+            await self.coordinator.async_set_power(self._unit_id, True)
             melcloud_mode = HA_TO_MELCLOUD_MODE[hvac_mode]
-            await self.coordinator.client.set_mode(self._unit_id, melcloud_mode)
+            await self.coordinator.async_set_mode(self._unit_id, melcloud_mode)
 
-        # Request data refresh
-        await self.coordinator.async_request_refresh()
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
@@ -301,10 +301,10 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
             return
 
         # Set temperature
-        await self.coordinator.client.set_temperature(self._unit_id, temperature)
+        await self.coordinator.async_set_temperature(self._unit_id, temperature)
 
-        # Request data refresh
-        await self.coordinator.async_request_refresh()
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new fan mode."""
@@ -312,10 +312,10 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
             _LOGGER.warning("Invalid fan mode: %s", fan_mode)
             return
 
-        await self.coordinator.client.set_fan_speed(self._unit_id, fan_mode)
+        await self.coordinator.async_set_fan_speed(self._unit_id, fan_mode)
 
-        # Request data refresh
-        await self.coordinator.async_request_refresh()
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set new swing mode (vertical vane position)."""
@@ -333,10 +333,10 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
             )
             horizontal = "Auto"
 
-        await self.coordinator.client.set_vanes(self._unit_id, swing_mode, horizontal)
+        await self.coordinator.async_set_vanes(self._unit_id, swing_mode, horizontal)
 
-        # Request data refresh
-        await self.coordinator.async_request_refresh()
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
         """Set new horizontal swing mode (horizontal vane position)."""
@@ -348,19 +348,19 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         device = self._device
         vertical = device.vane_vertical_direction if device else "Auto"
 
-        await self.coordinator.client.set_vanes(
+        await self.coordinator.async_set_vanes(
             self._unit_id, vertical, swing_horizontal_mode
         )
 
-        # Request data refresh
-        await self.coordinator.async_request_refresh()
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
-        await self.coordinator.client.set_power(self._unit_id, True)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_power(self._unit_id, True)
+        await self.coordinator.async_request_refresh_debounced()
 
     async def async_turn_off(self) -> None:
         """Turn the entity off."""
-        await self.coordinator.client.set_power(self._unit_id, False)
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_power(self._unit_id, False)
+        await self.coordinator.async_request_refresh_debounced()

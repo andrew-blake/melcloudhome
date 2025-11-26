@@ -57,6 +57,22 @@ def load_env_file():
                     os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 
+def run_command_with_diagnostics(cmd_list, description="Command"):
+    """Run subprocess command with full diagnostic output on failure."""
+    result = subprocess.run(cmd_list, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print(f"{RED}❌ {description} failed{NC}")
+        print(f"{YELLOW}Command: {' '.join(cmd_list)}{NC}")
+        if result.stdout:
+            print(f"{YELLOW}Stdout: {result.stdout[:500]}{NC}")
+        if result.stderr:
+            print(f"{YELLOW}Stderr: {result.stderr[:500]}{NC}")
+        print(f"{YELLOW}Return code: {result.returncode}{NC}")
+
+    return result
+
+
 def run_ssh_command(host, command):
     """Run command on remote host via SSH."""
     result = subprocess.run(
@@ -65,6 +81,33 @@ def run_ssh_command(host, command):
         text=True,
     )
     return result.returncode == 0, result.stdout, result.stderr
+
+
+def run_ssh_command_with_retry(host, command, retries=2):
+    """Run SSH command with retry logic for intermittent failures."""
+    for attempt in range(retries):
+        # Disable SSH multiplexing to avoid stale socket issues
+        result = subprocess.run(
+            ["ssh", "-o", "ControlMaster=no", "-o", "ControlPath=none", host, command],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0:
+            return True, result.stdout, result.stderr
+
+        # On failure, show diagnostics
+        if attempt < retries - 1:
+            print(
+                f"{YELLOW}⚠ SSH command failed (attempt {attempt + 1}/{retries}), retrying...{NC}"
+            )
+        else:
+            print(f"{RED}❌ SSH command failed after {retries} attempts{NC}")
+            print(f"{YELLOW}Command: ssh {host} '{command}'{NC}")
+            if result.stderr:
+                print(f"{YELLOW}Error: {result.stderr[:500]}{NC}")
+
+    return False, result.stdout, result.stderr
 
 
 def reload_integration(component_name):
@@ -141,27 +184,26 @@ def deploy_component(component_name, ssh_host, container_name, use_reload=False)
 
     # Step 1: Copy to remote temp directory
     print(f"{YELLOW}📦 Copying files to {ssh_host}...{NC}")
-    result = subprocess.run(
-        ["ssh", ssh_host, f"mkdir -p /tmp/{component_name}"],
-        capture_output=True,
+    success, stdout, stderr = run_ssh_command_with_retry(
+        ssh_host, f"mkdir -p /tmp/{component_name}"
     )
-    if result.returncode != 0:
-        print(f"{RED}❌ Failed to create temp directory{NC}")
-        return False
+    if not success:
+        return False  # Error already printed by robust helper
 
-    result = subprocess.run(
+    result = run_command_with_diagnostics(
         [
             "rsync",
             "-az",
             "--delete",
+            "-e",
+            "ssh -o ControlMaster=no -o ControlPath=none",
             f"{component_path}/",
             f"{ssh_host}:/tmp/{component_name}/",
         ],
-        capture_output=True,
+        description="Copy files via rsync",
     )
     if result.returncode != 0:
-        print(f"{RED}❌ Failed to copy files{NC}")
-        return False
+        return False  # Error already printed by diagnostic helper
 
     print(f"{GREEN}✓ Files copied{NC}")
 
