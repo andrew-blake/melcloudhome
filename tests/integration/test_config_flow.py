@@ -113,3 +113,96 @@ async def test_reconfigure_flow_connection_error(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.asyncio
+async def test_initial_user_setup_success(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+    mock_setup_entry,
+) -> None:
+    """Test successful initial user setup flow."""
+    # Start user setup flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+
+    # Submit credentials
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    # Verify entry created
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["title"] == "MELCloud Home"
+    assert result["data"] == {
+        CONF_EMAIL: "test@example.com",
+        CONF_PASSWORD: "password123",
+    }
+
+    # Verify client login was called
+    mock_melcloud_client.login.assert_called_once_with(
+        "test@example.com", "password123"
+    )
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_initial_setup_duplicate_account(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+    mock_setup_entry,
+) -> None:
+    """Test that duplicate accounts are prevented during initial setup."""
+    # Create existing entry
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    # Try to add same account again
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "different_password"},
+    )
+
+    # Verify flow aborted due to duplicate
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+@pytest.mark.asyncio
+async def test_initial_setup_connection_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test initial setup with connection error."""
+    from custom_components.melcloudhome.api.exceptions import ApiError
+
+    # Mock connection error
+    mock_melcloud_client.login.side_effect = ApiError("Connection failed")
+
+    # Start setup flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    # Verify error shown
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert result["step_id"] == "user"
