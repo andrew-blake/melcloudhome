@@ -22,9 +22,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run tests with coverage
+      - name: Run API tests with coverage
         run: |
-          uv run pytest tests/ \
+          uv run pytest tests/api/ \
             --cov=custom_components/melcloudhome \
             --cov-report=xml \
             --cov-report=term-missing \
@@ -34,7 +34,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
-          flags: unittests
+          files: ./coverage.xml
+          flags: api
           name: codecov-umbrella
           fail_ci_if_error: true
