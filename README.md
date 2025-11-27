@@ -3,6 +3,10 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub Release](https://img.shields.io/github/release/andrew-blake/melcloudhome.svg)](https://github.com/andrew-blake/melcloudhome/releases)
 ![License](https://img.shields.io/github/license/andrew-blake/melcloudhome.svg)
+[![Test](https://github.com/andrew-blake/melcloudhome/workflows/Test/badge.svg)](https://github.com/andrew-blake/melcloudhome/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/andrew-blake/melcloudhome/branch/main/graph/badge.svg)](https://codecov.io/gh/andrew-blake/melcloudhome)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
 Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Electric air conditioning units via the MELCloud Home API.
 
