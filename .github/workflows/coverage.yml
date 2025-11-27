@@ -30,11 +30,23 @@ jobs:
             --cov-report=term-missing \
             -v
 
-      - name: Upload coverage reports to Codecov
+      - name: Install HA test dependencies
+        run: pip install pytest pytest-asyncio pytest-homeassistant-custom-component
+
+      - name: Run integration tests with coverage (append)
+        run: |
+          pytest tests/integration/ \
+            --cov=custom_components/melcloudhome \
+            --cov-append \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload combined coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
-          flags: api
+          flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: true
