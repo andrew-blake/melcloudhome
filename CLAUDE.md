@@ -42,7 +42,7 @@ When diagnosing issues:
 3. **Filter errors:** `ssh ha "sudo docker logs homeassistant --tail 500 2>&1 | grep -i error | tail -50"`
 4. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
 
-See `.claude/skills/home-assistant-diagnostics/skill.md` for detailed diagnostic workflows and common issue patterns.
+See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic workflows and common issue patterns.
 
 ## MELCloud Home Integration Development
 
@@ -69,7 +69,9 @@ docs/
 │   └── melcloudhome-telemetry-endpoints.md
 ├── decisions/                   # Architecture Decision Records (ADRs)
 ├── research/                    # Research and planning documents
-└── ROADMAP.md                   # Project roadmap
+├── integration-review.md        # Integration review notes
+├── testing-best-practices.md    # Testing standards (HA/HACS guidelines)
+└── testing-strategy.md          # Testing strategy document
 
 tests/                           # Test suite with VCR cassettes
 tools/                           # Development and deployment tools
@@ -99,11 +101,52 @@ make all                         # Run all checks
 
 # Pre-commit hooks run automatically on git commit
 
-# Deployment & Testing (see tools/README.md for details)
+# Testing
+make test                        # Run all tests
+make test-ha                     # Run integration tests
+pytest tests/api/ -v             # Run API tests only
+pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
+
+# Deployment (see tools/README.md for details)
 python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
 python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
 python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
+
+### Testing Standards
+
+**⚠️ CRITICAL: Follow Home Assistant testing best practices**
+
+See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
+
+**Quick rules for integration tests:**
+- ✅ Test through `hass.states` and `hass.services` ONLY
+- ✅ Mock `MELCloudHomeClient` at API boundary
+- ✅ Use `hass.config_entries.async_setup()` for setup
+- ❌ Never import or test coordinator/entity classes directly
+- ❌ Never assert coordinator methods were called
+- ❌ Never manipulate `coordinator.data` directly
+
+**Example:**
+```python
+# ✅ CORRECT: Test through core interfaces
+state = hass.states.get("climate.entity_id")
+assert state.state == HVACMode.HEAT
+
+await hass.services.async_call(
+    "climate", "set_temperature",
+    {"entity_id": "climate.entity_id", "temperature": 22},
+    blocking=True
+)
+
+# ❌ WRONG: Don't test internal implementation
+# coordinator.async_set_temperature.assert_called_once()  # DON'T DO THIS
+```
+
+**Reference examples:**
+- ✅ `tests/integration/test_init.py` - Excellent patterns
+- ✅ `tests/integration/test_config_flow.py` - Config flow testing
+- ✅ `tests/api/test_auth.py` - API testing with VCR
 
 ### Critical API Details
 
