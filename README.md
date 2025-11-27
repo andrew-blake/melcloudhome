@@ -4,7 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/release/andrew-blake/melcloudhome.svg)](https://github.com/andrew-blake/melcloudhome/releases)
 ![License](https://img.shields.io/github/license/andrew-blake/melcloudhome.svg)
 [![Test](https://github.com/andrew-blake/melcloudhome/workflows/Test/badge.svg)](https://github.com/andrew-blake/melcloudhome/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/andrew-blake/melcloudhome/branch/main/graph/badge.svg)](https://codecov.io/gh/andrew-blake/melcloudhome)
+[![codecov](https://codecov.io/gh/andrew-blake/melcloudhome/graph/badge.svg?token=WW97CHORNS)](https://codecov.io/gh/andrew-blake/melcloudhome)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
@@ -167,6 +167,17 @@ The integration uses conservative polling intervals to respect API limits:
 - **Energy Data**: 30 minutes
 
 These intervals provide responsive control while preventing API throttling.
+
+## Development & Code Quality
+
+[![Coverage Sunburst](https://codecov.io/gh/andrew-blake/melcloudhome/graphs/sunburst.svg?token=WW97CHORNS)](https://codecov.io/gh/andrew-blake/melcloudhome)
+
+**Test Coverage:**
+- Integration tests: Climate control, sensors, config flow, diagnostics
+- API tests: Authentication, device control, data parsing
+- Quality gates: All PRs require passing tests and coverage checks
+
+For development setup and testing guidelines, see [docs/testing-best-practices.md](docs/testing-best-practices.md).
 
 ## Support
 
