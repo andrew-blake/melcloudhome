@@ -12,9 +12,9 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 
 ## Features
 
-- **Full HVAC Control**: Power, temperature, mode (heat/cool/dry/fan/auto), fan speed, and swing modes
+- **HVAC Control**: Power, temperature, mode (heat/cool/dry/fan/auto), fan speed, and swing modes
 - **Energy Monitoring**: Track cumulative energy consumption with persistent storage
-- **Comprehensive Sensors**:
+- **Sensors**:
   - Room temperature
   - WiFi signal strength
   - Energy consumption
@@ -22,7 +22,6 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
   - Connection status
 - **Real-time Status**: HVAC action feedback (heating/cooling/idle/off)
 - **Independent Vane Control**: Both vertical and horizontal swing modes
-- **Voice Assistant Ready**: Full support for Google Home, Alexa, and Home Assistant voice commands
 - **Automatic Updates**: 60-second polling for climate/sensors, 30-minute polling for energy data
 - **Diagnostics Support**: Export integration diagnostics for troubleshooting
 
@@ -31,6 +30,19 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - Home Assistant 2024.11.0 or newer
 - MELCloud Home account with configured devices
 - Internet connection for cloud API access
+
+## Supported Devices
+
+This integration works with Mitsubishi Electric air conditioning units connected to **MELCloud Home** via compatible Wi-Fi adapters.
+
+**Confirmed Compatible Hardware:**
+- **Wi-Fi Adapter**: MAC-597 (4th-generation, MELCloud Home)
+- **Indoor Units**: MSZ-AY25VGK2 (single-split and multi-split configurations)
+
+**Not Supported:**
+- Legacy MELCloud adapters (MAC-567, MAC-577, MAC-587) - use the official Home Assistant MELCloud integration instead
+
+For a complete list of tested hardware, compatibility notes, and to contribute your device information, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
 
 ## Installation
 
@@ -166,7 +178,7 @@ The integration uses conservative polling intervals to respect API limits:
 - **Climate/Sensors**: 60 seconds
 - **Energy Data**: 30 minutes
 
-These intervals provide responsive control while preventing API throttling.
+These intervals balance update frequency with API rate limits.
 
 ## Development & Code Quality
 
