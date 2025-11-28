@@ -1,0 +1,54 @@
+version: 2
+updates:
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "andrew-blake"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Python dependencies (pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "andrew-blake"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    # Group minor and patch updates together to reduce PR noise
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Only allow security updates for major versions to prevent breaking changes
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+        update-types: ["security"]
+    # Ignore pre-release versions
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Keep development tools up to date more aggressively
+    versioning-strategy: increase-if-necessary

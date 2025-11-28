@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get-version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "Tag version: $TAG"
+
+      - name: Validate manifest version
+        run: |
+          MANIFEST_VERSION=$(jq -r '.version' custom_components/melcloudhome/manifest.json)
+          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          echo "Manifest version: $MANIFEST_VERSION"
+          echo "Tag version: $TAG_VERSION"
+          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "Manifest version ($MANIFEST_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "✅ Versions match!"
+
+      - name: Validate CHANGELOG entry
+        run: |
+          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          if ! grep -q "\[$TAG_VERSION\]" CHANGELOG.md; then
+            echo "❌ No CHANGELOG entry found for version $TAG_VERSION"
+            exit 1
+          fi
+          echo "✅ CHANGELOG entry found!"
+
+  test:
+    name: Run Full Test Suite
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Format check
+        run: uv run ruff format --check custom_components/
+
+      - name: Lint
+        run: uv run ruff check custom_components/
+
+      - name: Type check
+        run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
+
+      - name: Run API tests
+        run: uv run pytest tests/api/ -v
+
+      - name: Set up Python for HA tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install HA test dependencies
+        run: |
+          pip install pytest pytest-asyncio pytest-homeassistant-custom-component
+
+      - name: Run HA integration tests
+        run: pytest tests/integration/ -v
+
+  release:
+    name: Create GitHub Release
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract release notes
+        id: extract-notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+
+          # Extract section between current version and next version heading
+          awk "/## \[$VERSION\]/,/## \[/{
+            if (/## \[$VERSION\]/) { found=1; next }
+            if (/## \[/ && found) { exit }
+            if (found) print
+          }" CHANGELOG.md > release_notes.txt
+
+          # Clean up empty lines at start/end
+          sed -i '/./,$!d' release_notes.txt
+          sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' release_notes.txt
+
+          echo "Release notes extracted:"
+          cat release_notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "## 🚀 Release ${{ needs.validate.outputs.version }} Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Release Notes" >> $GITHUB_STEP_SUMMARY
+          cat release_notes.txt >> $GITHUB_STEP_SUMMARY
