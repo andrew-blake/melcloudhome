@@ -29,6 +29,7 @@ __pycache__/
 
 # Testing
 .coverage
+coverage.xml
 htmlcov/
 *.cover
 .tox/
