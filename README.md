@@ -35,12 +35,17 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 
 This integration works with Mitsubishi Electric air conditioning units connected to **MELCloud Home** via compatible Wi-Fi adapters.
 
-**Confirmed Compatible Hardware:**
-- **Wi-Fi Adapter**: MAC-597 (4th-generation, MELCloud Home)
-- **Indoor Units**: MSZ-AY25VGK2 (single-split and multi-split configurations)
+**Confirmed Compatible Wi-Fi Adapters:**
 
-**Not Supported:**
-- Legacy MELCloud adapters (MAC-567, MAC-577, MAC-587) - use the official Home Assistant MELCloud integration instead
+- **MAC-597** (4th-generation, MELCloud Home)
+- **MAC-577** (confirmed working with dual-split systems)
+- **MAC-567** (confirmed working with dual-split systems)
+
+**Confirmed Compatible Indoor Units:**
+
+- **MSZ-AY25VGK2** (single-split and multi-split configurations)
+
+> **Note:** If your adapter appears in the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
 For a complete list of tested hardware, compatibility notes, and to contribute your device information, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
 
@@ -185,6 +190,7 @@ These intervals balance update frequency with API rate limits.
 [![Coverage Sunburst](https://codecov.io/gh/andrew-blake/melcloudhome/graphs/sunburst.svg?token=WW97CHORNS)](https://codecov.io/gh/andrew-blake/melcloudhome)
 
 **Test Coverage:**
+
 - Integration tests: Climate control, sensors, config flow, diagnostics
 - API tests: Authentication, device control, data parsing
 - Quality gates: All PRs require passing tests and coverage checks

@@ -20,15 +20,28 @@ These adapters have been tested with this integration and are known to work with
   - Uses the **MELCloud Home** app / API
   - Tested and working with this integration
 
-### Not supported by this integration
-
-These adapters use the *legacy* MELCloud API, which is handled by the official Home Assistant `melcloud` integration, **not** this one:
+- **MAC‑577**
+  - Wi‑Fi adapter compatible with MELCloud Home
+  - Confirmed working with dual‑split systems
+  - Full model designation: MAC‑577IF‑E
 
 - **MAC‑567**
-- **MAC‑577**
-- **MAC‑587**
+  - Wi‑Fi adapter with Bluetooth variant (MAC‑567IFB‑E)
+  - Confirmed working with dual‑split systems
+  - Full model designations: MAC‑567IF‑E, MAC‑567IFB‑E
 
-If your system uses one of these adapters and appears in the classic MELCloud app, you should use the built‑in Home Assistant **MELCloud** integration instead of this custom integration.
+> **Note:** Model numbers shown are shortened for readability. Full designations include regional suffixes like ‑IF‑E or ‑IFB‑E (Interface Bluetooth).
+
+### Not yet tested
+
+- **MAC‑587** (MAC‑587IF‑E)
+  - Appears to be compatible with MELCloud Home based on product specifications
+  - Not yet confirmed by users of this integration
+  - If you have this adapter and it works, please let us know!
+
+### Legacy MELCloud (not supported)
+
+If your system appears in the **classic MELCloud app** (not MELCloud Home), you should use the built‑in Home Assistant **MELCloud** integration instead of this custom integration.
 
 ---
 
