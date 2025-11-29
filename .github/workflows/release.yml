@@ -75,7 +75,7 @@ jobs:
         run: uv run pytest tests/api/ -v
 
       - name: Set up Python for HA tests
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
