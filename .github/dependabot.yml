@@ -41,12 +41,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Only allow security updates for major versions to prevent breaking changes
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-        update-types: ["security"]
-    # Ignore pre-release versions
+    # Ignore major version updates to prevent breaking changes
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
