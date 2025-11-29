@@ -44,6 +44,8 @@ jobs:
 
       - name: Upload combined coverage to Codecov
         uses: codecov/codecov-action@v5
+        # Don't fail on Dependabot PRs where secrets aren't available
+        if: github.actor != 'dependabot[bot]'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
