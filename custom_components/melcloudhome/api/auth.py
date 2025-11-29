@@ -3,6 +3,7 @@
 import logging
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import aiohttp
 from aiohttp import TraceConfig, TraceRequestEndParams, TraceRequestStartParams
@@ -125,7 +126,11 @@ class MELCloudHomeAuth:
             # Log current cookies in jar
             if session.cookie_jar:
                 melcloud_cookies = [
-                    c for c in session.cookie_jar if "melcloudhome.com" in c["domain"]
+                    c
+                    for c in session.cookie_jar
+                    if c["domain"] == "melcloudhome.com"
+                    or c["domain"] == ".melcloudhome.com"
+                    or c["domain"].endswith(".melcloudhome.com")
                 ]
                 if melcloud_cookies:
                     _LOGGER.debug(
@@ -168,7 +173,12 @@ class MELCloudHomeAuth:
                 final_url = str(resp.url)
                 _LOGGER.debug("Redirected to: %s", final_url)
 
-                if "amazoncognito.com/login" not in final_url:
+                parsed = urlparse(final_url)
+                if not (
+                    parsed.hostname
+                    and parsed.hostname.endswith(".amazoncognito.com")
+                    and "/login" in parsed.path
+                ):
                     raise AuthenticationError(f"Unexpected redirect URL: {final_url}")
 
                 # Extract CSRF token from login page HTML
@@ -207,8 +217,13 @@ class MELCloudHomeAuth:
                 _LOGGER.debug("After login redirect: %s", final_url)
 
                 # Check if we ended up on the dashboard (success)
+                parsed = urlparse(final_url)
                 if (
-                    "melcloudhome.com" in final_url
+                    parsed.hostname
+                    and (
+                        parsed.hostname == "melcloudhome.com"
+                        or parsed.hostname.endswith(".melcloudhome.com")
+                    )
                     and "/error" not in final_url.lower()
                 ):
                     _LOGGER.info("Authentication successful - reached %s", final_url)
@@ -233,7 +248,8 @@ class MELCloudHomeAuth:
                     )
 
                 # If we're still on Cognito, credentials were wrong
-                if "amazoncognito.com" in final_url:
+                parsed = urlparse(final_url)
+                if parsed.hostname and parsed.hostname.endswith(".amazoncognito.com"):
                     raise AuthenticationError(
                         "Authentication failed: Invalid username or password"
                     )
