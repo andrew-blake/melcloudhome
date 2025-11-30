@@ -40,10 +40,13 @@ This integration works with Mitsubishi Electric air conditioning units connected
 - **MAC-597** (4th-generation, MELCloud Home)
 - **MAC-577** (confirmed working with dual-split systems)
 - **MAC-567** (confirmed working with dual-split systems)
+- **MAC-587** (confirmed working with multi-split systems)
 
 **Confirmed Compatible Indoor Units:**
 
 - **MSZ-AY25VGK2** (single-split and multi-split configurations)
+- **MSZ-LN35VG2B** (confirmed working)
+- **MSZ-LN25 VGWRAC** (multi-split system)
 
 > **Note:** If your adapter appears in the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
