@@ -51,27 +51,19 @@ Some indoor units connected to **multi‑split** outdoor units may not expose pe
 
 Do not to set the indoor unit to Auto or set conflicting Heat/Cool on linked indoor units to avoid invalid outdoor unit states.
 
-### Tested and working
+### Tested by Community
 
 Below is a list of indoor units that have been reported to work with the MELCloud Home integration. In all cases, the unit must be connected to MELCloud Home (typically via a MAC‑597 or built‑in equivalent).
 
 | Indoor Unit Model    | Wi‑Fi Adapter | Notes                |
-|----------------------|--------------|----------------------|
-| **MSZ‑AY25VGK2**     | MAC‑597      | Single‑split system. |
-| **MSZ‑AY25VGK2**     | MAC‑597      | Multi‑split system.  |
-| **MSZ‑LN35VG2B**     | MAC‑597      | Confirmed working.   |
-| **MSZ‑LN25 VGWRAC**  | MAC‑587      | Multi‑split system.  |
+|----------------------|---------------|----------------------|
+| **MSZ‑AY25VGK2**     | MAC‑597       | Single‑split system. |
+| **MSZ‑AY25VGK2**     | MAC‑597       | Multi‑split system.  |
+| **MSZ‑LN35VG2B**     | MAC‑597       | Confirmed working.   |
+| **MSZ‑LN25VGWRAC**   | MAC‑587       | Multi‑split system.  |
 
 > **Tip**
 > Model numbers may vary slightly by region (e.g. “VG” vs “VGK” or numerical suffixes). If your model is similar to one listed here, it may still work, but please treat it as *untested* until confirmed.
-
-### Reported but unverified
-
-These models have been mentioned by users but have not yet been fully verified by the maintainer:
-
-| Indoor Unit Model | Wi‑Fi Adapter | Status     | Notes |
-|-------------------|--------------|-----------|-------|
-| *None yet*        |              |           |       |
 
 ---
 

@@ -37,7 +37,7 @@ This integration supports Mitsubishi Electric air conditioning units connected v
 
 **Compatible WiFi Adapters:** MAC-597, MAC-577, MAC-567, MAC-587 (all confirmed working)
 
-**Example Indoor Units:** MSZ-AY25VGK2, MSZ-LN35VG2B, MSZ-LN25 VGWRAC, and others
+**Example Indoor Units:** MSZ-AY25VGK2, MSZ-LN35VG2B, MSZ-LN25VGWRAC, and others
 
 > **Note:** If your system uses the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
