@@ -50,10 +50,10 @@ version-patch:  ## Bump patch version (x.y.Z)
 	echo "Bumping version $$CURRENT -> $$NEW"; \
 	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
 	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	echo "\n## [$$NEW] - $$(date +%Y-%m-%d)\n\n### Changed\n\n- \n" | cat - CHANGELOG.md > CHANGELOG.tmp && \
+	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
 	mv CHANGELOG.tmp CHANGELOG.md; \
 	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes"; \
+	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
 	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 version-minor:  ## Bump minor version (x.Y.0)
@@ -62,10 +62,10 @@ version-minor:  ## Bump minor version (x.Y.0)
 	echo "Bumping version $$CURRENT -> $$NEW"; \
 	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
 	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	echo "\n## [$$NEW] - $$(date +%Y-%m-%d)\n\n### Changed\n\n- \n" | cat - CHANGELOG.md > CHANGELOG.tmp && \
+	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
 	mv CHANGELOG.tmp CHANGELOG.md; \
 	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes"; \
+	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
 	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 version-major:  ## Bump major version (X.0.0)
@@ -74,10 +74,10 @@ version-major:  ## Bump major version (X.0.0)
 	echo "Bumping version $$CURRENT -> $$NEW"; \
 	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
 	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	echo "\n## [$$NEW] - $$(date +%Y-%m-%d)\n\n### Changed\n\n- \n" | cat - CHANGELOG.md > CHANGELOG.tmp && \
+	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
 	mv CHANGELOG.tmp CHANGELOG.md; \
 	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes"; \
+	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
 	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 release:  ## Create and push release tag (run after committing version bump)

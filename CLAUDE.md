@@ -88,6 +88,8 @@ _claude/                         # Session notes (local only, not in git)
 
 ### Development Workflow
 
+**IMPORTANT: This repository uses GitHub Flow - always work in feature branches, never commit directly to main.**
+
 ```bash
 # Setup
 uv sync                          # Install dependencies
@@ -112,6 +114,71 @@ python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
 python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
 python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
+
+### Branching Strategy (GitHub Flow)
+
+**Always use feature branches for development:**
+
+```bash
+# Create feature branch
+git checkout -b feature/my-feature    # For new features
+git checkout -b fix/bug-description   # For bug fixes
+git checkout -b docs/update-readme    # For documentation
+
+# Make changes, commit, push
+git add .
+git commit -m "description"
+git push -u origin feature/my-feature
+
+# Create PR, review, merge
+gh pr create --title "Title" --body "Description"
+```
+
+**Never commit directly to main** - all changes go through pull requests.
+
+### Release Process
+
+**Releasing a new version:**
+
+```bash
+# 1. Bump version and create CHANGELOG template
+make version-patch   # 1.3.2 → 1.3.3 (bug fixes, security)
+make version-minor   # 1.3.3 → 1.4.0 (new features)
+make version-major   # 1.4.0 → 2.0.0 (breaking changes)
+# This updates manifest.json and adds a basic CHANGELOG template
+
+# 2. Edit CHANGELOG.md to add proper release notes
+#    The make command creates a basic template with just "Changed" section
+#    Manually add appropriate sections: Added, Fixed, Security, Removed, etc.
+#    Follow Keep a Changelog format: https://keepachangelog.com/en/1.0.0/
+
+# 3. Commit the version bump
+git add CHANGELOG.md custom_components/melcloudhome/manifest.json
+git commit -m "chore: Bump version to 1.3.3"
+git push
+
+# 4. Create and push release tag
+make release         # Creates tag and validates CHANGELOG
+git push --tags      # Triggers automated GitHub release workflow
+```
+
+**What happens during automated release:**
+
+When you push a tag (e.g., `v1.3.3`), GitHub Actions automatically:
+1. **Validates** - Checks manifest.json version matches tag, verifies CHANGELOG entry exists
+2. **Tests** - Runs full test suite (format, lint, type-check, API tests, HA integration tests)
+3. **Extracts release notes** - Parses CHANGELOG.md to extract notes for this version
+4. **Creates GitHub release** - Publishes release with extracted notes
+5. **Fails if** - Version mismatch, missing CHANGELOG entry, or any test failures
+
+The release appears at: https://github.com/andrew-blake/melcloudhome/releases
+
+**CHANGELOG format rules:**
+- Use only standard sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
+- Do NOT use custom sections like "Documentation" or "Technical Details"
+- Keep entries concise and factual (no marketing language)
+- Date format: YYYY-MM-DD (ISO 8601)
+- The `make version-*` command creates a template with "Changed" section only - add other sections as needed
 
 ### Testing Standards
 
