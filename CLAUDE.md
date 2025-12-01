@@ -141,17 +141,25 @@ gh pr create --title "Title" --body "Description"
 **Releasing a new version:**
 
 ```bash
-# 1. Update CHANGELOG.md following Keep a Changelog format
-#    Use standard sections: Added, Changed, Deprecated, Removed, Fixed, Security
-#    See: https://keepachangelog.com/en/1.0.0/
-
-# 2. Use Makefile commands for version bumps
+# 1. Bump version and create CHANGELOG template
 make version-patch   # 1.3.2 → 1.3.3 (bug fixes, security)
 make version-minor   # 1.3.3 → 1.4.0 (new features)
 make version-major   # 1.4.0 → 2.0.0 (breaking changes)
+# This updates manifest.json and adds a basic CHANGELOG template
 
-# 3. Create release (automated via GitHub Actions)
-make release         # Creates tag, pushes, triggers release workflow
+# 2. Edit CHANGELOG.md to add proper release notes
+#    The make command creates a basic template with just "Changed" section
+#    Manually add appropriate sections: Added, Fixed, Security, Removed, etc.
+#    Follow Keep a Changelog format: https://keepachangelog.com/en/1.0.0/
+
+# 3. Commit the version bump
+git add CHANGELOG.md custom_components/melcloudhome/manifest.json
+git commit -m "chore: Bump version to 1.3.3"
+git push
+
+# 4. Create and push release tag
+make release         # Creates tag and validates CHANGELOG
+git push --tags      # Triggers automated GitHub release workflow
 ```
 
 **CHANGELOG format rules:**
@@ -159,6 +167,7 @@ make release         # Creates tag, pushes, triggers release workflow
 - Do NOT use custom sections like "Documentation" or "Technical Details"
 - Keep entries concise and factual (no marketing language)
 - Date format: YYYY-MM-DD (ISO 8601)
+- The `make version-*` command creates a template with "Changed" section only - add other sections as needed
 
 ### Testing Standards
 
