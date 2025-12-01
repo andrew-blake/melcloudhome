@@ -33,24 +33,15 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 
 ## Supported Devices
 
-This integration works with Mitsubishi Electric air conditioning units connected to **MELCloud Home** via compatible Wi-Fi adapters.
+This integration supports Mitsubishi Electric air conditioning units connected via **MELCloud Home** WiFi adapters.
 
-**Confirmed Compatible Wi-Fi Adapters:**
+**Compatible WiFi Adapters:** MAC-597, MAC-577, MAC-567, MAC-587 (all confirmed working)
 
-- **MAC-597** (4th-generation, MELCloud Home)
-- **MAC-577** (confirmed working with dual-split systems)
-- **MAC-567** (confirmed working with dual-split systems)
-- **MAC-587** (confirmed working with multi-split systems)
+**Example Indoor Units:** MSZ-AY25VGK2, MSZ-LN35VG2B, MSZ-LN25 VGWRAC, and others
 
-**Confirmed Compatible Indoor Units:**
+> **Note:** If your system uses the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
-- **MSZ-AY25VGK2** (single-split and multi-split configurations)
-- **MSZ-LN35VG2B** (confirmed working)
-- **MSZ-LN25 VGWRAC** (multi-split system)
-
-> **Note:** If your adapter appears in the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
-
-For a complete list of tested hardware, compatibility notes, and to contribute your device information, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
+For the complete list of tested hardware, technical notes, and compatibility details, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
 
 ## Installation
 
