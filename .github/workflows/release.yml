@@ -99,10 +99,11 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
 
           # Extract section between current version and next version heading
-          awk "/## \[$VERSION\]/,/## \[/{
-            if (/## \[$VERSION\]/) { found=1; next }
-            if (/## \[/ && found) { exit }
-            if (found) print
+          # Using sed for better portability across awk implementations
+          sed -n "/^## \[$VERSION\]/,/^## \[/{
+            /^## \[$VERSION\]/d
+            /^## \[/q
+            p
           }" CHANGELOG.md > release_notes.txt
 
           # Clean up empty lines at start/end
