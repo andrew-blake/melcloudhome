@@ -30,14 +30,12 @@ These adapters have been tested with this integration and are known to work with
   - Confirmed working with dual‑split systems
   - Full model designations: MAC‑567IF‑E, MAC‑567IFB‑E
 
+- **MAC‑587**
+  - Wi‑Fi adapter compatible with MELCloud Home
+  - Confirmed working with multi‑split systems
+  - Full model designation: MAC‑587IF‑E
+
 > **Note:** Model numbers shown are shortened for readability. Full designations include regional suffixes like ‑IF‑E or ‑IFB‑E (Interface Bluetooth).
-
-### Not yet tested
-
-- **MAC‑587** (MAC‑587IF‑E)
-  - Appears to be compatible with MELCloud Home based on product specifications
-  - Not yet confirmed by users of this integration
-  - If you have this adapter and it works, please let us know!
 
 ### Legacy MELCloud (not supported)
 
@@ -53,25 +51,19 @@ Some indoor units connected to **multi‑split** outdoor units may not expose pe
 
 Do not to set the indoor unit to Auto or set conflicting Heat/Cool on linked indoor units to avoid invalid outdoor unit states.
 
-### Tested and working
+### Tested by Community
 
 Below is a list of indoor units that have been reported to work with the MELCloud Home integration. In all cases, the unit must be connected to MELCloud Home (typically via a MAC‑597 or built‑in equivalent).
 
-| Indoor Unit Model | Wi‑Fi Adapter | Notes                |
-|-------------------|--------------|----------------------|
-| **MSZ‑AY25VGK2**  | MAC‑597      | Single‑split system. |
-| **MSZ‑AY25VGK2**  | MAC‑597      | Multi-split system.  |
+| Indoor Unit Model    | Wi‑Fi Adapter | Notes                |
+|----------------------|---------------|----------------------|
+| **MSZ‑AY25VGK2**     | MAC‑597       | Single‑split system. |
+| **MSZ‑AY25VGK2**     | MAC‑597       | Multi‑split system.  |
+| **MSZ‑LN35VG2B**     | MAC‑597       | Confirmed working.   |
+| **MSZ‑LN25VGWRAC**   | MAC‑587       | Multi‑split system.  |
 
 > **Tip**
 > Model numbers may vary slightly by region (e.g. “VG” vs “VGK” or numerical suffixes). If your model is similar to one listed here, it may still work, but please treat it as *untested* until confirmed.
-
-### Reported but unverified
-
-These models have been mentioned by users but have not yet been fully verified by the maintainer:
-
-| Indoor Unit Model | Wi‑Fi Adapter | Status     | Notes |
-|-------------------|--------------|-----------|-------|
-| *None yet*        |              |           |       |
 
 ---
 
