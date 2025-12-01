@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CONTRIBUTING.md with contribution guidelines and API discovery methodology
 - SUPPORTED_DEVICES.md with hardware compatibility details
 - SECURITY.md with security policy
 - testing-best-practices.md guide
