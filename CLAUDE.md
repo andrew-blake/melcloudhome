@@ -162,6 +162,17 @@ make release         # Creates tag and validates CHANGELOG
 git push --tags      # Triggers automated GitHub release workflow
 ```
 
+**What happens during automated release:**
+
+When you push a tag (e.g., `v1.3.3`), GitHub Actions automatically:
+1. **Validates** - Checks manifest.json version matches tag, verifies CHANGELOG entry exists
+2. **Tests** - Runs full test suite (format, lint, type-check, API tests, HA integration tests)
+3. **Extracts release notes** - Parses CHANGELOG.md to extract notes for this version
+4. **Creates GitHub release** - Publishes release with extracted notes
+5. **Fails if** - Version mismatch, missing CHANGELOG entry, or any test failures
+
+The release appears at: https://github.com/andrew-blake/melcloudhome/releases
+
 **CHANGELOG format rules:**
 - Use only standard sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
 - Do NOT use custom sections like "Documentation" or "Technical Details"
