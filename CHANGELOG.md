@@ -12,22 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace URL substring checks with proper URL parsing in authentication flow
 - Fix 9 CodeQL security alerts (3 HIGH, 6 MEDIUM severity)
 
-### Documentation
+### Added
 
-- Confirm all four WiFi adapter families: MAC-597, MAC-577, MAC-567, MAC-587
-- Add MSZ-LN35VG2B and MSZ-LN25VGWRAC to tested indoor units
-- Add SUPPORTED_DEVICES.md with hardware details and compatibility notes
-- Add SECURITY.md and testing-best-practices.md
+- SUPPORTED_DEVICES.md with hardware compatibility details
+- SECURITY.md with security policy
+- testing-best-practices.md guide
+- Explicit workflow permissions for GitHub Actions
 
 ### Changed
 
-- Add explicit workflow permissions (GitHub Actions security best practice)
-- Remove redundant lint.yml workflow
+- Confirm all four WiFi adapter families: MAC-597, MAC-577, MAC-567, MAC-587
+- Add MSZ-LN35VG2B and MSZ-LN25VGWRAC to tested indoor units
 - Update GitHub Actions dependencies (checkout v6, setup-python v6, setup-uv v7)
 
-### Notes
+### Removed
 
-No functional changes. Authentication and HVAC control behaviour identical to v1.3.2.
+- Redundant lint.yml workflow
+
+**Note:** No functional changes. Authentication and HVAC control behaviour identical to v1.3.2.
 
 ## [1.3.2] - 2025-11-26
 

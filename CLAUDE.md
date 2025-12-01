@@ -88,6 +88,8 @@ _claude/                         # Session notes (local only, not in git)
 
 ### Development Workflow
 
+**IMPORTANT: This repository uses GitHub Flow - always work in feature branches, never commit directly to main.**
+
 ```bash
 # Setup
 uv sync                          # Install dependencies
@@ -112,6 +114,51 @@ python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
 python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
 python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
+
+### Branching Strategy (GitHub Flow)
+
+**Always use feature branches for development:**
+
+```bash
+# Create feature branch
+git checkout -b feature/my-feature    # For new features
+git checkout -b fix/bug-description   # For bug fixes
+git checkout -b docs/update-readme    # For documentation
+
+# Make changes, commit, push
+git add .
+git commit -m "description"
+git push -u origin feature/my-feature
+
+# Create PR, review, merge
+gh pr create --title "Title" --body "Description"
+```
+
+**Never commit directly to main** - all changes go through pull requests.
+
+### Release Process
+
+**Releasing a new version:**
+
+```bash
+# 1. Update CHANGELOG.md following Keep a Changelog format
+#    Use standard sections: Added, Changed, Deprecated, Removed, Fixed, Security
+#    See: https://keepachangelog.com/en/1.0.0/
+
+# 2. Use Makefile commands for version bumps
+make version-patch   # 1.3.2 → 1.3.3 (bug fixes, security)
+make version-minor   # 1.3.3 → 1.4.0 (new features)
+make version-major   # 1.4.0 → 2.0.0 (breaking changes)
+
+# 3. Create release (automated via GitHub Actions)
+make release         # Creates tag, pushes, triggers release workflow
+```
+
+**CHANGELOG format rules:**
+- Use only standard sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
+- Do NOT use custom sections like "Documentation" or "Technical Details"
+- Keep entries concise and factual (no marketing language)
+- Date format: YYYY-MM-DD (ISO 8601)
 
 ### Testing Standards
 
