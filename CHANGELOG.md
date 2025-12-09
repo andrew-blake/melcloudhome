@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.3.4] - 2025-12-09
+
+### Fixed
+
+- **Energy monitoring accuracy** - Fixed critical bug causing 60-75% undercount of energy consumption
+  - Root cause: API returns progressive updates for same hour (values increase as data uploads)
+  - Fix: Implemented delta-based tracking to handle increasing values correctly
+  - Impact: Energy values now match MELCloud app and wall display
+  - Migration: Automatic from v1.3.3, no user action required
+  - Closes #23
+
+### Changed
+
+- Increased energy API query window from 2 hours to 48 hours
+  - Enables recovery from outages up to 48 hours
+  - Handles reboots during hour updates without data loss
+
 ## [1.3.3] - 2025-12-01
 
 ### Security
