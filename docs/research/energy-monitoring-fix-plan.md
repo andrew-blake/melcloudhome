@@ -213,7 +213,7 @@ if stored_data:
 
 **Beyond 48 Hours:**
 
-- Gap in data (unavoidable - API does retain older data, but we want to be a friendly API consumer and not tax the API too much)
+- Gap in data (intentional limitation: although the API retains older data, we restrict requests to a 48-hour window to balance data completeness with responsible API consumption)
 - Cumulative sensor continues from stored total
 - Energy Dashboard shows discontinuity
 - Optional: Log warning when gap >48 hours detected
