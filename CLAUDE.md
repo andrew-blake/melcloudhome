@@ -110,9 +110,9 @@ pytest tests/api/ -v             # Run API tests only
 pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
 
 # Deployment (see tools/README.md for details)
-python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
-python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
-python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
+./tools/deploy_custom_component.py melcloudhome          # Deploy to HA
+./tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
+./tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
 
 ### Branching Strategy (GitHub Flow)
@@ -232,14 +232,17 @@ See `docs/api/melcloudhome-api-reference.md` for complete API details.
 The repository includes an automated deployment tool that handles the complete cycle:
 
 ```bash
-# Deploy to remote HA instance
-python tools/deploy_custom_component.py melcloudhome
+# Deploy to remote HA instance (script is executable)
+./tools/deploy_custom_component.py melcloudhome
 
 # Deploy + test via API
-python tools/deploy_custom_component.py melcloudhome --test
+./tools/deploy_custom_component.py melcloudhome --test
 
 # Deploy + watch logs
-python tools/deploy_custom_component.py melcloudhome --watch
+./tools/deploy_custom_component.py melcloudhome --watch
+
+# Or explicitly with python3 if needed
+python3 tools/deploy_custom_component.py melcloudhome
 ```
 
 The tool automatically:
