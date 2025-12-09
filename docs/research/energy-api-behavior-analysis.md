@@ -80,7 +80,7 @@
 
 ### 4. **No Decreases Observed**
 - Values only increase or stay the same
-- Never observed a value decrease (confirms data is cumulative per hour)
+- Never observed a value decrease (confirms values are progressively updated as more data uploads)
 
 ### 5. **Sparse Data for Inactive Hours**
 - Hours with no consumption are **omitted** from response
