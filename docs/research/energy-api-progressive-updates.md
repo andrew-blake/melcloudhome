@@ -135,7 +135,7 @@ GET /api/telemetry/energy/{unit_id}
 
 ### 6. **No Decreases Observed**
 
-**Values only increase or stay the same within a hour:**
+**Values only increase or stay the same within an hour:**
 - Never observed a value decrease for the same hour timestamp
 - If decrease occurred, would indicate API issue or data correction
 - Should be treated as error condition (log warning, keep previous value)
