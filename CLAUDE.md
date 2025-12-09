@@ -110,9 +110,9 @@ pytest tests/api/ -v             # Run API tests only
 pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
 
 # Deployment (see tools/README.md for details)
-python tools/deploy_custom_component.py melcloudhome          # Deploy to HA
-python tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
-python tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
+./tools/deploy_custom_component.py melcloudhome          # Deploy to HA
+./tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
+./tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
 
 ### Branching Strategy (GitHub Flow)
@@ -138,26 +138,38 @@ gh pr create --title "Title" --body "Description"
 
 ### Release Process
 
-**Releasing a new version:**
+**Releasing a new version (with branch protection):**
 
 ```bash
-# 1. Bump version and create CHANGELOG template
-make version-patch   # 1.3.2 → 1.3.3 (bug fixes, security)
+# 1. Ensure all feature/fix PRs are merged to main
+# 2. Create release branch from main
+git checkout main
+git pull
+git checkout -b release/v1.3.4
+
+# 3. Bump version and create CHANGELOG template
+make version-patch   # 1.3.3 → 1.3.4 (bug fixes, security)
 make version-minor   # 1.3.3 → 1.4.0 (new features)
 make version-major   # 1.4.0 → 2.0.0 (breaking changes)
 # This updates manifest.json and adds a basic CHANGELOG template
 
-# 2. Edit CHANGELOG.md to add proper release notes
+# 4. Edit CHANGELOG.md to add proper release notes
 #    The make command creates a basic template with just "Changed" section
 #    Manually add appropriate sections: Added, Fixed, Security, Removed, etc.
 #    Follow Keep a Changelog format: https://keepachangelog.com/en/1.0.0/
 
-# 3. Commit the version bump
+# 5. Commit the version bump
 git add CHANGELOG.md custom_components/melcloudhome/manifest.json
-git commit -m "chore: Bump version to 1.3.3"
-git push
+git commit -m "chore: Prepare v1.3.4 release"
+git push -u origin release/v1.3.4
 
-# 4. Create and push release tag
+# 6. Create and merge release PR
+gh pr create --title "Release v1.3.4" --body "Prepare v1.3.4 release"
+gh pr merge <pr-number> --squash  # or merge via GitHub UI
+
+# 7. Create and push release tag (on main after PR merged)
+git checkout main
+git pull
 make release         # Creates tag and validates CHANGELOG
 git push --tags      # Triggers automated GitHub release workflow
 ```
@@ -232,14 +244,17 @@ See `docs/api/melcloudhome-api-reference.md` for complete API details.
 The repository includes an automated deployment tool that handles the complete cycle:
 
 ```bash
-# Deploy to remote HA instance
-python tools/deploy_custom_component.py melcloudhome
+# Deploy to remote HA instance (script is executable)
+./tools/deploy_custom_component.py melcloudhome
 
 # Deploy + test via API
-python tools/deploy_custom_component.py melcloudhome --test
+./tools/deploy_custom_component.py melcloudhome --test
 
 # Deploy + watch logs
-python tools/deploy_custom_component.py melcloudhome --watch
+./tools/deploy_custom_component.py melcloudhome --watch
+
+# Or explicitly with python3 if needed
+python3 tools/deploy_custom_component.py melcloudhome
 ```
 
 The tool automatically:
