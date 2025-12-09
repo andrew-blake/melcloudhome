@@ -3,7 +3,7 @@
 
 Records full API responses at regular intervals to characterize API behavior:
 - How quickly data becomes available
-- How values change over time within a hour
+- How values change over time within an hour
 - When hours transition from partial to complete
 
 Usage:
