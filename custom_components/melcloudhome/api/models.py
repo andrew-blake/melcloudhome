@@ -7,6 +7,75 @@ from typing import Any
 _LOGGER = logging.getLogger(__name__)
 
 
+# ==============================================================================
+# Shared Parsing Utilities
+# ==============================================================================
+
+
+def _parse_bool(value: str | bool | None) -> bool:
+    """Parse boolean from API string value.
+
+    API returns booleans as string "True"/"False". This helper converts
+    them to Python bool, handling edge cases.
+
+    Args:
+        value: String "True"/"False", bool, or None
+
+    Returns:
+        Parsed boolean (False if None)
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).lower() == "true"
+
+
+def _parse_float(value: str | float | None) -> float | None:
+    """Parse float from API string value.
+
+    API returns numbers as strings. This helper converts them to float,
+    handling edge cases like empty strings and invalid values.
+
+    Args:
+        value: String number, float, empty string, or None
+
+    Returns:
+        Parsed float or None if unparsable
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_int(value: str | int | None) -> int | None:
+    """Parse int from API string value.
+
+    API sometimes returns integers as strings (e.g., HasZone2="0").
+    This helper converts them to int, handling edge cases.
+
+    Args:
+        value: String number, int, empty string, or None
+
+    Returns:
+        Parsed int or None if unparsable
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+# ==============================================================================
+# Air-to-Air (A/C) Models
+# ==============================================================================
+
+
 @dataclass
 class DeviceCapabilities:
     """Device capability flags and limits."""
@@ -151,23 +220,6 @@ class AirToAirUnit:
         settings_list = data.get("settings", [])
         settings = {item["name"]: item["value"] for item in settings_list}
 
-        # Helper to parse boolean from string
-        def parse_bool(value: str | bool | None) -> bool:
-            if isinstance(value, bool):
-                return value
-            if value is None:
-                return False
-            return str(value).lower() == "true"
-
-        # Helper to parse float from string
-        def parse_float(value: str | float | None) -> float | None:
-            if value is None or value == "":
-                return None
-            try:
-                return float(value)
-            except (ValueError, TypeError):
-                return None
-
         # Helper to normalize fan speed (API returns "0"-"5", we use "Auto", "One"-"Five")
         def normalize_fan_speed(value: str | None) -> str | None:
             if value is None:
@@ -238,10 +290,10 @@ class AirToAirUnit:
         return cls(
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
-            power=parse_bool(settings.get("Power")),
+            power=_parse_bool(settings.get("Power")),
             operation_mode=settings.get("OperationMode", "Heat"),
-            set_temperature=parse_float(settings.get("SetTemperature")),
-            room_temperature=parse_float(settings.get("RoomTemperature")),
+            set_temperature=_parse_float(settings.get("SetTemperature")),
+            room_temperature=_parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),
             vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
@@ -249,8 +301,8 @@ class AirToAirUnit:
             vane_horizontal_direction=normalize_horizontal_vane(
                 settings.get("VaneHorizontalDirection")
             ),
-            in_standby_mode=parse_bool(settings.get("InStandbyMode")),
-            is_in_error=parse_bool(settings.get("IsInError")),
+            in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
+            is_in_error=_parse_bool(settings.get("IsInError")),
             rssi=data.get("rssi"),
             capabilities=capabilities,
             schedule=schedules,
@@ -443,33 +495,6 @@ class AirToWaterUnit:
         settings_list = data.get("settings", [])
         settings = {item["name"]: item["value"] for item in settings_list}
 
-        # Helper: Parse boolean from string
-        def parse_bool(value: str | bool | None) -> bool:
-            if isinstance(value, bool):
-                return value
-            if value is None:
-                return False
-            return str(value).lower() == "true"
-
-        # Helper: Parse float from string
-        def parse_float(value: str | float | None) -> float | None:
-            if value is None or value == "":
-                return None
-            try:
-                return float(value)
-            except (ValueError, TypeError):
-                return None
-
-        # Helper: Parse int from string or int
-        def parse_int(value: str | int | None) -> int | None:
-            if value is None or value == "":
-                return None
-            try:
-                # Handle string "0"/"1" or actual int
-                return int(value)
-            except (ValueError, TypeError):
-                return None
-
         # Extract Zone 2 flag (can be string "0"/"1" or int)
         has_zone2_value = settings.get("HasZone2", "0")
         if isinstance(has_zone2_value, str):
@@ -496,8 +521,8 @@ class AirToWaterUnit:
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
             # Power
-            power=parse_bool(settings.get("Power")),
-            in_standby_mode=parse_bool(settings.get("InStandbyMode")),
+            power=_parse_bool(settings.get("Power")),
+            in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
             # Operation Status (READ-ONLY)
             # CRITICAL: This is "OperationMode" in API but renamed to avoid confusion
             # with operationModeZone1 (which is the control field)
@@ -506,27 +531,27 @@ class AirToWaterUnit:
             operation_mode_zone1=settings.get(
                 "OperationModeZone1", "HeatRoomTemperature"
             ),
-            set_temperature_zone1=parse_float(settings.get("SetTemperatureZone1")),
-            room_temperature_zone1=parse_float(settings.get("RoomTemperatureZone1")),
+            set_temperature_zone1=_parse_float(settings.get("SetTemperatureZone1")),
+            room_temperature_zone1=_parse_float(settings.get("RoomTemperatureZone1")),
             # Zone 2 (if present)
             has_zone2=has_zone2,
             operation_mode_zone2=settings.get("OperationModeZone2")
             if has_zone2
             else None,
-            set_temperature_zone2=parse_float(settings.get("SetTemperatureZone2"))
+            set_temperature_zone2=_parse_float(settings.get("SetTemperatureZone2"))
             if has_zone2
             else None,
-            room_temperature_zone2=parse_float(settings.get("RoomTemperatureZone2"))
+            room_temperature_zone2=_parse_float(settings.get("RoomTemperatureZone2"))
             if has_zone2
             else None,
             # DHW
-            set_tank_water_temperature=parse_float(
+            set_tank_water_temperature=_parse_float(
                 settings.get("SetTankWaterTemperature")
             ),
-            tank_water_temperature=parse_float(settings.get("TankWaterTemperature")),
-            forced_hot_water_mode=parse_bool(settings.get("ForcedHotWaterMode")),
+            tank_water_temperature=_parse_float(settings.get("TankWaterTemperature")),
+            forced_hot_water_mode=_parse_bool(settings.get("ForcedHotWaterMode")),
             # Status
-            is_in_error=parse_bool(settings.get("IsInError")),
+            is_in_error=_parse_bool(settings.get("IsInError")),
             error_code=error_code,
             rssi=data.get("rssi"),
             # Device Info
