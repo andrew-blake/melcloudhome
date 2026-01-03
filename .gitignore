@@ -16,6 +16,10 @@ groups.yaml
 scenes.yaml
 scripts.yaml
 
+# Development environment config (auto-generated)
+dev-config/*
+!dev-config/.gitkeep
+
 # Development tools (not part of HACS distribution)
 tools/deploy_custom_component.py
 
