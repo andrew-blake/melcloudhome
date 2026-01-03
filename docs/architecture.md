@@ -71,6 +71,7 @@ graph TB
 ```
 
 **Key Points:**
+
 - **Single coordinator** manages polling for all device types
 - **Single client** provides unified API interface
 - **Shared auth** handles OAuth for all endpoints
@@ -129,6 +130,7 @@ sequenceDiagram
 ```
 
 **Key Points:**
+
 - **Single login** serves all devices
 - **UserContext returns both** device types in one call
 - **Device type determines** which control endpoint used
@@ -252,6 +254,7 @@ classDiagram
 ```
 
 **Key Points:**
+
 - **Single client class** with device-specific methods
 - **Separate model classes** for each device type
 - **Separate capability classes** (different fields)
@@ -331,7 +334,78 @@ stateDiagram-v2
 
 ---
 
-## API Layer Structure
+## 5. HA Entity Responsibility Boundaries
+
+**Reference:** [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
+
+### Power Control Architecture ⭐ **CRITICAL**
+
+**System power is controlled EXCLUSIVELY by water_heater entity.**
+
+```python
+# ✅ CORRECT: System power via water_heater
+await hass.services.async_call("water_heater", "turn_on", {
+    "entity_id": "water_heater.house_heat_pump_tank"
+})
+
+# ❌ WRONG: Climate entity does NOT control system power
+await hass.services.async_call("climate", "turn_off", {
+    "entity_id": "climate.house_heat_pump_zone_1"
+})
+# This sets zone standby ONLY, NOT system power!
+```
+
+**Entity Responsibilities:**
+
+| Entity Type | Controls | Does NOT Control |
+|-------------|----------|------------------|
+| **water_heater** | • System power (ON/OFF)<br/>• DHW tank temperature<br/>• DHW operation mode<br/>• Forced DHW priority | • Zone temperatures<br/>• Zone operation modes |
+| **climate (zone)** | • Zone target temperature<br/>• Zone standby mode<br/>• Zone heating method (presets) | • **System power**<br/>• DHW tank settings<br/>• Other zones |
+
+**Rationale:**
+
+1. **Physical Reality:** Heat pump is ONE device with one power supply
+2. **HA Precedent:** MELCloud core integration uses this pattern:
+   > "Water heater platform entities allow control of power, which controls the entire system."
+   > "The system cannot be turned on/off through the climate entities."
+3. **User Clarity:** Single control point prevents confusion
+4. **State Consistency:** Avoids conflicts from multiple power controllers
+
+### Climate Entity HVAC Modes
+
+**HEAT** - Zone active (heating enabled)
+
+- Allows temperature control
+- Respects 3-way valve (may be idle if valve on DHW)
+
+**OFF** - Zone standby mode (`inStandbyMode` flag)
+
+- Zone will not request heating
+- Does NOT turn off heat pump
+- Other zones can still heat
+- DHW can still heat
+
+### 3-Way Valve Status Visibility
+
+The 3-way valve position is exposed to users via:
+
+1. **water_heater state attributes:**
+   - `operation_status` - Current valve position ("HotWater", "HeatRoomTemperature", etc.)
+   - `zone_heating_suspended` - Boolean (true when valve directed to DHW)
+
+2. **Dedicated sensor:**
+   - `sensor.{device_name}_operation_status` - Human-readable status
+   - States: "idle", "heating_dhw", "heating_zone_1", "heating_zone_2"
+
+3. **climate.hvac_action:**
+   - Shows IDLE when valve is on DHW (even if zone temp below target)
+   - Shows HEATING only when valve actually on this zone
+
+**This visibility is critical for users to understand heat pump behavior.**
+
+---
+
+## 6. API Layer Structure
 
 ### File Organization
 
@@ -348,6 +422,7 @@ custom_components/melcloudhome/api/
 ### Separation Strategy
 
 **By method naming:**
+
 ```python
 # A2A methods (existing)
 client.set_temperature(unit_id, temp)    # Room temp
@@ -372,6 +447,7 @@ client.set_frost_protection(unit_ids, ...)     # Multi-unit
 ### Air-to-Air Units
 
 **Entities created per A2A unit:**
+
 - `climate.melcloudhome_{name}` - Main climate control
 - `sensor.melcloudhome_{name}_room_temperature` - Current temp
 - `sensor.melcloudhome_{name}_wifi_signal` - RSSI
@@ -380,6 +456,7 @@ client.set_frost_protection(unit_ids, ...)     # Multi-unit
 ### Air-to-Water Units
 
 **Entities created per A2W unit:**
+
 - `climate.melcloudhome_{name}_zone1` - Zone 1 heating control
 - `water_heater.melcloudhome_{name}_dhw` - DHW control
 - `switch.melcloudhome_{name}_forced_hot_water` - DHW priority
@@ -649,18 +726,21 @@ Only ONE output active at a time
 ### Control Implications
 
 **User sets:**
+
 - `setTemperatureZone1`: 21°C (target)
 - `setTankWaterTemperature`: 50°C (target)
 - `forcedHotWaterMode`: false (no priority)
 - `operationModeZone1`: "HeatRoomTemperature" (HOW to heat)
 
 **System decides:**
+
 - Current room temp: 19°C (< 21°C target) → needs heating
 - Current DHW temp: 48°C (< 50°C target) → needs heating
 - No forced mode → automatic balancing
 - **OperationMode shows what's happening RIGHT NOW**
 
 **Example sequence:**
+
 1. System heats Zone 1 → `OperationMode: "HeatRoomTemperature"`
 2. Zone reaches 21°C → switches to DHW
 3. System heats DHW → `OperationMode: "HotWater"`
@@ -672,7 +752,9 @@ Only ONE output active at a time
 ## Design Patterns
 
 ### 1. Sparse Update Pattern
+
 Both device types use sparse updates:
+
 ```python
 # Only change what you want to change
 payload = {
@@ -684,6 +766,7 @@ payload = {
 ```
 
 ### 2. Capabilities-Driven Logic
+
 ```python
 # Check capabilities before controlling
 if unit.capabilities.has_zone2:
@@ -692,6 +775,7 @@ if unit.capabilities.has_zone2:
 ```
 
 ### 3. Type-Safe Methods
+
 ```python
 # A2A-specific methods won't work on A2W units
 # A2W-specific methods won't work on A2A units
@@ -699,6 +783,7 @@ if unit.capabilities.has_zone2:
 ```
 
 ### 4. Multi-Device Discovery
+
 ```python
 context = await client.get_user_context()
 
