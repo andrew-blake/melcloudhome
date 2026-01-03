@@ -53,3 +53,5 @@ env/
 # Energy monitoring recordings (may contain device IDs)
 tools/energy_recording_*.json
 tools/recorder.log*
+*.har
+*.zip

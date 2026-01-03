@@ -1,8 +1,13 @@
-# MELCloud Home API Reference
-## Complete Parameter Specification (UI-Verified)
+# MELCloud Home API Reference - Air-to-Air Units
+## Complete Air-to-Air (A/C) API Specification
 
-**Document Version:** 1.0
-**Last Updated:** 2025-11-16
+> **Note:** This document covers Air-to-Air (A/C) units only.
+> - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
+> - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
+
+**Document Version:** 1.1
+**Last Updated:** 2026-01-03
+**Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
 ---

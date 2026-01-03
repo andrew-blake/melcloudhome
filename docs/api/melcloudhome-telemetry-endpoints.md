@@ -451,7 +451,8 @@ async def safe_telemetry_fetch(session, unit_id, measure):
 
 ## Related Documentation
 
-- **`melcloudhome-api-reference.md`** - Control API with all parameters
+- **`ata-api-reference.md`** - Air-to-Air control API
+- **`atw-api-reference.md`** - Air-to-Water control API
 - **`melcloudhome-api-discovery.md`** - Authentication and base API discovery
 - **`melcloudhome-integration-guide.md`** - Home Assistant integration patterns
 

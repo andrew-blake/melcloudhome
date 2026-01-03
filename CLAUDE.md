@@ -65,7 +65,7 @@ custom_components/melcloudhome/  # Custom component (bundled approach)
 
 docs/
 ├── api/                         # API documentation
-│   ├── melcloudhome-api-reference.md
+│   ├── ata-api-reference.md
 │   └── melcloudhome-telemetry-endpoints.md
 ├── decisions/                   # Architecture Decision Records (ADRs)
 ├── research/                    # Research and planning documents
@@ -235,7 +235,7 @@ await hass.services.async_call(
 - **Auto Mode:** "Automatic" NOT "Auto"
 - **Rate Limiting:** Minimum 60-second polling interval
 
-See `docs/api/melcloudhome-api-reference.md` for complete API details.
+See `docs/api/ata-api-reference.md` (A2A) and `docs/api/atw-api-reference.md` (A2W) for complete API details.
 
 ### Deployment & Testing
 
