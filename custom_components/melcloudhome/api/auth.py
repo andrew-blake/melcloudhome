@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import TraceConfig, TraceRequestEndParams, TraceRequestStartParams
 
-from .const import BASE_URL, USER_AGENT
+from .const import BASE_URL, MOCK_BASE_URL, USER_AGENT
 from .exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,12 +17,19 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeAuth:
     """Handle MELCloud Home authentication via AWS Cognito OAuth."""
 
-    def __init__(self) -> None:
-        """Initialize authenticator."""
+    def __init__(self, debug_mode: bool = False) -> None:
+        """Initialize authenticator.
+
+        Args:
+            debug_mode: If True, use simple mock auth instead of Cognito OAuth
+        """
         self._session: aiohttp.ClientSession | None = None
         self._authenticated = False
+        self._debug_mode = debug_mode
+        self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
 
         # AWS Cognito OAuth configuration (from discovery docs)
+        # Not used in debug mode
         self._cognito_base = (
             "https://live-melcloudhome.auth.eu-west-1.amazoncognito.com"
         )
@@ -143,6 +150,54 @@ class MELCloudHomeAuth:
 
         return trace_config
 
+    async def _login_mock(self, username: str, password: str) -> bool:
+        """
+        Authenticate with mock server (simple POST /api/login).
+
+        Args:
+            username: Email address
+            password: Password
+
+        Returns:
+            True if authentication successful
+
+        Raises:
+            AuthenticationError: If authentication fails
+        """
+        _LOGGER.debug("🔧 Debug mode: Using simple mock auth flow")
+
+        try:
+            session = await self._ensure_session()
+
+            # Simple POST to /api/login (no Cognito)
+            async with session.post(
+                f"{self._base_url}/api/login",
+                json={"email": username, "password": password},
+                headers={"Content-Type": "application/json"},
+            ) as resp:
+                _LOGGER.debug("Mock auth response: %d", resp.status)
+
+                if resp.status == 401:
+                    raise AuthenticationError("Invalid credentials (mock server)")
+
+                if resp.status != 200:
+                    raise AuthenticationError(
+                        f"Mock server returned unexpected status: {resp.status}"
+                    )
+
+                # Mock server returns OAuth-like tokens (but we don't validate them)
+                data = await resp.json()
+                _LOGGER.debug(
+                    "Mock auth successful: %s", data.get("token_type", "Bearer")
+                )
+
+                self._authenticated = True
+                return True
+
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Mock auth connection error: %s", err)
+            raise AuthenticationError(f"Cannot connect to mock server: {err}") from err
+
     async def login(self, username: str, password: str) -> bool:
         """
         Authenticate with MELCloud Home via AWS Cognito OAuth.
@@ -159,13 +214,18 @@ class MELCloudHomeAuth:
         """
         _LOGGER.debug("Starting authentication flow for user: %s", username)
 
+        # Debug mode: Use simple mock auth flow
+        if self._debug_mode:
+            return await self._login_mock(username, password)
+
+        # Production mode: Use complex Cognito OAuth flow
         try:
             session = await self._ensure_session()
 
             # Step 1: Initiate login flow
             _LOGGER.debug("Step 1: Initiating login flow")
             async with session.get(
-                f"{BASE_URL}/bff/login",
+                f"{self._base_url}/bff/login",
                 params={"returnUrl": "/dashboard"},
                 allow_redirects=True,
             ) as resp:
@@ -286,11 +346,11 @@ class MELCloudHomeAuth:
             # Check session by calling main API endpoint
             # MUST include x-csrf: 1 and referer headers for API calls to work
             async with session.get(
-                f"{BASE_URL}/api/user/context",
+                f"{self._base_url}/api/user/context",
                 headers={
                     "Accept": "application/json",
                     "x-csrf": "1",
-                    "referer": f"{BASE_URL}/dashboard",
+                    "referer": f"{self._base_url}/dashboard",
                 },
             ) as resp:
                 if resp.status == 200:
@@ -330,8 +390,9 @@ class MELCloudHomeAuth:
         """Logout and clean up session."""
         if self._session and not self._session.closed:
             try:
-                # Call logout endpoint
-                await self._session.get(f"{BASE_URL}/bff/logout")
+                # Call logout endpoint (skip in debug mode - mock server doesn't have this)
+                if not self._debug_mode:
+                    await self._session.get(f"{self._base_url}/bff/logout")
             except Exception as err:
                 _LOGGER.debug("Error during logout: %s", err)
             finally:

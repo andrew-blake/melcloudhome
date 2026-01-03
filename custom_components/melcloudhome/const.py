@@ -10,6 +10,9 @@ DOMAIN = "melcloudhome"
 UPDATE_INTERVAL = timedelta(seconds=60)
 PLATFORMS = ["climate"]
 
+# Configuration keys
+CONF_DEBUG_MODE = "debug_mode"
+
 # MELCloud API uses "Automatic" not "Auto"
 MELCLOUD_TO_HA_MODE = {
     "Heat": HVACMode.HEAT,

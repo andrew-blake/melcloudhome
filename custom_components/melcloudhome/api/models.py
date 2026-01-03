@@ -1,7 +1,10 @@
 """Data models for MELCloud Home API."""
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass

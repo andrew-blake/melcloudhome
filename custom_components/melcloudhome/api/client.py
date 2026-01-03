@@ -6,7 +6,7 @@ from typing import Any
 import aiohttp
 
 from .auth import MELCloudHomeAuth
-from .const import BASE_URL, TEMP_MAX_HEAT, TEMP_MIN_HEAT, TEMP_STEP
+from .const import BASE_URL, MOCK_BASE_URL, TEMP_MAX_HEAT, TEMP_MIN_HEAT, TEMP_STEP
 from .exceptions import ApiError, AuthenticationError
 from .models import AirToAirUnit, UserContext
 
@@ -16,10 +16,21 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeClient:
     """Client for MELCloud Home API."""
 
-    def __init__(self) -> None:
-        """Initialize the client."""
-        self._auth = MELCloudHomeAuth()
+    def __init__(self, debug_mode: bool = False) -> None:
+        """Initialize the client.
+
+        Args:
+            debug_mode: If True, use mock server at http://melcloud-mock:8080
+        """
+        self._debug_mode = debug_mode
+        self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
+        self._auth = MELCloudHomeAuth(debug_mode=debug_mode)
         self._user_context: UserContext | None = None
+
+        if debug_mode:
+            _LOGGER.info(
+                "🔧 Debug mode enabled - using mock server at %s", self._base_url
+            )
 
     async def login(self, username: str, password: str) -> bool:
         """
@@ -81,9 +92,9 @@ class MELCloudHomeClient:
             headers = kwargs.pop("headers", {})
             headers.setdefault("Accept", "application/json")
             headers.setdefault("x-csrf", "1")
-            headers.setdefault("referer", f"{BASE_URL}/dashboard")
+            headers.setdefault("referer", f"{self._base_url}/dashboard")
 
-            url = f"{BASE_URL}{endpoint}"
+            url = f"{self._base_url}{endpoint}"
 
             _LOGGER.debug("API Request: %s %s", method, endpoint)
 
@@ -415,10 +426,10 @@ class MELCloudHomeClient:
             headers = {
                 "Accept": "application/json",
                 "x-csrf": "1",
-                "referer": f"{BASE_URL}/dashboard",
+                "referer": f"{self._base_url}/dashboard",
             }
 
-            url = f"{BASE_URL}{endpoint}"
+            url = f"{self._base_url}{endpoint}"
             _LOGGER.debug("Energy API Request: GET %s", endpoint)
 
             async with session.get(url, params=params, headers=headers) as resp:

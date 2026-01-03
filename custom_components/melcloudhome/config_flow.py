@@ -11,6 +11,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -18,7 +19,7 @@ from homeassistant.helpers.selector import (
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
-from .const import DOMAIN
+from .const import CONF_DEBUG_MODE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
         if user_input is not None:
             email = user_input[CONF_EMAIL]
             password = user_input[CONF_PASSWORD]
+            debug_mode = user_input.get(CONF_DEBUG_MODE, False)
 
             # Set unique ID to prevent duplicate accounts
             await self.async_set_unique_id(email.lower())
@@ -44,7 +46,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
 
             # Validate credentials by attempting login
             try:
-                client = MELCloudHomeClient()
+                client = MELCloudHomeClient(debug_mode=debug_mode)
                 await client.login(email, password)
                 await client.close()
             except AuthenticationError:
@@ -55,11 +57,13 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 errors["base"] = "unknown"
             else:
                 # Success - create entry
+                title = "MELCloud Home (Debug)" if debug_mode else "MELCloud Home"
                 return self.async_create_entry(
-                    title="MELCloud Home",
+                    title=title,
                     data={
                         CONF_EMAIL: email,
                         CONF_PASSWORD: password,
+                        CONF_DEBUG_MODE: debug_mode,
                     },
                 )
 
@@ -70,9 +74,13 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 {
                     vol.Required(CONF_EMAIL): str,
                     vol.Required(CONF_PASSWORD): str,
+                    vol.Optional(CONF_DEBUG_MODE, default=False): BooleanSelector(),
                 }
             ),
             errors=errors,
+            description_placeholders={
+                "debug_help": "Enable to use mock server for development (http://melcloud-mock:8080)"
+            },
         )
 
     async def async_step_reconfigure(

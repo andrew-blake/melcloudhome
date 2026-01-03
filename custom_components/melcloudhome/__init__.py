@@ -115,11 +115,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
     from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
-    from .const import DOMAIN
+    from .const import CONF_DEBUG_MODE, DOMAIN
     from .coordinator import MELCloudHomeCoordinator
 
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
+    debug_mode = entry.data.get(CONF_DEBUG_MODE, False)
 
     platforms: list[Platform] = [
         Platform.BINARY_SENSOR,
@@ -129,7 +130,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Create API client and coordinator
     # Note: Coordinator will handle authentication on first refresh
-    client = MELCloudHomeClient()
+    client = MELCloudHomeClient(debug_mode=debug_mode)
     coordinator = MELCloudHomeCoordinator(hass, client, email, password)
 
     # Fetch initial data (coordinator handles login automatically)
