@@ -1,8 +1,9 @@
 # Resume: Air-to-Water (ATW) Heat Pump API Implementation
 
 **Branch:** `feature/atw-heat-pump-support`
-**Status:** Phase 1 in development - API layer implementation
-**Date:** 2026-01-03
+**Status:** Phase 1 COMPLETE ✅ - Phase 2 (control methods) ready to start
+**Last Session:** 2026-01-03
+**Commits:** 874d3f5 (DRY refactor), 56366dc (Phase 1 implementation)
 
 ---
 
@@ -70,9 +71,11 @@
 
 ## Implementation Strategy: Two Phases
 
-### Phase 1: Read-Only Support (THIS PHASE)
+### Phase 1: Read-Only Support ✅ COMPLETE
 
 **Goal:** Safely parse and display ATW device state
+
+**Status:** Implemented and committed (commits 56366dc, 874d3f5)
 
 **Scope:**
 
@@ -92,7 +95,7 @@
 - De-risks temperature ranges and capabilities
 - Allows coordinator development to proceed
 
-### Phase 2: Control Support (LATER)
+### Phase 2: Control Support → NEXT SESSION
 
 **Scope:**
 
@@ -1448,18 +1451,50 @@ class Building:
 
 ---
 
-## Final Notes
+## What to Do Next Session
 
-**Keep it simple:** This is Phase 1 - read-only support only. Control comes in Phase 2 after validation.
+### Option A: Create Phase 1 PR for Review
+```bash
+# Review changes
+git log --oneline origin/feature/atw-heat-pump-support..HEAD
 
-**Safe defaults:** Temperature ranges are ALWAYS hardcoded (10-30°C, 40-60°C). Never trust API values.
+# Create PR
+gh pr create --title "Phase 1: ATW API Layer - Read-Only Support" \
+  --body "See RESUME_PROMPT.md for details"
 
-**Document unknowns:** Schedule integer mapping is deferred - check HAR files separately.
+# Then test with real hardware before Phase 2
+```
 
-**Test thoroughly:** Model parsing is critical due to complex settings array structure.
+### Option B: Proceed to Phase 2 (Control Methods)
 
-**3-way valve:** Remember this is a physical limitation - document clearly in code comments.
+**Start with:** Implement control methods in `client.py`
 
-**Two phases:** Phase 1 proves the models are correct. Phase 2 adds control with confidence.
+See **"Phase 2 Implementation Requirements (LATER)"** section (line 633+) for complete specifications.
 
-Good luck with Phase 1! The architecture is solid, the documentation is comprehensive, and the path is clear. Start with constants, then models, then tests.
+**Control methods to add:**
+1. `set_power_atw(unit_id, power)` - System power control
+2. `set_zone_temperature(unit_id, temp)` - Zone heating (10-30°C)
+3. `set_dhw_temperature(unit_id, temp)` - DHW tank (40-60°C)
+4. `set_zone_mode(unit_id, mode)` - Zone operation mode
+5. `set_forced_hot_water(unit_id, enabled)` - DHW priority
+6. `set_holiday_mode(unit_ids, ...)` - Multi-unit
+7. `set_frost_protection(unit_ids, ...)` - Multi-unit
+
+---
+
+## Session Summary (2026-01-03)
+
+**Completed:**
+- ✅ Phase 1 implementation (models, constants, tests)
+- ✅ DRY refactor (extracted shared parse helpers)
+- ✅ Documentation review and cleanup
+- ✅ ADR-012 updated with official MELCloud analysis
+- ✅ 154 tests passing, all checks green
+
+**Key Learnings:**
+- Official MELCloud lets BOTH climate and water_heater control power
+- No zone standby control in API (InStandbyMode is read-only)
+- Water heater modes emulated from forcedHotWaterMode boolean
+- ATW_ constant prefix better than ATA approach (no prefix)
+
+**Ready for:** Phase 2 control methods OR PR review + hardware testing
