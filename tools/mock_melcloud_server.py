@@ -673,16 +673,18 @@ Examples:
         return
 
     # Setup signal handlers for clean shutdown
+    loop = asyncio.get_running_loop()
     shutdown_event = asyncio.Event()
 
-    def signal_handler(signum, frame):
+    # Use loop.add_signal_handler for proper asyncio signal handling
+    def handle_shutdown():
         """Handle shutdown signals."""
         logger.info("\n\n👋 Shutting down mock server...")
         shutdown_event.set()
 
-    # Register signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # Register signal handlers (asyncio-compatible)
+    loop.add_signal_handler(signal.SIGINT, handle_shutdown)
+    loop.add_signal_handler(signal.SIGTERM, handle_shutdown)
 
     # Keep running until interrupted
     try:
