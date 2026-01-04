@@ -17,7 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
-from .api.models import AirToAirUnit, Building, UserContext
+from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .const import DOMAIN, UPDATE_INTERVAL
 
 if TYPE_CHECKING:
@@ -56,6 +56,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Caches for O(1) lookups
         self._unit_to_building: dict[str, Building] = {}
         self._units: dict[str, AirToAirUnit] = {}
+        # ATW unit caches (same pattern as ATA)
+        self._atw_unit_to_building: dict[str, Building] = {}
+        self._atw_units: dict[str, AirToWaterUnit] = {}
         # Energy data cache and polling
         self._energy_data: dict[str, float | None] = {}
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
@@ -92,11 +95,19 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Rebuild lookup caches from context data."""
         self._unit_to_building.clear()
         self._units.clear()
+        self._atw_unit_to_building.clear()
+        self._atw_units.clear()
 
         for building in context.buildings:
+            # Cache A2A units (existing)
             for unit in building.air_to_air_units:
                 self._units[unit.id] = unit
                 self._unit_to_building[unit.id] = building
+
+            # Cache A2W units
+            for atw_unit in building.air_to_water_units:
+                self._atw_units[atw_unit.id] = atw_unit
+                self._atw_unit_to_building[atw_unit.id] = building
 
         # Update energy data for units
         self._update_unit_energy_data()
@@ -334,6 +345,17 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Get the building that contains the specified unit - O(1) lookup."""
         return self._unit_to_building.get(unit_id)
 
+    def get_atw_unit(self, unit_id: str) -> AirToWaterUnit | None:
+        """Get ATW unit by ID from cache.
+
+        Args:
+            unit_id: ATW unit ID
+
+        Returns:
+            Cached AirToWaterUnit if found, None otherwise
+        """
+        return self._atw_units.get(unit_id)
+
     async def _execute_with_retry(
         self,
         operation: Callable[[], Awaitable[Any]],
@@ -503,6 +525,256 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         await self._execute_with_retry(
             lambda: self.client.set_vanes(unit_id, vertical, horizontal),
             f"set_vanes({unit_id}, {vertical}, {horizontal})",
+        )
+
+    # =================================================================
+    # Air-to-Water (A2W) Heat Pump Control Methods
+    # =================================================================
+
+    async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
+        """Set ATW heat pump power with automatic session recovery.
+
+        Args:
+            unit_id: ATW unit ID
+            power: True=ON, False=OFF
+        """
+        # Check cache - skip if already in desired state
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.power == power:
+            _LOGGER.debug(
+                "Power already %s for ATW unit %s, skipping API call",
+                "ON" if power else "OFF",
+                unit_id[-8:],
+            )
+            return
+
+        # Log the operation
+        _LOGGER.info(
+            "Setting power for ATW unit %s to %s",
+            unit_id[-8:],
+            "ON" if power else "OFF",
+        )
+
+        # Execute with automatic retry on session expiry
+        await self._execute_with_retry(
+            lambda: self.client.set_power_atw(unit_id, power),
+            f"set_power_atw({unit_id}, {power})",
+        )
+
+    async def async_set_temperature_zone1(
+        self, unit_id: str, temperature: float
+    ) -> None:
+        """Set Zone 1 target temperature.
+
+        Args:
+            unit_id: ATW unit ID
+            temperature: Target temp in Celsius (10-30°C)
+        """
+        # Check cache - skip if already at target
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.set_temperature_zone1 == temperature:
+            _LOGGER.debug(
+                "Zone 1 temperature already %s°C for ATW unit %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting Zone 1 temperature for ATW unit %s to %s°C",
+            unit_id[-8:],
+            temperature,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_temperature_zone1(unit_id, temperature),
+            f"set_temperature_zone1({unit_id}, {temperature})",
+        )
+
+    async def async_set_temperature_zone2(
+        self, unit_id: str, temperature: float
+    ) -> None:
+        """Set Zone 2 target temperature.
+
+        Args:
+            unit_id: ATW unit ID
+            temperature: Target temp in Celsius (10-30°C)
+
+        Raises:
+            HomeAssistantError: If device doesn't have Zone 2
+        """
+        # Get cached unit
+        atw_unit = self.get_atw_unit(unit_id)
+
+        # Validate Zone 2 capability (using cached data - no extra API call)
+        if atw_unit and not atw_unit.capabilities.has_zone2:
+            raise HomeAssistantError(f"Device '{atw_unit.name}' does not have Zone 2")
+
+        # Check if already at target
+        if atw_unit and atw_unit.set_temperature_zone2 == temperature:
+            _LOGGER.debug(
+                "Zone 2 temperature already %s°C for ATW unit %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting Zone 2 temperature for ATW unit %s to %s°C",
+            unit_id[-8:],
+            temperature,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_temperature_zone2(unit_id, temperature),
+            f"set_temperature_zone2({unit_id}, {temperature})",
+        )
+
+    async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
+        """Set Zone 1 heating strategy.
+
+        Args:
+            unit_id: ATW unit ID
+            mode: One of ATW_OPERATION_MODES_ZONE
+        """
+        # Check cache - skip if already in desired mode
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.operation_mode_zone1 == mode:
+            _LOGGER.debug(
+                "Zone 1 mode already %s for ATW unit %s, skipping API call",
+                mode,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting Zone 1 mode for ATW unit %s to %s",
+            unit_id[-8:],
+            mode,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_mode_zone1(unit_id, mode),
+            f"set_mode_zone1({unit_id}, {mode})",
+        )
+
+    async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
+        """Set Zone 2 heating strategy.
+
+        Args:
+            unit_id: ATW unit ID
+            mode: One of ATW_OPERATION_MODES_ZONE
+
+        Raises:
+            HomeAssistantError: If device doesn't have Zone 2
+        """
+        # Get cached unit and validate Zone 2
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and not atw_unit.capabilities.has_zone2:
+            raise HomeAssistantError(f"Device '{atw_unit.name}' does not have Zone 2")
+
+        # Check if already in desired mode
+        if atw_unit and atw_unit.operation_mode_zone2 == mode:
+            _LOGGER.debug(
+                "Zone 2 mode already %s for ATW unit %s, skipping API call",
+                mode,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting Zone 2 mode for ATW unit %s to %s",
+            unit_id[-8:],
+            mode,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_mode_zone2(unit_id, mode),
+            f"set_mode_zone2({unit_id}, {mode})",
+        )
+
+    async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
+        """Set DHW tank target temperature.
+
+        Args:
+            unit_id: ATW unit ID
+            temperature: Target temp in Celsius (40-60°C)
+        """
+        # Check cache - skip if already at target
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.set_tank_water_temperature == temperature:
+            _LOGGER.debug(
+                "DHW temperature already %s°C for ATW unit %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting DHW temperature for ATW unit %s to %s°C",
+            unit_id[-8:],
+            temperature,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_dhw_temperature(unit_id, temperature),
+            f"set_dhw_temperature({unit_id}, {temperature})",
+        )
+
+    async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
+        """Enable/disable forced DHW priority mode.
+
+        Args:
+            unit_id: ATW unit ID
+            enabled: True=DHW priority, False=normal
+        """
+        # Check cache - skip if already in desired state
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.forced_hot_water_mode == enabled:
+            _LOGGER.debug(
+                "Forced DHW already %s for ATW unit %s, skipping API call",
+                enabled,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting forced DHW for ATW unit %s to %s",
+            unit_id[-8:],
+            enabled,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_forced_hot_water(unit_id, enabled),
+            f"set_forced_hot_water({unit_id}, {enabled})",
+        )
+
+    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
+        """Enable/disable standby mode.
+
+        Args:
+            unit_id: ATW unit ID
+            standby: True=standby, False=normal
+        """
+        # Check cache - skip if already in desired state
+        atw_unit = self.get_atw_unit(unit_id)
+        if atw_unit and atw_unit.in_standby_mode == standby:
+            _LOGGER.debug(
+                "Standby mode already %s for ATW unit %s, skipping API call",
+                standby,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting standby mode for ATW unit %s to %s",
+            unit_id[-8:],
+            standby,
+        )
+
+        await self._execute_with_retry(
+            lambda: self.client.set_standby_mode(unit_id, standby),
+            f"set_standby_mode({unit_id}, {standby})",
         )
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:

@@ -203,20 +203,20 @@ async def set_mode_zone1(self, unit_id: str, mode: str) -> None:
 
     Args:
         unit_id: ATW unit ID
-        mode: One of ATW_ZONE_MODES:
+        mode: One of ATW_OPERATION_MODES_ZONE:
             - "HeatRoomTemperature" (thermostat control)
             - "HeatFlowTemperature" (direct flow temp)
             - "HeatCurve" (weather compensation)
 
     Raises:
-        ValueError: If mode not in ATW_ZONE_MODES
+        ValueError: If mode not in ATW_OPERATION_MODES_ZONE
         AuthenticationError: If not authenticated
         ApiError: If API request fails
     """
     # Validate mode using constants
-    if mode not in ATW_ZONE_MODES:
+    if mode not in ATW_OPERATION_MODES_ZONE:
         raise ValueError(
-            f"Zone mode must be one of {ATW_ZONE_MODES}, got {mode}"
+            f"Zone mode must be one of {ATW_OPERATION_MODES_ZONE}, got {mode}"
         )
 
     payload = {"operationModeZone1": mode}
@@ -231,19 +231,19 @@ async def set_mode_zone2(self, unit_id: str, mode: str) -> None:
 
     Args:
         unit_id: ATW unit ID
-        mode: One of ATW_ZONE_MODES
+        mode: One of ATW_OPERATION_MODES_ZONE
 
     Raises:
-        ValueError: If mode not in ATW_ZONE_MODES
+        ValueError: If mode not in ATW_OPERATION_MODES_ZONE
         AuthenticationError: If not authenticated
         ApiError: If API request fails
 
     Note:
         Does NOT validate has_zone2 capability (coordinator's responsibility).
     """
-    if mode not in ATW_ZONE_MODES:
+    if mode not in ATW_OPERATION_MODES_ZONE:
         raise ValueError(
-            f"Zone mode must be one of {ATW_ZONE_MODES}, got {mode}"
+            f"Zone mode must be one of {ATW_OPERATION_MODES_ZONE}, got {mode}"
         )
 
     payload = {"operationModeZone2": mode}
@@ -266,10 +266,10 @@ async def set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
         ApiError: If API request fails
     """
     # Validate against hardcoded safe DHW range
-    if not ATW_TEMP_MIN_TANK <= temperature <= ATW_TEMP_MAX_TANK:
+    if not ATW_TEMP_MIN_DHW <= temperature <= ATW_TEMP_MAX_DHW:
         raise ValueError(
-            f"DHW temperature must be between {ATW_TEMP_MIN_TANK} and "
-            f"{ATW_TEMP_MAX_TANK}°C, got {temperature}"
+            f"DHW temperature must be between {ATW_TEMP_MIN_DHW} and "
+            f"{ATW_TEMP_MAX_DHW}°C, got {temperature}"
         )
 
     payload = {"setTankWaterTemperature": temperature}
@@ -327,9 +327,9 @@ from typing import Any  # For dict[str, Any] in helper
 from .const import (
     ATW_TEMP_MIN_ZONE,
     ATW_TEMP_MAX_ZONE,
-    ATW_TEMP_MIN_TANK,
-    ATW_TEMP_MAX_TANK,
-    ATW_ZONE_MODES,
+    ATW_TEMP_MIN_DHW,
+    ATW_TEMP_MAX_DHW,
+    ATW_OPERATION_MODES_ZONE,
 )
 ```
 
@@ -561,7 +561,7 @@ async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
 
     Args:
         unit_id: ATW unit ID
-        mode: One of ATW_ZONE_MODES
+        mode: One of ATW_OPERATION_MODES_ZONE
     """
     # Check cache - skip if already in desired mode
     atw_unit = self.get_atw_unit(unit_id)
@@ -593,7 +593,7 @@ async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
 
     Args:
         unit_id: ATW unit ID
-        mode: One of ATW_ZONE_MODES
+        mode: One of ATW_OPERATION_MODES_ZONE
 
     Raises:
         HomeAssistantError: If device doesn't have Zone 2
@@ -2094,8 +2094,8 @@ ATA_TEMP_MAX_COOL = 31.0
 # ATW
 ATW_TEMP_MIN_ZONE = 10.0
 ATW_TEMP_MAX_ZONE = 30.0
-ATW_TEMP_MIN_TANK = 40.0
-ATW_TEMP_MAX_TANK = 60.0
+ATW_TEMP_MIN_DHW = 40.0
+ATW_TEMP_MAX_DHW = 60.0
 ```
 
 **Benefits:**

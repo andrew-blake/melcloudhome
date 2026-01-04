@@ -2,7 +2,7 @@
 
 # API Base URLs
 BASE_URL = "https://melcloudhome.com"  # Production
-MOCK_BASE_URL = "http://melcloud-mock:8080"  # Development (Docker service name)
+MOCK_BASE_URL = "http://localhost:8080"  # Development (local mock server)
 
 # Required User-Agent to avoid bot detection
 # CRITICAL: Must use Chrome User-Agent or requests will be blocked
