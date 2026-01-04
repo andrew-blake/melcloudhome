@@ -31,6 +31,7 @@ import logging
 import signal
 from typing import Any
 
+import aiohttp_cors
 from aiohttp import web
 
 # Configure module logger
@@ -85,9 +86,11 @@ class MockMELCloudServer:
 
         Returns 1 ATW device by default:
         - House Heat Pump (single zone + DHW)
+
+        Note: Using UUID that matches chrome_override test data
         """
         return {
-            "atw-house-heatpump": {
+            "bf2d256c-42ac-4799-a6d8-c6ab433e5666": {
                 "name": "House Heat Pump",
                 "power": True,
                 "operation_mode": "HeatRoomTemperature",  # STATUS: What's heating now
@@ -112,7 +115,7 @@ class MockMELCloudServer:
                 "name": "My Home",
                 "timezone": "Europe/London",
                 "ata_unit_ids": ["ata-living-room", "ata-bedroom"],
-                "atw_unit_ids": ["atw-house-heatpump"],
+                "atw_unit_ids": ["bf2d256c-42ac-4799-a6d8-c6ab433e5666"],
             },
         }
 
@@ -120,16 +123,63 @@ class MockMELCloudServer:
         """Create aiohttp application with routes."""
         app = web.Application()
 
+        # Configure CORS to allow web client access from melcloudhome.com
+        cors = aiohttp_cors.setup(
+            app,
+            defaults={
+                "*": aiohttp_cors.ResourceOptions(
+                    allow_credentials=True,
+                    expose_headers="*",
+                    allow_headers="*",
+                    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+                )
+            },
+        )
+
         # Authentication (both paths for compatibility)
-        app.router.add_post("/api/auth/login", self.handle_login)
-        app.router.add_post("/api/login", self.handle_login)
+        auth_route = app.router.add_post("/api/auth/login", self.handle_login)
+        login_route = app.router.add_post("/api/login", self.handle_login)
 
         # Device discovery (SHARED endpoint - returns both types)
-        app.router.add_get("/api/user/context", self.handle_user_context)
+        context_route = app.router.add_get(
+            "/api/user/context", self.handle_user_context
+        )
 
         # Device control (SEPARATE endpoints per type)
-        app.router.add_put("/api/ataunit/{unit_id}", self.handle_ata_control)
-        app.router.add_put("/api/atwunit/{unit_id}", self.handle_atw_control)
+        ata_route = app.router.add_put(
+            "/api/ataunit/{unit_id}", self.handle_ata_control
+        )
+        atw_route = app.router.add_put(
+            "/api/atwunit/{unit_id}", self.handle_atw_control
+        )
+
+        # Schedule endpoints
+        schedule_get = app.router.add_get(
+            "/api/atwcloudschedule/{unit_id}", self.handle_schedule
+        )
+        schedule_post = app.router.add_post(
+            "/api/atwcloudschedule/{unit_id}", self.handle_schedule
+        )
+        schedule_enabled_get = app.router.add_get(
+            "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_get
+        )
+        schedule_enabled_put = app.router.add_put(
+            "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_put
+        )
+
+        # Add CORS to all routes
+        for route in [
+            auth_route,
+            login_route,
+            context_route,
+            ata_route,
+            atw_route,
+            schedule_get,
+            schedule_post,
+            schedule_enabled_get,
+            schedule_enabled_put,
+        ]:
+            cors.add(route)
 
         return app
 
@@ -236,6 +286,8 @@ class MockMELCloudServer:
 
         Architecture: Device-specific endpoint
         Reference: docs/api/ata-api-reference.md
+
+        Note: Auto-creates device if not found (permissive for testing)
         """
         unit_id = request.match_info.get("unit_id")
 
@@ -244,10 +296,21 @@ class MockMELCloudServer:
         except json.JSONDecodeError:
             return web.json_response({"error": "Invalid JSON"}, status=400)
 
+        # Auto-create device if not found (permissive for testing)
         if unit_id not in self.ata_states:
-            return web.json_response(
-                {"error": f"Device {unit_id} not found"}, status=404
-            )
+            logger.info(f"📝 Auto-creating ATA device: {unit_id}")
+            self.ata_states[unit_id] = {
+                "name": f"ATA Device {len(self.ata_states) + 1}",
+                "power": False,
+                "operation_mode": "Heat",
+                "set_temperature": 21.0,
+                "room_temperature": 20.0,
+                "set_fan_speed": "Auto",
+                "vane_vertical_direction": "Auto",
+                "vane_horizontal_direction": "Auto",
+                "in_standby_mode": False,
+                "is_in_error": False,
+            }
 
         logger.info("🌡️  ATA Control: %s", unit_id)
         logger.debug("   Request: %s", json.dumps(body, indent=2))
@@ -312,6 +375,8 @@ class MockMELCloudServer:
         Architecture: Device-specific endpoint
         Reference: docs/api/atw-api-reference.md
         3-Way Valve: Simulates physical limitation (DHW or Zone, not both)
+
+        Note: Auto-creates device if not found (permissive for testing)
         """
         unit_id = request.match_info.get("unit_id")
 
@@ -320,10 +385,24 @@ class MockMELCloudServer:
         except json.JSONDecodeError:
             return web.json_response({"error": "Invalid JSON"}, status=400)
 
+        # Auto-create device if not found (permissive for testing)
         if unit_id not in self.atw_states:
-            return web.json_response(
-                {"error": f"Device {unit_id} not found"}, status=404
-            )
+            logger.info(f"📝 Auto-creating ATW device: {unit_id}")
+            self.atw_states[unit_id] = {
+                "name": f"ATW Device {len(self.atw_states) + 1}",
+                "power": True,
+                "operation_mode": "HeatRoomTemperature",
+                "operation_mode_zone1": "HeatRoomTemperature",
+                "set_temperature_zone1": 21.0,
+                "room_temperature_zone1": 20.0,
+                "set_tank_water_temperature": 50.0,
+                "tank_water_temperature": 48.5,
+                "forced_hot_water_mode": False,
+                "has_zone2": False,
+                "in_standby_mode": False,
+                "is_in_error": False,
+                "ftc_model": 4,
+            }
 
         logger.info("♨️  ATW Control: %s", unit_id)
         logger.debug("   Request: %s", json.dumps(body, indent=2))
@@ -426,6 +505,54 @@ class MockMELCloudServer:
             state["operation_mode"] = state["operation_mode_zone1"]
         else:
             state["operation_mode"] = "Stop"
+
+    async def handle_schedule(self, request: web.Request) -> web.Response:
+        """GET/POST /api/atwcloudschedule/{unit_id} - Get or update schedule."""
+        unit_id = request.match_info.get("unit_id")
+        method = request.method
+
+        if method == "GET":
+            logger.info("📅 Schedule GET: %s", unit_id)
+            # Return empty schedule array
+            return web.json_response([])
+
+        elif method == "POST":
+            try:
+                body = await request.json()
+            except json.JSONDecodeError:
+                return web.json_response({"error": "Invalid JSON"}, status=400)
+
+            logger.info("📅 Schedule POST: %s", unit_id)
+            logger.debug("   Schedule data: %s", json.dumps(body, indent=2))
+
+            # Real API returns 200 with empty body
+            return web.Response(status=200, body=b"")
+
+        return web.Response(status=405, body=b"Method Not Allowed")
+
+    async def handle_schedule_enabled_get(self, request: web.Request) -> web.Response:
+        """GET /api/atwcloudschedule/{unit_id}/enabled - Get schedule enabled status."""
+        unit_id = request.match_info.get("unit_id")
+        logger.info("📅 Schedule Enabled GET: %s", unit_id)
+
+        # Return schedule enabled status (true/false)
+        enabled = True  # Default to enabled
+        return web.json_response({"enabled": enabled})
+
+    async def handle_schedule_enabled_put(self, request: web.Request) -> web.Response:
+        """PUT /api/atwcloudschedule/{unit_id}/enabled - Set schedule enabled status."""
+        unit_id = request.match_info.get("unit_id")
+
+        try:
+            body = await request.json()
+        except json.JSONDecodeError:
+            return web.json_response({"error": "Invalid JSON"}, status=400)
+
+        enabled = body.get("enabled", True)
+        logger.info("📅 Schedule Enabled PUT: %s -> %s", unit_id, enabled)
+
+        # Real API returns 200 with empty body
+        return web.Response(status=200, body=b"")
 
     def _log_3way_valve_status(self, unit_id: str):
         """Log 3-way valve status for debugging."""

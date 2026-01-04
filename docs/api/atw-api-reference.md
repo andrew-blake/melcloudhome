@@ -181,12 +181,16 @@ user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36..
 
 #### Forced Hot Water Mode
 ```json
-// Enable DHW priority
+// Enable DHW priority ("Heat Now" in UI)
 {"forcedHotWaterMode": true, ...all others null...}
 
-// Disable DHW priority
+// Disable DHW priority ("Auto" in UI)
 {"forcedHotWaterMode": false, ...all others null...}
 ```
+
+**UI Label:** "Auto / Heat Now" toggle
+- **Auto** (`false`): DHW heats automatically when below target
+- **Heat Now** (`true`): Force DHW heating immediately (priority mode)
 
 **Effect:**
 - When enabled: Heat pump prioritizes DHW heating
@@ -694,7 +698,9 @@ Purpose: Energy consumption tracking
 - **Control API (PUT /api/atwunit):** Uses STRINGS
   - `"HeatRoomTemperature"`, `"HeatFlowTemperature"`, `"HeatCurve"`
 - **Schedule API (POST /api/atwcloudschedule):** Uses INTEGERS
-  - Likely 0, 1, 2 (mapping requires testing)
+  - `0` = `"HeatRoomTemperature"` (Thermostat mode)
+  - `1` = `"HeatFlowTemperature"` (Flow temperature mode)
+  - `2` = `"HeatCurve"` (Weather compensation)
 
 ### Multi-Unit Operations
 - Holiday mode: Supports multiple units in single call

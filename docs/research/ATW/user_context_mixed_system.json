@@ -1,0 +1,712 @@
+{
+  "id": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+  "firstname": "John",
+  "lastname": "Doe",
+  "email": "user@example.com",
+  "language": "en",
+  "country": "GB",
+  "numberOfDevicesAllowed": 10,
+  "numberOfBuildingsAllowed": 2,
+  "numberOfGuestUsersAllowedPerUnit": 5,
+  "numberOfGuestDevicesAllowed": 10,
+  "buildings": [
+    {
+      "id": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+      "name": "MyHome",
+      "timezone": "Europe/London",
+      "airToAirUnits": [
+        {
+          "id": "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "givenDisplayName": "Dining Room",
+          "displayIcon": "DiningRoom",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "13"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "0"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "Swing"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [
+            {
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "time": "07:00:00",
+              "enabled": null,
+              "id": "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
+              "power": true,
+              "operationMode": 1,
+              "setPoint": 20,
+              "vaneVerticalDirection": 6,
+              "vaneHorizontalDirection": 7,
+              "setFanSpeed": 3
+            },
+            {
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "time": "08:00:00",
+              "enabled": null,
+              "id": "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE",
+              "power": false,
+              "operationMode": null,
+              "setPoint": null,
+              "vaneVerticalDirection": null,
+              "vaneHorizontalDirection": null,
+              "setFanSpeed": null
+            }
+          ],
+          "isInError": false,
+          "scheduleEnabled": false,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": true,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": true,
+            "hasSwing": true,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 5,
+            "minTempCoolDry": 16,
+            "maxTempCoolDry": 31,
+            "minTempHeat": 10,
+            "maxTempHeat": 31,
+            "minTempAutomatic": 16,
+            "maxTempAutomatic": 31,
+            "hasDemandSideControl": true,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -40,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 2,
+          "systemId": "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        },
+        {
+          "id": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+          "givenDisplayName": "Living Room",
+          "displayIcon": "LivingRoom",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "13.5"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "0"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "Centre"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [],
+          "isInError": false,
+          "scheduleEnabled": false,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": true,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": true,
+            "hasSwing": true,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 5,
+            "minTempCoolDry": 16,
+            "maxTempCoolDry": 31,
+            "minTempHeat": 10,
+            "maxTempHeat": 31,
+            "minTempAutomatic": 16,
+            "maxTempAutomatic": 31,
+            "hasDemandSideControl": true,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -48,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 2,
+          "systemId": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        },
+        {
+          "id": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+          "givenDisplayName": "Study",
+          "displayIcon": "Library",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "10"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "5"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "LeftCentre"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [],
+          "isInError": false,
+          "scheduleEnabled": false,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": true,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": true,
+            "hasSwing": true,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 5,
+            "minTempCoolDry": 16,
+            "maxTempCoolDry": 31,
+            "minTempHeat": 10,
+            "maxTempHeat": 31,
+            "minTempAutomatic": 16,
+            "maxTempAutomatic": 31,
+            "hasDemandSideControl": true,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -58,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 2,
+          "systemId": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        },
+        {
+          "id": "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "givenDisplayName": "Guest Bedroom",
+          "displayIcon": "GuestBedroom",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "8"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "Three"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [],
+          "isInError": false,
+          "scheduleEnabled": true,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": false,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": false,
+            "hasSwing": false,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 3,
+            "minTempCoolDry": 19,
+            "maxTempCoolDry": 30,
+            "minTempHeat": 10,
+            "maxTempHeat": 28,
+            "minTempAutomatic": 19,
+            "maxTempAutomatic": 28,
+            "hasDemandSideControl": false,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -57,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 0,
+          "systemId": "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        },
+        {
+          "id": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+          "givenDisplayName": "Master Bedroom",
+          "displayIcon": "Bedroom",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "8"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [],
+          "isInError": false,
+          "scheduleEnabled": true,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": false,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": false,
+            "hasSwing": false,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 3,
+            "minTempCoolDry": 19,
+            "maxTempCoolDry": 30,
+            "minTempHeat": 10,
+            "maxTempHeat": 28,
+            "minTempAutomatic": 19,
+            "maxTempAutomatic": 28,
+            "hasDemandSideControl": false,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -68,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 0,
+          "systemId": "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        },
+        {
+          "id": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+          "givenDisplayName": "Bedroom",
+          "displayIcon": "Bedroom",
+          "unitSettings": null,
+          "settings": [
+            {
+              "name": "RoomTemperature",
+              "value": "8"
+            },
+            {
+              "name": "Power",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "Heat"
+            },
+            {
+              "name": "ActualFanSpeed",
+              "value": "Auto"
+            },
+            {
+              "name": "SetFanSpeed",
+              "value": "Three"
+            },
+            {
+              "name": "VaneHorizontalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "VaneVerticalDirection",
+              "value": "Auto"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "SetTemperature",
+              "value": "19"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "schedule": [],
+          "isInError": false,
+          "scheduleEnabled": true,
+          "connectedInterfaceIdentifier": "001122087743",
+          "capabilities": {
+            "isMultiSplitSystem": false,
+            "isLegacyDevice": false,
+            "hasStandby": true,
+            "hasCoolOperationMode": true,
+            "hasHeatOperationMode": true,
+            "hasAutoOperationMode": true,
+            "hasDryOperationMode": true,
+            "hasAutomaticFanSpeed": true,
+            "hasAirDirection": false,
+            "hasSwing": false,
+            "hasExtendedTemperatureRange": true,
+            "hasEnergyConsumedMeter": true,
+            "numberOfFanSpeeds": 3,
+            "minTempCoolDry": 19,
+            "maxTempCoolDry": 30,
+            "minTempHeat": 10,
+            "maxTempHeat": 28,
+            "minTempAutomatic": 19,
+            "maxTempAutomatic": 28,
+            "hasDemandSideControl": false,
+            "hasHalfDegreeIncrements": true,
+            "supportsWideVane": false
+          },
+          "rssi": -61,
+          "timeZone": "Europe/London",
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": null,
+          "isConnected": true,
+          "connectedInterfaceType": 0,
+          "systemId": "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "energyProducedOptIn": false,
+          "isEnergyUsageCompatible": false
+        }
+      ],
+      "airToWaterUnits": [
+        {
+          "id": "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+          "givenDisplayName": "Heat pump",
+          "displayIcon": "Lounge",
+          "settings": [
+            {
+              "name": "Power",
+              "value": "True"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "HotWater"
+            },
+            {
+              "name": "HasZone2",
+              "value": "0"
+            },
+            {
+              "name": "OperationModeZone1",
+              "value": "HeatCurve"
+            },
+            {
+              "name": "RoomTemperatureZone1",
+              "value": "20.5"
+            },
+            {
+              "name": "SetTemperatureZone1",
+              "value": "31"
+            },
+            {
+              "name": "ProhibitHotWater",
+              "value": "False"
+            },
+            {
+              "name": "TankWaterTemperature",
+              "value": "29"
+            },
+            {
+              "name": "SetTankWaterTemperature",
+              "value": "60"
+            },
+            {
+              "name": "HasCoolingMode",
+              "value": "False"
+            },
+            {
+              "name": "ForcedHotWaterMode",
+              "value": "True"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "macAddress": "AABBCCDDEEFF",
+          "timeZone": "Europe/Madrid",
+          "rssi": 0,
+          "ftcModel": 3,
+          "schedule": [],
+          "scheduleEnabled": true,
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": {
+            "enabled": false,
+            "startDate": "2025-12-11T18:33:10.804",
+            "endDate": "2025-12-17T12:00:00",
+            "active": false
+          },
+          "isConnected": true,
+          "isInError": false,
+          "capabilities": {
+            "maxImportPower": 0,
+            "maxHeatOutput": 0,
+            "temperatureUnit": "",
+            "hasHotWater": true,
+            "immersionHeaterCapacity": 0,
+            "minSetTankTemperature": 0,
+            "maxSetTankTemperature": 60,
+            "minSetTemperature": 30,
+            "maxSetTemperature": 50,
+            "temperatureIncrement": 0,
+            "temperatureIncrementOverride": "",
+            "hasHalfDegrees": false,
+            "hasZone2": false,
+            "hasDualRoomTemperature": false,
+            "hasThermostatZone1": true,
+            "hasThermostatZone2": true,
+            "hasHeatZone1": true,
+            "hasHeatZone2": false,
+            "hasMeasuredEnergyConsumption": false,
+            "hasMeasuredEnergyProduction": false,
+            "hasEstimatedEnergyConsumption": true,
+            "hasEstimatedEnergyProduction": true,
+            "ftcModel": 3,
+            "refridgerentAddress": 0,
+            "hasDemandSideControl": true
+          }
+        }
+      ]
+    }
+  ],
+  "guestBuildings": [],
+  "scenes": []
+}

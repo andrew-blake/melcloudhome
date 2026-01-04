@@ -1,0 +1,130 @@
+{
+  "id": "7b4410d5-01f4-4b5b-8094-71cb267929e1",
+  "firstname": "John",
+  "lastname": "Doe",
+  "email": "user@example.com",
+  "language": "en",
+  "country": "GB",
+  "numberOfDevicesAllowed": 10,
+  "numberOfBuildingsAllowed": 2,
+  "numberOfGuestUsersAllowedPerUnit": 5,
+  "numberOfGuestDevicesAllowed": 10,
+  "buildings": [
+    {
+      "id": "d322d965-1a9b-4321-9de4-3d995b1a038c",
+      "name": "MyHome",
+      "timezone": "Europe/London",
+      "airToAirUnits": [],
+      "airToWaterUnits": [
+        {
+          "id": "bf2d256c-42ac-4799-a6d8-c6ab433e5666",
+          "givenDisplayName": "Heat pump",
+          "displayIcon": "Lounge",
+          "settings": [
+            {
+              "name": "Power",
+              "value": "True"
+            },
+            {
+              "name": "InStandbyMode",
+              "value": "False"
+            },
+            {
+              "name": "OperationMode",
+              "value": "HotWater"
+            },
+            {
+              "name": "HasZone2",
+              "value": "0"
+            },
+            {
+              "name": "OperationModeZone1",
+              "value": "HeatCurve"
+            },
+            {
+              "name": "RoomTemperatureZone1",
+              "value": "20.5"
+            },
+            {
+              "name": "SetTemperatureZone1",
+              "value": "31"
+            },
+            {
+              "name": "ProhibitHotWater",
+              "value": "False"
+            },
+            {
+              "name": "TankWaterTemperature",
+              "value": "29"
+            },
+            {
+              "name": "SetTankWaterTemperature",
+              "value": "60"
+            },
+            {
+              "name": "HasCoolingMode",
+              "value": "False"
+            },
+            {
+              "name": "ForcedHotWaterMode",
+              "value": "True"
+            },
+            {
+              "name": "IsInError",
+              "value": "False"
+            },
+            {
+              "name": "ErrorCode",
+              "value": ""
+            }
+          ],
+          "macAddress": "282e89abc123",
+          "timeZone": "Europe/Madrid",
+          "rssi": -42,
+          "ftcModel": 3,
+          "schedule": [],
+          "scheduleEnabled": true,
+          "frostProtection": null,
+          "overheatProtection": null,
+          "holidayMode": {
+            "enabled": false,
+            "startDate": "2025-12-11T18:33:10.804",
+            "endDate": "2025-12-17T12:00:00",
+            "active": false
+          },
+          "isConnected": true,
+          "isInError": false,
+          "capabilities": {
+            "maxImportPower": 0,
+            "maxHeatOutput": 0,
+            "temperatureUnit": "",
+            "hasHotWater": true,
+            "immersionHeaterCapacity": 0,
+            "minSetTankTemperature": 0,
+            "maxSetTankTemperature": 60,
+            "minSetTemperature": 30,
+            "maxSetTemperature": 50,
+            "temperatureIncrement": 0,
+            "temperatureIncrementOverride": "",
+            "hasHalfDegrees": false,
+            "hasZone2": false,
+            "hasDualRoomTemperature": false,
+            "hasThermostatZone1": true,
+            "hasThermostatZone2": true,
+            "hasHeatZone1": true,
+            "hasHeatZone2": false,
+            "hasMeasuredEnergyConsumption": false,
+            "hasMeasuredEnergyProduction": false,
+            "hasEstimatedEnergyConsumption": true,
+            "hasEstimatedEnergyProduction": true,
+            "ftcModel": 3,
+            "refridgerentAddress": 0,
+            "hasDemandSideControl": true
+          }
+        }
+      ]
+    }
+  ],
+  "guestBuildings": [],
+  "scenes": []
+}

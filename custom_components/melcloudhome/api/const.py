@@ -224,6 +224,12 @@ ATW_MODE_HEAT_ROOM_TEMP = "HeatRoomTemperature"  # Thermostat mode
 ATW_MODE_HEAT_FLOW_TEMP = "HeatFlowTemperature"  # Direct flow control (DEFERRED)
 ATW_MODE_HEAT_CURVE = "HeatCurve"  # Weather compensation
 
+# Operation Modes - Zone Control (Schedule API - Integers)
+# Schedule API uses integer enums instead of strings
+ATW_MODE_INT_HEAT_ROOM_TEMP = 0  # Maps to "HeatRoomTemperature"
+ATW_MODE_INT_HEAT_FLOW_TEMP = 1  # Maps to "HeatFlowTemperature"
+ATW_MODE_INT_HEAT_CURVE = 2  # Maps to "HeatCurve"
+
 ATW_OPERATION_MODES_ZONE = [
     ATW_MODE_HEAT_ROOM_TEMP,
     ATW_MODE_HEAT_FLOW_TEMP,
