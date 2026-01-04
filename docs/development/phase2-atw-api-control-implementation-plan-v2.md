@@ -2,9 +2,12 @@
 
 **Goal:** Add ATW (Air-to-Water) heat pump control methods to API client and coordinator
 
-**Status:** Ready for implementation (patterns verified against ATA)
+**Status:** ✅ IMPLEMENTED (Commit: b726a83)
 
-**Estimated effort:** 2-3 hours
+**Completed:** 2026-01-04
+- Production code: 475 lines (client.py + coordinator.py)
+- Tests: 18 tests (7 validation + 11 mock server integration)
+- All tests passing, all quality checks passing
 
 ---
 
