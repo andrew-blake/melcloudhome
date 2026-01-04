@@ -49,7 +49,21 @@ Before starting, verify these exist:
 
 **File:** `custom_components/melcloudhome/api/client.py`
 
+**Architectural Decision: Keep Single Client Class**
+- Current: 14 methods, 497 lines (handles A2A only)
+- After Phase 2: 25 methods, ~700 lines (handles A2A + A2W)
+- **Decision:** Keep single `MELCloudHomeClient` class (no split into separate clients)
+- **Rationale:** Only 2 device types, shared auth/session, backwards compatible, acceptable size
+- **Organization:** Use comment section headers to separate A2A vs A2W methods
+
 **Location:** Add after existing `set_vanes()` method (last ATA control method)
+
+First, add section header comment:
+```python
+    # =================================================================
+    # Air-to-Water (A2W) Heat Pump Control
+    # =================================================================
+```
 
 **Purpose:** DRY - Build sparse update payload in one place (ATW has 12+ control fields)
 
@@ -303,6 +317,7 @@ async def set_standby_mode(self, unit_id: str, standby: bool) -> None:
 ```
 
 **Required Imports (add to top of client.py):**
+
 ```python
 from typing import Any  # For dict[str, Any] in helper
 
@@ -341,6 +356,7 @@ self._atw_units: dict[str, AirToWaterUnit] = {}
 **Location:** Find `_async_rebuild_cache_from_user_context()` method
 
 **Current code (for A2A only):**
+
 ```python
 def _async_rebuild_cache_from_user_context(
     self, user_context: UserContext
@@ -358,6 +374,7 @@ def _async_rebuild_cache_from_user_context(
 ```
 
 **Add ATW caching (same pattern):**
+
 ```python
 def _async_rebuild_cache_from_user_context(
     self, user_context: UserContext
@@ -400,6 +417,7 @@ def get_atw_unit(self, unit_id: str) -> AirToWaterUnit | None:
 ```
 
 **Required Import:**
+
 ```python
 from .api.models import AirToWaterUnit  # Add to imports at top
 ```
@@ -413,6 +431,7 @@ from .api.models import AirToWaterUnit  # Add to imports at top
 **Location:** Add after existing `async_set_vanes()` method (last ATA control method)
 
 **Pattern:** All methods follow same template:
+
 1. Get cached unit
 2. Check if already in desired state (skip API call if so)
 3. Log the operation
@@ -704,6 +723,7 @@ async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
 ```
 
 **Required Imports:**
+
 ```python
 from homeassistant.exceptions import HomeAssistantError  # Add to imports
 ```
@@ -1074,6 +1094,7 @@ async def test_set_mode_zone2_invalid() -> None:
 ```
 
 **Test Count:** 18 tests
+
 - **11 VCR tests:** Test actual API control operations with live recording
 - **7 validation tests:** Fast unit tests for input validation
 
@@ -1096,18 +1117,21 @@ ls tests/api/cassettes/test_*atw*.yaml
 ```
 
 **What Happens:**
+
 - VCR intercepts HTTP calls
 - Records to `tests/api/cassettes/test_set_power_atw_on.yaml`, etc.
 - Scrubs sensitive data (emails, passwords, device names)
 - Each test gets its own cassette file
 
 **Subsequent Runs:**
+
 ```bash
 # No credentials needed - VCR replays from cassettes
 pytest tests/api/test_atw_control.py -v
 ```
 
 **If Tests Fail:**
+
 - Check that ATW unit IDs in fixtures are correct
 - Verify account has ATW devices
 - Check cassettes for errors (`status: 4xx` or `5xx`)
@@ -1134,6 +1158,7 @@ make all
 ```
 
 **Expected results:**
+
 - ✅ 18 new tests pass
 - ✅ All existing tests still pass
 - ✅ No type errors
@@ -1254,6 +1279,7 @@ if __name__ == "__main__":
 ```
 
 **Usage:**
+
 ```bash
 # Terminal 1: Start mock server
 python tools/mock_melcloud_server.py
@@ -1263,6 +1289,7 @@ python tools/validate_atw_control.py
 ```
 
 **Watch mock server logs** for:
+
 - PUT requests to `/api/atwunit/{id}`
 - Payload structure (correct fields)
 - 3-way valve status updates
@@ -1329,11 +1356,33 @@ python tools/validate_atw_control.py
 
 ## Key Design Decisions
 
-### 1. Return Type: `None` (Matches ATA)
+### 1. Single Client Class (No SRP Split)
+
+**Decision:** Add ATW methods to existing `MELCloudHomeClient` (no separate `AirToAirClient`/`AirToWaterClient`)
+
+**Rationale:**
+- Only 2 device types (A2A + A2W) in project scope
+- Shared authentication and session management
+- Backwards compatible (no coordinator changes)
+- 700 lines / 25 methods is acceptable for this use case
+- Comment sections provide organization
+
+**Trade-off:** Technically violates SRP but pragmatic for scope
+
+**Organization:** Use comment section headers:
+```python
+# Air-to-Air (A2A) Device Control
+# Air-to-Water (A2W) Heat Pump Control
+```
+
+---
+
+### 2. Return Type: `None` (Matches ATA)
 
 **Decision:** Client methods return `None`, not `AirToWaterUnit`
 
 **Rationale:**
+
 - Matches established ATA pattern
 - Avoids race conditions (returned state might be stale)
 - Clear separation: control methods don't fetch state
@@ -1344,6 +1393,7 @@ python tools/validate_atw_control.py
 **Decision:** Use helper to build sparse payloads (differs from ATA)
 
 **Rationale:**
+
 - ATW has 12+ control fields (vs ATA's 8)
 - Prevents copy-paste errors in payload building
 - Single source of truth for payload structure
@@ -1356,6 +1406,7 @@ python tools/validate_atw_control.py
 **Decision:** Client doesn't validate `has_zone2`; coordinator checks cached capability
 
 **Rationale:**
+
 - Client methods are fast (no pre-fetch)
 - Coordinator already has cached device data (no extra API call)
 - Matches ATA pattern (client doesn't fetch before control)
@@ -1366,6 +1417,7 @@ python tools/validate_atw_control.py
 **Decision:** Coordinator methods don't call `async_request_refresh()`
 
 **Rationale:**
+
 - Avoids race conditions (server may not have updated yet)
 - Next scheduled poll (60s) gets fresh state
 - Prevents duplicate API calls
@@ -1376,6 +1428,7 @@ python tools/validate_atw_control.py
 **Decision:** All coordinator methods check cache and skip if value already set
 
 **Rationale:**
+
 - Prevents redundant API calls
 - Reduces network traffic
 - Faster response when value already correct
@@ -1388,6 +1441,7 @@ python tools/validate_atw_control.py
 ### VCR Cassette Recording (Automatic)
 
 **First Run (Recording):**
+
 1. Provide credentials via environment variables
 2. Run tests with `@pytest.mark.vcr()` decorator
 3. VCR makes live API calls
@@ -1395,6 +1449,7 @@ python tools/validate_atw_control.py
 5. VCR scrubs sensitive data automatically
 
 **Subsequent Runs (Replay):**
+
 1. No credentials needed
 2. VCR replays from cassettes (instant, no network)
 3. Tests verify same behavior
@@ -1404,6 +1459,7 @@ python tools/validate_atw_control.py
 ### Test Coverage
 
 **VCR Tests (11):**
+
 - Power on/off (2 tests)
 - Zone 1 temperature (2 tests - normal + half-degree)
 - Zone 2 temperature (1 test)
@@ -1413,6 +1469,7 @@ python tools/validate_atw_control.py
 - Standby mode (1 test)
 
 **Validation Tests (7):**
+
 - Zone 1/2 temperature out of range (3 tests)
 - DHW temperature out of range (2 tests)
 - Invalid zone modes (2 tests)
@@ -1673,6 +1730,7 @@ async def _update_unit(self, unit_id: str, payload: dict[str, Any]) -> None:
 ```
 
 **Then methods become:**
+
 ```python
 async def set_temperature(self, unit_id: str, temperature: float) -> None:
     # ... validation ...
@@ -1680,6 +1738,7 @@ async def set_temperature(self, unit_id: str, temperature: float) -> None:
 ```
 
 **Benefits:**
+
 - DRY - payload structure in one place
 - Easier to add new fields
 - Reduces chance of typos/omissions
@@ -1725,6 +1784,7 @@ def _validate_enum(value: str, valid_values: set[str], name: str) -> None:
 ```
 
 **Then:**
+
 ```python
 async def set_temperature(self, unit_id: str, temperature: float) -> None:
     _validate_temperature(temperature, TEMP_MIN_HEAT, TEMP_MAX_HEAT, TEMP_STEP)
@@ -1732,6 +1792,7 @@ async def set_temperature(self, unit_id: str, temperature: float) -> None:
 ```
 
 **Benefits:**
+
 - Consistent error messages
 - Easier to add validation rules
 - Reusable across ATA and ATW
@@ -1770,6 +1831,7 @@ ATW_TEMP_MAX_TANK = 60.0
 ```
 
 **Benefits:**
+
 - Clearer which constants belong to which system
 - Easier to grep/search
 - Reduces confusion
@@ -1797,11 +1859,13 @@ ATW_TEMP_MAX_TANK = 60.0
 ### Why Phase 2 Before Phase 3?
 
 **Phase 3 (UI entities) is blocked** without Phase 2 (API control methods):
+
 - Water heater entity needs `async_set_dhw_temperature()`, `async_set_forced_hot_water()`, etc.
 - Climate entity needs `async_set_temperature_zone1()`, `async_set_mode_zone1()`, etc.
 - Attempting Phase 3 first = immediate blockers
 
 **Critical path:**
+
 ```
 Phase 2 (API Control) → Phase 3 (Entities) → Working UI
 ```
@@ -1811,6 +1875,7 @@ Phase 2 (API Control) → Phase 3 (Entities) → Working UI
 ### Why Not Documentation First?
 
 Current `atw-ui-controls-best-practices.md` has issues (986 lines, 50% redundancy) but:
+
 - Functional enough to guide Phase 3 implementation
 - Not blocking
 - Can be improved anytime (or never)
