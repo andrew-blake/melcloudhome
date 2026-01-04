@@ -10,7 +10,7 @@
 
 Based on official MELCloud integration patterns and ADR-012 architectural decisions:
 
-### Per ATW Device, Create 4 Entity Types:
+### Per ATW Device, Create 4 Entity Types
 
 1. **`water_heater` entity** (1 per device) - DHW tank control
 2. **`climate` entities** (1-2 per device) - Zone heating control
@@ -23,7 +23,7 @@ Based on official MELCloud integration patterns and ADR-012 architectural decisi
 
 **Entity ID:** `water_heater.{device_name}_tank`
 
-### UI Controls Available:
+### UI Controls Available
 
 ```yaml
 Temperature Slider:
@@ -47,13 +47,13 @@ State Attributes (visible in "more info"):
   - zone_heating_suspended: true/false (when valve on DHW)
 ```
 
-### Services:
+### Services
 
 - `water_heater.set_temperature` - Set DHW target temp
 - `water_heater.set_operation_mode` - Set eco/performance mode
 - `water_heater.turn_on` / `turn_off` - System power control
 
-### Key Behavior:
+### Key Behavior
 
 ⭐ **CRITICAL:** `turn_off()` powers off the **entire heat pump**, not just DHW.
 
@@ -62,10 +62,11 @@ State Attributes (visible in "more info"):
 ## 2. Climate Entity (Zone Heating)
 
 **Entity ID:**
+
 - `climate.{device_name}_zone_1` (always present)
 - `climate.{device_name}_zone_2` (if hasZone2=true)
 
-### UI Controls Available:
+### UI Controls Available
 
 ```yaml
 Temperature Slider:
@@ -96,17 +97,18 @@ State Attributes (visible in "more info"):
   - target_temperature: Zone target
 ```
 
-### Services:
+### Services
 
 - `climate.set_temperature` - Set zone target temp
 - `climate.set_hvac_mode` - Set HEAT or OFF
 - `climate.set_preset_mode` - Change heating strategy
 
-### Key Behavior:
+### Key Behavior
 
 ⭐ **CRITICAL:** `set_hvac_mode(OFF)` powers off the **entire heat pump** (matches official MELCloud implementation).
 
 **Rationale from ADR-012:**
+
 - Official MELCloud code does this (proven pattern)
 - Physical reality: ONE heat pump with ONE power supply
 - User expectations: Climate OFF = turn off heating
@@ -188,6 +190,7 @@ await climate.set_hvac_mode(HVACMode.OFF)
 ```
 
 **Rationale:**
+
 - Matches official MELCloud core integration (actual code, not docs)
 - Physical reality: ONE heat pump device
 - User expectations: Climate OFF should turn off heating
@@ -251,11 +254,13 @@ Step:      0.5°C or 1.0°C (from hasHalfDegrees capability)
 ## Best Practice Pattern (Official MELCloud Reference)
 
 **Source:** Official Home Assistant MELCloud integration
-- **Documentation:** https://www.home-assistant.io/integrations/melcloud/
+
+- **Documentation:** <https://www.home-assistant.io/integrations/melcloud/>
 - **Implementation PR:** #32078
 - **Code:** `homeassistant/components/melcloud/`
 
 **Pattern:**
+
 - Water heater for DHW + system power
 - Climate per zone for room heating
 - Sensors for monitoring
@@ -268,11 +273,13 @@ Step:      0.5°C or 1.0°C (from hasHalfDegrees capability)
 **Already Decided:** Full entity architecture documented in ADR-012 (2026-01-03)
 
 **Already Implemented:**
+
 - ✅ API models (AirToWaterUnit, AirToWaterCapabilities)
 - ✅ Mock server with 3-way valve simulation
 - ✅ Phase 1 validation complete
 
 **Not Yet Implemented:**
+
 - ❌ `water_heater.py` - DHW tank entity
 - ❌ `climate.py` updates - ATW zone support
 - ❌ `sensor.py` updates - ATW sensors
@@ -338,7 +345,7 @@ Zone 1 Suspended: Yes
 
 ## User Experience Notes
 
-### When Forced DHW Active:
+### When Forced DHW Active
 
 1. Water heater shows: `Operation: Performance`
 2. Water heater attribute: `forced_dhw_active: true`
@@ -348,7 +355,7 @@ Zone 1 Suspended: Yes
 
 **Why:** 3-way valve can only heat ONE thing at a time (physical limitation).
 
-### Power Control UX:
+### Power Control UX
 
 **Two ways to power off system:**
 
@@ -358,6 +365,7 @@ Zone 1 Suspended: Yes
 **Both have same effect** - entire heat pump powers off (all zones + DHW).
 
 **Why this is OK:**
+
 - Matches official MELCloud implementation
 - Most systems are single-zone
 - Physical reality: ONE heat pump
@@ -368,18 +376,23 @@ Zone 1 Suspended: Yes
 ## Questions Already Answered in ADR-012
 
 ### Q1: Should climate control system power?
+
 **A:** YES (both water_heater AND climate can control power)
 
 ### Q2: How to represent zone operation modes?
+
 **A:** Climate preset modes (room_temperature/flow_temperature/weather_compensation)
 
 ### Q3: How to expose 3-way valve status?
+
 **A:** Water heater attributes + dedicated sensor + climate hvac_action
 
 ### Q4: How to handle forced DHW mode?
+
 **A:** Water heater operation mode "performance"
 
 ### Q5: Should we support flow temp / curve modes?
+
 **A:** YES, as climate preset modes (advanced features)
 
 ---
@@ -387,16 +400,19 @@ Zone 1 Suspended: Yes
 ## Files for Reference
 
 **Architecture & Decisions:**
+
 - `docs/decisions/012-atw-entity-architecture.md` - Complete entity architecture (574 lines)
 - `docs/architecture.md` - 3-way valve behavior diagrams
 - `docs/api/atw-api-reference.md` - Complete API spec
 
 **Implementation Examples:**
+
 - `custom_components/melcloudhome/climate.py` - Current A2A implementation (pattern reference)
 - `custom_components/melcloudhome/sensor.py` - Current sensor implementation
 - `tools/mock_melcloud_server.py` - Mock server with 3-way valve simulation
 
 **Testing:**
+
 - `docs/testing-best-practices.md` - HA entity testing patterns
 - `tools/test_atw_mock_server.py` - Validation script
 
@@ -425,19 +441,22 @@ Zone 1 Suspended: Yes
 
 These appear **automatically** when you implement the entity correctly:
 
-#### Water Heater (Auto-Generated):
+#### Water Heater (Auto-Generated)
+
 ✅ Temperature slider → Just implement `target_temperature_step`, `min_temp`, `max_temp`
 ✅ Current/target temp display → Just implement properties
 ✅ Power toggle → Just implement `async_turn_on()` / `async_turn_off()`
 ✅ Operation mode dropdown → Implement `operation_list` property and `async_set_operation_mode()`
 
-#### Climate (Auto-Generated):
+#### Climate (Auto-Generated)
+
 ✅ Temperature slider → Just implement `target_temperature_step`, `min_temp`, `max_temp`
 ✅ HVAC mode toggle → Just implement `hvac_modes` property and `async_set_hvac_mode()`
 ✅ Preset mode dropdown → Just implement `preset_modes` property and `async_set_preset_mode()`
 ✅ HVAC action display → Just implement `hvac_action` property
 
-#### Sensors (Auto-Generated):
+#### Sensors (Auto-Generated)
+
 ✅ Temperature display → Just implement `native_value` property
 ✅ State display → Just implement `state` property
 
@@ -582,7 +601,8 @@ def device_info(self) -> DeviceInfo:
 
 ### Implementation Checklist for UI Controls
 
-#### Water Heater Platform (`water_heater.py`):
+#### Water Heater Platform (`water_heater.py`)
+
 - [ ] Implement `min_temp`, `max_temp`, `target_temperature_step`
 - [ ] Implement `current_temperature`, `target_temperature`
 - [ ] Implement `operation_list`, `current_operation`
@@ -593,7 +613,8 @@ def device_info(self) -> DeviceInfo:
 - [ ] Implement `extra_state_attributes()` for 3-way valve status
 - [ ] Implement `device_info` property
 
-#### Climate Platform (`climate.py` updates):
+#### Climate Platform (`climate.py` updates)
+
 - [ ] Implement `min_temp`, `max_temp`, `target_temperature_step`
 - [ ] Implement `current_temperature`, `target_temperature`
 - [ ] Implement `hvac_modes` list
@@ -608,14 +629,16 @@ def device_info(self) -> DeviceInfo:
 - [ ] Implement `extra_state_attributes()` for operation mode
 - [ ] Implement `device_info` property
 
-#### Sensor Platform (`sensor.py` updates):
+#### Sensor Platform (`sensor.py` updates)
+
 - [ ] Create sensor descriptions with `SensorEntityDescription`
 - [ ] Implement `native_value` property
 - [ ] Implement `native_unit_of_measurement`
 - [ ] Implement `device_class` (temperature, etc.)
 - [ ] Implement `device_info` property
 
-#### Binary Sensor Platform (`binary_sensor.py` updates):
+#### Binary Sensor Platform (`binary_sensor.py` updates)
+
 - [ ] Create sensor descriptions with `BinarySensorEntityDescription`
 - [ ] Implement `is_on` property
 - [ ] Implement `device_class` (problem, running, etc.)
@@ -763,6 +786,7 @@ class MELCloudHomeClimate(CoordinatorEntity, ClimateEntity):
 **Key Insight:** Just implement the properties and HA auto-generates the UI!
 
 **Current sensor.py** has sensor patterns:
+
 - File: `custom_components/melcloudhome/sensor.py`
 - Shows SensorEntityDescription pattern
 - Shows how to use value_fn for sensor values
@@ -773,7 +797,7 @@ class MELCloudHomeClimate(CoordinatorEntity, ClimateEntity):
 
 **What HA UI controls should be available?**
 
-### Primary Controls (User-Facing):
+### Primary Controls (User-Facing)
 
 1. **Water Heater Card:**
    - DHW temperature slider (40-60°C)
@@ -792,7 +816,7 @@ class MELCloudHomeClimate(CoordinatorEntity, ClimateEntity):
    - Error state
    - WiFi signal
 
-### Best Practice:
+### Best Practice
 
 ✅ Follow official MELCloud pattern: `water_heater` + `climate` (per zone) + sensors
 ✅ Both water_heater and climate can control system power
@@ -817,6 +841,7 @@ class MELCloudHomeClimate(CoordinatorEntity, ClimateEntity):
 ✅ **Current values** - Just implement `current_temperature`, `hvac_action`, etc.
 
 **No custom UI code needed.** Home Assistant's frontend automatically renders controls based on:
+
 - Entity type (water_heater vs climate)
 - `supported_features` flags
 - Available properties
@@ -896,7 +921,8 @@ def hvac_action(self) -> HVACAction:
 
 ## Bottom Line
 
-### What You Code:
+### What You Code
+
 1. Entity class extending `WaterHeaterEntity` or `ClimateEntity`
 2. Properties returning device state (`current_temperature`, `hvac_mode`, etc.)
 3. Service methods (`async_set_temperature`, etc.) calling coordinator
@@ -904,7 +930,8 @@ def hvac_action(self) -> HVACAction:
 5. Optional: `extra_state_attributes()` for 3-way valve visibility
 6. Optional: `strings.json` for polished dropdown labels
 
-### What HA Auto-Generates:
+### What HA Auto-Generates
+
 - Temperature sliders with proper ranges
 - Mode/preset dropdowns with your options
 - Power toggles
@@ -919,30 +946,40 @@ def hvac_action(self) -> HVACAction:
 ## Files to Implement
 
 ### Priority 1: Water Heater Platform
+
 **New file:** `custom_components/melcloudhome/water_heater.py`
+
 - Extend `WaterHeaterEntity`
 - Implement ~15 properties
 - Implement 3 service methods
 - Reference: A2A `climate.py` for patterns
 
 ### Priority 2: Climate Updates
+
 **Update file:** `custom_components/melcloudhome/climate.py`
+
 - Add `ATWClimateEntity` class
 - Implement preset_modes (new for ATW)
 - Implement 3-way valve aware hvac_action
 - Reference: Existing `MELCloudHomeClimate` class
 
 ### Priority 3: Sensors
+
 **Update file:** `custom_components/melcloudhome/sensor.py`
+
 - Add ATW sensor descriptions
 - Reference: Existing ATA sensor descriptions
 
 ### Priority 4: Binary Sensors
+
 **Update file:** `custom_components/melcloudhome/binary_sensor.py`
+
 - Add ATW binary sensor descriptions
 - Reference: Existing ATA binary sensor descriptions
 
 ### Supporting: Translations (Optional)
+
 **New file:** `custom_components/melcloudhome/strings.json`
+
 - Add friendly names for modes
 - Standard HA translation format
