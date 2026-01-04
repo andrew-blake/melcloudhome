@@ -50,6 +50,7 @@ Before starting, verify these exist:
 **File:** `custom_components/melcloudhome/api/client.py`
 
 **Architectural Decision: Keep Single Client Class**
+
 - Current: 14 methods, 497 lines (handles A2A only)
 - After Phase 2: 25 methods, ~700 lines (handles A2A + A2W)
 - **Decision:** Keep single `MELCloudHomeClient` class (no split into separate clients)
@@ -59,6 +60,7 @@ Before starting, verify these exist:
 **Location:** Add after existing `set_vanes()` method (last ATA control method)
 
 First, add section header comment:
+
 ```python
     # =================================================================
     # Air-to-Water (A2W) Heat Pump Control
@@ -1361,6 +1363,7 @@ python tools/validate_atw_control.py
 **Decision:** Add ATW methods to existing `MELCloudHomeClient` (no separate `AirToAirClient`/`AirToWaterClient`)
 
 **Rationale:**
+
 - Only 2 device types (A2A + A2W) in project scope
 - Shared authentication and session management
 - Backwards compatible (no coordinator changes)
@@ -1370,6 +1373,7 @@ python tools/validate_atw_control.py
 **Trade-off:** Technically violates SRP but pragmatic for scope
 
 **Organization:** Use comment section headers:
+
 ```python
 # Air-to-Air (A2A) Device Control
 # Air-to-Water (A2W) Heat Pump Control
@@ -1646,6 +1650,270 @@ async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None
 async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None
 async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None
 async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None
+```
+
+---
+
+## Testing Without Real Device: Mock Server Strategy
+
+### **Problem: No ATW Device Access**
+
+Phase 1 used HAR files from a user with real ATW device to create static fixtures. But we still can't test:
+- ❌ Actual HTTP control requests
+- ❌ API response validation
+- ❌ 3-way valve behavior
+- ❌ Error responses
+
+**Solution:** Use mock server for integration tests (until real device available)
+
+---
+
+### **How Mock Server Helps**
+
+**Existing:** `tools/mock_melcloud_server.py` already implements:
+- ✅ Full ATW device simulation with realistic state
+- ✅ PUT `/api/atwunit/{id}` endpoint (handles all control operations)
+- ✅ **3-way valve simulation** with intelligent logic
+  - Switches between DHW and zone heating based on temperature needs
+  - Updates `operation_status` field realistically
+  - Simulates forced DHW priority mode
+- ✅ State persistence across requests
+- ✅ Validation warnings for suspicious values
+
+**Testing Strategy:**
+
+#### **1. Validation Tests (No Network)**
+```python
+def test_temperature_out_of_range():
+    """Fast unit test - no server needed."""
+    client = MELCloudHomeClient()
+    with pytest.raises(ValueError, match="must be between"):
+        await client.set_temperature_zone1("id", 35.0)
+```
+**Value:** Fast, deterministic, catches input validation bugs
+
+#### **2. Mock Server Integration Tests (Full HTTP Cycle)**
+```python
+@pytest.fixture
+async def mock_client():
+    """Client pointing at mock server."""
+    client = MELCloudHomeClient(debug_mode=True)  # Uses http://localhost:8080
+    await client.login("test@example.com", "password")
+    yield client
+    await client.close()
+
+async def test_forced_dhw_updates_valve_status(mock_client):
+    """Test 3-way valve switches to DHW when forced mode enabled."""
+    # Get initial state
+    ctx = await mock_client.get_user_context()
+    unit = ctx.buildings[0].air_to_water_units[0]
+    initial_status = unit.operation_status
+
+    # Enable forced DHW
+    await mock_client.set_forced_hot_water(unit.id, True)
+
+    # Verify valve status updated
+    ctx = await mock_client.get_user_context()
+    unit = ctx.get_air_to_water_unit_by_id(unit.id)
+    assert unit.forced_hot_water_mode is True
+    assert unit.operation_status == "HotWater"  # Valve switched to DHW
+```
+**Value:** Tests business logic (valve simulation), full request cycle, realistic behavior
+
+#### **3. VCR Tests (Deferred)**
+```python
+@pytest.mark.skip("Requires real ATW device - will record cassettes when available")
+@pytest.mark.vcr()
+async def test_set_power_atw_real_device(...):
+    """Test against real API (run later when device available)."""
+    ...
+```
+**Value:** Real API validation (later), commit cassettes for CI/CD
+
+---
+
+### **Mock Server Test Coverage**
+
+**What Mock Server Can Test:**
+- ✅ Power control (on/off)
+- ✅ Zone temperature setting (Zone 1 & 2)
+- ✅ Zone mode switching (room temp, flow temp, curve)
+- ✅ DHW temperature setting
+- ✅ **Forced DHW mode → 3-way valve behavior** (critical!)
+- ✅ Standby mode
+- ✅ State persistence across requests
+- ✅ Sparse update payloads
+- ✅ Error responses (invalid unit ID, etc.)
+
+**What Mock Server CAN'T Test:**
+- ❌ Real Mitsubishi API quirks
+- ❌ Authentication edge cases
+- ❌ Rate limiting behavior
+- ❌ Actual hardware response timing
+- ❌ Real error codes from API
+
+**But:** Mock server tests ATW-specific logic (valve, zones, DHW) which is 80% of the value.
+
+---
+
+### **Recommended Test Split (No Real Device)**
+
+| Test Type | Count | Purpose | Needs Device? |
+|-----------|-------|---------|---------------|
+| Validation tests | 7 | Input validation | ❌ No |
+| Mock server tests | 8 | HTTP + business logic | ❌ No (uses mock) |
+| Coordinator tests | 3 | Cache + retry logic | ❌ No (mocked client) |
+| VCR tests | 0 | Real API behavior | ✅ Yes (deferred) |
+
+**Total Phase 2:** 18 tests (no device needed)
+
+**Later (with device):** Add 11 VCR tests, commit cassettes
+
+---
+
+### **Mock Server Running Modes**
+
+**Development Mode (Automatic):**
+```python
+# Tests can start mock server automatically
+@pytest.fixture(scope="module")
+async def mock_server():
+    """Start mock server for tests."""
+    import subprocess
+    proc = subprocess.Popen(["python", "tools/mock_melcloud_server.py"])
+    await asyncio.sleep(2)  # Wait for startup
+    yield
+    proc.terminate()
+```
+
+**Manual Mode (For Debugging):**
+```bash
+# Terminal 1: Start server
+python tools/mock_melcloud_server.py
+
+# Terminal 2: Run tests
+uv run pytest tests/api/test_atw_control.py -v
+
+# Watch server logs for requests
+```
+
+---
+
+## Phase 1 Test Cleanup (Optional)
+
+### **Current State: 31 Low-Value Tests**
+
+**File:** `tests/api/test_atw_models.py` (31 tests, ~440 lines)
+
+**Analysis:**
+- ✅ **8 tests are valuable** (API bugs, Zone 2, string conversions, status vs mode)
+- ❌ **23 tests are low-value** (basic parsing, lookup methods, obvious logic)
+
+### **Recommendation: Streamline**
+
+**Keep (8 tests):**
+```python
+# Critical edge cases
+test_api_bug_inverted_temperature_ranges()
+test_api_bug_zero_min_tank_temperature()
+test_capabilities_always_uses_safe_temperature_defaults()
+
+# Zone 2 handling
+test_unit_from_dict_parses_zone2_when_present()
+test_unit_from_dict_parses_zone2_when_absent()
+
+# String conversion quirks
+test_string_zero_converts_to_false_for_haszone2()
+test_string_one_converts_to_true_for_haszone2()
+
+# Architecture validation
+test_operation_status_vs_operation_mode_zone1_distinct()
+```
+
+**Delete or Consolidate (23 tests):**
+- Basic parsing tests (mypy catches same errors)
+- Lookup method tests (trivial logic)
+- "Parses all fields" tests (obvious)
+
+**Replace With:**
+- Integration tests using mock server
+- Coordinator caching tests
+- Error handling tests
+
+**Result:** 8 focused unit tests + 18 integration tests = 26 total (vs 31 parsing-only)
+
+---
+
+### **Benefits of Mock Server Testing**
+
+**1. Tests Business Logic, Not Just Parsing:**
+```python
+# Phase 1 (parsing only)
+def test_forced_hot_water_mode_is_boolean():
+    unit = AirToWaterUnit.from_dict(fixture)
+    assert isinstance(unit.forced_hot_water_mode, bool)  # Meh
+
+# Phase 2 (business logic with mock)
+async def test_forced_dhw_suspends_zone_heating():
+    await client.set_forced_hot_water(unit_id, True)
+
+    ctx = await client.get_user_context()
+    unit = ctx.get_air_to_water_unit_by_id(unit_id)
+
+    # Validates actual 3-way valve simulation behavior!
+    assert unit.forced_hot_water_mode is True
+    assert unit.operation_status == "HotWater"  # Valve on DHW
+    # If climate entity existed, would show hvac_action=IDLE
+```
+
+**2. Catches Integration Bugs:**
+```python
+# Mock server catches:
+- Wrong HTTP method (PUT vs POST)
+- Wrong endpoint (/api/atwunit vs /api/ataunit)
+- Wrong payload structure (missing fields)
+- Wrong JSON serialization
+- Session handling issues
+```
+
+**3. Validates ATW-Specific Behavior:**
+```python
+# Test 3-way valve physics
+async def test_valve_switches_between_dhw_and_zone():
+    # Set zone temp high (needs heating)
+    await client.set_temperature_zone1(unit_id, 25.0)
+
+    # Check valve on zone
+    unit = await get_unit()
+    assert unit.operation_status in ["HeatRoomTemperature", "HeatFlowTemperature"]
+
+    # Enable forced DHW
+    await client.set_forced_hot_water(unit_id, True)
+
+    # Verify valve switches to DHW (even though zone still needs heat)
+    unit = await get_unit()
+    assert unit.operation_status == "HotWater"
+```
+
+**4. Fast Iteration:**
+- Mock server starts in <1 second
+- Tests run in seconds
+- No network latency
+- No authentication delays
+- Deterministic state
+
+**5. Error Case Testing:**
+```python
+# Mock can simulate errors
+async def test_invalid_unit_id_returns_404():
+    with pytest.raises(ApiError, match="404"):
+        await client.set_power_atw("nonexistent-id", True)
+
+# Mock can simulate weird API responses
+async def test_handles_inverted_temp_ranges():
+    # Mock returns API bug (min=30, max=10)
+    # Verify client still uses safe defaults
+    ...
 ```
 
 ---
