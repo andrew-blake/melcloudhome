@@ -11,6 +11,7 @@
 **Decision:** Lowercase keys with translations
 - **Code:** `ATW_PRESET_MODES = ["room", "flow", "curve"]`
 - **UI Display:** "Room", "Flow", "Curve" (via translations/en.json)
+- **Default preset:** `"room"` (HeatRoomTemperature - safest, most common)
 - **Rationale:** Matches official MELCloud UI terminology, proper i18n pattern
 
 ### 2. Operation Status Display ✅
@@ -40,6 +41,22 @@
 - Operation status ✅
 - WiFi signal ❌ DEFERRED
 
+### 7. Entity Naming ✅
+**Decision:** Include zone suffix even though only Zone 1
+- **Climate entity:** `climate.melcloudhome_0efc_76db_zone_1` (with suffix)
+- **Rationale:** Future-proof for Phase 4, clear which zone, consistent with multi-zone systems
+
+### 8. Default Operation Modes ✅
+**Decision:** Use safe defaults
+- **Climate preset:** `"room"` (thermostat control)
+- **Water heater mode:** `"eco"` (balanced operation)
+- **Rationale:** Safest modes for residential use, match common patterns
+
+### 9. Implementation Order ✅
+**Decision:** Water heater first
+- **Order:** Water heater → Climate → Sensors → Binary Sensors
+- **Rationale:** Water heater simpler (no preset complexity), builds confidence before tackling climate presets
+
 ---
 
 ## Simplified Phase 3 Scope
@@ -48,19 +65,25 @@
 
 **Climate (1):**
 - `climate.melcloudhome_{id}_zone_1` - Zone 1 room temperature control
+  - Preset modes: "room", "flow", "curve" (default: "room")
+  - HVAC modes: OFF, HEAT
+  - Temperature range: 10-30°C
 
 **Water Heater (1):**
 - `water_heater.melcloudhome_{id}_tank` - DHW tank control
+  - Operation modes: "eco", "performance" (default: "eco")
+  - Temperature range: 40-60°C
+  - Powers entire system
 
 **Sensors (3):**
-- `sensor.melcloudhome_{id}_zone_1_temperature` - Zone 1 room temp
-- `sensor.melcloudhome_{id}_tank_temperature` - DHW tank temp
-- `sensor.melcloudhome_{id}_operation_status` - 3-way valve position
+- `sensor.melcloudhome_{id}_zone_1_temperature` - Zone 1 room temp (°C)
+- `sensor.melcloudhome_{id}_tank_temperature` - DHW tank temp (°C)
+- `sensor.melcloudhome_{id}_operation_status` - 3-way valve position (raw: "Stop", "HotWater", etc.)
 
 **Binary Sensors (3):**
-- `binary_sensor.melcloudhome_{id}_error_state` - Device errors
-- `binary_sensor.melcloudhome_{id}_connection_state` - Online/offline
-- `binary_sensor.melcloudhome_{id}_forced_dhw_active` - DHW priority mode
+- `binary_sensor.melcloudhome_{id}_error_state` - Device errors (problem class)
+- `binary_sensor.melcloudhome_{id}_connection_state` - Online/offline (connectivity class)
+- `binary_sensor.melcloudhome_{id}_forced_dhw_active` - DHW priority mode (running class)
 
 ---
 
