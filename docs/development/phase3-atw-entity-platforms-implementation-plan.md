@@ -16,6 +16,7 @@ Create Home Assistant entity platforms for ATW (Air-to-Water) heat pump control,
 **Document:** See `phase3-critical-review.md` for full analysis
 
 **Key Corrections Applied:**
+
 - Added missing `get_building_for_atw_unit()` coordinator method
 - Refined 3-way valve hvac_action logic (check specific zone, not just "any zone")
 - Fixed temperature unit to use `UnitOfTemperature.CELSIUS` constant
@@ -26,11 +27,11 @@ Create Home Assistant entity platforms for ATW (Air-to-Water) heat pump control,
 
 ## Key Architectural Decisions
 
-### 1. Climate Entities: Two Separate Entities
+### 1. Climate Entities: Zone 1 Only (Simplified Scope)
 
-- **Zone 1 climate entity** - Always created
-- **Zone 2 climate entity** - Only if `unit.capabilities.has_zone2 == True`
-- **Rationale**: Matches official MELCloud pattern, each zone is physically separate hardware
+- **Zone 1 climate entity** - Single zone implementation
+- **Zone 2 climate entity** - **DEFERRED TO PHASE 4** (no test hardware available)
+- **Rationale**: Don't implement what we can't test. Zone 2 support added later when hardware accessible.
 
 ### 2. Water Heater Platform
 
@@ -38,18 +39,18 @@ Create Home Assistant entity platforms for ATW (Air-to-Water) heat pump control,
 - **Operation modes**: `eco` (balanced) and `performance` (DHW priority)
 - **Power control**: `turn_on()`/`turn_off()` controls entire system (documented behavior)
 
-### 3. ATW-Specific Sensors (5-7 sensors)
+### 3. ATW-Specific Sensors (3 sensors - Essential Only)
 
-- Zone 1/2 temperatures (conditional on Zone 2)
-- Tank temperature
-- **Operation status** (critical: shows 3-way valve position)
-- WiFi signal
+- **Zone 1 temperature** - Current room temp from Zone 1 thermostat
+- **Tank temperature** - Current DHW tank temperature
+- **Operation status** - Shows 3-way valve position (raw API values: "Stop", "HotWater", "HeatRoomTemperature", etc.)
+- WiFi signal - **DEFERRED** (not essential, can add later)
 
-### 4. ATW-Specific Binary Sensors (2-3)
+### 4. ATW-Specific Binary Sensors (3)
 
-- Error state (problem)
-- Connection state (connectivity)
-- Forced DHW active (running) - optional
+- **Error state** (problem) - Device error detection
+- **Connection state** (connectivity) - Online/offline status
+- **Forced DHW active** (running) - Shows when DHW has priority over zones
 
 ## Implementation Plan
 
@@ -58,6 +59,7 @@ Create Home Assistant entity platforms for ATW (Air-to-Water) heat pump control,
 **REQUIRED FIRST:** Add building lookup helper for ATW units
 
 **Add after `get_atw_unit()` method:**
+
 ```python
 def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
     """Get the building that contains the specified ATW unit - O(1) lookup.
@@ -81,11 +83,12 @@ def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
 **Add ATW mappings:**
 
 ```python
-# ATW Zone Modes → Climate Preset Modes
+# ATW Zone Modes → Climate Preset Modes (lowercase for i18n)
+# Display names in translations/en.json: "Room", "Flow", "Curve"
 ATW_TO_HA_PRESET = {
-    "HeatRoomTemperature": "room_temperature",
-    "HeatFlowTemperature": "flow_temperature",
-    "HeatCurve": "weather_compensation",
+    "HeatRoomTemperature": "room",  # Display: "Room"
+    "HeatFlowTemperature": "flow",  # Display: "Flow"
+    "HeatCurve": "curve",            # Display: "Curve"
 }
 
 HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
@@ -102,26 +105,58 @@ WATER_HEATER_HA_TO_FORCED_DHW = {
     "performance": True,
 }
 
-# Operation Status Display
-ATW_STATUS_TO_READABLE = {
-    "Stop": "idle",
-    "HotWater": "heating_dhw",
-    "HeatRoomTemperature": "heating_zone",
-    "HeatFlowTemperature": "heating_zone",
-    "HeatCurve": "heating_zone",
-}
-
-# Preset modes list
-ATW_PRESET_MODES = ["room_temperature", "flow_temperature", "weather_compensation"]
+# Preset modes list (lowercase keys, translated in en.json)
+ATW_PRESET_MODES = ["room", "flow", "curve"]
 ```
 
-**Lines:** ~40 added
+**Lines:** ~20 added
 
 ---
 
-### Step 2: Create Water Heater Platform (`water_heater.py` - NEW)
+### Step 2: Add Translations (`translations/en.json`)
+
+**Add ATW translations for preset modes and sensors:**
+
+```json
+{
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "preset_mode": {
+          "room": "Room",
+          "flow": "Flow",
+          "curve": "Curve"
+        }
+      }
+    },
+    "sensor": {
+      "zone_1_temperature": {
+        "name": "Zone 1 temperature"
+      },
+      "tank_temperature": {
+        "name": "Tank temperature"
+      },
+      "operation_status": {
+        "name": "Operation status"
+      }
+    },
+    "binary_sensor": {
+      "forced_dhw_active": {
+        "name": "Forced DHW active"
+      }
+    }
+  }
+}
+```
+
+**Lines:** ~15 added (merge with existing translations)
+
+---
+
+### Step 3: Create Water Heater Platform (`water_heater.py` - NEW)
 
 **Imports Required:**
+
 ```python
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
@@ -136,6 +171,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 **Pattern:** Follow `climate.py` structure with type ignore comments
 
 **Class Definition:**
+
 ```python
 class ATWWaterHeater(
     CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
@@ -152,6 +188,7 @@ class ATWWaterHeater(
 ```
 
 **Key Features:**
+
 - Temperature control: 40-60°C (use `ATW_TEMP_MIN_DHW`, `ATW_TEMP_MAX_DHW`)
 - Operation modes: `STATE_ECO`/`STATE_PERFORMANCE` (HA standard constants)
 - Power control: entire system on/off
@@ -187,6 +224,7 @@ class ATWWaterHeater(
 #### Class 1: `ATWClimateZone1`
 
 **Class Definition:**
+
 ```python
 class ATWClimateZone1(
     CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
@@ -208,6 +246,7 @@ class ATWClimateZone1(
 ```
 
 **NEW FEATURE: Preset Modes**
+
 - ⚠️ **This is NEW functionality** not present in ATA climate entities
 - Preset modes map ATW zone operation strategies to HA UI
 - Requires implementing `ClimateEntityFeature.PRESET_MODE`
@@ -215,12 +254,14 @@ class ATWClimateZone1(
 - **Research needed:** Custom preset names may need translations in `strings.json`
 
 **Features:**
+
 - HVAC modes: `[OFF, HEAT]` (heat-only system)
 - Preset modes: `room_temperature`, `flow_temperature`, `weather_compensation` (zone strategies)
 - Temperature range: 10-30°C
 - Uses `coordinator.async_set_temperature_zone1()`, `async_set_mode_zone1()`, `async_set_power_atw()`
 
 **Device Info (with suggested_area):**
+
 ```python
 self._attr_device_info = DeviceInfo(
     identifiers={(DOMAIN, unit.id)},
@@ -265,6 +306,7 @@ def hvac_action(self) -> HVACAction | None:
 ```
 
 **Zone 2 HVAC Action (similar):**
+
 ```python
 # For Zone 2 entity: if device.operation_status == device.operation_mode_zone2:
 ```
@@ -345,10 +387,10 @@ class MELCloudHomeATWSensorEntityDescription(SensorEntityDescription):  # type: 
 
 
 ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
-    # Zone 1 temperature (always)
+    # Zone 1 temperature
     MELCloudHomeATWSensorEntityDescription(
         key="zone_1_temperature",
-        translation_key="zone_1_temperature",  # For i18n
+        translation_key="zone_1_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -356,19 +398,7 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
 
-    # Zone 2 temperature (conditional)
-    MELCloudHomeATWSensorEntityDescription(
-        key="zone_2_temperature",
-        translation_key="zone_2_temperature",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.room_temperature_zone2,
-        should_create_fn=lambda unit: unit.capabilities.has_zone2,
-        available_fn=lambda unit: unit.room_temperature_zone2 is not None,
-    ),
-
-    # Tank temperature (always)
+    # Tank temperature
     MELCloudHomeATWSensorEntityDescription(
         key="tank_temperature",
         translation_key="tank_temperature",
@@ -379,24 +409,12 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         available_fn=lambda unit: unit.tank_water_temperature is not None,
     ),
 
-    # Operation status (CRITICAL for 3-way valve visibility)
+    # Operation status (3-way valve position - raw API values)
     MELCloudHomeATWSensorEntityDescription(
         key="operation_status",
         translation_key="operation_status",
-        device_class=None,  # Categorical
-        value_fn=lambda unit: ATW_STATUS_TO_READABLE.get(unit.operation_status, "unknown"),
-    ),
-
-    # WiFi signal (diagnostic)
-    MELCloudHomeATWSensorEntityDescription(
-        key="wifi_signal",
-        translation_key="wifi_signal",
-        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-        state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda unit: unit.rssi,
-        available_fn=lambda unit: unit.rssi is not None,
+        device_class=None,  # Categorical (not numeric)
+        value_fn=lambda unit: unit.operation_status,  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
     ),
 )
 ```
@@ -457,6 +475,7 @@ ATW_BINARY_SENSOR_TYPES: tuple[MELCloudHomeBinarySensorEntityDescription, ...] =
 ```
 
 **Add ATWBinarySensor Class:**
+
 ```python
 class ATWBinarySensor(
     CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]

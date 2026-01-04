@@ -1,6 +1,7 @@
 # Phase 3 Plan - Critical Review vs ATA Implementation
 
 ## Goal
+
 Validate Phase 3 plan against actual ATA implementation patterns to identify gaps, inconsistencies, or improvements.
 
 ---
@@ -8,12 +9,15 @@ Validate Phase 3 plan against actual ATA implementation patterns to identify gap
 ## ✅ CORRECTLY CAPTURED PATTERNS
 
 ### 1. Entity Inheritance Pattern
+
 **Plan says:**
+
 ```python
 class ATWWaterHeater(CoordinatorEntity[MELCloudHomeCoordinator], WaterHeaterEntity)
 ```
 
 **Actual ATA pattern:**
+
 ```python
 class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity)
 class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity)
@@ -24,11 +28,14 @@ class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntit
 ---
 
 ### 2. Entity Naming Strategy
+
 **Plan says:**
+
 - Unique ID: `{unit_id}_tank`, `{unit_id}_zone_1`
 - Entity name: `"MELCloudHome {uuid_first4} {uuid_last4} Tank"`
 
 **Actual ATA pattern (climate.py:77-81):**
+
 ```python
 unit_id_clean = unit.id.replace("-", "")
 self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]}"
@@ -36,6 +43,7 @@ self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]}"
 ```
 
 **Actual ATA pattern (sensor.py:154-162):**
+
 ```python
 self._attr_unique_id = f"{unit.id}_{description.key}"
 self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
@@ -47,7 +55,9 @@ self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_c
 ---
 
 ### 3. Device Info Pattern
+
 **Plan shows:**
+
 ```python
 self._attr_device_info = DeviceInfo(
     identifiers={(DOMAIN, unit.id)},
@@ -58,6 +68,7 @@ self._attr_device_info = DeviceInfo(
 ```
 
 **Actual ATA pattern (climate.py:83-90):**
+
 ```python
 self._attr_device_info = DeviceInfo(
     identifiers={(DOMAIN, unit.id)},
@@ -73,7 +84,9 @@ self._attr_device_info = DeviceInfo(
 ---
 
 ### 4. Coordinator Lookup Pattern
+
 **Plan says:**
+
 ```python
 @property
 def _device(self) -> AirToWaterUnit | None:
@@ -81,6 +94,7 @@ def _device(self) -> AirToWaterUnit | None:
 ```
 
 **Actual ATA pattern (climate.py:109-111):**
+
 ```python
 @property
 def _device(self) -> AirToAirUnit | None:
@@ -92,13 +106,16 @@ def _device(self) -> AirToAirUnit | None:
 ---
 
 ### 5. Service Call Refresh Pattern
+
 **Plan says:**
+
 ```python
 await self.coordinator.async_set_dhw_temperature(self._unit_id, temperature)
 await self.coordinator.async_request_refresh_debounced()
 ```
 
 **Actual ATA pattern (climate.py:304-307):**
+
 ```python
 await self.coordinator.async_set_temperature(self._unit_id, temperature)
 # Request debounced refresh to avoid race conditions
@@ -112,6 +129,7 @@ await self.coordinator.async_request_refresh_debounced()
 ## ⚠️ ISSUES FOUND IN PLAN
 
 ### Issue 1: Missing Building Lookup Helper
+
 **Plan doesn't mention:**
 
 Need to add `get_building_for_atw_unit()` method to coordinator, similar to existing:
@@ -124,6 +142,7 @@ def get_building_for_unit(self, unit_id: str) -> Building | None:
 ```
 
 **Fix needed:**
+
 ```python
 def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
     """Get the building that contains the specified ATW unit - O(1) lookup."""
@@ -135,12 +154,15 @@ def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
 ---
 
 ### Issue 2: Temperature Unit Attribute
+
 **Plan says:**
+
 ```python
 _attr_temperature_unit = UnitOfTemperature.CELSIUS
 ```
 
 **Actual ATA pattern (climate.py:57):**
+
 ```python
 _attr_temperature_unit = "°C"
 ```
@@ -152,12 +174,15 @@ _attr_temperature_unit = "°C"
 ---
 
 ### Issue 3: Sensor Availability Logic
+
 **Plan says:**
+
 ```python
 # Sensors check device.is_in_error in available property
 ```
 
 **Actual ATA pattern (sensor.py:178-191):**
+
 ```python
 @property
 def available(self) -> bool:
@@ -181,6 +206,7 @@ def available(self) -> bool:
 ---
 
 ### Issue 4: Binary Sensor Special Cases
+
 **Plan doesn't explicitly mention:**
 
 Connection state binary sensor has special availability logic (binary_sensor.py:154-156):
@@ -199,7 +225,9 @@ def available(self) -> bool:
 ---
 
 ### Issue 5: Entity Description Type Annotations
+
 **Plan shows:**
+
 ```python
 @dataclass(frozen=True, kw_only=True)
 class MELCloudHomeATWSensorEntityDescription(SensorEntityDescription):
@@ -207,6 +235,7 @@ class MELCloudHomeATWSensorEntityDescription(SensorEntityDescription):
 ```
 
 **Actual ATA pattern (sensor.py:34):**
+
 ```python
 class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     """..."""
@@ -217,6 +246,7 @@ class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ign
 ---
 
 ### Issue 6: Setup Function Logging
+
 **Plan doesn't show:**
 
 Actual ATA pattern includes debug logging (sensor.py:119-124):
@@ -235,7 +265,9 @@ if entities:
 ---
 
 ### Issue 7: Climate Entity Doesn't Use Preset Modes Correctly
+
 **Plan proposes:**
+
 ```python
 _attr_preset_modes = ATW_PRESET_MODES
 ```
@@ -243,16 +275,19 @@ _attr_preset_modes = ATW_PRESET_MODES
 **CRITICAL FINDING:**
 
 Looking at actual climate.py:
+
 - ❌ ATA climate does NOT use preset modes at all
 - ❌ No `_attr_preset_modes` attribute
 - ❌ No `async_set_preset_mode()` method
 - ❌ No `preset_mode` property
 
 **ATW zone operation modes are fundamentally different:**
+
 - ATA modes: Heat/Cool/Auto/Dry/Fan (HVAC modes)
 - ATW zone modes: HeatRoomTemperature/HeatFlowTemperature/HeatCurve (heating strategies)
 
 **Question:** Should ATW zone modes be:
+
 1. **Preset modes** (plan's approach) - makes sense conceptually
 2. **Custom service** - more complex but explicit
 3. **Not exposed** - just use default mode (HeatRoomTemperature)
@@ -262,11 +297,13 @@ Looking at actual climate.py:
 ---
 
 ### Issue 8: Water Heater Platform - No Existing Reference
+
 **Plan proposes:** `water_heater.py` platform
 
 **Finding:** No existing water_heater implementation to reference in codebase.
 
 **Implication:**
+
 - Can't copy-paste from ATA pattern (different platform type)
 - Need to research Home Assistant `WaterHeaterEntity` base class
 - Need to understand water_heater-specific features and methods
@@ -276,13 +313,16 @@ Looking at actual climate.py:
 ---
 
 ### Issue 9: Entity Description Callable Signatures
+
 **Plan shows:**
+
 ```python
 value_fn: Callable[[AirToWaterUnit], float | str | None]
 should_create_fn: Callable[[AirToWaterUnit], bool] | None = None
 ```
 
 **Actual ATA pattern (sensor.py:41-48):**
+
 ```python
 value_fn: Callable[[AirToAirUnit], float | str | None]
 """Function to extract sensor value from unit data."""
@@ -299,6 +339,7 @@ should_create_fn: Callable[[AirToAirUnit], bool] | None = None
 ---
 
 ### Issue 10: Sensor Device Info Format
+
 **Plan doesn't specify:**
 
 Sensor and binary_sensor use dict format for device_info, not DeviceInfo object (sensor.py:165-167):
@@ -311,6 +352,7 @@ self._attr_device_info = {
 ```
 
 **Not:**
+
 ```python
 self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, unit.id)})
 ```
@@ -322,6 +364,7 @@ self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, unit.id)})
 ## 🔍 MISSING DETAILS IN PLAN
 
 ### Missing Detail 1: turn_on/turn_off Implementation
+
 **Climate entity has these (climate.py:358-366):**
 
 ```python
@@ -341,11 +384,14 @@ async def async_turn_off(self) -> None:
 ---
 
 ### Missing Detail 2: Type Ignore Comments
+
 **Actual code has these throughout:**
+
 - `# type: ignore[misc]` on class definitions (sensor.py:34, 96, 129)
 - `# type: ignore[no-any-return]` on coordinator lookups (climate.py:111)
 
 **Reason (from comments):**
+
 ```
 Note: type: ignore[misc] required because HA is not installed in dev environment
 (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
@@ -356,6 +402,7 @@ Note: type: ignore[misc] required because HA is not installed in dev environment
 ---
 
 ### Missing Detail 3: Translation Keys
+
 **Actual pattern uses `translation_key` in entity descriptions:**
 
 ```python
@@ -369,13 +416,16 @@ MELCloudHomeSensorEntityDescription(
 **Plan should specify:** Translation keys for all ATW sensors/binary_sensors.
 
 **Files to check/create:**
+
 - `translations/en.json` - English translations
 - May need to add ATW-specific translation entries
 
 ---
 
 ### Missing Detail 4: Entity Category for Diagnostic Sensors
+
 **WiFi signal sensor uses (sensor.py:72):**
+
 ```python
 entity_category=EntityCategory.DIAGNOSTIC,
 ```
@@ -383,6 +433,7 @@ entity_category=EntityCategory.DIAGNOSTIC,
 **Plan should specify:** Which ATW sensors are diagnostic vs regular.
 
 **Recommendations:**
+
 - `operation_status` - Regular sensor (primary UX)
 - `wifi_signal` - Diagnostic
 - `zone_*_temperature` - Regular (user-facing)
@@ -391,6 +442,7 @@ entity_category=EntityCategory.DIAGNOSTIC,
 ---
 
 ### Missing Detail 5: Initial Data Handling
+
 **Actual pattern handles None gracefully:**
 
 ```python
@@ -410,9 +462,11 @@ def native_value(self) -> float | str | None:
 ## ❌ POTENTIAL PROBLEMS
 
 ### Problem 1: Water Heater Platform Complexity
+
 **Plan estimates:** 250 lines for water_heater.py
 
 **Reality check:**
+
 - Climate.py (single entity type): 367 lines
 - Water heater will need: properties + service methods + availability
 - Likely closer to 200-220 lines (reasonable estimate)
@@ -422,11 +476,13 @@ def native_value(self) -> float | str | None:
 ---
 
 ### Problem 2: Preset Modes Are New Territory
+
 **Plan proposes:** ATW climate entities use preset modes
 
 **Finding:** ATA climate does NOT use preset modes at all
 
 **Implications:**
+
 - No existing pattern to copy
 - Need to research Home Assistant `ClimateEntityFeature.PRESET_MODE`
 - Need to implement `async_set_preset_mode()` method
@@ -435,6 +491,7 @@ def native_value(self) -> float | str | None:
 **Recommendation:** This is correct approach for ATW zone modes, but plan should note this is NEW functionality not present in ATA.
 
 **Research needed:**
+
 - How to properly implement preset modes
 - Whether to use standard presets or custom ones
 - UI behavior for preset selection
@@ -442,7 +499,9 @@ def native_value(self) -> float | str | None:
 ---
 
 ### Problem 3: 3-Way Valve HVAC Action Logic Incomplete
+
 **Plan shows simplified logic:**
+
 ```python
 if device.operation_status in ATW zone mode strings:
     if current < target - 0.5:
@@ -452,10 +511,12 @@ return HVACAction.IDLE
 ```
 
 **Missing consideration:**
+
 - What if `operation_status = "HeatRoomTemperature"` but it's Zone 2 mode, not Zone 1?
 - Zone 1 climate entity should check if valve is on Zone 1 SPECIFICALLY
 
 **Better logic:**
+
 ```python
 # For Zone 1 entity
 if device.operation_status == device.operation_mode_zone1:
@@ -473,11 +534,14 @@ return HVACAction.IDLE
 ---
 
 ### Problem 4: Missing coordinator.get_building_for_atw_unit()
+
 **Plan assumes this exists but coordinator only has:**
+
 - `get_building_for_unit()` - for ATA units
 - NOT `get_building_for_atw_unit()` - missing for ATW
 
 **Fix required:** Add to coordinator.py:
+
 ```python
 def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
     """Get the building that contains the specified ATW unit - O(1) lookup."""
@@ -489,14 +553,17 @@ def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
 ---
 
 ### Problem 5: Sensor Entity Description Typing
+
 **Plan proposes new dataclass but doesn't address:**
 
 Should it be a separate class (`MELCloudHomeATWSensorEntityDescription`) or reuse existing class with generic type?
 
 **Actual pattern uses separate class per unit type:**
+
 - `MELCloudHomeSensorEntityDescription` - uses `Callable[[AirToAirUnit], ...]`
 
 **For ATW:**
+
 - Need `MELCloudHomeATWSensorEntityDescription` - uses `Callable[[AirToWaterUnit], ...]`
 
 ✅ **CORRECT** - Plan's approach is right (separate class)
@@ -504,6 +571,7 @@ Should it be a separate class (`MELCloudHomeATWSensorEntityDescription`) or reus
 ---
 
 ### Problem 6: Entity Description Shouldn't Have should_create_fn
+
 **Looking at actual usage (sensor.py:106-117):**
 
 ```python
@@ -524,7 +592,7 @@ for description in SENSOR_TYPES:
 
 ## 🎯 CRITICAL FINDINGS SUMMARY
 
-### HIGH PRIORITY FIXES:
+### HIGH PRIORITY FIXES
 
 1. **Add `get_building_for_atw_unit()` to coordinator** - Missing but needed for pattern consistency
 
@@ -534,21 +602,21 @@ for description in SENSOR_TYPES:
 
 4. **Document preset mode implementation** - This is NEW functionality not in ATA, needs research
 
-### MEDIUM PRIORITY FIXES:
+### MEDIUM PRIORITY FIXES
 
-5. **Add type ignore comments** - All entity classes need `# type: ignore[misc]` with explanation
+1. **Add type ignore comments** - All entity classes need `# type: ignore[misc]` with explanation
 
-6. **Add setup logging** - Debug logs for entity count (matches ATA pattern)
+2. **Add setup logging** - Debug logs for entity count (matches ATA pattern)
 
-7. **Clarify device_info format** - Dict for sensors vs DeviceInfo object for climate/water_heater
+3. **Clarify device_info format** - Dict for sensors vs DeviceInfo object for climate/water_heater
 
-8. **Add translation_key documentation** - All entity descriptions need them
+4. **Add translation_key documentation** - All entity descriptions need them
 
-### LOW PRIORITY (NICE TO HAVE):
+### LOW PRIORITY (NICE TO HAVE)
 
-9. **Document diagnostic entity categories** - Which sensors are diagnostic vs regular
+1. **Document diagnostic entity categories** - Which sensors are diagnostic vs regular
 
-10. **Add entity description docstrings** - Match ATA pattern with inline documentation
+2. **Add entity description docstrings** - Match ATA pattern with inline documentation
 
 ---
 
@@ -557,6 +625,7 @@ for description in SENSOR_TYPES:
 ### Update 1: Add Missing Coordinator Method
 
 **Add to Step 1 (Foundation):**
+
 ```python
 # coordinator.py - Add after get_atw_unit()
 def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
@@ -569,6 +638,7 @@ def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
 ### Update 2: Refine HVAC Action Logic
 
 **For Zone 1 Climate:**
+
 ```python
 @property
 def hvac_action(self) -> HVACAction | None:
@@ -596,6 +666,7 @@ def hvac_action(self) -> HVACAction | None:
 ```
 
 **For Zone 2 Climate:**
+
 ```python
 # Similar but checks: device.operation_status == device.operation_mode_zone2
 ```
@@ -605,6 +676,7 @@ def hvac_action(self) -> HVACAction | None:
 ### Update 3: Water Heater Platform Research
 
 **Before implementing water_heater.py, research:**
+
 1. Home Assistant `WaterHeaterEntity` base class methods
 2. Required properties: `current_temperature`, `target_temperature`, etc.
 3. Service methods: `async_set_temperature()`, `async_set_operation_mode()`
@@ -656,14 +728,17 @@ async def async_setup_entry(...):
 ## 🚨 BLOCKERS THAT NEED RESOLUTION
 
 ### Blocker 1: Water Heater Platform May Not Exist in HA
+
 **Investigation needed:** Does Home Assistant have `water_heater` platform?
 
 **Check:**
+
 - HA core repository for `homeassistant.components.water_heater`
 - Official integrations using water_heater
 - Alternative: Use `climate` entity with custom features?
 
 **If water_heater doesn't exist:**
+
 - Alternative 1: Create DHW as second climate entity (less intuitive but works)
 - Alternative 2: Use `switch` + `number` entities (crude but functional)
 - Alternative 3: Use custom component domain
@@ -671,21 +746,26 @@ async def async_setup_entry(...):
 ---
 
 ### Blocker 2: Preset Modes Pattern Not Established
+
 **Research needed:**
+
 - How to properly implement `ClimateEntityFeature.PRESET_MODE`
 - Whether custom presets are allowed or must use standard ones
 - UI behavior in HA frontend
 - Example implementations from other climate integrations
 
 **Standard HA presets:**
+
 - `away`, `boost`, `comfort`, `eco`, `home`, `sleep`, `activity`
 
 **ATW needs:**
+
 - `room_temperature` - ❌ Not standard
 - `flow_temperature` - ❌ Not standard
 - `weather_compensation` - ❌ Not standard
 
 **Options:**
+
 1. Use custom presets (if HA supports)
 2. Map to standard presets (confusing for users)
 3. Don't expose modes via climate entity (use separate service)
@@ -710,12 +790,14 @@ async def async_setup_entry(...):
 ### Plan Quality: **B+ (Good but needs refinement)**
 
 **Strengths:**
+
 - ✅ Solid architectural decisions
 - ✅ Follows most ATA patterns correctly
 - ✅ Comprehensive coverage
 - ✅ Realistic scope
 
 **Weaknesses:**
+
 - ⚠️ Missing some implementation details (type ignores, logging, building lookup)
 - ⚠️ 3-way valve hvac_action logic needs refinement
 - ⚠️ Assumes water_heater platform exists (needs verification)
@@ -725,7 +807,7 @@ async def async_setup_entry(...):
 
 ## 🔧 RECOMMENDED ACTIONS
 
-### Before Starting Implementation:
+### Before Starting Implementation
 
 1. **Verify water_heater platform exists in HA** - Critical blocker
    - Check HA documentation
@@ -745,11 +827,11 @@ async def async_setup_entry(...):
    - Refined hvac_action logic
    - DeviceInfo vs dict clarification
 
-### During Implementation:
+### During Implementation
 
-5. **Follow ATA patterns exactly** - Copy working code, adapt for ATW
-6. **Test incrementally** - Don't wait until all platforms done
-7. **Reference actual files** - climate.py:109, sensor.py:165, etc.
+1. **Follow ATA patterns exactly** - Copy working code, adapt for ATW
+2. **Test incrementally** - Don't wait until all platforms done
+3. **Reference actual files** - climate.py:109, sensor.py:165, etc.
 
 ---
 
