@@ -146,7 +146,7 @@ def create_device_info(unit: DeviceUnit, building: "Building") -> "DeviceInfo":
 
     # Determine model string based on unit type
     if isinstance(unit, AirToWaterUnit):
-        model = f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model})"
+        model = f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model} via MELCloud Home)"
     else:  # AirToAirUnit
         model = "Air-to-Air Heat Pump (via MELCloud Home)"
 
