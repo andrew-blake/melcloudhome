@@ -278,16 +278,6 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
         if temperature is None:
             return
 
-        # Validate temperature range
-        if temperature < self.min_temp or temperature > self.max_temp:
-            _LOGGER.warning(
-                "Temperature %.1f is out of range (%.1f-%.1f)",
-                temperature,
-                self.min_temp,
-                self.max_temp,
-            )
-            return
-
         # Set temperature
         await self.coordinator.async_set_temperature(self._unit_id, temperature)
 
@@ -489,16 +479,6 @@ class ATWClimateZone1(
         """Set new target Zone 1 temperature."""
         temperature = kwargs.get("temperature")
         if temperature is None:
-            return
-
-        # Validate temperature range
-        if temperature < self.min_temp or temperature > self.max_temp:
-            _LOGGER.warning(
-                "Zone 1 temperature %.1f is out of range (%.1f-%.1f)",
-                temperature,
-                self.min_temp,
-                self.max_temp,
-            )
             return
 
         # Set Zone 1 temperature

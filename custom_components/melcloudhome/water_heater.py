@@ -157,16 +157,6 @@ class ATWWaterHeater(
         if temperature is None:
             return
 
-        # Validate temperature range
-        if temperature < self.min_temp or temperature > self.max_temp:
-            _LOGGER.warning(
-                "DHW temperature %.1f is out of range (%.1f-%.1f)",
-                temperature,
-                self.min_temp,
-                self.max_temp,
-            )
-            return
-
         # Set DHW temperature
         await self.coordinator.async_set_dhw_temperature(self._unit_id, temperature)
 
