@@ -1,11 +1,13 @@
 """Constants for the MELCloud Home integration."""
 
+from collections.abc import Callable
 from datetime import timedelta
-from typing import TYPE_CHECKING, Union
+from functools import wraps
+from typing import TYPE_CHECKING, Any, Union
 
-from homeassistant.components.climate import (
-    HVACMode,
-)
+from homeassistant.components.climate import HVACMode
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 if TYPE_CHECKING:
     from homeassistant.helpers.device_registry import DeviceInfo
@@ -91,7 +93,7 @@ ATW_TEMP_STEP = 1  # °C
 
 
 # =================================================================
-# Generic Entity Helpers (Phase 3.5: Works for both ATA and ATW)
+# Generic Entity Helpers (works for both ATA and ATW)
 # =================================================================
 
 
@@ -160,3 +162,123 @@ def create_device_info(unit: DeviceUnit, building: "Building") -> "DeviceInfo":
 # Backwards-compatible aliases (for existing ATW code)
 create_atw_entity_name = create_entity_name
 create_atw_device_info = create_device_info
+
+
+# =================================================================
+# Base Entity Classes (extract common patterns)
+# =================================================================
+
+
+class ATAEntityBase(CoordinatorEntity):  # type: ignore[misc]
+    """Base class for ATA entities with shared lookup and availability logic.
+
+    Provides:
+    - O(1) device and building lookups via coordinator cache
+    - Standardized availability logic
+
+    Subclasses must set in __init__:
+    - self._unit_id: str
+    - self._building_id: str
+    - self._entry: ConfigEntry
+    - self._attr_unique_id
+    - self._attr_name
+    - self._attr_device_info
+    """
+
+    _unit_id: str
+    _building_id: str
+    _entry: ConfigEntry
+
+    def get_device(self) -> "AirToAirUnit | None":
+        """Get device from coordinator - O(1) cached lookup.
+
+        Changed from property to method to clarify this is an action, not attribute.
+        """
+        return self.coordinator.get_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    def get_building(self) -> "Building | None":
+        """Get building from coordinator - O(1) cached lookup."""
+        return self.coordinator.get_building_for_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    @property
+    def available(self) -> bool:
+        """Entity available if coordinator updated, device exists, not in error."""
+        if not self.coordinator.last_update_success:
+            return False
+        device = self.get_device()
+        if device is None:
+            return False
+        return not device.is_in_error
+
+
+class ATWEntityBase(CoordinatorEntity):  # type: ignore[misc]
+    """Base class for ATW entities with shared lookup and availability logic.
+
+    Provides:
+    - O(1) device and building lookups via coordinator cache
+    - Standardized availability logic
+
+    Subclasses must set in __init__:
+    - self._unit_id: str
+    - self._building_id: str
+    - self._entry: ConfigEntry
+    - self._attr_unique_id
+    - self._attr_name
+    - self._attr_device_info
+    """
+
+    _unit_id: str
+    _building_id: str
+    _entry: ConfigEntry
+
+    def get_device(self) -> "AirToWaterUnit | None":
+        """Get device from coordinator - O(1) cached lookup.
+
+        Changed from property to method to clarify this is an action, not attribute.
+        """
+        return self.coordinator.get_atw_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    def get_building(self) -> "Building | None":
+        """Get building from coordinator - O(1) cached lookup."""
+        return self.coordinator.get_building_for_atw_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    @property
+    def available(self) -> bool:
+        """Entity available if coordinator updated, device exists, not in error."""
+        if not self.coordinator.last_update_success:
+            return False
+        device = self.get_device()
+        if device is None:
+            return False
+        return not device.is_in_error
+
+
+def with_debounced_refresh(
+    delay: float = 2.0,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Decorator for automatic debounced refresh after service calls.
+
+    Eliminates manual refresh calls in every service method (Issue #10).
+    Prevents race conditions from rapid service calls.
+
+    Args:
+        delay: Seconds to wait before refreshing (default 2.0)
+
+    Usage:
+        @with_debounced_refresh()
+        async def async_set_temperature(self, **kwargs):
+            temperature = kwargs.get("temperature")
+            await self.coordinator.async_set_temperature(self._unit_id, temperature)
+            # Refresh happens automatically - no manual call needed
+    """
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(func)
+        async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            result = await func(self, *args, **kwargs)
+            await self.coordinator.async_request_refresh_debounced(delay)
+            return result
+
+        return wrapper
+
+    return decorator
