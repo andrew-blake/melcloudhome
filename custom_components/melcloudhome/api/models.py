@@ -555,7 +555,7 @@ class AirToWaterUnit:
             error_code=error_code,
             rssi=data.get("rssi"),
             # Device Info
-            ftc_model=data.get("ftcModel", 3),
+            ftc_model=int(settings.get("FTCModel", "3")),
             # Capabilities
             capabilities=capabilities,
             # Schedule (read-only)

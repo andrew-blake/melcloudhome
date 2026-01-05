@@ -53,10 +53,12 @@ class MockMELCloudServer:
         Returns 2 ATA devices by default:
         - Living Room AC
         - Bedroom AC
+
+        Note: Using UUIDs for cleaner entity names (e.g., "MELCloudHome 0efc 76db")
         """
         return {
-            "ata-living-room": {
-                "name": "Virtual Living Room AC",
+            "0efc1234-5678-9abc-def0-123456787db": {
+                "name": "Living Room AC",
                 "power": True,
                 "operation_mode": "Heat",
                 "set_temperature": 21.0,
@@ -67,8 +69,8 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
             },
-            "ata-bedroom": {
-                "name": "Virtual Bedroom AC",
+            "bf8d5678-90ab-cdef-0123-456789ab5119": {
+                "name": "Bedroom AC",
                 "power": False,
                 "operation_mode": "Cool",
                 "set_temperature": 22.0,
@@ -114,7 +116,10 @@ class MockMELCloudServer:
                 "id": "building-home",
                 "name": "My Home",
                 "timezone": "Europe/London",
-                "ata_unit_ids": ["ata-living-room", "ata-bedroom"],
+                "ata_unit_ids": [
+                    "0efc1234-5678-9abc-def0-123456787db",
+                    "bf8d5678-90ab-cdef-0123-456789ab5119",
+                ],
                 "atw_unit_ids": ["bf2d256c-42ac-4799-a6d8-c6ab433e5666"],
             },
         }
