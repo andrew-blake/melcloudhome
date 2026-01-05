@@ -14,7 +14,6 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -35,6 +34,8 @@ from .const import (
     VANE_POSITIONS,
     create_atw_device_info,
     create_atw_entity_name,
+    create_device_info,
+    create_entity_name,
 )
 from .coordinator import MELCloudHomeCoordinator
 
@@ -92,22 +93,11 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
         self._attr_unique_id = unit.id
         self._entry = entry
 
-        # Generate stable entity ID from unit ID (format: melcloudhome_0efc_76db)
-        # Using first 4 and last 4 chars of UUID for stability + traceability
-        unit_id_clean = unit.id.replace("-", "")  # Remove dashes from UUID
+        # Generate entity name using shared helper (no suffix for ATA base entity)
+        self._attr_name = create_entity_name(unit)
 
-        # Set entity name (HA will normalize this to entity_id)
-        # Format: "MELCloudHome 0efc 76db" -> entity_id: "climate.melcloudhome_0efc_76db"
-        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]}"
-
-        # Device info (modern HA pattern)
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, unit.id)},
-            name=f"{building.name} {unit.name}",
-            manufacturer="Mitsubishi Electric",
-            model="Air-to-Air Heat Pump (via MELCloud Home)",
-            suggested_area=building.name,
-        )
+        # Device info using shared helper
+        self._attr_device_info = create_device_info(unit, building)
 
         # HVAC modes
         self._attr_hvac_modes = [

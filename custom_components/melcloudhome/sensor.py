@@ -24,7 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
-from .const import DOMAIN, create_atw_entity_name
+from .const import DOMAIN, create_atw_entity_name, create_entity_name
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -243,13 +243,9 @@ class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntit
         # Unique ID: unit_id + sensor key
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
-        # Generate stable entity ID from unit ID
-        # Format: sensor.melcloudhome_0efc_76db_room_temperature
-        unit_id_clean = unit.id.replace("-", "")
-        key_clean = description.key
-
-        # Entity name (HA will normalize this to entity_id)
-        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+        # Generate entity name using shared helper
+        key_display = description.key.replace("_", " ").title()
+        self._attr_name = create_entity_name(unit, key_display)
 
         # Link to device (same device as climate entity)
         self._attr_device_info = {
