@@ -24,7 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
-from .const import DOMAIN
+from .const import DOMAIN, create_atw_entity_name
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -140,6 +140,38 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
 )
 
 
+def _create_sensors_for_unit(
+    coordinator: MELCloudHomeCoordinator,
+    unit: AirToWaterUnit,
+    building: Building,
+    entry: ConfigEntry,
+    descriptions: tuple[MELCloudHomeATWSensorEntityDescription, ...],
+) -> list[ATWSensor]:
+    """Create sensors for a single ATW unit (extracted pattern to reduce duplication).
+
+    Args:
+        coordinator: Data update coordinator
+        unit: ATW unit to create sensors for
+        building: Building containing the unit
+        entry: Config entry
+        descriptions: Tuple of sensor descriptions to create
+
+    Returns:
+        List of ATWSensor instances
+    """
+    entities = []
+    for description in descriptions:
+        # Use should_create_fn if defined, otherwise use available_fn
+        create_check: Callable[[AirToWaterUnit], bool] = (
+            description.should_create_fn
+            if description.should_create_fn
+            else description.available_fn
+        )
+        if create_check(unit):
+            entities.append(ATWSensor(coordinator, unit, building, entry, description))
+    return entities
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -171,20 +203,14 @@ async def async_setup_entry(
                         )
                     )
 
-    # ATW (Air-to-Water) sensors
+    # ATW (Air-to-Water) sensors (using extracted helper to reduce duplication)
     for building in coordinator.data.buildings:
         for unit in building.air_to_water_units:
-            for description in ATW_SENSOR_TYPES:
-                # Use should_create_fn if defined, otherwise use available_fn
-                create_check_atw: Callable[[AirToWaterUnit], bool] = (
-                    description.should_create_fn
-                    if description.should_create_fn
-                    else description.available_fn
+            entities.extend(
+                _create_sensors_for_unit(
+                    coordinator, unit, building, entry, ATW_SENSOR_TYPES
                 )
-                if create_check_atw(unit):
-                    entities.append(
-                        ATWSensor(coordinator, unit, building, entry, description)
-                    )
+            )
 
     _LOGGER.debug("Created %d sensor entities", len(entities))
     async_add_entities(entities)
@@ -282,13 +308,9 @@ class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
         # Unique ID: unit_id + sensor key
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
-        # Generate stable entity ID from unit ID
-        # Format: sensor.melcloudhome_0efc_76db_zone_1_temperature
-        unit_id_clean = unit.id.replace("-", "")
-        key_clean = description.key
-
-        # Entity name (HA will normalize this to entity_id)
-        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+        # Generate entity name using shared helper
+        key_display = description.key.replace("_", " ").title()
+        self._attr_name = create_atw_entity_name(unit, key_display)
 
         # Link to device (same device as water_heater/climate entities)
         self._attr_device_info = {
