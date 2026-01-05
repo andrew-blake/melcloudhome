@@ -1,8 +1,12 @@
 """Constants for MELCloud Home API Client."""
 
+import os
+
 # API Base URLs
 BASE_URL = "https://melcloudhome.com"  # Production
-MOCK_BASE_URL = "http://localhost:8080"  # Development (local mock server)
+MOCK_BASE_URL = os.getenv(
+    "MELCLOUD_MOCK_URL", "http://localhost:8080"
+)  # Development (configurable via env var for Docker Compose)
 
 # Required User-Agent to avoid bot detection
 # CRITICAL: Must use Chrome User-Agent or requests will be blocked

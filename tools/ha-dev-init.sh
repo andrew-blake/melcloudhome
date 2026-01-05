@@ -15,8 +15,8 @@ fi
 echo "📁 Creating storage directory..."
 mkdir -p "${STORAGE_DIR}"
 
-# Create onboarding file to skip wizard
-echo "⏭️  Skipping onboarding wizard..."
+# Create onboarding file - skip wizard but allow user creation
+echo "⏭️  Configuring onboarding (user creation only)..."
 cat > "${STORAGE_DIR}/onboarding" <<'EOF'
 {
   "version": 4,
@@ -24,7 +24,6 @@ cat > "${STORAGE_DIR}/onboarding" <<'EOF'
   "key": "onboarding",
   "data": {
     "done": [
-      "user",
       "core_config",
       "integration",
       "analytics"
@@ -65,8 +64,8 @@ EOF
 # Instead, we let HA handle user creation on first access, but with all other
 # onboarding steps skipped.
 
-echo "ℹ️  User creation will be handled by Home Assistant on first access"
-echo "   (Onboarding wizard is still skipped - just create your user)"
+echo "ℹ️  On first access, you'll be prompted to create a user account"
+echo "   (All other onboarding steps are skipped)"
 
 # Create basic configuration.yaml if it doesn't exist
 if [ ! -f "${CONFIG_DIR}/configuration.yaml" ]; then
@@ -107,6 +106,6 @@ fi
 touch "${STORAGE_DIR}/.dev-initialized"
 
 echo "✅ Home Assistant development environment initialized!"
-echo "📍 Admin credentials: ${HASS_USERNAME:-dev} / ${HASS_PASSWORD:-dev}"
+echo "📍 Create your admin account on first access at http://localhost:8123"
 echo "🌐 Mock MELCloud API: http://melcloud-mock:8080"
 echo ""

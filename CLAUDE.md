@@ -103,6 +103,20 @@ make all                         # Run all checks
 
 # Pre-commit hooks run automatically on git commit
 
+# Local Development Environment (Primary Workflow)
+# Use this for daily development and testing with mock API
+make dev-up          # Start dev environment
+make dev-restart     # Restart HA after code changes
+make dev-logs        # View Home Assistant logs
+make dev-reset       # Reset (clear entity registry, fresh start)
+make dev-rebuild     # Rebuild mock server image
+make dev-down        # Stop dev environment
+
+# See DEV-SETUP.md for complete guide:
+# - Mock MELCloud API with 2 ATA + 1 ATW devices
+# - Home Assistant on http://localhost:8123 (dev/dev)
+# - Auto-skip onboarding, debug logging enabled
+
 # Testing
 make test                        # Run API tests (no Docker needed)
 make test-ha                     # Run HA integration tests in Docker
@@ -113,8 +127,9 @@ pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv
 # Docker runs tests from tests/integration directory to avoid pytest_plugins error
 # See tests/integration/Dockerfile for test environment configuration
 
-# Deployment (see tools/README.md for details)
-./tools/deploy_custom_component.py melcloudhome          # Deploy to HA
+# Production Deployment (Pre-Release Testing ONLY)
+# Use this ONLY for final integration testing before releases
+./tools/deploy_custom_component.py melcloudhome          # Deploy to production HA
 ./tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
 ./tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
 ```
@@ -247,9 +262,38 @@ await hass.services.async_call(
 
 See `docs/api/ata-api-reference.md` (A2A) and `docs/api/atw-api-reference.md` (A2W) for complete API details.
 
-### Deployment & Testing
+### Local Development Environment
 
-**Automated Deployment Tool** (Recommended):
+**⚠️ PRIMARY WORKFLOW:** Use the local Docker Compose environment for daily development:
+
+```bash
+# Start dev environment (Mock API + Home Assistant)
+make dev-up
+
+# Access at http://localhost:8123 (username: dev, password: dev)
+# Make code changes, then restart HA to reload
+make dev-restart
+
+# View logs
+make dev-logs
+
+# Reset environment (clear entity registry)
+make dev-reset
+```
+
+**Features:**
+- Mock MELCloud API with 2 ATA + 1 ATW test devices
+- Auto-setup with skip onboarding
+- Debug logging enabled
+- Changes reload with simple restart
+
+**See [DEV-SETUP.md](DEV-SETUP.md) for complete guide.**
+
+### Production Deployment
+
+**⚠️ PRE-RELEASE TESTING ONLY:** Only deploy to production HA for final integration testing before releases.
+
+**Automated Deployment Tool:**
 
 The repository includes an automated deployment tool that handles the complete cycle:
 

@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean version-patch version-minor version-major release
+.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-logs dev-rebuild version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -42,6 +42,36 @@ clean:  ## Clean up cache files
 	find . -type f -name ".coverage" -delete 2>/dev/null || true
 
 all: format lint type-check test  ## Run format, lint, type-check, and tests
+
+# Development environment commands (docker-compose)
+dev-up:  ## Start dev environment (mock API + Home Assistant)
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment started"
+	@echo "🌐 Home Assistant: http://localhost:8123 (dev/dev)"
+	@echo "🔧 Mock API: http://localhost:8080"
+
+dev-down:  ## Stop dev environment
+	docker compose -f docker-compose.dev.yml down
+
+dev-restart:  ## Restart Home Assistant (quick reload after code changes)
+	docker compose -f docker-compose.dev.yml restart homeassistant
+	@echo "✅ Home Assistant restarted - code changes loaded"
+
+dev-reset:  ## Reset dev environment (clear entity registry, fresh start)
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment reset - fresh entity registry"
+	@echo "🌐 Home Assistant: http://localhost:8123 (dev/dev)"
+
+dev-logs:  ## View Home Assistant logs (Ctrl+C to exit)
+	docker compose -f docker-compose.dev.yml logs -f homeassistant
+
+dev-rebuild:  ## Rebuild mock server image (after updating mock server code)
+	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml build --no-cache melcloud-mock
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Mock server rebuilt and restarted"
 
 # Version management commands
 version-patch:  ## Bump patch version (x.y.Z)

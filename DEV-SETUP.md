@@ -21,7 +21,8 @@ Quick guide for running Home Assistant with the MELCloud Home integration locall
 ### 1. Start the development environment
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+make dev-up
+# Or: docker compose -f docker-compose.dev.yml up -d
 ```
 
 This starts:
@@ -55,27 +56,33 @@ The mock server will accept any credentials and return sample devices.
 
 ```bash
 # Restart Home Assistant to load changes
-docker-compose -f docker-compose.dev.yml restart homeassistant
+make dev-restart
 
 # View logs
-docker-compose -f docker-compose.dev.yml logs -f homeassistant
+make dev-logs
 ```
+
+**Make commands available:**
+- `make dev-up` - Start dev environment
+- `make dev-restart` - Restart HA (reload code changes)
+- `make dev-logs` - View HA logs
+- `make dev-reset` - Reset environment (clear entity registry)
+- `make dev-rebuild` - Rebuild mock server image
+- `make dev-down` - Stop environment
 
 ### View mock server logs:
 
 ```bash
-docker-compose -f docker-compose.dev.yml logs -f melcloud-mock
+docker compose -f docker-compose.dev.yml logs -f melcloud-mock
 ```
 
-### Complete restart (clean slate):
+### Reset environment (clear entity registry):
 
 ```bash
-# Stop and remove containers + volumes
-docker-compose -f docker-compose.dev.yml down -v
-
-# Start fresh
-docker-compose -f docker-compose.dev.yml up -d
+make dev-reset
 ```
+
+This stops containers, deletes `dev-config/.storage`, and starts fresh with clean entity registrations.
 
 ## Mock Server Details
 
@@ -144,26 +151,24 @@ ports:
 
 1. Check the custom component is mounted:
    ```bash
-   docker-compose -f docker-compose.dev.yml exec homeassistant \
+   docker compose -f docker-compose.dev.yml exec homeassistant \
      ls -la /config/custom_components/melcloudhome
    ```
 
 2. Check logs for errors:
    ```bash
-   docker-compose -f docker-compose.dev.yml logs homeassistant | grep melcloudhome
+   docker compose -f docker-compose.dev.yml logs homeassistant | grep melcloudhome
    ```
 
 3. Restart Home Assistant:
    ```bash
-   docker-compose -f docker-compose.dev.yml restart homeassistant
+   docker compose -f docker-compose.dev.yml restart homeassistant
    ```
 
 ### Clear all data and start fresh
 
 ```bash
-docker-compose -f docker-compose.dev.yml down -v
-rm -rf dev-config/.storage dev-config/*.yaml
-docker-compose -f docker-compose.dev.yml up -d
+make dev-reset
 ```
 
 ## Architecture

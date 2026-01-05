@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.mock
     command: python tools/mock_melcloud_server.py --debug --host 0.0.0.0 --port 8080
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     networks:
       - ha-dev
     restart: unless-stopped
@@ -18,7 +18,7 @@ services:
     image: homeassistant/home-assistant:latest
     container_name: ha-melcloud-dev
     ports:
-      - "8123:8123"
+      - "127.0.0.1:8123:8123"
     volumes:
       # Mount the integration
       - ./custom_components/melcloudhome:/config/custom_components/melcloudhome:ro
@@ -29,6 +29,7 @@ services:
     environment:
       - HASS_USERNAME=${HASS_USERNAME:-dev}
       - HASS_PASSWORD=${HASS_PASSWORD:-dev}
+      - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
     networks:
       - ha-dev
     depends_on:
