@@ -346,6 +346,7 @@ class ATWClimateZone1(
     """
 
     _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_translation_key = "melcloudhome"  # For preset mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_target_temperature_step = ATW_TEMP_STEP
     _attr_min_temp = ATW_TEMP_MIN_ZONE

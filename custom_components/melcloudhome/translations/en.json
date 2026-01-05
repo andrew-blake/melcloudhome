@@ -30,10 +30,14 @@
   "entity": {
     "climate": {
       "melcloudhome": {
-        "preset_mode": {
-          "room": "Room",
-          "flow": "Flow",
-          "curve": "Curve"
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Room",
+              "flow": "Flow",
+              "curve": "Curve"
+            }
+          }
         }
       }
     },
