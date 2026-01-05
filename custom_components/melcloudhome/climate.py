@@ -59,7 +59,7 @@ async def async_setup_entry(
     # ATA (Air-to-Air) climate entities
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
-            entities.append(MELCloudHomeClimate(coordinator, unit, building, entry))
+            entities.append(ATAClimate(coordinator, unit, building, entry))
 
     # ATW (Air-to-Water) climate entities - Zone 1 only (Zone 2 deferred to Phase 4)
     for building in coordinator.data.buildings:
@@ -71,7 +71,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
+class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
     """Representation of a MELCloud Home climate device."""
 
     _attr_has_entity_name = False  # Use explicit naming for stable entity IDs

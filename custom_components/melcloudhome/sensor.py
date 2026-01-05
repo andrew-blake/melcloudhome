@@ -31,7 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
+class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     """Sensor entity description with value extraction.
 
     Note: type: ignore[misc] required because HA is not installed in dev environment
@@ -48,10 +48,10 @@ class MELCloudHomeSensorEntityDescription(SensorEntityDescription):  # type: ign
     """Function to determine if sensor should be created. If None, uses available_fn."""
 
 
-SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
+SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
     # Room temperature - for statistics and history
     # Climate entity has this as an attribute, but separate sensor enables long-term statistics
-    MELCloudHomeSensorEntityDescription(
+    ATASensorEntityDescription(
         key="room_temperature",
         translation_key="room_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -63,7 +63,7 @@ SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm
     # Typical range: -30 (excellent) to -90 (poor)
-    MELCloudHomeSensorEntityDescription(
+    ATASensorEntityDescription(
         key="wifi_signal",
         translation_key="wifi_signal",
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
@@ -76,7 +76,7 @@ SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
     # Energy consumption sensor
     # Created if device has energy meter capability, even if no initial data
     # Becomes available once energy data is fetched (polls every 30 minutes)
-    MELCloudHomeSensorEntityDescription(
+    ATASensorEntityDescription(
         key="energy",  # Entity ID: sensor.melcloud_*_energy
         translation_key="energy",
         device_class=SensorDeviceClass.ENERGY,
@@ -90,7 +90,7 @@ SENSOR_TYPES: tuple[MELCloudHomeSensorEntityDescription, ...] = (
 
 
 @dataclass(frozen=True, kw_only=True)
-class MELCloudHomeATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
+class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     """ATW sensor entity description with value extraction.
 
     Note: type: ignore[misc] required because HA is not installed in dev environment
@@ -107,9 +107,9 @@ class MELCloudHomeATWSensorEntityDescription(SensorEntityDescription):  # type: 
     """Function to determine if sensor should be created. If None, uses available_fn."""
 
 
-ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
+ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
     # Zone 1 room temperature
-    MELCloudHomeATWSensorEntityDescription(
+    ATWSensorEntityDescription(
         key="zone_1_temperature",
         translation_key="zone_1_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -120,7 +120,7 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
     # Tank water temperature
-    MELCloudHomeATWSensorEntityDescription(
+    ATWSensorEntityDescription(
         key="tank_temperature",
         translation_key="tank_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -131,7 +131,7 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         available_fn=lambda unit: unit.tank_water_temperature is not None,
     ),
     # Operation status (3-way valve position - raw API values)
-    MELCloudHomeATWSensorEntityDescription(
+    ATWSensorEntityDescription(
         key="operation_status",
         translation_key="operation_status",
         device_class=None,  # Categorical (not numeric)
@@ -145,7 +145,7 @@ def _create_sensors_for_unit(
     unit: AirToWaterUnit,
     building: Building,
     entry: ConfigEntry,
-    descriptions: tuple[MELCloudHomeATWSensorEntityDescription, ...],
+    descriptions: tuple[ATWSensorEntityDescription, ...],
 ) -> list[ATWSensor]:
     """Create sensors for a single ATW unit (extracted pattern to reduce duplication).
 
@@ -184,7 +184,7 @@ async def async_setup_entry(
         "coordinator"
     ]
 
-    entities: list[MELCloudHomeSensor | ATWSensor] = []
+    entities: list[ATASensor | ATWSensor] = []
 
     # ATA (Air-to-Air) sensors
     for building in coordinator.data.buildings:
@@ -198,9 +198,7 @@ async def async_setup_entry(
                 )
                 if create_check(unit):
                     entities.append(
-                        MELCloudHomeSensor(
-                            coordinator, unit, building, entry, description
-                        )
+                        ATASensor(coordinator, unit, building, entry, description)
                     )
 
     # ATW (Air-to-Water) sensors (using extracted helper to reduce duplication)
@@ -216,14 +214,14 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
+class ATASensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
     """Representation of a MELCloud Home sensor.
 
     Note: type: ignore[misc] required because HA is not installed in dev environment
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    entity_description: MELCloudHomeSensorEntityDescription
+    entity_description: ATASensorEntityDescription
 
     def __init__(
         self,
@@ -231,7 +229,7 @@ class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntit
         unit: AirToAirUnit,
         building: Building,
         entry: ConfigEntry,
-        description: MELCloudHomeSensorEntityDescription,
+        description: ATASensorEntityDescription,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -284,7 +282,7 @@ class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    entity_description: MELCloudHomeATWSensorEntityDescription
+    entity_description: ATWSensorEntityDescription
 
     def __init__(
         self,
@@ -292,7 +290,7 @@ class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,
-        description: MELCloudHomeATWSensorEntityDescription,
+        description: ATWSensorEntityDescription,
     ) -> None:
         """Initialize the ATW sensor."""
         super().__init__(coordinator)

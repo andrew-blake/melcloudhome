@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class MELCloudHomeBinarySensorEntityDescription(
+class ATABinarySensorEntityDescription(
     BinarySensorEntityDescription  # type: ignore[misc]
 ):
     """Binary sensor entity description with value extraction.
@@ -40,9 +40,9 @@ class MELCloudHomeBinarySensorEntityDescription(
     """Function to determine if sensor is available."""
 
 
-BINARY_SENSOR_TYPES: tuple[MELCloudHomeBinarySensorEntityDescription, ...] = (
+BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
-    MELCloudHomeBinarySensorEntityDescription(
+    ATABinarySensorEntityDescription(
         key="error_state",
         translation_key="error_state",
         device_class=BinarySensorDeviceClass.PROBLEM,
@@ -50,7 +50,7 @@ BINARY_SENSOR_TYPES: tuple[MELCloudHomeBinarySensorEntityDescription, ...] = (
     ),
     # Connection state - indicates if device is connected and responding
     # This will be handled differently as it depends on coordinator status
-    MELCloudHomeBinarySensorEntityDescription(
+    ATABinarySensorEntityDescription(
         key="connection_state",
         translation_key="connection_state",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -60,7 +60,7 @@ BINARY_SENSOR_TYPES: tuple[MELCloudHomeBinarySensorEntityDescription, ...] = (
 
 
 @dataclass(frozen=True, kw_only=True)
-class MELCloudHomeATWBinarySensorEntityDescription(
+class ATWBinarySensorEntityDescription(
     BinarySensorEntityDescription  # type: ignore[misc]
 ):
     """ATW binary sensor entity description with value extraction.
@@ -76,23 +76,23 @@ class MELCloudHomeATWBinarySensorEntityDescription(
     """Function to determine if sensor is available."""
 
 
-ATW_BINARY_SENSOR_TYPES: tuple[MELCloudHomeATWBinarySensorEntityDescription, ...] = (
+ATW_BINARY_SENSOR_TYPES: tuple[ATWBinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
-    MELCloudHomeATWBinarySensorEntityDescription(
+    ATWBinarySensorEntityDescription(
         key="error_state",
         translation_key="error_state",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda unit: unit.is_in_error,
     ),
     # Connection state - indicates if device is connected and responding
-    MELCloudHomeATWBinarySensorEntityDescription(
+    ATWBinarySensorEntityDescription(
         key="connection_state",
         translation_key="connection_state",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda unit: True,  # Connection is determined by coordinator
     ),
     # Forced DHW active - indicates when DHW has priority over zones
-    MELCloudHomeATWBinarySensorEntityDescription(
+    ATWBinarySensorEntityDescription(
         key="forced_dhw_active",
         translation_key="forced_dhw_active",
         device_class=BinarySensorDeviceClass.RUNNING,
@@ -113,16 +113,14 @@ async def async_setup_entry(
         "coordinator"
     ]
 
-    entities: list[MELCloudHomeBinarySensor | ATWBinarySensor] = []
+    entities: list[ATABinarySensor | ATWBinarySensor] = []
 
     # ATA (Air-to-Air) binary sensors
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             for description in BINARY_SENSOR_TYPES:
                 entities.append(
-                    MELCloudHomeBinarySensor(
-                        coordinator, unit, building, entry, description
-                    )
+                    ATABinarySensor(coordinator, unit, building, entry, description)
                 )
 
     # ATW (Air-to-Water) binary sensors
@@ -137,7 +135,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class MELCloudHomeBinarySensor(
+class ATABinarySensor(
     CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
     BinarySensorEntity,  # type: ignore[misc]
 ):
@@ -147,7 +145,7 @@ class MELCloudHomeBinarySensor(
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    entity_description: MELCloudHomeBinarySensorEntityDescription
+    entity_description: ATABinarySensorEntityDescription
 
     def __init__(
         self,
@@ -155,7 +153,7 @@ class MELCloudHomeBinarySensor(
         unit: AirToAirUnit,
         building: Building,
         entry: ConfigEntry,
-        description: MELCloudHomeBinarySensorEntityDescription,
+        description: ATABinarySensorEntityDescription,
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
@@ -217,7 +215,7 @@ class ATWBinarySensor(
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    entity_description: MELCloudHomeATWBinarySensorEntityDescription
+    entity_description: ATWBinarySensorEntityDescription
 
     def __init__(
         self,
@@ -225,7 +223,7 @@ class ATWBinarySensor(
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,
-        description: MELCloudHomeATWBinarySensorEntityDescription,
+        description: ATWBinarySensorEntityDescription,
     ) -> None:
         """Initialize the ATW binary sensor."""
         super().__init__(coordinator)
