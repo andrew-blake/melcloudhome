@@ -33,6 +33,8 @@ from .const import (
     MELCLOUD_TO_HA_MODE,
     VANE_HORIZONTAL_POSITIONS,
     VANE_POSITIONS,
+    create_atw_device_info,
+    create_atw_entity_name,
 )
 from .coordinator import MELCloudHomeCoordinator
 
@@ -420,23 +422,11 @@ class ATWClimateZone1(
         # Preset modes (NEW: Not used in ATA)
         self._attr_preset_modes = ATW_PRESET_MODES
 
-        # Generate stable entity ID (format: melcloudhome_0efc_76db_zone_1)
-        unit_id_clean = unit.id.replace("-", "")
+        # Generate entity name using shared helper
+        self._attr_name = create_atw_entity_name(unit, "Zone 1")
 
-        # Set entity name (HA will normalize this to entity_id)
-        # Format: "MELCloudHome 0efc 76db Zone 1" -> entity_id: "climate.melcloudhome_0efc_76db_zone_1"
-        self._attr_name = (
-            f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} Zone 1"
-        )
-
-        # Device info (modern HA pattern) - groups with water_heater/sensors
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, unit.id)},
-            name=f"{building.name} {unit.name}",
-            manufacturer="Mitsubishi Electric",
-            model=f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model})",
-            suggested_area=building.name,
-        )
+        # Device info using shared helper (groups with water_heater/sensors)
+        self._attr_device_info = create_atw_device_info(unit, building)
 
         # Supported features
         self._attr_supported_features = (

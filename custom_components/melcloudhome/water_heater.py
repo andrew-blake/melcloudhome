@@ -14,7 +14,6 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -25,6 +24,8 @@ from .const import (
     DOMAIN,
     WATER_HEATER_FORCED_DHW_TO_HA,
     WATER_HEATER_HA_TO_FORCED_DHW,
+    create_atw_device_info,
+    create_atw_entity_name,
 )
 from .coordinator import MELCloudHomeCoordinator
 
@@ -81,21 +82,11 @@ class ATWWaterHeater(
         self._attr_unique_id = f"{unit.id}_tank"
         self._entry = entry
 
-        # Generate stable entity ID from unit ID (format: melcloudhome_0efc_76db_tank)
-        unit_id_clean = unit.id.replace("-", "")  # Remove dashes from UUID
+        # Generate entity name using shared helper
+        self._attr_name = create_atw_entity_name(unit, "Tank")
 
-        # Set entity name (HA will normalize this to entity_id)
-        # Format: "MELCloudHome 0efc 76db Tank" -> entity_id: "water_heater.melcloudhome_0efc_76db_tank"
-        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} Tank"
-
-        # Device info (modern HA pattern) - groups with climate/sensors
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, unit.id)},
-            name=f"{building.name} {unit.name}",
-            manufacturer="Mitsubishi Electric",
-            model=f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model})",
-            suggested_area=building.name,
-        )
+        # Device info using shared helper (groups with climate/sensors)
+        self._attr_device_info = create_atw_device_info(unit, building)
 
         # Supported features
         self._attr_supported_features = (
