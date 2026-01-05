@@ -15,7 +15,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToWaterUnit, Building
 from .const import (
@@ -24,8 +23,10 @@ from .const import (
     DOMAIN,
     WATER_HEATER_FORCED_DHW_TO_HA,
     WATER_HEATER_HA_TO_FORCED_DHW,
+    ATWEntityBase,
     create_atw_device_info,
     create_atw_entity_name,
+    with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
 
@@ -54,7 +55,7 @@ async def async_setup_entry(
 
 
 class ATWWaterHeater(
-    CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
+    ATWEntityBase,
     WaterHeaterEntity,  # type: ignore[misc]
 ):
     """Water heater entity for ATW DHW tank.
@@ -99,32 +100,9 @@ class ATWWaterHeater(
         self._attr_operation_list = [STATE_ECO, STATE_PERFORMANCE]
 
     @property
-    def _device(self) -> AirToWaterUnit | None:
-        """Get the current device from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_atw_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def _building(self) -> Building | None:
-        """Get the current building from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_building_for_atw_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        if not self.coordinator.last_update_success:
-            return False
-
-        device = self._device
-        if device is None:
-            return False
-
-        # Check if device is in error state
-        return not device.is_in_error
-
-    @property
     def current_temperature(self) -> float | None:
         """Return current DHW tank temperature."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
         return device.tank_water_temperature
@@ -132,7 +110,7 @@ class ATWWaterHeater(
     @property
     def target_temperature(self) -> float | None:
         """Return target DHW tank temperature."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
         return device.set_tank_water_temperature
@@ -140,7 +118,7 @@ class ATWWaterHeater(
     @property
     def current_operation(self) -> str | None:
         """Return current operation mode (eco or performance)."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
 
@@ -153,7 +131,7 @@ class ATWWaterHeater(
     @property
     def is_on(self) -> bool | None:
         """Return True if water heater (and system) is on."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
         return device.power
@@ -161,7 +139,7 @@ class ATWWaterHeater(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return {}
 
@@ -172,6 +150,7 @@ class ATWWaterHeater(
             "ftc_model": device.ftc_model,
         }
 
+    @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target DHW tank temperature."""
         temperature = kwargs.get("temperature")
@@ -191,9 +170,7 @@ class ATWWaterHeater(
         # Set DHW temperature
         await self.coordinator.async_set_dhw_temperature(self._unit_id, temperature)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set new operation mode (eco or performance).
 
@@ -208,16 +185,12 @@ class ATWWaterHeater(
         forced_dhw = WATER_HEATER_HA_TO_FORCED_DHW.get(operation_mode, False)
         await self.coordinator.async_set_forced_hot_water(self._unit_id, forced_dhw)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the water heater (entire ATW system) on."""
         await self.coordinator.async_set_power_atw(self._unit_id, True)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the water heater (entire ATW system) off.
 
@@ -225,6 +198,3 @@ class ATWWaterHeater(
         Both water_heater and climate entities can control system power.
         """
         await self.coordinator.async_set_power_atw(self._unit_id, False)
-
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()

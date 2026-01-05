@@ -15,7 +15,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.const import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
@@ -32,10 +31,13 @@ from .const import (
     MELCLOUD_TO_HA_MODE,
     VANE_HORIZONTAL_POSITIONS,
     VANE_POSITIONS,
+    ATAEntityBase,
+    ATWEntityBase,
     create_atw_device_info,
     create_atw_entity_name,
     create_device_info,
     create_entity_name,
+    with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
 
@@ -71,7 +73,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
+class ATAClimate(ATAEntityBase, ClimateEntity):
     """Representation of a MELCloud Home climate device."""
 
     _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
@@ -116,32 +118,9 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
         self._attr_swing_modes = VANE_POSITIONS
 
     @property
-    def _device(self) -> AirToAirUnit | None:
-        """Get the current device from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def _building(self) -> Building | None:
-        """Get the current building from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_building_for_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        if not self.coordinator.last_update_success:
-            return False
-
-        device = self._device
-        if device is None:
-            return False
-
-        # Check if device is in error state
-        return not device.is_in_error
-
-    @property
     def hvac_mode(self) -> HVACMode:
         """Return current HVAC mode."""
-        device = self._device
+        device = self.get_device()
         if device is None or not device.power:
             return HVACMode.OFF
 
@@ -157,7 +136,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
         Note: This is polling-based with 60s updates, so may not reflect
         real-time device behavior.
         """
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
 
@@ -214,25 +193,25 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        device = self._device
+        device = self.get_device()
         return device.room_temperature if device else None
 
     @property
     def target_temperature(self) -> float | None:
         """Return the target temperature."""
-        device = self._device
+        device = self.get_device()
         return device.set_temperature if device else None
 
     @property
     def fan_mode(self) -> str | None:
         """Return the current fan mode."""
-        device = self._device
+        device = self.get_device()
         return device.set_fan_speed if device else None
 
     @property
     def swing_mode(self) -> str | None:
         """Return the current swing mode (vertical vane position)."""
-        device = self._device
+        device = self.get_device()
         return device.vane_vertical_direction if device else None
 
     @property
@@ -243,7 +222,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
     @property
     def swing_horizontal_mode(self) -> str | None:
         """Return the current horizontal swing mode (horizontal vane position)."""
-        device = self._device
+        device = self.get_device()
         return device.vane_horizontal_direction if device else None
 
     @property
@@ -263,7 +242,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
             | ClimateEntityFeature.TURN_OFF
         )
 
-        device = self._device
+        device = self.get_device()
         if device is None:
             return features
 
@@ -280,6 +259,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
 
         return features
 
+    @with_debounced_refresh()
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
         if hvac_mode == HVACMode.OFF:
@@ -291,9 +271,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
             melcloud_mode = HA_TO_MELCLOUD_MODE[hvac_mode]
             await self.coordinator.async_set_mode(self._unit_id, melcloud_mode)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
         temperature = kwargs.get("temperature")
@@ -313,9 +291,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
         # Set temperature
         await self.coordinator.async_set_temperature(self._unit_id, temperature)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new fan mode."""
         if fan_mode not in self.fan_modes:
@@ -324,9 +300,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
 
         await self.coordinator.async_set_fan_speed(self._unit_id, fan_mode)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_swing_mode(self, swing_mode: str) -> None:
         """Set new swing mode (vertical vane position)."""
         if swing_mode not in self.swing_modes:
@@ -335,7 +309,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
 
         # Get current horizontal vane position from device, default to "Auto"
         # Handle legacy values (Left, Right, etc.) by defaulting to Auto
-        device = self._device
+        device = self.get_device()
         horizontal = device.vane_horizontal_direction if device else "Auto"
         if horizontal not in self.swing_horizontal_modes:
             _LOGGER.debug(
@@ -345,9 +319,7 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
 
         await self.coordinator.async_set_vanes(self._unit_id, swing_mode, horizontal)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
         """Set new horizontal swing mode (horizontal vane position)."""
         if swing_horizontal_mode not in self.swing_horizontal_modes:
@@ -355,29 +327,26 @@ class ATAClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEntity):
             return
 
         # Get current vertical vane position from device, default to "Auto"
-        device = self._device
+        device = self.get_device()
         vertical = device.vane_vertical_direction if device else "Auto"
 
         await self.coordinator.async_set_vanes(
             self._unit_id, vertical, swing_horizontal_mode
         )
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
         await self.coordinator.async_set_power(self._unit_id, True)
-        await self.coordinator.async_request_refresh_debounced()
 
+    @with_debounced_refresh()
     async def async_turn_off(self) -> None:
         """Turn the entity off."""
         await self.coordinator.async_set_power(self._unit_id, False)
-        await self.coordinator.async_request_refresh_debounced()
 
 
 class ATWClimateZone1(
-    CoordinatorEntity[MELCloudHomeCoordinator],
+    ATWEntityBase,
     ClimateEntity,
 ):
     """Climate entity for ATW Zone 1.
@@ -427,32 +396,9 @@ class ATWClimateZone1(
         )
 
     @property
-    def _device(self) -> AirToWaterUnit | None:
-        """Get the current device from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_atw_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def _building(self) -> Building | None:
-        """Get the current building from coordinator data - O(1) cached lookup."""
-        return self.coordinator.get_building_for_atw_unit(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        if not self.coordinator.last_update_success:
-            return False
-
-        device = self._device
-        if device is None:
-            return False
-
-        # Check if device is in error state
-        return not device.is_in_error
-
-    @property
     def hvac_mode(self) -> HVACMode:
         """Return current HVAC mode."""
-        device = self._device
+        device = self.get_device()
         if device is None or not device.power:
             return HVACMode.OFF
 
@@ -469,7 +415,7 @@ class ATWClimateZone1(
 
         Valve serves Zone 1 only when: operation_status == operation_mode_zone1
         """
-        device = self._device
+        device = self.get_device()
         if device is None or not device.power:
             return HVACAction.OFF
 
@@ -490,7 +436,7 @@ class ATWClimateZone1(
     @property
     def current_temperature(self) -> float | None:
         """Return current Zone 1 room temperature."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
         return device.room_temperature_zone1
@@ -498,7 +444,7 @@ class ATWClimateZone1(
     @property
     def target_temperature(self) -> float | None:
         """Return target Zone 1 temperature."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
         return device.set_temperature_zone1
@@ -506,7 +452,7 @@ class ATWClimateZone1(
     @property
     def preset_mode(self) -> str | None:
         """Return current preset mode."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return None
 
@@ -516,7 +462,7 @@ class ATWClimateZone1(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        device = self._device
+        device = self.get_device()
         if device is None:
             return {}
 
@@ -528,6 +474,7 @@ class ATWClimateZone1(
             "ftc_model": device.ftc_model,
         }
 
+    @with_debounced_refresh()
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
         if hvac_mode == HVACMode.OFF:
@@ -537,9 +484,7 @@ class ATWClimateZone1(
             # Turn on the system (HEAT mode)
             await self.coordinator.async_set_power_atw(self._unit_id, True)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target Zone 1 temperature."""
         temperature = kwargs.get("temperature")
@@ -559,9 +504,7 @@ class ATWClimateZone1(
         # Set Zone 1 temperature
         await self.coordinator.async_set_temperature_zone1(self._unit_id, temperature)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode (zone operation strategy).
 
@@ -582,14 +525,12 @@ class ATWClimateZone1(
         # Set Zone 1 operation mode
         await self.coordinator.async_set_mode_zone1(self._unit_id, atw_mode)
 
-        # Request debounced refresh to avoid race conditions
-        await self.coordinator.async_request_refresh_debounced()
-
+    @with_debounced_refresh()
     async def async_turn_on(self) -> None:
         """Turn the entity (entire ATW system) on."""
         await self.coordinator.async_set_power_atw(self._unit_id, True)
-        await self.coordinator.async_request_refresh_debounced()
 
+    @with_debounced_refresh()
     async def async_turn_off(self) -> None:
         """Turn the entity (entire ATW system) off.
 
@@ -597,4 +538,3 @@ class ATWClimateZone1(
         Both water_heater and climate entities can control system power.
         """
         await self.coordinator.async_set_power_atw(self._unit_id, False)
-        await self.coordinator.async_request_refresh_debounced()
