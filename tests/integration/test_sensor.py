@@ -428,6 +428,7 @@ async def test_atw_zone_1_temperature_sensor_created(hass: HomeAssistant) -> Non
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -457,6 +458,7 @@ async def test_atw_tank_temperature_sensor_created(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -486,6 +488,7 @@ async def test_atw_operation_status_sensor_created(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -515,6 +518,7 @@ async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> 
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -545,6 +549,7 @@ async def test_atw_sensor_unavailable_when_temp_none(hass: HomeAssistant) -> Non
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -578,6 +583,7 @@ async def test_atw_sensors_unavailable_when_device_in_error(
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 

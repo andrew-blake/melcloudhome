@@ -340,6 +340,7 @@ async def test_atw_error_state_sensor_created(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -369,6 +370,7 @@ async def test_atw_connection_state_sensor_created(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -398,6 +400,7 @@ async def test_atw_forced_dhw_active_sensor_created(hass: HomeAssistant) -> None
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -429,6 +432,7 @@ async def test_atw_error_state_on_when_device_in_error(hass: HomeAssistant) -> N
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -458,6 +462,7 @@ async def test_atw_forced_dhw_reflects_device_mode(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -488,6 +493,7 @@ async def test_atw_connection_always_available(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 

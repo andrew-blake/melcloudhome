@@ -63,6 +63,7 @@ async def test_set_temperature_updates_dhw_temp(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.set_dhw_temperature = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
@@ -101,6 +102,7 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.set_forced_hot_water = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
@@ -143,6 +145,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.set_forced_hot_water = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
@@ -185,6 +188,7 @@ async def test_turn_on_powers_entire_system(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.set_power_atw = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
@@ -226,6 +230,7 @@ async def test_turn_off_powers_entire_system(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.set_power_atw = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
@@ -268,6 +273,7 @@ async def test_current_operation_reflects_forced_dhw_mode(hass: HomeAssistant) -
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -295,6 +301,7 @@ async def test_availability_false_when_device_in_error(hass: HomeAssistant) -> N
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -324,6 +331,7 @@ async def test_extra_state_attributes_include_operation_status(
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -353,6 +361,7 @@ async def test_water_heater_with_performance_mode(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -377,6 +386,7 @@ async def test_water_heater_device_info_matches_climate(hass: HomeAssistant) -> 
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -411,6 +421,7 @@ async def test_water_heater_temperature_in_range(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -438,6 +449,7 @@ async def test_water_heater_entity_naming_includes_tank(hass: HomeAssistant) -> 
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
@@ -467,6 +479,7 @@ async def test_water_heater_off_when_power_false(hass: HomeAssistant) -> None:
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
