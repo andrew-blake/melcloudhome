@@ -41,6 +41,18 @@
         }
       }
     },
+    "water_heater": {
+      "melcloudhome": {
+        "state_attributes": {
+          "operation_mode": {
+            "state": {
+              "auto": "Auto",
+              "force_dhw": "Force DHW"
+            }
+          }
+        }
+      }
+    },
     "sensor": {
       "room_temperature": {
         "name": "Room temperature"

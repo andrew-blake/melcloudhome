@@ -71,17 +71,17 @@ HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
 # ATW Preset modes list (lowercase keys, translated in en.json)
 ATW_PRESET_MODES = ["room", "flow", "curve"]
 
-# Water Heater Operation Modes (map to HA standard modes)
-# Use HA constants from homeassistant.components.water_heater
-# STATE_ECO, STATE_PERFORMANCE are standard HA modes
+# Water Heater Operation Modes (match MELCloud Home app terminology)
+# "Auto": Normal operation, zone heating priority
+# "Force DHW": DHW priority mode, forces hot water heating
 WATER_HEATER_FORCED_DHW_TO_HA = {
-    False: "eco",  # Maps to STATE_ECO
-    True: "performance",  # Maps to STATE_PERFORMANCE
+    False: "auto",  # Normal operation
+    True: "force_dhw",  # Forced hot water mode
 }
 
 WATER_HEATER_HA_TO_FORCED_DHW = {
-    "eco": False,
-    "performance": True,
+    "auto": False,
+    "force_dhw": True,
 }
 
 # ATW Temperature limits

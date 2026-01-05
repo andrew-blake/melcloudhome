@@ -6,8 +6,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.water_heater import (
-    STATE_ECO,
-    STATE_PERFORMANCE,
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
@@ -65,6 +63,7 @@ class ATWWaterHeater(
     """
 
     _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_translation_key = "melcloudhome"  # For operation mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_DHW
     _attr_max_temp = ATW_TEMP_MAX_DHW
@@ -95,8 +94,8 @@ class ATWWaterHeater(
             | WaterHeaterEntityFeature.OPERATION_MODE
         )
 
-        # Operation modes
-        self._attr_operation_list = [STATE_ECO, STATE_PERFORMANCE]
+        # Operation modes (match MELCloud Home app terminology)
+        self._attr_operation_list = ["auto", "force_dhw"]
 
     @property
     def current_temperature(self) -> float | None:
@@ -116,14 +115,14 @@ class ATWWaterHeater(
 
     @property
     def current_operation(self) -> str | None:
-        """Return current operation mode (eco or performance)."""
+        """Return current operation mode (auto or force_dhw)."""
         device = self.get_device()
         if device is None:
             return None
 
-        # Map forced_hot_water_mode to HA operation mode
+        # Map forced_hot_water_mode to operation mode
         mode: str = WATER_HEATER_FORCED_DHW_TO_HA.get(
-            device.forced_hot_water_mode, STATE_ECO
+            device.forced_hot_water_mode, "auto"
         )
         return mode
 
@@ -161,10 +160,10 @@ class ATWWaterHeater(
 
     @with_debounced_refresh()
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Set new operation mode (eco or performance).
+        """Set new operation mode (auto or force_dhw).
 
-        eco: Normal balanced operation
-        performance: DHW priority mode (forces hot water)
+        auto: Normal balanced operation, zone heating priority
+        force_dhw: DHW priority mode, forces hot water heating
         """
         if operation_mode not in self.operation_list:
             _LOGGER.warning("Invalid operation mode: %s", operation_mode)
