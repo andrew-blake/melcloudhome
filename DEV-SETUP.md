@@ -76,13 +76,26 @@ make dev-logs
 docker compose -f docker-compose.dev.yml logs -f melcloud-mock
 ```
 
-### Reset environment (clear entity registry):
+### Reset environment (restore to clean snapshot):
 
 ```bash
 make dev-reset
 ```
 
-This stops containers, deletes `dev-config/.storage`, and starts fresh with clean entity registrations.
+This restores the dev environment to a clean snapshot with:
+- User account already created (dev/dev)
+- Onboarding completed
+
+You'll need to add the integration through the UI (Settings → Devices & Services).
+Much faster than creating the user account from scratch!
+
+### Complete reset (wipe everything):
+
+```bash
+make dev-reset-full
+```
+
+This completely wipes the environment and starts from scratch. You'll need to create the user and configure the integration again.
 
 ## Mock Server Details
 
@@ -168,7 +181,8 @@ ports:
 ### Clear all data and start fresh
 
 ```bash
-make dev-reset
+make dev-reset       # Restore to clean snapshot (fast)
+make dev-reset-full  # Complete wipe (slow)
 ```
 
 ## Architecture

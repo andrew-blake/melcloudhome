@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-logs dev-rebuild version-patch version-minor version-major release
+.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -57,12 +57,22 @@ dev-restart:  ## Restart Home Assistant (quick reload after code changes)
 	docker compose -f docker-compose.dev.yml restart homeassistant
 	@echo "✅ Home Assistant restarted - code changes loaded"
 
-dev-reset:  ## Reset dev environment (clear entity registry, fresh start)
+dev-reset:  ## Reset dev environment (restore to clean snapshot with dev user)
 	docker compose -f docker-compose.dev.yml down
-	rm -rf dev-config/.storage
+	rm -rf dev-config/.storage dev-config/home-assistant*.db* dev-config/home-assistant.log*
+	cp -r dev-config-template/.storage dev-config/
 	docker compose -f docker-compose.dev.yml up -d
-	@echo "✅ Dev environment reset - fresh entity registry"
+	@echo "✅ Dev environment reset to clean snapshot"
 	@echo "🌐 Home Assistant: http://localhost:8123 (dev/dev)"
+	@echo "➕ Add integration via Settings → Devices & Services"
+
+dev-reset-full:  ## Complete reset (wipe everything, run init script)
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage dev-config/*.db* dev-config/*.log* dev-config/*.yaml
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment completely reset"
+	@echo "🌐 Home Assistant: http://localhost:8123"
+	@echo "⚠️  You'll need to create user and configure integration"
 
 dev-logs:  ## View Home Assistant logs (Ctrl+C to exit)
 	docker compose -f docker-compose.dev.yml logs -f homeassistant
