@@ -126,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.WATER_HEATER,
     ]
 
     # Create API client and coordinator
@@ -208,6 +209,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.WATER_HEATER,
     ]
 
     # Unload platforms

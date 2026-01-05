@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api.models import AirToAirUnit, Building
+from .api.models import AirToAirUnit, AirToWaterUnit, Building
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
 
@@ -59,17 +59,63 @@ BINARY_SENSOR_TYPES: tuple[MELCloudHomeBinarySensorEntityDescription, ...] = (
 )
 
 
+@dataclass(frozen=True, kw_only=True)
+class MELCloudHomeATWBinarySensorEntityDescription(
+    BinarySensorEntityDescription  # type: ignore[misc]
+):
+    """ATW binary sensor entity description with value extraction.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees BinarySensorEntityDescription as 'Any'.
+    """
+
+    value_fn: Callable[[AirToWaterUnit], bool]
+    """Function to extract binary sensor value from unit data."""
+
+    available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
+    """Function to determine if sensor is available."""
+
+
+ATW_BINARY_SENSOR_TYPES: tuple[MELCloudHomeATWBinarySensorEntityDescription, ...] = (
+    # Error state - indicates if device is in error condition
+    MELCloudHomeATWBinarySensorEntityDescription(
+        key="error_state",
+        translation_key="error_state",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda unit: unit.is_in_error,
+    ),
+    # Connection state - indicates if device is connected and responding
+    MELCloudHomeATWBinarySensorEntityDescription(
+        key="connection_state",
+        translation_key="connection_state",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        value_fn=lambda unit: True,  # Connection is determined by coordinator
+    ),
+    # Forced DHW active - indicates when DHW has priority over zones
+    MELCloudHomeATWBinarySensorEntityDescription(
+        key="forced_dhw_active",
+        translation_key="forced_dhw_active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=lambda unit: unit.forced_hot_water_mode,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up MELCloud Home binary sensor entities."""
+    _LOGGER.debug("Setting up MELCloud Home binary sensor platform")
+
     coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id][
         "coordinator"
     ]
 
-    entities: list[MELCloudHomeBinarySensor] = []
+    entities: list[MELCloudHomeBinarySensor | ATWBinarySensor] = []
+
+    # ATA (Air-to-Air) binary sensors
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             for description in BINARY_SENSOR_TYPES:
@@ -79,16 +125,15 @@ async def async_setup_entry(
                     )
                 )
 
-    if entities:
-        units_count = len(
-            [u for b in coordinator.data.buildings for u in b.air_to_air_units]
-        )
-        _LOGGER.debug(
-            "Setting up %d binary sensor entities for %d units",
-            len(entities),
-            units_count,
-        )
+    # ATW (Air-to-Water) binary sensors
+    for building in coordinator.data.buildings:
+        for unit in building.air_to_water_units:
+            for description in ATW_BINARY_SENSOR_TYPES:
+                entities.append(
+                    ATWBinarySensor(coordinator, unit, building, entry, description)
+                )
 
+    _LOGGER.debug("Created %d binary sensor entities", len(entities))
     async_add_entities(entities)
 
 
@@ -160,6 +205,76 @@ class MELCloudHomeBinarySensor(
             return False
 
         unit = self.coordinator.get_unit(self._unit_id)
+        if unit is None:
+            return False
+
+        return self.entity_description.available_fn(unit)
+
+
+class ATWBinarySensor(
+    CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
+    BinarySensorEntity,  # type: ignore[misc]
+):
+    """Representation of a MELCloud Home ATW binary sensor.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
+    """
+
+    entity_description: MELCloudHomeATWBinarySensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: MELCloudHomeCoordinator,
+        unit: AirToWaterUnit,
+        building: Building,
+        entry: ConfigEntry,
+        description: MELCloudHomeATWBinarySensorEntityDescription,
+    ) -> None:
+        """Initialize the ATW binary sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._unit_id = unit.id
+        self._building_id = building.id
+        self._entry = entry
+
+        # Unique ID: unit_id + sensor key
+        self._attr_unique_id = f"{unit.id}_{description.key}"
+
+        # Generate stable entity ID from unit ID
+        # Format: binary_sensor.melcloudhome_0efc_76db_forced_dhw_active
+        unit_id_clean = unit.id.replace("-", "")
+        key_clean = description.key
+
+        # Entity name (HA will normalize this to entity_id)
+        self._attr_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_clean.replace('_', ' ').title()}"
+
+        # Link to device (same device as water_heater/climate entities)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, unit.id)},
+        }
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the binary sensor value."""
+        unit = self.coordinator.get_atw_unit(self._unit_id)
+        if unit is None:
+            return None
+
+        return self.entity_description.value_fn(unit)
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Connection sensor is always available (it reports connection status)
+        if self.entity_description.key == "connection_state":
+            return True
+
+        # For other sensors, check coordinator status
+        if not self.coordinator.last_update_success:
+            return False
+
+        unit = self.coordinator.get_atw_unit(self._unit_id)
         if unit is None:
             return False
 

@@ -104,10 +104,14 @@ make all                         # Run all checks
 # Pre-commit hooks run automatically on git commit
 
 # Testing
-make test                        # Run all tests
-make test-ha                     # Run integration tests
-pytest tests/api/ -v             # Run API tests only
+make test                        # Run API tests (no Docker needed)
+make test-ha                     # Run HA integration tests in Docker
+pytest tests/api/ -v             # Run API tests only (local)
 pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
+
+# Integration tests require Docker (uses pytest-homeassistant-custom-component)
+# Docker runs tests from tests/integration directory to avoid pytest_plugins error
+# See tests/integration/Dockerfile for test environment configuration
 
 # Deployment (see tools/README.md for details)
 ./tools/deploy_custom_component.py melcloudhome          # Deploy to HA
@@ -197,6 +201,12 @@ The release appears at: https://github.com/andrew-blake/melcloudhome/releases
 **⚠️ CRITICAL: Follow Home Assistant testing best practices**
 
 See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
+
+**Integration tests run in Docker:**
+- Uses `pytest-homeassistant-custom-component` (can't install locally due to aiohttp conflicts)
+- Docker container provides clean test environment with HA fixtures
+- Run with: `make test-ha` (builds image and runs tests automatically)
+- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
 
 **Quick rules for integration tests:**
 - ✅ Test through `hass.states` and `hass.services` ONLY

@@ -24,7 +24,7 @@ test:  ## Run API tests (no HA dependency)
 
 test-ha:  ## Run HA integration tests in Docker (fast with caching)
 	@docker build -q -t melcloudhome-test:latest -f tests/integration/Dockerfile . 2>/dev/null || true
-	docker run --rm -v $(PWD):/app -w /app melcloudhome-test:latest pytest tests/integration/ -v -c tests/integration/pytest.ini
+	docker run --rm -v $(PWD):/app melcloudhome-test:latest
 
 test-cov:  ## Run tests with coverage report
 	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing

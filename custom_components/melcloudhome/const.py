@@ -46,3 +46,36 @@ VANE_HORIZONTAL_POSITIONS = [
     "RightCentre",
     "Right",
 ]
+
+# ATW (Air-to-Water) Zone Modes → Climate Preset Modes (lowercase for i18n)
+# Display names in translations/en.json: "Room", "Flow", "Curve"
+ATW_TO_HA_PRESET = {
+    "HeatRoomTemperature": "room",  # Display: "Room"
+    "HeatFlowTemperature": "flow",  # Display: "Flow"
+    "HeatCurve": "curve",  # Display: "Curve"
+}
+
+HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
+
+# ATW Preset modes list (lowercase keys, translated in en.json)
+ATW_PRESET_MODES = ["room", "flow", "curve"]
+
+# Water Heater Operation Modes (map to HA standard modes)
+# Use HA constants from homeassistant.components.water_heater
+# STATE_ECO, STATE_PERFORMANCE are standard HA modes
+WATER_HEATER_FORCED_DHW_TO_HA = {
+    False: "eco",  # Maps to STATE_ECO
+    True: "performance",  # Maps to STATE_PERFORMANCE
+}
+
+WATER_HEATER_HA_TO_FORCED_DHW = {
+    "eco": False,
+    "performance": True,
+}
+
+# ATW Temperature limits
+ATW_TEMP_MIN_ZONE = 10  # °C
+ATW_TEMP_MAX_ZONE = 30  # °C
+ATW_TEMP_MIN_DHW = 40  # °C
+ATW_TEMP_MAX_DHW = 60  # °C
+ATW_TEMP_STEP = 1  # °C

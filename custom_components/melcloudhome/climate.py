@@ -12,16 +12,23 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.const import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
-from .api.models import AirToAirUnit, Building
+from .api.models import AirToAirUnit, AirToWaterUnit, Building
 from .const import (
+    ATW_PRESET_MODES,
+    ATW_TEMP_MAX_ZONE,
+    ATW_TEMP_MIN_ZONE,
+    ATW_TEMP_STEP,
+    ATW_TO_HA_PRESET,
     DOMAIN,
     FAN_SPEEDS,
+    HA_TO_ATW_PRESET,
     HA_TO_MELCLOUD_MODE,
     MELCLOUD_TO_HA_MODE,
     VANE_HORIZONTAL_POSITIONS,
@@ -38,15 +45,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up MELCloud Home climate entities."""
+    _LOGGER.debug("Setting up MELCloud Home climate platform")
+
     coordinator: MELCloudHomeCoordinator = hass.data[DOMAIN][entry.entry_id][
         "coordinator"
     ]
 
     entities = []
+
+    # ATA (Air-to-Air) climate entities
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             entities.append(MELCloudHomeClimate(coordinator, unit, building, entry))
 
+    # ATW (Air-to-Water) climate entities - Zone 1 only (Zone 2 deferred to Phase 4)
+    for building in coordinator.data.buildings:
+        for unit in building.air_to_water_units:
+            # Zone 1 - always created
+            entities.append(ATWClimateZone1(coordinator, unit, building, entry))
+
+    _LOGGER.debug("Created %d climate entities", len(entities))
     async_add_entities(entities)
 
 
@@ -363,4 +381,240 @@ class MELCloudHomeClimate(CoordinatorEntity[MELCloudHomeCoordinator], ClimateEnt
     async def async_turn_off(self) -> None:
         """Turn the entity off."""
         await self.coordinator.async_set_power(self._unit_id, False)
+        await self.coordinator.async_request_refresh_debounced()
+
+
+class ATWClimateZone1(
+    CoordinatorEntity[MELCloudHomeCoordinator],
+    ClimateEntity,
+):
+    """Climate entity for ATW Zone 1.
+
+    Note: HA is not installed in dev environment (aiohttp version conflict).
+    Mypy sees HA base classes as 'Any'.
+    """
+
+    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_target_temperature_step = ATW_TEMP_STEP
+    _attr_min_temp = ATW_TEMP_MIN_ZONE
+    _attr_max_temp = ATW_TEMP_MAX_ZONE
+
+    def __init__(
+        self,
+        coordinator: MELCloudHomeCoordinator,
+        unit: AirToWaterUnit,
+        building: Building,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the climate entity for Zone 1."""
+        super().__init__(coordinator)
+        self._unit_id = unit.id
+        self._building_id = building.id
+        self._attr_unique_id = f"{unit.id}_zone_1"
+        self._entry = entry
+
+        # HVAC modes (ATW is heat-only)
+        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+
+        # Preset modes (NEW: Not used in ATA)
+        self._attr_preset_modes = ATW_PRESET_MODES
+
+        # Generate stable entity ID (format: melcloudhome_0efc_76db_zone_1)
+        unit_id_clean = unit.id.replace("-", "")
+
+        # Set entity name (HA will normalize this to entity_id)
+        # Format: "MELCloudHome 0efc 76db Zone 1" -> entity_id: "climate.melcloudhome_0efc_76db_zone_1"
+        self._attr_name = (
+            f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]} Zone 1"
+        )
+
+        # Device info (modern HA pattern) - groups with water_heater/sensors
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, unit.id)},
+            name=f"{building.name} {unit.name}",
+            manufacturer="Mitsubishi Electric",
+            model=f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model})",
+            suggested_area=building.name,
+        )
+
+        # Supported features
+        self._attr_supported_features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.PRESET_MODE
+            | ClimateEntityFeature.TURN_ON
+            | ClimateEntityFeature.TURN_OFF
+        )
+
+    @property
+    def _device(self) -> AirToWaterUnit | None:
+        """Get the current device from coordinator data - O(1) cached lookup."""
+        return self.coordinator.get_atw_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    @property
+    def _building(self) -> Building | None:
+        """Get the current building from coordinator data - O(1) cached lookup."""
+        return self.coordinator.get_building_for_atw_unit(self._unit_id)  # type: ignore[no-any-return]
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
+
+        device = self._device
+        if device is None:
+            return False
+
+        # Check if device is in error state
+        return not device.is_in_error
+
+    @property
+    def hvac_mode(self) -> HVACMode:
+        """Return current HVAC mode."""
+        device = self._device
+        if device is None or not device.power:
+            return HVACMode.OFF
+
+        # ATW is heat-only
+        return HVACMode.HEAT
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return current HVAC action (3-way valve aware).
+
+        CRITICAL: Must check if valve is serving THIS specific zone.
+        operation_status shows what valve is ACTIVELY doing.
+        operation_mode_zone1 shows CONFIGURED mode for Zone 1.
+
+        Valve serves Zone 1 only when: operation_status == operation_mode_zone1
+        """
+        device = self._device
+        if device is None or not device.power:
+            return HVACAction.OFF
+
+        # Check if 3-way valve is serving THIS zone (Zone 1)
+        # Don't just check "is it on a zone" - check if it's on ZONE 1 specifically
+        if device.operation_status == device.operation_mode_zone1:
+            # Valve is on Zone 1 - check if heating needed
+            current = device.room_temperature_zone1
+            target = device.set_temperature_zone1
+
+            if current is not None and target is not None and current < target - 0.5:
+                return HVACAction.HEATING
+            return HVACAction.IDLE
+
+        # Valve is elsewhere (DHW or Zone 2) - zone shows IDLE even if below target
+        return HVACAction.IDLE
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return current Zone 1 room temperature."""
+        device = self._device
+        if device is None:
+            return None
+        return device.room_temperature_zone1
+
+    @property
+    def target_temperature(self) -> float | None:
+        """Return target Zone 1 temperature."""
+        device = self._device
+        if device is None:
+            return None
+        return device.set_temperature_zone1
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return current preset mode."""
+        device = self._device
+        if device is None:
+            return None
+
+        # Map ATW zone mode to HA preset
+        return ATW_TO_HA_PRESET.get(device.operation_mode_zone1, "room")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes."""
+        device = self._device
+        if device is None:
+            return {}
+
+        return {
+            "operation_status": device.operation_status,  # 3-way valve position
+            "forced_dhw_active": device.forced_hot_water_mode,
+            "zone_heating_available": device.operation_status
+            == device.operation_mode_zone1,
+            "ftc_model": device.ftc_model,
+        }
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        """Set new HVAC mode."""
+        if hvac_mode == HVACMode.OFF:
+            # Turn off the entire system
+            await self.coordinator.async_set_power_atw(self._unit_id, False)
+        else:
+            # Turn on the system (HEAT mode)
+            await self.coordinator.async_set_power_atw(self._unit_id, True)
+
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        """Set new target Zone 1 temperature."""
+        temperature = kwargs.get("temperature")
+        if temperature is None:
+            return
+
+        # Validate temperature range
+        if temperature < self.min_temp or temperature > self.max_temp:
+            _LOGGER.warning(
+                "Zone 1 temperature %.1f is out of range (%.1f-%.1f)",
+                temperature,
+                self.min_temp,
+                self.max_temp,
+            )
+            return
+
+        # Set Zone 1 temperature
+        await self.coordinator.async_set_temperature_zone1(self._unit_id, temperature)
+
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set new preset mode (zone operation strategy).
+
+        room: HeatRoomTemperature (thermostat control)
+        flow: HeatFlowTemperature (flow temperature control)
+        curve: HeatCurve (weather compensation)
+        """
+        if preset_mode not in self.preset_modes:
+            _LOGGER.warning("Invalid preset mode: %s", preset_mode)
+            return
+
+        # Map HA preset to ATW zone mode
+        atw_mode = HA_TO_ATW_PRESET.get(preset_mode)
+        if atw_mode is None:
+            _LOGGER.warning("Unknown preset mode: %s", preset_mode)
+            return
+
+        # Set Zone 1 operation mode
+        await self.coordinator.async_set_mode_zone1(self._unit_id, atw_mode)
+
+        # Request debounced refresh to avoid race conditions
+        await self.coordinator.async_request_refresh_debounced()
+
+    async def async_turn_on(self) -> None:
+        """Turn the entity (entire ATW system) on."""
+        await self.coordinator.async_set_power_atw(self._unit_id, True)
+        await self.coordinator.async_request_refresh_debounced()
+
+    async def async_turn_off(self) -> None:
+        """Turn the entity (entire ATW system) off.
+
+        Note: This powers off the entire ATW system (matches official MELCloud app).
+        Both water_heater and climate entities can control system power.
+        """
+        await self.coordinator.async_set_power_atw(self._unit_id, False)
         await self.coordinator.async_request_refresh_debounced()

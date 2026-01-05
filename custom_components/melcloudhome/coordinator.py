@@ -356,6 +356,17 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """
         return self._atw_units.get(unit_id)
 
+    def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
+        """Get the building that contains the specified ATW unit - O(1) lookup.
+
+        Args:
+            unit_id: ATW unit ID
+
+        Returns:
+            Building containing the unit, or None if not found
+        """
+        return self._atw_unit_to_building.get(unit_id)
+
     async def _execute_with_retry(
         self,
         operation: Callable[[], Awaitable[Any]],
