@@ -1,0 +1,17 @@
+# Home Assistant Development Configuration
+
+default_config:
+
+# Enable logging
+logger:
+  default: info
+  logs:
+    custom_components.melcloudhome: debug
+
+# Development tools
+api:
+developer_tools:
+
+# Text to speech (for testing)
+tts:
+  - platform: google_translate
