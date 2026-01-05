@@ -61,27 +61,26 @@ VANE_HORIZONTAL_POSITIONS = [
 # ATW (Air-to-Water) Zone Modes → Climate Preset Modes (lowercase for i18n)
 # Display names in translations/en.json: "Room", "Flow", "Curve"
 ATW_TO_HA_PRESET = {
-    "HeatRoomTemperature": "room",  # Display: "Room"
-    "HeatFlowTemperature": "flow",  # Display: "Flow"
-    "HeatCurve": "curve",  # Display: "Curve"
+    "HeatRoomTemperature": "room",  # Display: "Room" (via translation)
+    "HeatFlowTemperature": "flow",  # Display: "Flow" (via translation)
+    "HeatCurve": "curve",  # Display: "Curve" (via translation)
 }
 
 HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
 
-# ATW Preset modes list (lowercase keys, translated in en.json)
+# ATW Preset modes list (lowercase - translated via translations/en.json)
 ATW_PRESET_MODES = ["room", "flow", "curve"]
 
 # Water Heater Operation Modes (match MELCloud Home app terminology)
-# "Auto": Normal operation, zone heating priority
-# "Force DHW": DHW priority mode, forces hot water heating
+# Capitalized for display - HACS integrations don't support translations for operation modes
 WATER_HEATER_FORCED_DHW_TO_HA = {
-    False: "auto",  # Normal operation
-    True: "force_dhw",  # Forced hot water mode
+    False: "Auto",  # Normal operation, zone heating priority
+    True: "Force DHW",  # DHW priority mode, forces hot water heating
 }
 
 WATER_HEATER_HA_TO_FORCED_DHW = {
-    "auto": False,
-    "force_dhw": True,
+    "Auto": False,
+    "Force DHW": True,
 }
 
 # ATW Temperature limits

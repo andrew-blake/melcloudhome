@@ -63,7 +63,6 @@ class ATWWaterHeater(
     """
 
     _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
-    _attr_translation_key = "melcloudhome"  # For operation mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_DHW
     _attr_max_temp = ATW_TEMP_MAX_DHW
@@ -95,7 +94,8 @@ class ATWWaterHeater(
         )
 
         # Operation modes (match MELCloud Home app terminology)
-        self._attr_operation_list = ["auto", "force_dhw"]
+        # Capitalized directly - translations don't work for water_heater in custom integrations
+        self._attr_operation_list = ["Auto", "Force DHW"]
 
     @property
     def current_temperature(self) -> float | None:
@@ -122,7 +122,7 @@ class ATWWaterHeater(
 
         # Map forced_hot_water_mode to operation mode
         mode: str = WATER_HEATER_FORCED_DHW_TO_HA.get(
-            device.forced_hot_water_mode, "auto"
+            device.forced_hot_water_mode, "Auto"
         )
         return mode
 
@@ -160,10 +160,10 @@ class ATWWaterHeater(
 
     @with_debounced_refresh()
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Set new operation mode (auto or force_dhw).
+        """Set new operation mode (Auto or Force DHW).
 
-        auto: Normal balanced operation, zone heating priority
-        force_dhw: DHW priority mode, forces hot water heating
+        Auto: Normal balanced operation, zone heating priority
+        Force DHW: DHW priority mode, forces hot water heating
         """
         if operation_mode not in self.operation_list:
             _LOGGER.warning("Invalid operation mode: %s", operation_mode)
