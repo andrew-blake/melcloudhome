@@ -63,6 +63,16 @@ MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
 TEST_ATW_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
 TEST_ATW_BUILDING_ID = "building-test-id"
 
+# Test entity IDs (calculated from TEST_ATW_UNIT_ID)
+# Unit ID 0efc1234-5678-9abc... → first 4 chars: 0efc, last 4 chars: 9abc
+TEST_CLIMATE_ZONE1_ENTITY_ID = "climate.melcloudhome_0efc_9abc_zone_1"
+TEST_WATER_HEATER_ENTITY_ID = "water_heater.melcloudhome_0efc_9abc_tank"
+TEST_SWITCH_SYSTEM_POWER = "switch.melcloudhome_0efc_9abc_system_power"
+TEST_SENSOR_ZONE1_TEMP = "sensor.melcloudhome_0efc_9abc_zone_1_temperature"
+TEST_SENSOR_TANK_TEMP = "sensor.melcloudhome_0efc_9abc_tank_temperature"
+TEST_BINARY_SENSOR_ERROR = "binary_sensor.melcloudhome_0efc_9abc_error_state"
+TEST_BINARY_SENSOR_CONNECTION = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
+
 
 def create_mock_atw_unit(
     unit_id: str = TEST_ATW_UNIT_ID,

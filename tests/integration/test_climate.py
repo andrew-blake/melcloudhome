@@ -24,6 +24,8 @@ from custom_components.melcloudhome.api.models import (
 from custom_components.melcloudhome.const import DOMAIN
 
 from .conftest import (
+    TEST_ATW_UNIT_ID,
+    TEST_CLIMATE_ZONE1_ENTITY_ID,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
@@ -607,13 +609,17 @@ async def test_atw_set_temperature_zone1(hass: HomeAssistant) -> None:
             "climate",
             "set_temperature",
             {
-                "entity_id": "climate.melcloudhome_0efc_9abc_zone_1",
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
                 "temperature": 22.5,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_temperature_zone1.assert_called_once_with(
+            TEST_ATW_UNIT_ID, 22.5
+        )
 
 
 @pytest.mark.asyncio
@@ -646,13 +652,15 @@ async def test_atw_hvac_mode_off_powers_down_system(hass: HomeAssistant) -> None
             "climate",
             "set_hvac_mode",
             {
-                "entity_id": "climate.melcloudhome_0efc_9abc_zone_1",
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
                 "hvac_mode": HVACMode.OFF,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, False)
 
 
 @pytest.mark.asyncio
@@ -685,13 +693,15 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
             "climate",
             "set_hvac_mode",
             {
-                "entity_id": "climate.melcloudhome_0efc_9abc_zone_1",
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
                 "hvac_mode": HVACMode.HEAT,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
 
 
 @pytest.mark.asyncio

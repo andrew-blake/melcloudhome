@@ -28,6 +28,8 @@ from custom_components.melcloudhome.const import DOMAIN
 # Import shared test helpers from conftest
 from .conftest import (
     MOCK_CLIENT_PATH,
+    TEST_ATW_UNIT_ID,
+    TEST_WATER_HEATER_ENTITY_ID,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
@@ -82,13 +84,15 @@ async def test_set_temperature_updates_dhw_temp(hass: HomeAssistant) -> None:
             "water_heater",
             "set_temperature",
             {
-                "entity_id": "water_heater.melcloudhome_0efc_9abc_tank",
+                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
                 "temperature": 55,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_dhw_temperature.assert_called_once_with(TEST_ATW_UNIT_ID, 55)
 
 
 @pytest.mark.asyncio
@@ -117,7 +121,7 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # Check initial state
-        state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+        state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
         assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
 
         # Call set_operation_mode service
@@ -125,13 +129,15 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
             "water_heater",
             "set_operation_mode",
             {
-                "entity_id": "water_heater.melcloudhome_0efc_9abc_tank",
+                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
                 "operation_mode": STATE_PERFORMANCE,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_forced_hot_water.assert_called_once_with(TEST_ATW_UNIT_ID, True)
 
 
 @pytest.mark.asyncio
@@ -160,7 +166,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # Check initial state
-        state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+        state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
         assert state.attributes[ATTR_OPERATION_MODE] == STATE_PERFORMANCE
 
         # Call set_operation_mode service
@@ -168,13 +174,17 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
             "water_heater",
             "set_operation_mode",
             {
-                "entity_id": "water_heater.melcloudhome_0efc_9abc_tank",
+                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
                 "operation_mode": STATE_ECO,
             },
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify API was called correctly
+        await hass.async_block_till_done()
+        mock_client.set_forced_hot_water.assert_called_once_with(
+            TEST_ATW_UNIT_ID, False
+        )
 
 
 @pytest.mark.asyncio
@@ -204,7 +214,7 @@ async def test_turn_on_powers_entire_system(hass: HomeAssistant) -> None:
 
         # Check initial state - when powered off, state might still show operation mode
         # The is_on attribute reflects power state
-        state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+        state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
         # State could be operation mode even when off - check via attributes or just verify entity exists
         assert state is not None
 
@@ -212,11 +222,13 @@ async def test_turn_on_powers_entire_system(hass: HomeAssistant) -> None:
         await hass.services.async_call(
             "water_heater",
             "turn_on",
-            {"entity_id": "water_heater.melcloudhome_0efc_9abc_tank"},
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID},
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify system was powered on
+        await hass.async_block_till_done()
+        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
 
 
 @pytest.mark.asyncio
@@ -245,7 +257,7 @@ async def test_turn_off_powers_entire_system(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # Check initial state
-        state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+        state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
         assert state is not None
         # Water heater state is operation mode (eco/performance), not ON/OFF
         assert state.state in [STATE_ECO, STATE_PERFORMANCE]
@@ -254,11 +266,13 @@ async def test_turn_off_powers_entire_system(hass: HomeAssistant) -> None:
         await hass.services.async_call(
             "water_heater",
             "turn_off",
-            {"entity_id": "water_heater.melcloudhome_0efc_9abc_tank"},
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID},
             blocking=True,
         )
 
-        # Service succeeded without errors
+        # Verify system was powered off
+        await hass.async_block_till_done()
+        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, False)
 
 
 @pytest.mark.asyncio
