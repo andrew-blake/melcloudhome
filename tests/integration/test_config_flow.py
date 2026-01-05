@@ -17,7 +17,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
-from custom_components.melcloudhome.const import DOMAIN
+from custom_components.melcloudhome.const import CONF_DEBUG_MODE, DOMAIN
 
 
 @pytest.mark.asyncio
@@ -142,6 +142,7 @@ async def test_initial_user_setup_success(
     assert result["data"] == {
         CONF_EMAIL: "test@example.com",
         CONF_PASSWORD: "password123",
+        CONF_DEBUG_MODE: False,
     }
 
     # Verify client login was called

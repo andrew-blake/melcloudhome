@@ -116,6 +116,7 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature_zone1,
+        should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
     # Tank water temperature
@@ -126,6 +127,7 @@ ATW_SENSOR_TYPES: tuple[MELCloudHomeATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.tank_water_temperature,
+        should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.tank_water_temperature is not None,
     ),
     # Operation status (3-way valve position - raw API values)

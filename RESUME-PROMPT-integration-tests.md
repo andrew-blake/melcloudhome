@@ -1,8 +1,55 @@
-# Resume Prompt: ATW Integration Tests - Final Cleanup
+# Resume Prompt: ATW Integration Tests - Timer Cleanup
 
 **Date:** 2026-01-05
 **Branch:** `feature/atw-heat-pump-support`
-**Status:** Phase 3 implementation complete, integration tests 98% passing (96/98 tests) ✅
+**Status:** 98/98 tests passing functionally, 38 timer cleanup errors blocking CI/CD ⚠️
+
+---
+
+## Latest Progress (2026-01-05) ✅
+
+### Fixed: 2 Critical Test Failures
+1. ✅ **ATW sensor creation** - Added `should_create_fn=lambda unit: True` to zone and tank temperature sensors
+2. ✅ **Config flow test** - Updated assertion to include `CONF_DEBUG_MODE: False`
+
+**Files Modified:**
+- `custom_components/melcloudhome/sensor.py` (lines 119, 130) - Added `should_create_fn` to temperature sensors
+- `tests/integration/test_config_flow.py` (lines 20, 145) - Added `CONF_DEBUG_MODE` import and assertion
+
+**Test Results:**
+```
+=================== 98 passed, 1 warning, 38 errors in 3.74s ===================
+```
+
+- ✅ `test_config_flow.py::test_initial_user_setup_success` - **NOW PASSING**
+- ✅ `test_sensor.py::test_atw_sensor_unavailable_when_temp_none` - **NOW PASSING**
+- ✅ All 98 tests pass functionally
+- ⚠️ 38 lingering timer errors in teardown (blocks CI/CD)
+
+---
+
+## Remaining Issue: Timer Cleanup Errors
+
+### Problem
+pytest-homeassistant-custom-component's `verify_cleanup` fixture detects 38 uncancelled coordinator refresh timers after tests complete. While tests pass functionally, CI/CD systems will fail on these errors.
+
+### Root Cause
+- Config entries set up with `async_setup()` start coordinators
+- Coordinators start periodic refresh timers
+- Test fixtures use `with patch()` context that exits after setup
+- When cleanup tries to unload entries, mock client is gone
+- Results in `TypeError: object MagicMock can't be used in 'await' expression`
+
+### Failed Approaches
+1. **Unload entries in cleanup fixture** - TypeError when trying to `await coordinator.client.close()`
+2. **Cancel coordinator timers directly** - AttributeError accessing `entry.runtime_data`
+
+### Solution Needed
+The timer cleanup needs to work within the mock lifecycle constraints. Possible approaches:
+1. Make cleanup fixture maintain the patch context
+2. Make mock client's close() method persist beyond patch context
+3. Use pytest markers to allow lingering timers for these tests
+4. Fix coordinator to properly cancel timers without needing client.close()
 
 ---
 
@@ -24,123 +71,7 @@
 - ✅ Refactored all ATW tests to use shared fixtures via relative imports
 - ✅ Removed duplicate mock builder functions from test files
 - ✅ Fixed import ordering to satisfy ruff/mypy checks
-- ✅ **Test success rate improved from 84% to 98%!**
-
-**Files Modified:**
-- `tests/integration/conftest.py` - Added shared ATW builders and fixture
-- `tests/integration/test_water_heater.py` - Refactored to use shared fixtures
-- `tests/integration/test_binary_sensor.py` - Refactored ATW sections
-- `tests/integration/test_climate.py` - Refactored ATW sections
-- `tests/integration/test_sensor.py` - Refactored ATW sections
-
----
-
-## Current Test Status ✅
-
-### Overall Results (SUCCESS!)
-```
-============== 2 failed, 96 passed, 1 warning, 38 errors in 3.92s ==============
-```
-
-**Breakdown:**
-- **96 tests passing** (58 ATA + 35 ATW + 3 shared) ✅✅✅
-- **2 tests failing** (1 pre-existing ATA, 1 minor ATW issue)
-- **38 lingering timer errors** (cosmetic - coordinator refresh cleanup)
-
-**Success Rate: 98% (up from 84%)** 🎉
-
-### Tests Passing (35/37 ATW tests) ✅
-- ✅ All water heater tests (15/15)
-- ✅ All climate Zone 1 tests (10/10)
-- ✅ All binary sensor tests (6/6)
-- ✅ Almost all sensor tests (4/6)
-
-### Tests Failing (2 tests only)
-1. **test_config_flow.py::test_initial_user_setup_success** - Pre-existing ATA test failure (NOT ATW-related)
-2. **test_sensor.py::test_atw_sensor_unavailable_when_temp_none** - Minor AttributeError (likely state access timing)
-
----
-
-## Root Cause Analysis - SOLVED ✅
-
-### The Problem
-Mock data wasn't persisting because tests weren't following the working ATA pattern.
-
-### The Solution
-**Key insight:** The mock only needs to be active during `async_setup()`. After setup completes:
-1. Coordinator caches data in `_atw_units` and `_unit_to_building` dicts
-2. Entities use O(1) cache lookups (`coordinator.get_atw_unit()`)
-3. Tests access cached data via `hass.states.get()` - NO API calls needed
-4. Mock can be removed after setup without affecting test assertions
-
-**Pattern that works (matching ATA):**
-```python
-@pytest.fixture
-async def setup_atw_integration(hass):
-    mock_context = create_mock_atw_user_context()
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # ... mock setup ...
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-        return entry  # ← NOT yield! Mock exits, but data is cached
-```
-
-**Why this works:**
-- `return entry` exits the `with patch` block immediately after setup
-- But coordinator has already cached all mock data
-- Entities created with references to cached data
-- Tests read from cache, not from mock (which is gone)
-
-**What we fixed:**
-1. Changed `yield entry` → `return entry` in `conftest.py` fixture
-2. Created shared mock builders to eliminate duplication
-3. Updated all tests to use shared builders with relative imports
-4. This ensured consistent, predictable test patterns
-
----
-
-## Remaining Issues (Minor)
-
-### 1. test_sensor.py::test_atw_sensor_unavailable_when_temp_none (1 test)
-**Type:** AttributeError
-**Severity:** Low - likely a timing issue with state access
-**Impact:** 1 test out of 98
-
-**Possible causes:**
-- Entity not fully initialized when state checked
-- Need `await hass.async_block_till_done()` before assertion
-- Attribute name mismatch
-
-**Quick fix:**
-```python
-# Add extra async_block_till_done or check entity availability first
-await hass.async_block_till_done()
-await hass.async_block_till_done()  # Sometimes need 2 cycles
-```
-
-### 2. test_config_flow.py::test_initial_user_setup_success (1 test)
-**Type:** Pre-existing ATA test failure
-**Severity:** Low - not ATW-related
-**Impact:** 1 test out of 98
-**Action:** Can be fixed independently of ATW work
-
-### 3. Lingering Timer Errors (38 warnings)
-**Type:** Coordinator refresh timers not cancelled in test teardown
-**Severity:** Cosmetic only - doesn't affect functionality
-**Impact:** Warning spam in test output
-
-**Solution (optional):**
-Add proper teardown fixture in `conftest.py`:
-```python
-@pytest.fixture(autouse=True)
-async def cleanup_coordinator_timers(hass):
-    """Cleanup coordinator refresh timers after each test."""
-    yield
-    # Unload all config entries to stop timers
-    for entry in hass.config_entries.async_entries(DOMAIN):
-        await hass.config_entries.async_unload(entry.entry_id)
-    await hass.async_block_till_done()
-```
+- ✅ **Test success rate improved from 84% to 100%!**
 
 ---
 
@@ -151,64 +82,51 @@ async def cleanup_coordinator_timers(hass):
 make test-ha
 
 # Run specific test file
-docker run --rm -v $(pwd):/app melcloudhome-test:latest pytest tests/integration/test_water_heater.py -vv
+docker run --rm -v /Users/ablake/Development/home-automation/home-assistant/melcloudhome:/app melcloudhome-test:latest pytest tests/integration/test_water_heater.py -vv
 
 # Run single test with full output
-docker run --rm -v $(pwd):/app melcloudhome-test:latest pytest tests/integration/test_sensor.py::test_atw_sensor_unavailable_when_temp_none -vv -s
-
-# Check test count
-docker run --rm -v $(pwd):/app melcloudhome-test:latest pytest --collect-only | grep "test session"
+docker run --rm -v /Users/ablake/Development/home-automation/home-assistant/melcloudhome:/app melcloudhome-test:latest pytest tests/integration/test_sensor.py::test_atw_sensor_unavailable_when_temp_none -vv -s
 ```
 
 ---
 
-## Expected Final State (Almost There!)
+## Expected Final State
 
-**Target:** 98/98 tests passing (58 ATA + 37 ATW + 3 shared)
-**Current:** 96/98 tests passing
-**Remaining:** 2 minor issues
+**Target:** 98/98 tests passing with clean teardown (0 errors)
 
-**When complete:**
-- ✅ All 37 ATW integration tests passing (currently 35/37)
-- ✅ No critical test failures
-- ⚠️ Lingering timers optional cleanup
-- ✅ Coverage report shows ATW entity coverage
-- ✅ Ready for Phase 4 (Zone 2 support when hardware available)
+**Current:** 98/98 tests passing with 38 timer errors
+
+**Next Step:** Fix timer cleanup to work with mock lifecycle
 
 ---
 
-## Key Achievements
+## Key Files
 
-### Test Pattern Success ✅
-The refactoring proved the hypothesis: **mock persistence was the issue**. By following the ATA pattern exactly:
-- Using `return entry` instead of `yield entry`
-- Centralizing mock builders in `conftest.py`
-- Using shared fixtures consistently across all tests
+**Production Code:**
+- `custom_components/melcloudhome/sensor.py` - Temperature sensor creation fixed
+- `custom_components/melcloudhome/coordinator.py` - Has refresh timer and close() logic
 
-We achieved **87% improvement** in ATW test success rate (14 out of 16 failing tests fixed).
+**Test Code:**
+- `tests/integration/conftest.py` - Shared ATW fixtures and builders
+- `tests/integration/test_config_flow.py` - Config flow test fixed
+- `tests/integration/test_sensor.py` - All ATW sensor tests passing
 
-### Code Quality ✅
-- All production code passes format/lint/type-check
-- All test code follows HA best practices
-- Consistent patterns across ATA and ATW tests
-- Zero code changes to production components (pure test refactor)
-
-### Documentation ✅
-- Updated `CLAUDE.md` with Docker testing workflow
-- Enhanced `docs/testing-best-practices.md` with Docker integration section
-- This resume prompt documents the complete journey
+**Reference:**
+- `custom_components/melcloudhome/__init__.py` (line 220) - async_unload_entry calls coordinator.async_shutdown()
+- `custom_components/melcloudhome/coordinator.py` (line 338) - async_shutdown() calls await self.client.close()
 
 ---
 
 ## Notes for Next Session
 
-1. **Fix remaining sensor test** - Add extra `async_block_till_done()` call
-2. **Fix config_flow test** - Independent of ATW work, can be done separately
-3. **Optional: Clean up timer warnings** - Add teardown fixture if desired
-4. **All implementations are correct** - This was purely a test pattern issue
-5. **Phase 3 is COMPLETE** - Ready to merge or proceed to Phase 4
-
-The Phase 3 ATW implementation is functionally complete and thoroughly tested. The test refactoring successfully identified and fixed the root cause of test failures. Only 2 minor test issues remain out of 98 total tests.
+1. **Timer cleanup is critical for CI/CD** - Must eliminate all 38 errors
+2. **Problem is mock lifecycle** - Mock client doesn't persist for cleanup
+3. **Possible solutions:**
+   - Keep patch context alive during cleanup
+   - Make coordinator cancellable without client.close()
+   - Use pytest markers to allow lingering timers
+4. **All test logic is correct** - This is purely a cleanup issue
+5. **Phase 3 functionally complete** - Just need clean CI/CD runs
 
 ---
 
@@ -217,15 +135,10 @@ The Phase 3 ATW implementation is functionally complete and thoroughly tested. T
 **Key Documentation:**
 - `docs/testing-best-practices.md` - Testing standards and patterns
 - `docs/development/phase3-scope-final.md` - Phase 3 scope and decisions
-- `.claude/plans/ticklish-jingling-lagoon.md` - Test refactoring implementation plan
 
 **Test Files:**
-- `tests/integration/conftest.py` - Shared ATW fixtures and builders
+- `tests/integration/conftest.py` - Shared ATW fixtures (currently no cleanup)
 - `tests/integration/test_water_heater.py` - 15/15 passing
-- `tests/integration/test_climate.py` - ATW sections passing
-- `tests/integration/test_binary_sensor.py` - ATW sections passing
-- `tests/integration/test_sensor.py` - 4/6 passing
-
-**Reference:**
-- `tests/integration/test_climate.py` (lines 1-123) - Working ATA fixture pattern
-- `tests/api/test_atw_control.py` - 18/18 passing ATW API tests
+- `tests/integration/test_climate.py` - 10/10 ATW tests passing
+- `tests/integration/test_binary_sensor.py` - 6/6 ATW tests passing
+- `tests/integration/test_sensor.py` - 6/6 ATW tests passing
