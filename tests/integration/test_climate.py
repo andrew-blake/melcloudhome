@@ -623,47 +623,6 @@ async def test_atw_set_temperature_zone1(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_atw_hvac_mode_off_powers_down_system(hass: HomeAssistant) -> None:
-    """Test setting HVAC mode to OFF powers down entire ATW system."""
-    mock_unit = create_mock_atw_unit(power=True)
-    mock_context = create_mock_atw_user_context(
-        [create_mock_atw_building(units=[mock_unit])]
-    )
-
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_power_atw = AsyncMock()
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Call set_hvac_mode service
-        await hass.services.async_call(
-            "climate",
-            "set_hvac_mode",
-            {
-                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
-                "hvac_mode": HVACMode.OFF,
-            },
-            blocking=True,
-        )
-
-        # Verify API was called correctly
-        await hass.async_block_till_done()
-        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, False)
-
-
-@pytest.mark.asyncio
 async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
     """Test setting HVAC mode to HEAT powers up ATW system."""
     mock_unit = create_mock_atw_unit(power=False)

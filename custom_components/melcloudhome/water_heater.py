@@ -89,11 +89,10 @@ class ATWWaterHeater(
         # Device info using shared helper (groups with climate/sensors)
         self._attr_device_info = create_atw_device_info(unit, building)
 
-        # Supported features
+        # Supported features (use switch for power control)
         self._attr_supported_features = (
             WaterHeaterEntityFeature.TARGET_TEMPERATURE
             | WaterHeaterEntityFeature.OPERATION_MODE
-            | WaterHeaterEntityFeature.ON_OFF
         )
 
         # Operation modes
@@ -174,17 +173,3 @@ class ATWWaterHeater(
         # Map HA operation mode to forced_hot_water_mode
         forced_dhw = WATER_HEATER_HA_TO_FORCED_DHW.get(operation_mode, False)
         await self.coordinator.async_set_forced_hot_water(self._unit_id, forced_dhw)
-
-    @with_debounced_refresh()
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the water heater (entire ATW system) on."""
-        await self.coordinator.async_set_power_atw(self._unit_id, True)
-
-    @with_debounced_refresh()
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the water heater (entire ATW system) off.
-
-        Note: This powers off the entire ATW system (matches official MELCloud app).
-        Both water_heater and climate entities can control system power.
-        """
-        await self.coordinator.async_set_power_atw(self._unit_id, False)

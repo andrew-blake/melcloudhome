@@ -126,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.SWITCH,
         Platform.WATER_HEATER,
     ]
 
@@ -209,6 +210,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.SWITCH,
         Platform.WATER_HEATER,
     ]
 

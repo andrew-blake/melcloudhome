@@ -365,8 +365,8 @@ class ATWClimateZone1(
         self._attr_unique_id = f"{unit.id}_zone_1"
         self._entry = entry
 
-        # HVAC modes (ATW is heat-only)
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+        # HVAC modes (ATW is heat-only, use switch for power control)
+        self._attr_hvac_modes = [HVACMode.HEAT]
 
         # Preset modes (NEW: Not used in ATA)
         self._attr_preset_modes = ATW_PRESET_MODES
@@ -379,10 +379,7 @@ class ATWClimateZone1(
 
         # Supported features
         self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE
-            | ClimateEntityFeature.PRESET_MODE
-            | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.TURN_OFF
+            ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
         )
 
     @property
@@ -466,13 +463,18 @@ class ATWClimateZone1(
 
     @with_debounced_refresh()
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set new HVAC mode."""
-        if hvac_mode == HVACMode.OFF:
-            # Turn off the entire system
-            await self.coordinator.async_set_power_atw(self._unit_id, False)
-        else:
+        """Set new HVAC mode.
+
+        Note: Only HEAT mode is supported. Use the system power switch to turn off.
+        """
+        if hvac_mode == HVACMode.HEAT:
             # Turn on the system (HEAT mode)
             await self.coordinator.async_set_power_atw(self._unit_id, True)
+        else:
+            _LOGGER.warning(
+                "Invalid HVAC mode %s for ATW. Only HEAT is supported. Use switch entity for power control.",
+                hvac_mode,
+            )
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -504,17 +506,3 @@ class ATWClimateZone1(
 
         # Set Zone 1 operation mode
         await self.coordinator.async_set_mode_zone1(self._unit_id, atw_mode)
-
-    @with_debounced_refresh()
-    async def async_turn_on(self) -> None:
-        """Turn the entity (entire ATW system) on."""
-        await self.coordinator.async_set_power_atw(self._unit_id, True)
-
-    @with_debounced_refresh()
-    async def async_turn_off(self) -> None:
-        """Turn the entity (entire ATW system) off.
-
-        Note: This powers off the entire ATW system (matches official MELCloud app).
-        Both water_heater and climate entities can control system power.
-        """
-        await self.coordinator.async_set_power_atw(self._unit_id, False)
