@@ -59,3 +59,6 @@ tools/energy_recording_*.json
 tools/recorder.log*
 *.har
 *.zip
+
+# Upgrade verification testing
+dev-config-snapshots/

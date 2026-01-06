@@ -74,6 +74,42 @@ dev-reset-full:  ## Complete reset (wipe everything, run init script)
 	@echo "🌐 Home Assistant: http://localhost:8123"
 	@echo "⚠️  You'll need to create user and configure integration"
 
+dev-snapshot:  ## Save current dev environment state (SNAPSHOT=path/to/save)
+	@if [ -z "$(SNAPSHOT)" ]; then \
+		echo "❌ Error: SNAPSHOT parameter required"; \
+		echo "Usage: make dev-snapshot SNAPSHOT=dev-config-snapshots/my-test-state"; \
+		exit 1; \
+	fi
+	@if [ ! "$$(docker ps -q -f name=ha-melcloud-dev)" ]; then \
+		echo "❌ Error: Home Assistant container not running"; \
+		echo "Start it first with: make dev-up"; \
+		exit 1; \
+	fi
+	@mkdir -p $(SNAPSHOT)
+	docker cp ha-melcloud-dev:/config/.storage $(SNAPSHOT)/
+	docker cp ha-melcloud-dev:/config/.storage/core.entity_registry $(SNAPSHOT)/entity_registry.json
+	docker cp ha-melcloud-dev:/config/.storage/core.device_registry $(SNAPSHOT)/device_registry.json
+	@echo "✅ Snapshot saved to: $(SNAPSHOT)"
+	@echo "📊 Restore with: make dev-restore-snapshot SNAPSHOT=$(SNAPSHOT)"
+
+dev-restore-snapshot:  ## Restore dev environment from snapshot (SNAPSHOT=path/to/snapshot)
+	@if [ -z "$(SNAPSHOT)" ]; then \
+		echo "❌ Error: SNAPSHOT parameter required"; \
+		echo "Usage: make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/scenario-a-real-api/prod-baseline"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(SNAPSHOT)/.storage" ]; then \
+		echo "❌ Error: Snapshot not found: $(SNAPSHOT)/.storage"; \
+		exit 1; \
+	fi
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage
+	cp -r $(SNAPSHOT)/.storage dev-config/
+	docker compose -f docker-compose.dev.yml up homeassistant -d
+	@echo "✅ Dev environment restored from snapshot: $(SNAPSHOT)"
+	@echo "🌐 Home Assistant: http://localhost:8123"
+	@echo "⚠️  Mock server NOT started (use 'make dev-up' if needed)"
+
 dev-logs:  ## View Home Assistant logs (Ctrl+C to exit)
 	docker compose -f docker-compose.dev.yml logs -f homeassistant
 

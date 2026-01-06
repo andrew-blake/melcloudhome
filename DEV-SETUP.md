@@ -67,6 +67,8 @@ make dev-logs
 - `make dev-restart` - Restart HA (reload code changes)
 - `make dev-logs` - View HA logs
 - `make dev-reset` - Reset environment (clear entity registry)
+- `make dev-snapshot SNAPSHOT=path` - Save current state to snapshot
+- `make dev-restore-snapshot SNAPSHOT=path` - Restore from saved snapshot
 - `make dev-rebuild` - Rebuild mock server image
 - `make dev-down` - Stop environment
 
@@ -88,6 +90,48 @@ This restores the dev environment to a clean snapshot with:
 
 You'll need to add the integration through the UI (Settings → Devices & Services).
 Much faster than creating the user account from scratch!
+
+### Save and restore snapshots:
+
+**Save current state:**
+
+Capture the current running environment state to a snapshot:
+
+```bash
+# Save current state with a descriptive name
+make dev-snapshot SNAPSHOT=dev-config-snapshots/my-test-state
+
+# Example: Save baseline before testing
+make dev-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
+```
+
+**What gets saved:**
+- Complete `.storage` directory (all entity/device registries, auth, etc.)
+- Separate copies of entity and device registries for easy inspection
+
+**Restore from snapshot:**
+
+Restore a previously saved configuration:
+
+```bash
+# Restore from your saved snapshot
+make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/my-test-state
+
+# Example: Restore baseline for comparison
+make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
+```
+
+**Use cases:**
+- Save state before/after major changes for comparison testing
+- Create known-good checkpoints during development
+- Revert to a baseline after testing
+- Switch between different test configurations
+- Upgrade verification testing (save before, compare after)
+
+**Notes:**
+- Snapshot command requires Home Assistant container to be running
+- Restore command stops containers, restores state, starts only HA (not mock server)
+- Use `make dev-up` after restore if you need the mock server
 
 ### Complete reset (wipe everything):
 
