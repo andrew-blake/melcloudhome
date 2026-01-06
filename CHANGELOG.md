@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.0] - 2026-01-06
+
+### ⚠️ Experimental Features
+
+**Air-to-Water (ATW) Heat Pump Support - EXPERIMENTAL**
+
+This release adds experimental support for Ecodan ATW heat pumps. **This feature is NOT tested on real hardware** and is based entirely on HAR captures from a user's MELCloud Home web interface.
+
+**⚠️ USE AT YOUR OWN RISK ⚠️**
+
+- Implementation is theoretical and may not work correctly with physical hardware
+- No guarantees of safety or correctness
+- Testers wanted! See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for details
+
+**If you have an Ecodan ATW system and want to test, please read the experimental documentation carefully and report your findings.**
+
+### Added
+
+- **⚠️ EXPERIMENTAL:** Air-to-Water (ATW) heat pump support (Ecodan)
+  - Water heater platform for DHW tank control
+  - Switch platform for system power control
+  - Climate platform for Zone 1 heating
+  - Preset modes (Room Temperature, Flow Temperature, Curve Control)
+  - ATW-specific sensors (tank temperature, flow temperature, return temperature, DHW flow temperature)
+  - Binary sensors (error status, connection status)
+  - See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
+- Local development environment with Docker Compose and mock API server
+- Upgrade verification tooling (`tools/compare_upgrade_snapshots.py`)
+
+### Changed
+
+- Entity naming pattern updated to use `has_entity_name=True` for Home Assistant compatibility
+  - **Existing installations:** Entity IDs preserved, device names automatically set to friendly location names
+  - **New installations:** ATA Climate entity IDs include descriptive suffix (e.g., `_climate`)
+  - Device names show friendly locations (e.g., "Living Room") instead of UUIDs
+  - **No action required** for existing users
+
+### Fixed
+
+- "Recreate entity ID" button now generates stable IDs instead of breaking automations
+
 ## [1.3.4] - 2025-12-09
 
 ### Fixed

@@ -12,6 +12,8 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 
 ## Features
 
+### Air-to-Air (ATA) Systems
+
 - **HVAC Control**: Power, temperature, mode (heat/cool/dry/fan/auto), fan speed, and swing modes
 - **Energy Monitoring**: Track cumulative energy consumption with persistent storage
 - **Sensors**:
@@ -25,6 +27,16 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - **Automatic Updates**: 60-second polling for climate/sensors, 30-minute polling for energy data
 - **Diagnostics Support**: Export integration diagnostics for troubleshooting
 
+### ⚠️ Air-to-Water (ATW) Heat Pumps (EXPERIMENTAL)
+
+- **Climate Control**: Zone 1 heating with temperature and mode control
+- **DHW Tank Control**: Water heater platform for domestic hot water management
+- **System Power**: Switch platform for system on/off control
+- **Preset Modes**: Room Temperature, Flow Temperature, Curve Control
+- **Sensors**: Tank temperature, flow temperature, return temperature, DHW flow temperature, WiFi signal, error status
+- **⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
+- **See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
+
 ## Requirements
 
 - Home Assistant 2024.11.0 or newer
@@ -32,6 +44,8 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - Internet connection for cloud API access
 
 ## Supported Devices
+
+### Air-to-Air (ATA) - Air Conditioning Units
 
 This integration supports Mitsubishi Electric air conditioning units connected via **MELCloud Home** WiFi adapters.
 
@@ -42,6 +56,15 @@ This integration supports Mitsubishi Electric air conditioning units connected v
 > **Note:** If your system uses the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
 For the complete list of tested hardware, technical notes, and compatibility details, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
+
+### ⚠️ Air-to-Water (ATW) - Heat Pumps (EXPERIMENTAL)
+
+- **Status:** NOT yet tested on real hardware - based on HAR captures only
+- **Theoretical compatibility:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
+- **Reference system:** Ecodan EHSCVM2D Hydrokit with FTC6 controller
+- **Supports:** Zone 1 heating, DHW control, 3-way valve systems
+- **Coming soon:** Zone 2 heating support, real hardware validation
+- **⚠️ Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) before using ATW features**
 
 ## Installation
 
@@ -75,21 +98,57 @@ Your devices will be automatically discovered and added.
 
 ## Entities Created
 
+### Air-to-Air (ATA) Systems
+
 For each air conditioning unit, the following entities are created:
 
-### Climate Entity
+#### Climate Entity
 
 - **Entity ID**: `climate.melcloudhome_<unit_id>`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
-### Sensors
+#### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_<unit_id>_room_temperature`
 - **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_<unit_id>_energy` (cumulative kWh)
 
-### Binary Sensors
+#### Binary Sensors
+
+- **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
+- **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
+
+### ⚠️ Air-to-Water (ATW) Systems (EXPERIMENTAL)
+
+For each heat pump system, the following entities are created:
+
+#### Climate Entity
+
+- **Entity ID**: `climate.melcloudhome_<unit_id>`
+- **Features**: Zone 1 heating control, temperature setting, preset modes
+- **Preset Modes**: Room Temperature, Flow Temperature, Curve Control
+
+#### Water Heater Entity
+
+- **Entity ID**: `water_heater.melcloudhome_<unit_id>`
+- **Features**: DHW tank temperature control, operation modes (Auto/Force DHW)
+
+#### Switch Entity
+
+- **Entity ID**: `switch.melcloudhome_<unit_id>_system_power`
+- **Features**: System power control (alternative to climate/water heater power)
+
+#### Sensors
+
+- **Zone 1 Temperature**: `sensor.melcloudhome_<unit_id>_zone_1_temperature`
+- **DHW Tank Temperature**: `sensor.melcloudhome_<unit_id>_dhw_tank_temperature`
+- **Flow Temperature**: `sensor.melcloudhome_<unit_id>_flow_temperature`
+- **Return Temperature**: `sensor.melcloudhome_<unit_id>_return_temperature`
+- **DHW Flow Temperature**: `sensor.melcloudhome_<unit_id>_dhw_flow_temperature`
+- **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal`
+
+#### Binary Sensors
 
 - **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
 - **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`

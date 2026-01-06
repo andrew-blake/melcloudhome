@@ -468,7 +468,7 @@ client.set_frost_protection(unit_ids, ...)     # Multi-unit
 - `sensor.melcloudhome_{name}_wifi_signal` - RSSI
 - `sensor.melcloudhome_{name}_energy` - Energy consumption (if available)
 
-**Note:** Zone 2 entities created only if `hasZone2=true`
+**Note:** Zone 2 support planned for future release (v2.0.0 supports Zone 1 only)
 
 ---
 
@@ -770,7 +770,7 @@ payload = {
 ```python
 # Check capabilities before controlling
 if unit.capabilities.has_zone2:
-    # Can control Zone 2
+    # Zone 2 control (planned for future release)
     await client.set_zone2_temperature(unit.id, 20.0)
 ```
 

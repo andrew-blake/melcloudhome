@@ -62,3 +62,5 @@ tools/recorder.log*
 
 # Upgrade verification testing
 dev-config-snapshots/
+RESUME*.md
+MOCK_SERVER_VALIDATION.md
