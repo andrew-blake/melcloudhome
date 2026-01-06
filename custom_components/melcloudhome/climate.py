@@ -35,7 +35,6 @@ from .const import (
     ATWEntityBase,
     create_atw_device_info,
     create_device_info,
-    create_entity_name,
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
@@ -94,8 +93,8 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
         self._attr_unique_id = unit.id
         self._entry = entry
 
-        # Generate entity name using shared helper (no suffix for ATA base entity)
-        self._attr_name = create_entity_name(unit, "")
+        # Short entity name (device name provides UUID prefix)
+        self._attr_name = "Climate"
 
         # Device info using shared helper
         self._attr_device_info = create_device_info(unit, building)
