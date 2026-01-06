@@ -24,7 +24,7 @@ from custom_components.melcloudhome.const import DOMAIN
 
 # Mock at API boundary (NOT coordinator)
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-MOCK_STORE_PATH = "custom_components.melcloudhome.coordinator.Store"
+MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker.Store"
 
 # Test device UUID - generates entity_id: sensor.melcloudhome_0efc_9abc_energy
 TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"

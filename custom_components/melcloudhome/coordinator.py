@@ -5,20 +5,20 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
-from functools import partial
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .const import DOMAIN, UPDATE_INTERVAL
+from .control_client import ControlClient
+from .energy_tracker import EnergyTracker
 
 if TYPE_CHECKING:
     from homeassistant.helpers.event import CALLBACK_TYPE
@@ -27,10 +27,6 @@ _LOGGER = logging.getLogger(__name__)
 
 # Energy update interval (30 minutes)
 ENERGY_UPDATE_INTERVAL = timedelta(minutes=30)
-
-# Storage version for energy data persistence
-STORAGE_VERSION = 1
-STORAGE_KEY = "melcloudhome_energy_data"
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -59,20 +55,28 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # ATW unit caches (same pattern as ATA)
         self._atw_unit_to_building: dict[str, Building] = {}
         self._atw_units: dict[str, AirToWaterUnit] = {}
-        # Energy data cache and polling
-        self._energy_data: dict[str, float | None] = {}
+        # Energy tracking cancellation callback
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
-        # Cumulative energy tracking (running totals in kWh)
-        self._energy_cumulative: dict[str, float] = {}
-        # Per-hour value tracking for delta calculation (handles progressive updates)
-        # Structure: {unit_id: {timestamp: kwh_value}}
-        self._energy_hour_values: dict[str, dict[str, float]] = {}
-        # Persistent storage for energy data
-        self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
-        # Debounced refresh to prevent race conditions from rapid service calls
-        self._refresh_debounce_task: asyncio.Task | None = None
+
+        # Initialize energy tracker
+        self.energy_tracker = EnergyTracker(
+            hass=hass,
+            client=client,
+            execute_with_retry=self._execute_with_retry,
+            get_coordinator_data=lambda: self.data,
+        )
+
+        # Initialize control client
+        self.control_client = ControlClient(
+            hass=hass,
+            client=client,
+            execute_with_retry=self._execute_with_retry,
+            get_unit=self.get_unit,
+            get_atw_unit=self.get_atw_unit,
+            async_request_refresh=self.async_request_refresh,
+        )
 
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
@@ -109,268 +113,53 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 self._atw_units[atw_unit.id] = atw_unit
                 self._atw_unit_to_building[atw_unit.id] = building
 
-        # Update energy data for units
-        self._update_unit_energy_data()
-
-    def _update_unit_energy_data(self) -> None:
-        """Update energy data on unit objects from cache."""
-        for unit_id, unit in self._units.items():
-            unit.energy_consumed = self._energy_data.get(unit_id)
+        # Update energy data for units using energy tracker
+        self.energy_tracker.update_unit_energy_data(self._units)
 
     async def async_setup(self) -> None:
         """Set up the coordinator with energy polling."""
         _LOGGER.info("Setting up energy polling for MELCloud Home")
 
-        # Load persisted energy data from storage
-        stored_data = await self._store.async_load()
-        if stored_data:
-            self._energy_cumulative = stored_data.get("cumulative", {})
-            self._energy_hour_values = stored_data.get("hour_values", {})
-
-            # Backward compatibility: migrate from legacy format
-            if not self._energy_hour_values:
-                if "last_hour" in stored_data:
-                    # Initialize empty hour_values for existing units
-                    for unit_id in self._energy_cumulative:
-                        self._energy_hour_values[unit_id] = {}
-                    _LOGGER.info(
-                        "Migrated %d device(s) from legacy storage format",
-                        len(self._energy_cumulative),
-                    )
-                else:
-                    _LOGGER.debug("No stored energy data found, starting fresh")
-            else:
-                _LOGGER.info(
-                    "Restored energy data for %d device(s) from storage",
-                    len(self._energy_cumulative),
-                )
-        else:
-            _LOGGER.info("No stored energy data found, starting fresh")
+        # Set up energy tracker
+        await self.energy_tracker.async_setup()
 
         # Perform initial energy fetch
         try:
-            await self._async_update_energy_data()
+            await self.energy_tracker.async_update_energy_data()
             _LOGGER.info("Initial energy fetch completed")
+
+            # Update unit objects with new energy data
+            self.energy_tracker.update_unit_energy_data(self._units)
+
+            # Notify listeners (sensors) of energy update
+            self.async_update_listeners()
         except Exception as err:
             _LOGGER.error("Error during initial energy fetch: %s", err, exc_info=True)
 
         # Schedule periodic energy updates (30 minutes)
+        async def _update_energy_with_listeners(now):
+            """Update energy and notify listeners."""
+            await self.energy_tracker.async_update_energy_data(now)
+            self.energy_tracker.update_unit_energy_data(self._units)
+            self.async_update_listeners()
+
         self._cancel_energy_updates = async_track_time_interval(
             self.hass,
-            self._async_update_energy_data,
+            _update_energy_with_listeners,
             ENERGY_UPDATE_INTERVAL,
         )
         _LOGGER.info("Energy polling scheduled (every 30 minutes)")
 
-    async def _async_update_energy_data(self, now: datetime | None = None) -> None:
-        """Update energy data for all units (called every 30 minutes).
-
-        Orchestrates energy data updates by delegating to focused helper methods.
-        Accumulates hourly energy values into cumulative totals.
-        Prevents double-counting by tracking last processed hour per device.
-        """
-        if not self.data:
-            return
-
-        try:
-            for building in self.data.buildings:
-                for unit in building.air_to_air_units:
-                    if not unit.capabilities.has_energy_consumed_meter:
-                        continue
-
-                    try:
-                        await self._update_unit_energy(unit)
-                    except (ConfigEntryAuthFailed, HomeAssistantError):
-                        # Re-raise auth failures - must trigger repair UI
-                        raise
-                    except Exception as err:
-                        # Log but continue with other units
-                        _LOGGER.error(
-                            "Error fetching energy for unit %s: %s",
-                            unit.name,
-                            err,
-                        )
-
-            # Update unit objects with new energy data
-            self._update_unit_energy_data()
-
-            # Save energy data to persistent storage
-            await self._save_energy_data()
-
-            # Notify listeners (sensors) of energy update
-            self.async_update_listeners()
-
-        except Exception as err:
-            _LOGGER.error("Error updating energy data: %s", err)
-
-    def _is_first_initialization(self, unit_id: str) -> bool:
-        """Check if this is first energy data for unit.
+    def get_unit_energy(self, unit_id: str) -> float | None:
+        """Get cached energy data for a unit (in kWh).
 
         Args:
-            unit_id: Unit ID to check
+            unit_id: Unit ID to query
 
         Returns:
-            True if no energy hours tracked yet, False otherwise
+            Cumulative energy in kWh, or None if not available
         """
-        return len(self._energy_hour_values.get(unit_id, {})) == 0
-
-    def _initialize_unit_tracking(
-        self,
-        unit: AirToAirUnit,
-        values: list[dict[str, Any]],
-    ) -> None:
-        """Initialize energy tracking for a new unit.
-
-        Mark all current hour values as seen but don't add them to cumulative
-        total (avoid inflating with historical data).
-
-        Args:
-            unit: Unit to initialize tracking for
-            values: List of hourly energy values from API
-        """
-        for value_entry in values:
-            hour_timestamp = value_entry["time"]
-            wh_value = float(value_entry["value"])
-            kwh_value = wh_value / 1000.0
-            self._energy_hour_values[unit.id][hour_timestamp] = kwh_value
-
-        _LOGGER.info(
-            "Initializing energy tracking for %s at 0.0 kWh "
-            "(marked %d hour(s) as seen, will track deltas from next update)",
-            unit.name,
-            len(values),
-        )
-
-    def _update_cumulative_values(
-        self,
-        unit: AirToAirUnit,
-        values: list[dict[str, Any]],
-    ) -> None:
-        """Update cumulative energy values with new hourly data.
-
-        Processes each hourly value with delta tracking to prevent
-        double-counting. Only adds deltas when values increase.
-
-        Args:
-            unit: Unit to update cumulative values for
-            values: List of hourly energy values from API
-        """
-        for value_entry in values:
-            hour_timestamp = value_entry["time"]
-            wh_value = float(value_entry["value"])
-            kwh_value = wh_value / 1000.0
-
-            # Get previous value for this specific hour (default 0 if new)
-            previous_value = self._energy_hour_values[unit.id].get(hour_timestamp, 0.0)
-
-            if kwh_value > previous_value:
-                # Value increased - add the DELTA
-                delta = kwh_value - previous_value
-                self._energy_cumulative[unit.id] += delta
-                self._energy_hour_values[unit.id][hour_timestamp] = kwh_value
-
-                _LOGGER.info(
-                    "Energy: %s - Hour %s: +%.3f kWh delta (%.3f→%.3f) cumulative: %.3f kWh",
-                    unit.name,
-                    hour_timestamp[:16],
-                    delta,
-                    previous_value,
-                    kwh_value,
-                    self._energy_cumulative[unit.id],
-                )
-            elif kwh_value < previous_value:
-                # Unexpected decrease - log warning, keep previous value
-                _LOGGER.warning(
-                    "Energy: %s - Hour %s decreased from %.3f to %.3f kWh - "
-                    "keeping previous value (possible API issue)",
-                    unit.name,
-                    hour_timestamp[:16],
-                    previous_value,
-                    kwh_value,
-                )
-                # Don't update stored value, keep previous
-            # else: value unchanged, no action needed
-
-    async def _update_unit_energy(self, unit: AirToAirUnit) -> None:
-        """Update energy data for a single unit.
-
-        Args:
-            unit: AirToAirUnit to update energy data for
-
-        Raises:
-            ConfigEntryAuthFailed: Re-raised for repair UI
-            Exception: Logged but not raised for non-critical errors
-        """
-        _LOGGER.debug(
-            "Fetching energy data for unit %s (%s)",
-            unit.name,
-            unit.id,
-        )
-
-        # Setup time range for energy data fetch
-        to_time = datetime.now(UTC)
-        # Fetch last 48 hours to handle progressive updates and outages
-        from_time = to_time - timedelta(hours=48)
-
-        # V4: Wrap with retry for automatic session recovery
-        data = await self._execute_with_retry(
-            partial(
-                self.client.get_energy_data,
-                unit.id,
-                from_time,
-                to_time,
-                "Hour",
-            ),
-            f"get_energy_data({unit.name})",
-        )
-
-        if not data or not data.get("measureData"):
-            _LOGGER.debug("No energy data available for unit %s", unit.name)
-            return
-
-        # Process all hourly values
-        values = data["measureData"][0].get("values", [])
-        if not values:
-            return
-
-        # Initialize hour values dict if needed
-        if unit.id not in self._energy_hour_values:
-            self._energy_hour_values[unit.id] = {}
-
-        # Initialize cumulative total if first time
-        if unit.id not in self._energy_cumulative:
-            self._energy_cumulative[unit.id] = 0.0
-
-        # Check if this is first initialization and process accordingly
-        if self._is_first_initialization(unit.id):
-            self._initialize_unit_tracking(unit, values)
-        else:
-            self._update_cumulative_values(unit, values)
-
-        # Store cumulative total for this unit
-        self._energy_data[unit.id] = self._energy_cumulative[unit.id]
-
-        _LOGGER.debug(
-            "Total energy for %s: %.3f kWh",
-            unit.name,
-            self._energy_cumulative[unit.id],
-        )
-
-    async def _save_energy_data(self) -> None:
-        """Save energy cumulative totals and per-hour values to storage."""
-        try:
-            data = {
-                "cumulative": self._energy_cumulative,
-                "hour_values": self._energy_hour_values,
-            }
-            await self._store.async_save(data)
-            _LOGGER.debug("Saved energy data to storage")
-        except Exception as err:
-            _LOGGER.error("Error saving energy data: %s", err)
-
-    def get_unit_energy(self, unit_id: str) -> float | None:
-        """Get cached energy data for a unit (in kWh)."""
-        return self._energy_data.get(unit_id)
+        return self.energy_tracker.get_unit_energy(unit_id)
 
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""
@@ -481,73 +270,25 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             _LOGGER.error("API error during %s: %s", operation_name, err)
             raise HomeAssistantError(f"API error: {err}") from err
 
+    # =================================================================
+    # Air-to-Air (A2A) Control Methods - Delegate to ControlClient
+    # =================================================================
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery."""
-        # Skip if already in desired state (prevents duplicate API calls)
-        unit = self.get_unit(unit_id)
-        if unit and unit.power == power:
-            _LOGGER.debug(
-                "Power already %s for %s, skipping API call", power, unit_id[-8:]
-            )
-            return
-
-        _LOGGER.info("Setting power for %s to %s", unit_id[-8:], power)
-        await self._execute_with_retry(
-            lambda: self.client.set_power(unit_id, power),
-            f"set_power({unit_id}, {power})",
-        )
+        return await self.control_client.async_set_power(unit_id, power)
 
     async def async_set_mode(self, unit_id: str, mode: str) -> None:
         """Set operation mode with automatic session recovery."""
-        # Skip if already in desired state
-        unit = self.get_unit(unit_id)
-        if unit and unit.operation_mode == mode:
-            _LOGGER.debug(
-                "Mode already %s for %s, skipping API call", mode, unit_id[-8:]
-            )
-            return
-
-        _LOGGER.info("Setting mode for %s to %s", unit_id[-8:], mode)
-        await self._execute_with_retry(
-            lambda: self.client.set_mode(unit_id, mode),
-            f"set_mode({unit_id}, {mode})",
-        )
+        return await self.control_client.async_set_mode(unit_id, mode)
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery."""
-        # Skip if already at desired temperature
-        unit = self.get_unit(unit_id)
-        if unit and unit.set_temperature == temperature:
-            _LOGGER.debug(
-                "Temperature already %.1f°C for %s, skipping API call",
-                temperature,
-                unit_id[-8:],
-            )
-            return
-
-        _LOGGER.info("Setting temperature for %s to %.1f°C", unit_id[-8:], temperature)
-        await self._execute_with_retry(
-            lambda: self.client.set_temperature(unit_id, temperature),
-            f"set_temperature({unit_id}, {temperature})",
-        )
+        return await self.control_client.async_set_temperature(unit_id, temperature)
 
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery."""
-        # Skip if already at desired fan speed
-        unit = self.get_unit(unit_id)
-        if unit and unit.set_fan_speed == fan_speed:
-            _LOGGER.debug(
-                "Fan speed already %s for %s, skipping API call",
-                fan_speed,
-                unit_id[-8:],
-            )
-            return
-
-        _LOGGER.info("Setting fan speed for %s to %s", unit_id[-8:], fan_speed)
-        await self._execute_with_retry(
-            lambda: self.client.set_fan_speed(unit_id, fan_speed),
-            f"set_fan_speed({unit_id}, {fan_speed})",
-        )
+        return await self.control_client.async_set_fan_speed(unit_id, fan_speed)
 
     async def async_set_vanes(
         self,
@@ -556,221 +297,52 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         horizontal: str,
     ) -> None:
         """Set vane positions with automatic session recovery."""
-        # Skip if already at desired vane positions
-        unit = self.get_unit(unit_id)
-        if (
-            unit
-            and unit.vane_vertical_direction == vertical
-            and unit.vane_horizontal_direction == horizontal
-        ):
-            _LOGGER.debug(
-                "Vanes already V:%s H:%s for %s, skipping API call",
-                vertical,
-                horizontal,
-                unit_id[-8:],
-            )
-            return
-
-        _LOGGER.info(
-            "Setting vanes for %s to V:%s H:%s", unit_id[-8:], vertical, horizontal
-        )
-        await self._execute_with_retry(
-            lambda: self.client.set_vanes(unit_id, vertical, horizontal),
-            f"set_vanes({unit_id}, {vertical}, {horizontal})",
-        )
+        return await self.control_client.async_set_vanes(unit_id, vertical, horizontal)
 
     # =================================================================
-    # Air-to-Water (A2W) Heat Pump Control Methods
+    # Air-to-Water (A2W) Heat Pump Control Methods - Delegate to ControlClient
     # =================================================================
-
-    async def _execute_atw_control(
-        self,
-        unit_id: str,
-        control_name: str,
-        control_fn: Callable[[AirToWaterUnit], Awaitable[None]],
-        pre_check: Callable[[AirToWaterUnit], None] | None = None,
-    ) -> None:
-        """Generic ATW control method with validation and retry.
-
-        Args:
-            unit_id: ATW unit ID
-            control_name: Human-readable control name for logging
-            control_fn: Control function that takes unit and executes API call
-            pre_check: Optional validation function (raises HomeAssistantError if invalid)
-        """
-        # Get cached unit
-        atw_unit = self.get_atw_unit(unit_id)
-        if not atw_unit:
-            raise HomeAssistantError(f"ATW unit {unit_id} not found")
-
-        # Run pre-check if provided (e.g., Zone 2 capability validation)
-        if pre_check:
-            pre_check(atw_unit)
-
-        # Log the operation
-        _LOGGER.info(
-            "Setting %s for ATW unit %s",
-            control_name,
-            unit_id[-8:],
-        )
-
-        # Execute with automatic retry on session expiry
-        await self._execute_with_retry(
-            lambda: control_fn(atw_unit),
-            f"{control_name}({unit_id})",
-        )
 
     async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
-        """Set ATW heat pump power with automatic session recovery.
-
-        Args:
-            unit_id: ATW unit ID
-            power: True=ON, False=OFF
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="power",
-            control_fn=lambda unit: self.client.set_power_atw(unit.id, power),
-        )
+        """Set ATW heat pump power with automatic session recovery."""
+        return await self.control_client.async_set_power_atw(unit_id, power)
 
     async def async_set_temperature_zone1(
         self, unit_id: str, temperature: float
     ) -> None:
-        """Set Zone 1 target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (10-30°C)
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="Zone 1 temperature",
-            control_fn=lambda unit: self.client.set_temperature_zone1(
-                unit.id, temperature
-            ),
+        """Set Zone 1 target temperature."""
+        return await self.control_client.async_set_temperature_zone1(
+            unit_id, temperature
         )
 
     async def async_set_temperature_zone2(
         self, unit_id: str, temperature: float
     ) -> None:
-        """Set Zone 2 target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (10-30°C)
-
-        Raises:
-            HomeAssistantError: If device doesn't have Zone 2
-        """
-
-        def _check_zone2(unit: AirToWaterUnit) -> None:
-            if not unit.capabilities.has_zone2:
-                raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
-
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="Zone 2 temperature",
-            control_fn=lambda unit: self.client.set_temperature_zone2(
-                unit.id, temperature
-            ),
-            pre_check=_check_zone2,
+        """Set Zone 2 target temperature."""
+        return await self.control_client.async_set_temperature_zone2(
+            unit_id, temperature
         )
 
     async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
-        """Set Zone 1 heating strategy.
-
-        Args:
-            unit_id: ATW unit ID
-            mode: One of ATW_OPERATION_MODES_ZONE
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="Zone 1 mode",
-            control_fn=lambda unit: self.client.set_mode_zone1(unit.id, mode),
-        )
+        """Set Zone 1 heating strategy."""
+        return await self.control_client.async_set_mode_zone1(unit_id, mode)
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
-        """Set Zone 2 heating strategy.
-
-        Args:
-            unit_id: ATW unit ID
-            mode: One of ATW_OPERATION_MODES_ZONE
-
-        Raises:
-            HomeAssistantError: If device doesn't have Zone 2
-        """
-
-        def _check_zone2(unit: AirToWaterUnit) -> None:
-            if not unit.capabilities.has_zone2:
-                raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
-
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="Zone 2 mode",
-            control_fn=lambda unit: self.client.set_mode_zone2(unit.id, mode),
-            pre_check=_check_zone2,
-        )
+        """Set Zone 2 heating strategy."""
+        return await self.control_client.async_set_mode_zone2(unit_id, mode)
 
     async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
-        """Set DHW tank target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (40-60°C)
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="DHW temperature",
-            control_fn=lambda unit: self.client.set_dhw_temperature(
-                unit.id, temperature
-            ),
-        )
+        """Set DHW tank target temperature."""
+        return await self.control_client.async_set_dhw_temperature(unit_id, temperature)
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
-        """Enable/disable forced DHW priority mode.
-
-        Args:
-            unit_id: ATW unit ID
-            enabled: True=DHW priority, False=normal
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="forced DHW",
-            control_fn=lambda unit: self.client.set_forced_hot_water(unit.id, enabled),
-        )
+        """Enable/disable forced DHW priority mode."""
+        return await self.control_client.async_set_forced_hot_water(unit_id, enabled)
 
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True=standby, False=normal
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="standby mode",
-            control_fn=lambda unit: self.client.set_standby_mode(unit.id, standby),
-        )
+        """Enable/disable standby mode."""
+        return await self.control_client.async_set_standby_mode(unit_id, standby)
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
-        """Request a coordinator refresh with debouncing.
-
-        Multiple rapid calls will cancel previous timers and only refresh once
-        after the last call settles. This prevents race conditions when scenes
-        or automations make multiple rapid service calls.
-
-        Args:
-            delay: Seconds to wait before refreshing (default 2.0)
-        """
-        # Cancel any pending refresh
-        if self._refresh_debounce_task and not self._refresh_debounce_task.done():
-            self._refresh_debounce_task.cancel()
-            _LOGGER.debug("Cancelled pending debounced refresh, resetting timer")
-
-        async def _delayed_refresh():
-            """Wait then refresh."""
-            await asyncio.sleep(delay)
-            _LOGGER.debug("Debounced refresh executing after %.1fs delay", delay)
-            await self.async_request_refresh()
-
-        self._refresh_debounce_task = self.hass.async_create_task(_delayed_refresh())
+        """Request a coordinator refresh with debouncing."""
+        return await self.control_client.async_request_refresh_debounced(delay)
