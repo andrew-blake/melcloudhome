@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
 from .const import DOMAIN, initialize_entity_base
 from .coordinator import MELCloudHomeCoordinator
+from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -136,7 +137,7 @@ async def async_setup_entry(
 
 
 class ATABinarySensor(
-    CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
+    CoordinatorEntity[CoordinatorProtocol],  # type: ignore[misc]
     BinarySensorEntity,  # type: ignore[misc]
 ):
     """Representation of a MELCloud Home binary sensor.
@@ -150,7 +151,7 @@ class ATABinarySensor(
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToAirUnit,
         building: Building,
         entry: ConfigEntry,
@@ -193,7 +194,7 @@ class ATABinarySensor(
 
 
 class ATWBinarySensor(
-    CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
+    CoordinatorEntity[CoordinatorProtocol],  # type: ignore[misc]
     BinarySensorEntity,  # type: ignore[misc]
 ):
     """Representation of a MELCloud Home ATW binary sensor.
@@ -207,7 +208,7 @@ class ATWBinarySensor(
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,

@@ -26,6 +26,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
 from .const import DOMAIN, initialize_entity_base
 from .coordinator import MELCloudHomeCoordinator
+from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
 
 
 def _create_sensors_for_unit(
-    coordinator: MELCloudHomeCoordinator,
+    coordinator: CoordinatorProtocol,
     unit: AirToWaterUnit,
     building: Building,
     entry: ConfigEntry,
@@ -214,7 +215,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class ATASensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
+class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: ignore[misc]
     """Representation of a MELCloud Home sensor.
 
     Note: type: ignore[misc] required because HA is not installed in dev environment
@@ -226,7 +227,7 @@ class ATASensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToAirUnit,
         building: Building,
         entry: ConfigEntry,
@@ -262,7 +263,7 @@ class ATASensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
         return self.entity_description.available_fn(unit)
 
 
-class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # type: ignore[misc]
+class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: ignore[misc]
     """Representation of a MELCloud Home ATW sensor.
 
     Note: type: ignore[misc] required because HA is not installed in dev environment
@@ -274,7 +275,7 @@ class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,

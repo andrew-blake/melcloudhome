@@ -39,6 +39,7 @@ from .const import (
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
+from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToAirUnit,
         building: Building,
         entry: ConfigEntry,
@@ -307,7 +308,7 @@ class ATWClimateZone1(
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,

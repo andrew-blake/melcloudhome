@@ -18,6 +18,7 @@ from .const import (
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
+from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,

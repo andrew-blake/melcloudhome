@@ -26,6 +26,7 @@ from .const import (
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
+from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class ATWWaterHeater(
 
     def __init__(
         self,
-        coordinator: MELCloudHomeCoordinator,
+        coordinator: CoordinatorProtocol,
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,
