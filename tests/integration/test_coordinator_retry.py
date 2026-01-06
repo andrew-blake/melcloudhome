@@ -1,7 +1,7 @@
 """Tests for coordinator retry logic on session expiry."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -159,24 +159,27 @@ async def test_wrapper_method_handles_session_expiry(coordinator):
 @pytest.mark.asyncio
 async def test_debounced_refresh_coalesces_calls(coordinator, hass):
     """Test debounced refresh coalesces multiple rapid calls into one."""
-    with patch.object(
-        coordinator, "async_request_refresh", AsyncMock()
-    ) as mock_refresh:
-        # Make 5 rapid debounced refresh requests
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
+    # Mock the coordinator's refresh method that control_client will call
+    mock_refresh = AsyncMock()
+    # Patch the control_client's stored reference to async_request_refresh
+    coordinator.control_client._async_request_refresh = mock_refresh
 
-        # Should not have called refresh yet
-        assert mock_refresh.call_count == 0
+    # Make 5 rapid debounced refresh requests
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
 
-        # Wait for debounce delay
-        await asyncio.sleep(0.15)
+    # Should not have called refresh yet
+    assert mock_refresh.call_count == 0
 
-        # Should have called refresh exactly once
-        assert mock_refresh.call_count == 1
+    # Wait for debounce delay and let hass process the task
+    await asyncio.sleep(0.15)
+    await hass.async_block_till_done()
+
+    # Should have called refresh exactly once
+    assert mock_refresh.call_count == 1
 
 
 @pytest.mark.asyncio

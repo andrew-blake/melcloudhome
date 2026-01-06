@@ -404,7 +404,9 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
                 [("2025-12-09 09:00:00.000000000", 300.0)]  # Increased from 100!
             )
         )
-        await coordinator._async_update_energy_data()
+        await coordinator.energy_tracker.async_update_energy_data()
+        coordinator.energy_tracker.update_unit_energy_data(coordinator._units)
+        coordinator.async_update_listeners()
         await hass.async_block_till_done()
 
         # ✅ Should add delta: 0.3 - 0.1 = 0.2 kWh → 10.1 + 0.2 = 10.3 kWh
@@ -421,7 +423,9 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
                 ]
             )
         )
-        await coordinator._async_update_energy_data()
+        await coordinator.energy_tracker.async_update_energy_data()
+        coordinator.energy_tracker.update_unit_energy_data(coordinator._units)
+        coordinator.async_update_listeners()
         await hass.async_block_till_done()
 
         # ✅ Should add: delta 09:00 (0.1) + new 10:00 (0.1) = 0.2 kWh
