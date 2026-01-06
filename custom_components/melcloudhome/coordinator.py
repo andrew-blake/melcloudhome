@@ -705,10 +705,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             standby: True=standby, False=normal
         """
-        await self._execute_atw_control(
-            unit_id,
-            "standby mode",
-            lambda u: self.client.set_standby_mode(unit_id, standby),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="standby mode",
+            control_fn=lambda unit: self.client.set_standby_mode(unit.id, standby),
         )
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
