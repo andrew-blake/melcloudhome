@@ -18,6 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.const import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
+from .climate_helpers import HVACActionDeterminer
 from .const import (
     ATW_PRESET_MODES,
     ATW_TEMP_MAX_ZONE,
@@ -115,6 +116,9 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
         # Swing modes (vertical vane positions)
         self._attr_swing_modes = VANE_POSITIONS
 
+        # HVAC action determiner (extracted for testability)
+        self._action_determiner = HVACActionDeterminer()
+
     @property
     def hvac_mode(self) -> HVACMode:
         """Return current HVAC mode."""
@@ -137,56 +141,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
         device = self.get_device()
         if device is None:
             return None
-
-        # If powered off, return OFF
-        if not device.power:
-            return HVACAction.OFF
-
-        # Get current and target temperatures
-        current_temp = device.room_temperature
-        target_temp = device.set_temperature
-
-        # If we don't have temperature data, can't infer action reliably
-        if current_temp is None or target_temp is None:
-            # Return best guess based on mode
-            if device.operation_mode == "Dry":
-                return HVACAction.DRYING
-            if device.operation_mode == "Fan":
-                return HVACAction.FAN
-            return HVACAction.IDLE
-
-        # Hysteresis threshold to avoid flapping
-        threshold = 0.5
-
-        # Determine action based on mode and temperature difference
-        if device.operation_mode == "Heat":
-            # Heating mode: if current is below target (with hysteresis), we're heating
-            if current_temp < target_temp - threshold:
-                return HVACAction.HEATING
-            return HVACAction.IDLE
-
-        if device.operation_mode == "Cool":
-            # Cooling mode: if current is above target (with hysteresis), we're cooling
-            if current_temp > target_temp + threshold:
-                return HVACAction.COOLING
-            return HVACAction.IDLE
-
-        if device.operation_mode == "Automatic":
-            # Auto mode: infer based on which direction we need to go
-            if current_temp < target_temp - threshold:
-                return HVACAction.HEATING
-            if current_temp > target_temp + threshold:
-                return HVACAction.COOLING
-            return HVACAction.IDLE
-
-        if device.operation_mode == "Dry":
-            return HVACAction.DRYING
-
-        if device.operation_mode == "Fan":
-            return HVACAction.FAN
-
-        # Default fallback
-        return HVACAction.IDLE
+        return self._action_determiner.determine_action(device)
 
     @property
     def current_temperature(self) -> float | None:

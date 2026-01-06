@@ -545,53 +545,38 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     async def _execute_atw_control(
         self,
         unit_id: str,
-        operation_name: str,
-        current_value_getter: Callable[[AirToWaterUnit], Any] | None,
-        target_value: Any,
-        api_call: Callable[[], Awaitable[None]],
+        control_name: str,
+        control_fn: Callable[[AirToWaterUnit], Awaitable[None]],
         pre_check: Callable[[AirToWaterUnit], None] | None = None,
     ) -> None:
-        """Generic ATW control method with caching, validation, and retry.
+        """Generic ATW control method with validation and retry.
 
         Args:
             unit_id: ATW unit ID
-            operation_name: Human-readable operation name for logging
-            current_value_getter: Function to get current value from unit (None to skip cache check)
-            target_value: Target value to set
-            api_call: API call to execute (wrapped in lambda)
+            control_name: Human-readable control name for logging
+            control_fn: Control function that takes unit and executes API call
             pre_check: Optional validation function (raises HomeAssistantError if invalid)
         """
         # Get cached unit
         atw_unit = self.get_atw_unit(unit_id)
+        if not atw_unit:
+            raise HomeAssistantError(f"ATW unit {unit_id} not found")
 
         # Run pre-check if provided (e.g., Zone 2 capability validation)
-        if pre_check and atw_unit:
+        if pre_check:
             pre_check(atw_unit)
-
-        # Check cache - skip if already at target value
-        if current_value_getter and atw_unit:
-            current_value = current_value_getter(atw_unit)
-            if current_value == target_value:
-                _LOGGER.debug(
-                    "%s already %s for ATW unit %s, skipping API call",
-                    operation_name,
-                    target_value,
-                    unit_id[-8:],
-                )
-                return
 
         # Log the operation
         _LOGGER.info(
-            "Setting %s for ATW unit %s to %s",
-            operation_name,
+            "Setting %s for ATW unit %s",
+            control_name,
             unit_id[-8:],
-            target_value,
         )
 
         # Execute with automatic retry on session expiry
         await self._execute_with_retry(
-            api_call,
-            f"{operation_name}({unit_id}, {target_value})",
+            lambda: control_fn(atw_unit),
+            f"{control_name}({unit_id})",
         )
 
     async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
@@ -601,12 +586,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             power: True=ON, False=OFF
         """
-        await self._execute_atw_control(
-            unit_id,
-            "power",
-            lambda u: u.power,
-            "ON" if power else "OFF",
-            lambda: self.client.set_power_atw(unit_id, power),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="power",
+            control_fn=lambda unit: self.client.set_power_atw(unit.id, power),
         )
 
     async def async_set_temperature_zone1(
@@ -618,12 +601,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (10-30°C)
         """
-        await self._execute_atw_control(
-            unit_id,
-            "Zone 1 temperature",
-            lambda u: u.set_temperature_zone1,
-            f"{temperature}°C",
-            lambda: self.client.set_temperature_zone1(unit_id, temperature),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="Zone 1 temperature",
+            control_fn=lambda unit: self.client.set_temperature_zone1(
+                unit.id, temperature
+            ),
         )
 
     async def async_set_temperature_zone2(
@@ -643,12 +626,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        await self._execute_atw_control(
-            unit_id,
-            "Zone 2 temperature",
-            lambda u: u.set_temperature_zone2,
-            f"{temperature}°C",
-            lambda: self.client.set_temperature_zone2(unit_id, temperature),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="Zone 2 temperature",
+            control_fn=lambda unit: self.client.set_temperature_zone2(
+                unit.id, temperature
+            ),
             pre_check=_check_zone2,
         )
 
@@ -659,12 +642,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             mode: One of ATW_OPERATION_MODES_ZONE
         """
-        await self._execute_atw_control(
-            unit_id,
-            "Zone 1 mode",
-            lambda u: u.operation_mode_zone1,
-            mode,
-            lambda: self.client.set_mode_zone1(unit_id, mode),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="Zone 1 mode",
+            control_fn=lambda unit: self.client.set_mode_zone1(unit.id, mode),
         )
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
@@ -682,12 +663,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        await self._execute_atw_control(
-            unit_id,
-            "Zone 2 mode",
-            lambda u: u.operation_mode_zone2,
-            mode,
-            lambda: self.client.set_mode_zone2(unit_id, mode),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="Zone 2 mode",
+            control_fn=lambda unit: self.client.set_mode_zone2(unit.id, mode),
             pre_check=_check_zone2,
         )
 
@@ -698,12 +677,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (40-60°C)
         """
-        await self._execute_atw_control(
-            unit_id,
-            "DHW temperature",
-            lambda u: u.set_tank_water_temperature,
-            f"{temperature}°C",
-            lambda: self.client.set_dhw_temperature(unit_id, temperature),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="DHW temperature",
+            control_fn=lambda unit: self.client.set_dhw_temperature(
+                unit.id, temperature
+            ),
         )
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
@@ -713,12 +692,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id: ATW unit ID
             enabled: True=DHW priority, False=normal
         """
-        await self._execute_atw_control(
-            unit_id,
-            "forced DHW",
-            lambda u: u.forced_hot_water_mode,
-            enabled,
-            lambda: self.client.set_forced_hot_water(unit_id, enabled),
+        return await self._execute_atw_control(
+            unit_id=unit_id,
+            control_name="forced DHW",
+            control_fn=lambda unit: self.client.set_forced_hot_water(unit.id, enabled),
         )
 
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
@@ -731,9 +708,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         await self._execute_atw_control(
             unit_id,
             "standby mode",
-            lambda u: u.in_standby_mode,
-            standby,
-            lambda: self.client.set_standby_mode(unit_id, standby),
+            lambda u: self.client.set_standby_mode(unit_id, standby),
         )
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:

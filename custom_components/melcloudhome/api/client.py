@@ -188,6 +188,35 @@ class MELCloudHomeClient:
         context = await self.get_user_context()
         return context.get_unit_by_id(unit_id)
 
+    def _build_ata_control_payload(self, **updates: Any) -> dict[str, Any]:
+        """Build ATA control payload with null defaults.
+
+        The API requires ALL control fields to be present in every request.
+        Fields being updated should have values, all others should be None.
+
+        Args:
+            **updates: Fields to update (e.g., power=True, setTemperature=22.5)
+
+        Returns:
+            Complete payload dictionary for ATA control endpoint
+
+        Example:
+            >>> self._build_ata_control_payload(power=True)
+            {"power": True, "operationMode": None, ...}
+        """
+        payload = {
+            "power": None,
+            "operationMode": None,
+            "setFanSpeed": None,
+            "vaneHorizontalDirection": None,
+            "vaneVerticalDirection": None,
+            "setTemperature": None,
+            "temperatureIncrementOverride": None,
+            "inStandbyMode": None,
+        }
+        payload.update(updates)
+        return payload
+
     async def set_power(self, unit_id: str, power: bool) -> None:
         """
         Turn device on or off.
@@ -200,16 +229,7 @@ class MELCloudHomeClient:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
         """
-        payload = {
-            "power": power,
-            "operationMode": None,
-            "setFanSpeed": None,
-            "vaneHorizontalDirection": None,
-            "vaneVerticalDirection": None,
-            "setTemperature": None,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
+        payload = self._build_ata_control_payload(power=power)
 
         await self._api_request(
             "PUT",
@@ -239,16 +259,7 @@ class MELCloudHomeClient:
         if (temperature / TEMP_STEP) % 1 != 0:
             raise ValueError(f"Temperature must be in {TEMP_STEP}° increments")
 
-        payload = {
-            "power": None,
-            "operationMode": None,
-            "setFanSpeed": None,
-            "vaneHorizontalDirection": None,
-            "vaneVerticalDirection": None,
-            "setTemperature": temperature,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
+        payload = self._build_ata_control_payload(setTemperature=temperature)
 
         await self._api_request(
             "PUT",
@@ -273,16 +284,7 @@ class MELCloudHomeClient:
         if mode not in valid_modes:
             raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
 
-        payload = {
-            "power": None,
-            "operationMode": mode,
-            "setFanSpeed": None,
-            "vaneHorizontalDirection": None,
-            "vaneVerticalDirection": None,
-            "setTemperature": None,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
+        payload = self._build_ata_control_payload(operationMode=mode)
 
         await self._api_request(
             "PUT",
@@ -309,16 +311,7 @@ class MELCloudHomeClient:
                 f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
             )
 
-        payload = {
-            "power": None,
-            "operationMode": None,
-            "setFanSpeed": speed,
-            "vaneHorizontalDirection": None,
-            "vaneVerticalDirection": None,
-            "setTemperature": None,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
+        payload = self._build_ata_control_payload(setFanSpeed=speed)
 
         await self._api_request(
             "PUT",
@@ -383,16 +376,10 @@ class MELCloudHomeClient:
         # Horizontal uses named strings (British spelling) - send as-is
         horizontal_string = horizontal
 
-        payload = {
-            "power": None,
-            "operationMode": None,
-            "setFanSpeed": None,
-            "vaneHorizontalDirection": horizontal_string,
-            "vaneVerticalDirection": vertical_numeric,
-            "setTemperature": None,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
+        payload = self._build_ata_control_payload(
+            vaneVerticalDirection=vertical_numeric,
+            vaneHorizontalDirection=horizontal_string,
+        )
 
         await self._api_request(
             "PUT",

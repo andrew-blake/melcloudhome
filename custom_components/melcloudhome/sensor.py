@@ -24,7 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
-from .const import DOMAIN, create_device_info
+from .const import DOMAIN, initialize_entity_base
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -235,29 +235,7 @@ class ATASensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
-        self._unit_id = unit.id
-        self._building_id = building.id
-        self._entry = entry
-
-        # Unique ID: unit_id + sensor key
-        self._attr_unique_id = f"{unit.id}_{description.key}"
-
-        # Convert description key to friendly name
-        short_name = description.key.replace("_", " ").title()
-
-        # Fix acronyms to proper capitalization
-        acronym_fixes = {
-            "Dhw": "DHW",  # Domestic Hot Water
-            "Wifi": "WiFi",  # WiFi signal
-            "Ftc": "FTC",  # FTC model numbers
-        }
-        for incorrect, correct in acronym_fixes.items():
-            short_name = short_name.replace(incorrect, correct)
-
-        self._attr_name = short_name
-
-        # Device info using shared helper
-        self._attr_device_info = create_device_info(unit, building)
+        initialize_entity_base(self, unit, building, entry, description)
 
     @property
     def native_value(self) -> float | str | None:
@@ -305,29 +283,7 @@ class ATWSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntity):  # ty
         """Initialize the ATW sensor."""
         super().__init__(coordinator)
         self.entity_description = description
-        self._unit_id = unit.id
-        self._building_id = building.id
-        self._entry = entry
-
-        # Unique ID: unit_id + sensor key
-        self._attr_unique_id = f"{unit.id}_{description.key}"
-
-        # Convert description key to friendly name
-        short_name = description.key.replace("_", " ").title()
-
-        # Fix acronyms to proper capitalization
-        acronym_fixes = {
-            "Dhw": "DHW",  # Domestic Hot Water
-            "Wifi": "WiFi",  # WiFi signal
-            "Ftc": "FTC",  # FTC model numbers
-        }
-        for incorrect, correct in acronym_fixes.items():
-            short_name = short_name.replace(incorrect, correct)
-
-        self._attr_name = short_name
-
-        # Device info using shared helper
-        self._attr_device_info = create_device_info(unit, building)
+        initialize_entity_base(self, unit, building, entry, description)
 
     @property
     def native_value(self) -> float | str | None:
