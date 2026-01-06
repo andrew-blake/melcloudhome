@@ -23,6 +23,7 @@
 ## What's Implemented
 
 ### Tested via HAR Captures
+
 - ✅ Zone 1 climate control (read/write)
 - ✅ DHW tank control via water heater platform (read/write)
 - ✅ System power control via switch platform
@@ -31,6 +32,7 @@
 - ✅ Preset modes (Room, Flow, Curve)
 
 ### Known Limitations
+
 - ❌ Not tested on real hardware
 - ❌ Zone 2 support not yet implemented (planned)
 - ❌ Some advanced features may be missing
@@ -42,12 +44,14 @@
 ## Compatible Hardware (Theoretical)
 
 Based on HAR analysis, should work with:
+
 - Mitsubishi Electric Ecodan heat pumps
 - FTC6 controllers (confirmed in HARs)
 - FTC4/FTC5 controllers (likely compatible)
 - EHSCVM2D Hydrokit (confirmed in HARs)
 
 **User's test system:**
+
 - Model: Ecodan EHSCVM2D Hydrokit
 - Controller: FTC6
 - Zones: Single zone + DHW
@@ -57,6 +61,7 @@ Based on HAR analysis, should work with:
 ## How to Test (Call for Testers!)
 
 ### Prerequisites
+
 - Mitsubishi Electric Ecodan heat pump with FTC controller
 - Existing MELCloud Home account with ATW system
 - Willingness to monitor system behavior closely
@@ -65,6 +70,7 @@ Based on HAR analysis, should work with:
 ### Testing Steps
 
 1. **Backup Current Setup**
+
    ```bash
    # Take snapshot of Home Assistant config
    # Note current entity IDs and automations
