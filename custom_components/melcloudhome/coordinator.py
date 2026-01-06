@@ -165,6 +165,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     async def _async_update_energy_data(self, now: datetime | None = None) -> None:
         """Update energy data for all units (called every 30 minutes).
 
+        Orchestrates energy data updates by delegating to focused helper methods.
         Accumulates hourly energy values into cumulative totals.
         Prevents double-counting by tracking last processed hour per device.
         """
@@ -172,136 +173,23 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             return
 
         try:
-            to_time = datetime.now(UTC)
-            # Fetch last 48 hours to handle progressive updates and outages
-            from_time = to_time - timedelta(hours=48)
-
             for building in self.data.buildings:
                 for unit in building.air_to_air_units:
                     if not unit.capabilities.has_energy_consumed_meter:
                         continue
 
                     try:
-                        _LOGGER.debug(
-                            "Fetching energy data for unit %s (%s)",
-                            unit.name,
-                            unit.id,
-                        )
-
-                        # V4: Wrap with retry for automatic session recovery
-                        data = await self._execute_with_retry(
-                            partial(
-                                self.client.get_energy_data,
-                                unit.id,
-                                from_time,
-                                to_time,
-                                "Hour",
-                            ),
-                            f"get_energy_data({unit.name})",
-                        )
-
-                        if not data or not data.get("measureData"):
-                            _LOGGER.debug(
-                                "No energy data available for unit %s", unit.name
-                            )
-                            continue
-
-                        # Process all hourly values
-                        values = data["measureData"][0].get("values", [])
-                        if not values:
-                            continue
-
-                        # Initialize hour values dict if needed
-                        if unit.id not in self._energy_hour_values:
-                            self._energy_hour_values[unit.id] = {}
-
-                        # Initialize cumulative total if first time
-                        if unit.id not in self._energy_cumulative:
-                            self._energy_cumulative[unit.id] = 0.0
-
-                        # Check if this is first initialization (no hours tracked yet)
-                        is_first_init = len(self._energy_hour_values[unit.id]) == 0
-
-                        if is_first_init:
-                            # First initialization: mark all current hours as seen
-                            # but DON'T add them (avoid inflating with historical data)
-                            for value_entry in values:
-                                hour_timestamp = value_entry["time"]
-                                wh_value = float(value_entry["value"])
-                                kwh_value = wh_value / 1000.0
-                                self._energy_hour_values[unit.id][hour_timestamp] = (
-                                    kwh_value
-                                )
-
-                            _LOGGER.info(
-                                "Initializing energy tracking for %s at 0.0 kWh "
-                                "(marked %d hour(s) as seen, will track deltas from next update)",
-                                unit.name,
-                                len(values),
-                            )
-                        else:
-                            # Normal operation: process each hourly value with delta tracking
-                            for value_entry in values:
-                                hour_timestamp = value_entry["time"]
-                                wh_value = float(value_entry["value"])
-                                kwh_value = wh_value / 1000.0
-
-                                # Get previous value for this specific hour (default 0 if new)
-                                previous_value = self._energy_hour_values[unit.id].get(
-                                    hour_timestamp, 0.0
-                                )
-
-                                if kwh_value > previous_value:
-                                    # Value increased - add the DELTA
-                                    delta = kwh_value - previous_value
-                                    self._energy_cumulative[unit.id] += delta
-                                    self._energy_hour_values[unit.id][
-                                        hour_timestamp
-                                    ] = kwh_value
-
-                                    _LOGGER.info(
-                                        "Energy: %s - Hour %s: +%.3f kWh delta (%.3f→%.3f) cumulative: %.3f kWh",
-                                        unit.name,
-                                        hour_timestamp[:16],
-                                        delta,
-                                        previous_value,
-                                        kwh_value,
-                                        self._energy_cumulative[unit.id],
-                                    )
-                                elif kwh_value < previous_value:
-                                    # Unexpected decrease - log warning, keep previous value
-                                    _LOGGER.warning(
-                                        "Energy: %s - Hour %s decreased from %.3f to %.3f kWh - "
-                                        "keeping previous value (possible API issue)",
-                                        unit.name,
-                                        hour_timestamp[:16],
-                                        previous_value,
-                                        kwh_value,
-                                    )
-                                    # Don't update stored value, keep previous
-                                # else: value unchanged, no action needed
-
-                        # Store cumulative total for this unit
-                        self._energy_data[unit.id] = self._energy_cumulative[unit.id]
-
-                        _LOGGER.debug(
-                            "Total energy for %s: %.3f kWh",
-                            unit.name,
-                            self._energy_cumulative[unit.id],
-                        )
-
+                        await self._update_unit_energy(unit)
                     except (ConfigEntryAuthFailed, HomeAssistantError):
-                        # V4 FIX: Re-raise auth failures - must trigger repair UI
-                        # Don't swallow these - user needs to know credentials are broken
+                        # Re-raise auth failures - must trigger repair UI
                         raise
                     except Exception as err:
-                        # Keep broad handling for non-critical errors (network, parsing, etc.)
+                        # Log but continue with other units
                         _LOGGER.error(
                             "Error fetching energy for unit %s: %s",
                             unit.name,
                             err,
                         )
-                        # Keep previous cumulative value on error
 
             # Update unit objects with new energy data
             self._update_unit_energy_data()
@@ -314,6 +202,159 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
         except Exception as err:
             _LOGGER.error("Error updating energy data: %s", err)
+
+    def _is_first_initialization(self, unit_id: str) -> bool:
+        """Check if this is first energy data for unit.
+
+        Args:
+            unit_id: Unit ID to check
+
+        Returns:
+            True if no energy hours tracked yet, False otherwise
+        """
+        return len(self._energy_hour_values.get(unit_id, {})) == 0
+
+    def _initialize_unit_tracking(
+        self,
+        unit: AirToAirUnit,
+        values: list[dict[str, Any]],
+    ) -> None:
+        """Initialize energy tracking for a new unit.
+
+        Mark all current hour values as seen but don't add them to cumulative
+        total (avoid inflating with historical data).
+
+        Args:
+            unit: Unit to initialize tracking for
+            values: List of hourly energy values from API
+        """
+        for value_entry in values:
+            hour_timestamp = value_entry["time"]
+            wh_value = float(value_entry["value"])
+            kwh_value = wh_value / 1000.0
+            self._energy_hour_values[unit.id][hour_timestamp] = kwh_value
+
+        _LOGGER.info(
+            "Initializing energy tracking for %s at 0.0 kWh "
+            "(marked %d hour(s) as seen, will track deltas from next update)",
+            unit.name,
+            len(values),
+        )
+
+    def _update_cumulative_values(
+        self,
+        unit: AirToAirUnit,
+        values: list[dict[str, Any]],
+    ) -> None:
+        """Update cumulative energy values with new hourly data.
+
+        Processes each hourly value with delta tracking to prevent
+        double-counting. Only adds deltas when values increase.
+
+        Args:
+            unit: Unit to update cumulative values for
+            values: List of hourly energy values from API
+        """
+        for value_entry in values:
+            hour_timestamp = value_entry["time"]
+            wh_value = float(value_entry["value"])
+            kwh_value = wh_value / 1000.0
+
+            # Get previous value for this specific hour (default 0 if new)
+            previous_value = self._energy_hour_values[unit.id].get(hour_timestamp, 0.0)
+
+            if kwh_value > previous_value:
+                # Value increased - add the DELTA
+                delta = kwh_value - previous_value
+                self._energy_cumulative[unit.id] += delta
+                self._energy_hour_values[unit.id][hour_timestamp] = kwh_value
+
+                _LOGGER.info(
+                    "Energy: %s - Hour %s: +%.3f kWh delta (%.3f→%.3f) cumulative: %.3f kWh",
+                    unit.name,
+                    hour_timestamp[:16],
+                    delta,
+                    previous_value,
+                    kwh_value,
+                    self._energy_cumulative[unit.id],
+                )
+            elif kwh_value < previous_value:
+                # Unexpected decrease - log warning, keep previous value
+                _LOGGER.warning(
+                    "Energy: %s - Hour %s decreased from %.3f to %.3f kWh - "
+                    "keeping previous value (possible API issue)",
+                    unit.name,
+                    hour_timestamp[:16],
+                    previous_value,
+                    kwh_value,
+                )
+                # Don't update stored value, keep previous
+            # else: value unchanged, no action needed
+
+    async def _update_unit_energy(self, unit: AirToAirUnit) -> None:
+        """Update energy data for a single unit.
+
+        Args:
+            unit: AirToAirUnit to update energy data for
+
+        Raises:
+            ConfigEntryAuthFailed: Re-raised for repair UI
+            Exception: Logged but not raised for non-critical errors
+        """
+        _LOGGER.debug(
+            "Fetching energy data for unit %s (%s)",
+            unit.name,
+            unit.id,
+        )
+
+        # Setup time range for energy data fetch
+        to_time = datetime.now(UTC)
+        # Fetch last 48 hours to handle progressive updates and outages
+        from_time = to_time - timedelta(hours=48)
+
+        # V4: Wrap with retry for automatic session recovery
+        data = await self._execute_with_retry(
+            partial(
+                self.client.get_energy_data,
+                unit.id,
+                from_time,
+                to_time,
+                "Hour",
+            ),
+            f"get_energy_data({unit.name})",
+        )
+
+        if not data or not data.get("measureData"):
+            _LOGGER.debug("No energy data available for unit %s", unit.name)
+            return
+
+        # Process all hourly values
+        values = data["measureData"][0].get("values", [])
+        if not values:
+            return
+
+        # Initialize hour values dict if needed
+        if unit.id not in self._energy_hour_values:
+            self._energy_hour_values[unit.id] = {}
+
+        # Initialize cumulative total if first time
+        if unit.id not in self._energy_cumulative:
+            self._energy_cumulative[unit.id] = 0.0
+
+        # Check if this is first initialization and process accordingly
+        if self._is_first_initialization(unit.id):
+            self._initialize_unit_tracking(unit, values)
+        else:
+            self._update_cumulative_values(unit, values)
+
+        # Store cumulative total for this unit
+        self._energy_data[unit.id] = self._energy_cumulative[unit.id]
+
+        _LOGGER.debug(
+            "Total energy for %s: %.3f kWh",
+            unit.name,
+            self._energy_cumulative[unit.id],
+        )
 
     async def _save_energy_data(self) -> None:
         """Save energy cumulative totals and per-hour values to storage."""

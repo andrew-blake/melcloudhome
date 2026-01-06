@@ -574,7 +574,7 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         assert state.state == "unavailable"
 
         # Verify integration didn't crash - other sensors still work
-        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc")
+        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc_climate")
         assert climate_state is not None
         assert climate_state.state == "heat"  # Climate entity still functional
 

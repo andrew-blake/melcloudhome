@@ -163,7 +163,7 @@ async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
         entities = diagnostics["entities"]
 
         # Should have climate entity (entity ID derived from UUID: 0efc1234-...9abc)
-        climate_entity_id = "climate.melcloudhome_0efc_9abc"
+        climate_entity_id = "climate.melcloudhome_0efc_9abc_climate"
         assert climate_entity_id in entities
         assert entities[climate_entity_id]["state"] == "heat"
         assert "attributes" in entities[climate_entity_id]
