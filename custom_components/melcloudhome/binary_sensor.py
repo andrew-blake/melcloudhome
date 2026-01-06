@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
-from .const import DOMAIN, create_atw_entity_name, create_entity_name
+from .const import DOMAIN, create_device_info
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,6 +145,7 @@ class ATABinarySensor(
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     entity_description: ATABinarySensorEntityDescription
 
     def __init__(
@@ -165,14 +166,22 @@ class ATABinarySensor(
         # Unique ID: unit_id + sensor key
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
-        # Generate entity name using shared helper
-        key_display = description.key.replace("_", " ").title()
-        self._attr_name = create_entity_name(unit, key_display)
+        # Convert description key to friendly name
+        short_name = description.key.replace("_", " ").title()
 
-        # Link to device (same device as climate entity)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, unit.id)},
+        # Fix acronyms to proper capitalization
+        acronym_fixes = {
+            "Dhw": "DHW",  # Domestic Hot Water
+            "Wifi": "WiFi",  # WiFi signal
+            "Ftc": "FTC",  # FTC model numbers
         }
+        for incorrect, correct in acronym_fixes.items():
+            short_name = short_name.replace(incorrect, correct)
+
+        self._attr_name = short_name
+
+        # Device info using shared helper
+        self._attr_device_info = create_device_info(unit, building)
 
     @property
     def is_on(self) -> bool:
@@ -215,6 +224,7 @@ class ATWBinarySensor(
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     entity_description: ATWBinarySensorEntityDescription
 
     def __init__(
@@ -235,14 +245,22 @@ class ATWBinarySensor(
         # Unique ID: unit_id + sensor key
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
-        # Generate entity name using shared helper
-        key_display = description.key.replace("_", " ").title()
-        self._attr_name = create_atw_entity_name(unit, key_display)
+        # Convert description key to friendly name
+        short_name = description.key.replace("_", " ").title()
 
-        # Link to device (same device as water_heater/climate entities)
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, unit.id)},
+        # Fix acronyms to proper capitalization
+        acronym_fixes = {
+            "Dhw": "DHW",  # Domestic Hot Water
+            "Wifi": "WiFi",  # WiFi signal
+            "Ftc": "FTC",  # FTC model numbers
         }
+        for incorrect, correct in acronym_fixes.items():
+            short_name = short_name.replace(incorrect, correct)
+
+        self._attr_name = short_name
+
+        # Device info using shared helper
+        self._attr_device_info = create_device_info(unit, building)
 
     @property
     def is_on(self) -> bool | None:

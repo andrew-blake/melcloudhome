@@ -10,11 +10,7 @@ Run with: make test-ha
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
-from homeassistant.components.water_heater import (
-    ATTR_OPERATION_MODE,
-    STATE_ECO,
-    STATE_PERFORMANCE,
-)
+from homeassistant.components.water_heater import ATTR_OPERATION_MODE
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_EMAIL,
@@ -25,7 +21,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
 
-# Import shared test helpers from conftest
 from .conftest import (
     MOCK_CLIENT_PATH,
     TEST_ATW_UNIT_ID,
@@ -34,6 +29,10 @@ from .conftest import (
     create_mock_atw_unit,
     create_mock_atw_user_context,
 )
+
+# Operation modes (matching MELCloud Home app terminology)
+STATE_AUTO = "Auto"
+STATE_FORCE_DHW = "Force DHW"
 
 
 @pytest.mark.asyncio
@@ -46,7 +45,7 @@ async def test_water_heater_entity_created_with_correct_attributes(
     state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
     assert state is not None
     # Water heater state is the operation mode, not ON/OFF
-    assert state.state == STATE_ECO
+    assert state.state == STATE_AUTO
     # ATTR_TEMPERATURE is target temp (not current)
     assert (
         state.attributes[ATTR_TEMPERATURE] == 50.0
@@ -54,7 +53,7 @@ async def test_water_heater_entity_created_with_correct_attributes(
     assert (
         state.attributes["current_temperature"] == 48.5
     )  # Current (tank_water_temperature)
-    assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
+    assert state.attributes[ATTR_OPERATION_MODE] == STATE_AUTO
 
 
 @pytest.mark.asyncio
@@ -122,7 +121,7 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
 
         # Check initial state
         state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
-        assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
+        assert state.attributes[ATTR_OPERATION_MODE] == STATE_AUTO
 
         # Call set_operation_mode service
         await hass.services.async_call(
@@ -130,7 +129,7 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
             "set_operation_mode",
             {
                 "entity_id": TEST_WATER_HEATER_ENTITY_ID,
-                "operation_mode": STATE_PERFORMANCE,
+                "operation_mode": STATE_FORCE_DHW,
             },
             blocking=True,
         )
@@ -167,7 +166,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
 
         # Check initial state
         state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
-        assert state.attributes[ATTR_OPERATION_MODE] == STATE_PERFORMANCE
+        assert state.attributes[ATTR_OPERATION_MODE] == STATE_FORCE_DHW
 
         # Call set_operation_mode service
         await hass.services.async_call(
@@ -175,7 +174,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
             "set_operation_mode",
             {
                 "entity_id": TEST_WATER_HEATER_ENTITY_ID,
-                "operation_mode": STATE_ECO,
+                "operation_mode": STATE_AUTO,
             },
             blocking=True,
         )
@@ -213,7 +212,7 @@ async def test_current_operation_reflects_forced_dhw_mode(hass: HomeAssistant) -
         await hass.async_block_till_done()
 
         state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
-        assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
+        assert state.attributes[ATTR_OPERATION_MODE] == STATE_AUTO
 
 
 @pytest.mark.asyncio
@@ -301,7 +300,7 @@ async def test_water_heater_with_performance_mode(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
-        assert state.attributes[ATTR_OPERATION_MODE] == STATE_PERFORMANCE
+        assert state.attributes[ATTR_OPERATION_MODE] == STATE_FORCE_DHW
 
 
 @pytest.mark.asyncio

@@ -34,7 +34,6 @@ from .const import (
     ATAEntityBase,
     ATWEntityBase,
     create_atw_device_info,
-    create_atw_entity_name,
     create_device_info,
     create_entity_name,
     with_debounced_refresh,
@@ -76,7 +75,7 @@ async def async_setup_entry(
 class ATAClimate(ATAEntityBase, ClimateEntity):
     """Representation of a MELCloud Home climate device."""
 
-    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_temperature_unit = "°C"
     _attr_target_temperature_step = TEMP_STEP
     _attr_max_temp = TEMP_MAX_HEAT
@@ -96,7 +95,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):
         self._entry = entry
 
         # Generate entity name using shared helper (no suffix for ATA base entity)
-        self._attr_name = create_entity_name(unit)
+        self._attr_name = create_entity_name(unit, "")
 
         # Device info using shared helper
         self._attr_device_info = create_device_info(unit, building)
@@ -345,7 +344,7 @@ class ATWClimateZone1(
     Mypy sees HA base classes as 'Any'.
     """
 
-    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_translation_key = "melcloudhome"  # For preset mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_target_temperature_step = ATW_TEMP_STEP
@@ -372,8 +371,8 @@ class ATWClimateZone1(
         # Preset modes (NEW: Not used in ATA)
         self._attr_preset_modes = ATW_PRESET_MODES
 
-        # Generate entity name using shared helper
-        self._attr_name = create_atw_entity_name(unit, "Zone 1")
+        # Short entity name (device name provides UUID prefix)
+        self._attr_name = "Zone 1"
 
         # Device info using shared helper (groups with water_heater/sensors)
         self._attr_device_info = create_atw_device_info(unit, building)

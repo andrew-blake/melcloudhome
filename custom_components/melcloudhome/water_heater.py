@@ -23,7 +23,6 @@ from .const import (
     WATER_HEATER_HA_TO_FORCED_DHW,
     ATWEntityBase,
     create_atw_device_info,
-    create_atw_entity_name,
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
@@ -62,7 +61,7 @@ class ATWWaterHeater(
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_DHW
     _attr_max_temp = ATW_TEMP_MAX_DHW
@@ -81,8 +80,8 @@ class ATWWaterHeater(
         self._attr_unique_id = f"{unit.id}_tank"
         self._entry = entry
 
-        # Generate entity name using shared helper
-        self._attr_name = create_atw_entity_name(unit, "Tank")
+        # Short entity name (device name provides UUID prefix)
+        self._attr_name = "Tank"
 
         # Device info using shared helper (groups with climate/sensors)
         self._attr_device_info = create_atw_device_info(unit, building)

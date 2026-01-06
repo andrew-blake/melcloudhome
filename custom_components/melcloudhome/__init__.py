@@ -109,78 +109,6 @@ def _create_discovery_listener(
     return _device_discovery_listener
 
 
-async def _async_update_entity_friendly_names(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
-    """Update entity friendly names to short versions via registry.
-
-    This runs after platform setup to override the long UUID-based names
-    with short, user-friendly names while preserving stable entity IDs.
-
-    Derives short names from entity_id structure automatically, eliminating
-    the need for brittle hardcoded mappings.
-    """
-    import re
-
-    from homeassistant.helpers import entity_registry as er
-
-    entity_reg = er.async_get(hass)
-    entities = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
-
-    # Pattern to extract key from entity_id
-    # Matches: domain.melcloudhome_{4hex}_{4hex}_{key}
-    # Example: sensor.melcloudhome_bf2d_5666_room_temperature → room_temperature
-    pattern = re.compile(r"^\w+\.melcloudhome_[a-f0-9]{4}_[a-f0-9]{4}_(.+)$")
-
-    update_count = 0
-    for entity in entities:
-        # CRITICAL: Skip if user has already customized the name
-        # entity.name is None → using default (original_name), safe to update
-        # entity.name is set → user customization, DO NOT overwrite
-        if entity.name is not None:
-            _LOGGER.debug(
-                "Skipping %s - user has customized name to '%s'",
-                entity.entity_id,
-                entity.name,
-            )
-            continue
-
-        # Extract key from entity_id and derive short name
-        match = pattern.match(entity.entity_id)
-        if match:
-            key = match.group(1)
-            # Convert key to friendly name: "room_temperature" → "Room Temperature"
-            short_name = key.replace("_", " ").title()
-
-            # Fix common acronyms that should stay uppercase
-            acronym_fixes = {
-                "Dhw": "DHW",  # Domestic Hot Water
-                "Wifi": "WiFi",  # WiFi signal
-                "Ftc": "FTC",  # FTC model numbers
-            }
-            for incorrect, correct in acronym_fixes.items():
-                short_name = short_name.replace(incorrect, correct)
-        elif entity.entity_id.startswith("climate.melcloudhome_"):
-            # Base ATA climate entity without suffix: climate.melcloudhome_0efc_9abc
-            # Give it a friendly name instead of the full device name
-            short_name = "Climate"
-        else:
-            # Other entities without recognized pattern - skip
-            _LOGGER.debug("Skipping %s - no recognizable pattern", entity.entity_id)
-            continue
-
-        entity_reg.async_update_entity(entity.entity_id, name=short_name)
-        update_count += 1
-        _LOGGER.debug(
-            "Updated friendly name for %s to '%s'", entity.entity_id, short_name
-        )
-
-    _LOGGER.info(
-        "Updated %d entity friendly names to short format (skipped user customizations)",
-        update_count,
-    )
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
     # Lazy imports - see module docstring for explanation
@@ -261,9 +189,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
-
-    # Update entity friendly names to short format
-    await _async_update_entity_friendly_names(hass, entry)
 
     # Set up coordinator listener for new device discovery
     entry.async_on_unload(

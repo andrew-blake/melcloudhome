@@ -15,7 +15,6 @@ from .const import (
     DOMAIN,
     ATWEntityBase,
     create_atw_device_info,
-    create_atw_entity_name,
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
@@ -54,7 +53,7 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
     (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    _attr_has_entity_name = False  # Use explicit naming for stable entity IDs
+    _attr_has_entity_name = True  # Use device name + entity name pattern
 
     def __init__(
         self,
@@ -70,8 +69,8 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
         self._attr_unique_id = f"{unit.id}_system_power"
         self._entry = entry
 
-        # Generate entity name using shared helper
-        self._attr_name = create_atw_entity_name(unit, "System Power")
+        # Short entity name (device name provides UUID prefix)
+        self._attr_name = "System Power"
 
         # Device info using shared helper (groups with climate/water_heater/sensors)
         self._attr_device_info = create_atw_device_info(unit, building)

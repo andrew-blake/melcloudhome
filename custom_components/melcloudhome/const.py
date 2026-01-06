@@ -96,31 +96,31 @@ ATW_TEMP_STEP = 1  # °C
 # =================================================================
 
 
-def create_entity_name(unit: DeviceUnit, suffix: str = "") -> str:
-    """Generate standardized entity name for ATA or ATW units.
+def create_entity_name(unit: DeviceUnit, suffix: str = "") -> str | None:
+    """Generate short entity name for has_entity_name=True.
 
-    Works for both AirToAirUnit and AirToWaterUnit with consistent naming.
+    With has_entity_name=True, entity_id is generated as:
+    {domain}.{device_name}_{entity_name}
+
+    Device name already contains UUID (melcloudhome_bf2d_5666),
+    so entity name should just be the descriptive part.
 
     Args:
-        unit: ATA or ATW unit object
-        suffix: Optional suffix (e.g., "", "Zone 1", "Tank", "Room Temperature")
-                Empty string for base entities (ATA climate)
+        unit: ATA or ATW unit (kept for signature compatibility)
+        suffix: Entity suffix (e.g., "Room Temperature", "Zone 1", "Tank")
+                Empty string for base entities (returns None)
 
     Returns:
-        Formatted name: "MELCloudHome {first_4_chars} {last_4_chars} {suffix}"
+        Short entity name or None for device-name-only entities
 
     Examples:
-        >>> ata_unit = AirToAirUnit(id="0efc1234-5678-9abc-...")
-        >>> create_entity_name(ata_unit, "")
-        "MELCloudHome 0efc 9abc"
+        >>> create_entity_name(unit, "Room Temperature")
+        "Room Temperature"
 
-        >>> atw_unit = AirToWaterUnit(id="0efc1234-5678-9abc-...")
-        >>> create_entity_name(atw_unit, "Zone 1")
-        "MELCloudHome 0efc 9abc Zone 1"
+        >>> create_entity_name(unit, "")
+        None  # Base ATA climate uses device name only
     """
-    unit_id_clean = unit.id.replace("-", "")
-    base_name = f"MELCloudHome {unit_id_clean[:4]} {unit_id_clean[-4:]}"
-    return f"{base_name} {suffix}".strip()
+    return suffix.strip() if suffix else None
 
 
 def create_device_info(unit: DeviceUnit, building: "Building") -> "DeviceInfo":
@@ -143,6 +143,10 @@ def create_device_info(unit: DeviceUnit, building: "Building") -> "DeviceInfo":
 
     from .api.models import AirToWaterUnit
 
+    # Extract UUID fragments for stable device naming
+    unit_id_clean = unit.id.replace("-", "")
+    device_name = f"melcloudhome_{unit_id_clean[:4]}_{unit_id_clean[-4:]}"
+
     # Determine model string based on unit type
     if isinstance(unit, AirToWaterUnit):
         model = f"Air-to-Water Heat Pump (Ecodan FTC{unit.ftc_model} via MELCloud Home)"
@@ -151,7 +155,7 @@ def create_device_info(unit: DeviceUnit, building: "Building") -> "DeviceInfo":
 
     return DeviceInfo(
         identifiers={(DOMAIN, unit.id)},
-        name=f"{building.name} {unit.name}",
+        name=device_name,
         manufacturer="Mitsubishi Electric",
         model=model,
         suggested_area=building.name,
@@ -184,6 +188,7 @@ class ATAEntityBase(CoordinatorEntity):  # type: ignore[misc]
     - self._attr_device_info
     """
 
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     _unit_id: str
     _building_id: str
     _entry: ConfigEntry
@@ -226,6 +231,7 @@ class ATWEntityBase(CoordinatorEntity):  # type: ignore[misc]
     - self._attr_device_info
     """
 
+    _attr_has_entity_name = True  # Use device name + entity name pattern
     _unit_id: str
     _building_id: str
     _entry: ConfigEntry
