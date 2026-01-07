@@ -7,7 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-ha
 """
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.components.climate import HVACAction, HVACMode
@@ -601,7 +601,7 @@ async def test_atw_set_temperature_zone1(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_temperature_zone1 = AsyncMock()
+        mock_client.atw.set_temperature_zone1 = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -626,7 +626,7 @@ async def test_atw_set_temperature_zone1(hass: HomeAssistant) -> None:
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.set_temperature_zone1.assert_called_once_with(
+        mock_client.atw.set_temperature_zone1.assert_called_once_with(
             TEST_ATW_UNIT_ID, 22.5
         )
 
@@ -644,7 +644,9 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_power_atw = AsyncMock()
+        mock_client.atw = MagicMock()
+
+        mock_client.atw.set_power_atw = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -669,7 +671,7 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
 
 
 @pytest.mark.asyncio
@@ -715,7 +717,7 @@ async def test_atw_set_preset_mode_room_to_flow(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_mode_zone1 = AsyncMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -754,7 +756,7 @@ async def test_atw_set_preset_mode_flow_to_curve(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_mode_zone1 = AsyncMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(

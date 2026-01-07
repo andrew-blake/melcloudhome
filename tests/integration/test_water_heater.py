@@ -7,7 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-ha
 """
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.components.water_heater import ATTR_OPERATION_MODE
@@ -66,7 +66,9 @@ async def test_set_temperature_updates_dhw_temp(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_dhw_temperature = AsyncMock()
+        mock_client.atw = MagicMock()
+
+        mock_client.atw.set_dhw_temperature = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -91,7 +93,9 @@ async def test_set_temperature_updates_dhw_temp(hass: HomeAssistant) -> None:
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.set_dhw_temperature.assert_called_once_with(TEST_ATW_UNIT_ID, 55)
+        mock_client.atw.set_dhw_temperature.assert_called_once_with(
+            TEST_ATW_UNIT_ID, 55
+        )
 
 
 @pytest.mark.asyncio
@@ -107,7 +111,7 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_forced_hot_water = AsyncMock()
+        mock_client.atw.set_forced_hot_water = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -136,7 +140,9 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.set_forced_hot_water.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_forced_hot_water.assert_called_once_with(
+            TEST_ATW_UNIT_ID, True
+        )
 
 
 @pytest.mark.asyncio
@@ -152,7 +158,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.set_forced_hot_water = AsyncMock()
+        mock_client.atw.set_forced_hot_water = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -181,7 +187,7 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.set_forced_hot_water.assert_called_once_with(
+        mock_client.atw.set_forced_hot_water.assert_called_once_with(
             TEST_ATW_UNIT_ID, False
         )
 

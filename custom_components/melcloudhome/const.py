@@ -1,20 +1,46 @@
-"""Constants for the MELCloud Home integration."""
+"""Constants for the MELCloud Home integration.
+
+This module provides backward compatibility by re-exporting from
+const_ata and const_atw.
+"""
 
 from collections.abc import Callable
 from datetime import timedelta
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Union
 
-from homeassistant.components.climate import HVACMode
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+# Re-export ATA constants
+from .const_ata import (
+    FAN_SPEEDS,
+    HA_TO_MELCLOUD_MODE,
+    MELCLOUD_TO_HA_MODE,
+    VANE_HORIZONTAL_POSITIONS,
+    VANE_POSITIONS,
+    ATAEntityBase,
+)
+
+# Re-export ATW constants
+from .const_atw import (
+    ATW_PRESET_MODES,
+    ATW_TEMP_MAX_DHW,
+    ATW_TEMP_MAX_ZONE,
+    ATW_TEMP_MIN_DHW,
+    ATW_TEMP_MIN_ZONE,
+    ATW_TEMP_STEP,
+    ATW_TO_HA_PRESET,
+    HA_TO_ATW_PRESET,
+    WATER_HEATER_FORCED_DHW_TO_HA,
+    WATER_HEATER_HA_TO_FORCED_DHW,
+    ATWEntityBase,
+)
 
 if TYPE_CHECKING:
-    from .api.models import AirToAirUnit, AirToWaterUnit, Building
+    from .api.models import AirToAirUnit, AirToWaterUnit
 
 # Type alias for any device unit (ATA or ATW)
 DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
 
+# Domain and update interval (shared)
 DOMAIN = "melcloudhome"
 UPDATE_INTERVAL = timedelta(seconds=60)
 PLATFORMS = ["climate"]
@@ -22,162 +48,36 @@ PLATFORMS = ["climate"]
 # Configuration keys
 CONF_DEBUG_MODE = "debug_mode"
 
-# MELCloud API uses "Automatic" not "Auto"
-MELCLOUD_TO_HA_MODE = {
-    "Heat": HVACMode.HEAT,
-    "Cool": HVACMode.COOL,
-    "Automatic": HVACMode.AUTO,
-    "Dry": HVACMode.DRY,
-    "Fan": HVACMode.FAN_ONLY,
-}
-
-HA_TO_MELCLOUD_MODE = {
-    HVACMode.HEAT: "Heat",
-    HVACMode.COOL: "Cool",
-    HVACMode.AUTO: "Automatic",
-    HVACMode.DRY: "Dry",
-    HVACMode.FAN_ONLY: "Fan",
-}
-
-# Fan speed mappings
-FAN_SPEEDS = ["Auto", "One", "Two", "Three", "Four", "Five"]
-
-# Vane position mappings (vertical)
-VANE_POSITIONS = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
-
-# Horizontal vane position mappings (API uses British spelling)
-VANE_HORIZONTAL_POSITIONS = [
-    "Auto",
-    "Swing",
-    "Left",
-    "LeftCentre",
-    "Centre",
-    "RightCentre",
-    "Right",
+__all__ = [
+    "ATW_PRESET_MODES",
+    "ATW_TEMP_MAX_DHW",
+    "ATW_TEMP_MAX_ZONE",
+    "ATW_TEMP_MIN_DHW",
+    "ATW_TEMP_MIN_ZONE",
+    "ATW_TEMP_STEP",
+    "ATW_TO_HA_PRESET",
+    "CONF_DEBUG_MODE",
+    "DOMAIN",
+    "FAN_SPEEDS",
+    "HA_TO_ATW_PRESET",
+    "HA_TO_MELCLOUD_MODE",
+    "MELCLOUD_TO_HA_MODE",
+    "PLATFORMS",
+    "UPDATE_INTERVAL",
+    "VANE_HORIZONTAL_POSITIONS",
+    "VANE_POSITIONS",
+    "WATER_HEATER_FORCED_DHW_TO_HA",
+    "WATER_HEATER_HA_TO_FORCED_DHW",
+    "ATAEntityBase",
+    "ATWEntityBase",
+    "DeviceUnit",
+    "with_debounced_refresh",
 ]
 
-# ATW (Air-to-Water) Zone Modes → Climate Preset Modes (lowercase for i18n)
-# Display names in translations/en.json: "Room", "Flow", "Curve"
-ATW_TO_HA_PRESET = {
-    "HeatRoomTemperature": "room",  # Display: "Room" (via translation)
-    "HeatFlowTemperature": "flow",  # Display: "Flow" (via translation)
-    "HeatCurve": "curve",  # Display: "Curve" (via translation)
-}
-
-HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
-
-# ATW Preset modes list (lowercase - translated via translations/en.json)
-ATW_PRESET_MODES = ["room", "flow", "curve"]
-
-# Water Heater Operation Modes (match MELCloud Home app terminology)
-# Capitalized for display - HACS integrations don't support translations for operation modes
-WATER_HEATER_FORCED_DHW_TO_HA = {
-    False: "Auto",  # Normal operation, zone heating priority
-    True: "Force DHW",  # DHW priority mode, forces hot water heating
-}
-
-WATER_HEATER_HA_TO_FORCED_DHW = {
-    "Auto": False,
-    "Force DHW": True,
-}
-
-# ATW Temperature limits
-ATW_TEMP_MIN_ZONE = 10  # °C
-ATW_TEMP_MAX_ZONE = 30  # °C
-ATW_TEMP_MIN_DHW = 40  # °C
-ATW_TEMP_MAX_DHW = 60  # °C
-ATW_TEMP_STEP = 1  # °C
-
 
 # =================================================================
-# Base Entity Classes (extract common patterns)
+# Shared Decorator
 # =================================================================
-
-
-class ATAEntityBase(CoordinatorEntity):  # type: ignore[misc]
-    """Base class for ATA entities with shared lookup and availability logic.
-
-    Provides:
-    - O(1) device and building lookups via coordinator cache
-    - Standardized availability logic
-
-    Subclasses must set in __init__:
-    - self._unit_id: str
-    - self._building_id: str
-    - self._entry: ConfigEntry
-    - self._attr_unique_id
-    - self._attr_name
-    - self._attr_device_info
-    """
-
-    _attr_has_entity_name = True  # Use device name + entity name pattern
-    _unit_id: str
-    _building_id: str
-    _entry: ConfigEntry
-
-    def get_device(self) -> "AirToAirUnit | None":
-        """Get device from coordinator - O(1) cached lookup.
-
-        Changed from property to method to clarify this is an action, not attribute.
-        """
-        return self.coordinator.get_device(self._unit_id)  # type: ignore[no-any-return]
-
-    def get_building(self) -> "Building | None":
-        """Get building from coordinator - O(1) cached lookup."""
-        return self.coordinator.get_building_for_device(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def available(self) -> bool:
-        """Entity available if coordinator updated, device exists, not in error."""
-        if not self.coordinator.last_update_success:
-            return False
-        device = self.get_device()
-        if device is None:
-            return False
-        return not device.is_in_error
-
-
-class ATWEntityBase(CoordinatorEntity):  # type: ignore[misc]
-    """Base class for ATW entities with shared lookup and availability logic.
-
-    Provides:
-    - O(1) device and building lookups via coordinator cache
-    - Standardized availability logic
-
-    Subclasses must set in __init__:
-    - self._unit_id: str
-    - self._building_id: str
-    - self._entry: ConfigEntry
-    - self._attr_unique_id
-    - self._attr_name
-    - self._attr_device_info
-    """
-
-    _attr_has_entity_name = True  # Use device name + entity name pattern
-    _unit_id: str
-    _building_id: str
-    _entry: ConfigEntry
-
-    def get_device(self) -> "AirToWaterUnit | None":
-        """Get device from coordinator - O(1) cached lookup.
-
-        Changed from property to method to clarify this is an action, not attribute.
-        """
-        return self.coordinator.get_atw_device(self._unit_id)  # type: ignore[no-any-return]
-
-    def get_building(self) -> "Building | None":
-        """Get building from coordinator - O(1) cached lookup."""
-        return self.coordinator.get_building_for_atw_device(self._unit_id)  # type: ignore[no-any-return]
-
-    @property
-    def available(self) -> bool:
-        """Entity available if coordinator updated, device exists, not in error."""
-        if not self.coordinator.last_update_success:
-            return False
-        device = self.get_device()
-        if device is None:
-            return False
-        return not device.is_in_error
 
 
 def with_debounced_refresh(

@@ -4,7 +4,7 @@ These fixtures require pytest-homeassistant-custom-component.
 """
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -172,12 +172,13 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
-        # Mock all ATW control methods (called by service calls)
-        mock_client.set_power_atw = AsyncMock()
-        mock_client.set_temperature_zone1 = AsyncMock()
-        mock_client.set_mode_zone1 = AsyncMock()
-        mock_client.set_dhw_temperature = AsyncMock()
-        mock_client.set_forced_hot_water = AsyncMock()
+        # Mock ATW control client (composition pattern)
+        mock_client.atw = MagicMock()
+        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw.set_temperature_zone1 = AsyncMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
+        mock_client.atw.set_dhw_temperature = AsyncMock()
+        mock_client.atw.set_forced_hot_water = AsyncMock()
 
         entry = MockConfigEntry(
             domain=DOMAIN,
