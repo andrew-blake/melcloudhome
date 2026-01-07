@@ -119,6 +119,16 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (10-30°C)
         """
+        # Skip if already at desired temperature
+        device = self._get_atw_device(unit_id)
+        if device and device.set_temperature_zone1 == temperature:
+            _LOGGER.debug(
+                "Zone 1 temperature already %.1f°C for ATW %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 temperature",
@@ -139,6 +149,15 @@ class ATWControlClient(ControlClientBase):
         Raises:
             HomeAssistantError: If device doesn't have Zone 2
         """
+        # Skip if already at desired temperature
+        device = self._get_atw_device(unit_id)
+        if device and device.set_temperature_zone2 == temperature:
+            _LOGGER.debug(
+                "Zone 2 temperature already %.1f°C for ATW %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
 
         def _check_zone2(unit: AirToWaterUnit) -> None:
             if not unit.capabilities.has_zone2:
@@ -195,6 +214,16 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (40-60°C)
         """
+        # Skip if already at desired temperature
+        device = self._get_atw_device(unit_id)
+        if device and device.set_tank_water_temperature == temperature:
+            _LOGGER.debug(
+                "DHW temperature already %.1f°C for ATW %s, skipping API call",
+                temperature,
+                unit_id[-8:],
+            )
+            return
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="DHW temperature",
