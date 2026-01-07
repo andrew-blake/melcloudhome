@@ -1,5 +1,6 @@
 """Authentication handling for MELCloud Home API."""
 
+import asyncio
 import logging
 import re
 from typing import Any
@@ -292,8 +293,6 @@ class MELCloudHomeAuth:
                     # CRITICAL: Wait for session to fully initialize
                     # The OAuth flow completes but Blazor WASM needs time to initialize
                     # the session before API endpoints will work
-                    import asyncio
-
                     _LOGGER.debug("Waiting for session initialization (3 seconds)")
                     await asyncio.sleep(3)
 
