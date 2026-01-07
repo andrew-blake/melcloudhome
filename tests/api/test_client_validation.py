@@ -360,22 +360,6 @@ class TestAuthenticationRequired:
             await client.get_user_context()
 
     @pytest.mark.asyncio
-    async def test_get_devices_requires_auth(self) -> None:
-        """get_devices should raise AuthenticationError when not logged in."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.get_devices()
-
-    @pytest.mark.asyncio
-    async def test_get_device_requires_auth(self) -> None:
-        """get_device should raise AuthenticationError when not logged in."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.get_device("unit-id")
-
-    @pytest.mark.asyncio
     async def test_set_temperature_requires_auth(self) -> None:
         """set_temperature should raise AuthenticationError when not logged in."""
         client = MELCloudHomeClient()

@@ -31,7 +31,8 @@ async def test_set_power_on(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.power is True
 
@@ -49,7 +50,8 @@ async def test_set_power_off(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.power is False
 
@@ -68,7 +70,8 @@ async def test_set_temperature(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.set_temperature == target_temp
 
@@ -87,7 +90,8 @@ async def test_set_temperature_half_degree(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.set_temperature == target_temp
 
@@ -104,7 +108,8 @@ async def test_set_mode_heat(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.operation_mode == "Heat"
 
@@ -121,7 +126,8 @@ async def test_set_mode_cool(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.operation_mode == "Cool"
 
@@ -138,7 +144,8 @@ async def test_set_mode_automatic(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.operation_mode == "Automatic"
 
@@ -155,7 +162,8 @@ async def test_set_fan_speed_auto(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.set_fan_speed == "Auto"
 
@@ -172,7 +180,8 @@ async def test_set_fan_speed_three(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.set_fan_speed == "Three"
 
@@ -189,7 +198,8 @@ async def test_set_vanes_auto(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.vane_vertical_direction == "Auto"
     assert device.vane_horizontal_direction == "Auto"
@@ -207,7 +217,8 @@ async def test_set_vanes_swing(
     await asyncio.sleep(2)
 
     # Verify state changed
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.vane_vertical_direction == "Swing"
     assert device.vane_horizontal_direction == "Swing"
@@ -237,7 +248,8 @@ async def test_multiple_controls_together(
     await asyncio.sleep(2)
 
     # Verify all state changes
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.power is True
     assert device.operation_mode == "Heat"

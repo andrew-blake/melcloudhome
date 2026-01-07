@@ -1,6 +1,9 @@
 """Air-to-Air (A/C) constants for MELCloud Home API Client."""
 
-from .const_shared import BASE_URL, USER_AGENT
+from .const_shared import (
+    BASE_URL,
+    USER_AGENT,
+)
 
 # API Response Field Names - ATA
 API_FIELD_AIR_TO_AIR_UNITS = "airToAirUnits"
@@ -11,9 +14,6 @@ API_ERROR_LOG = "/api/ataunit/{unit_id}/errorlog"
 API_SCHEDULE_CREATE = "/api/cloudschedule/{unit_id}"
 API_SCHEDULE_DELETE = "/api/cloudschedule/{unit_id}/{schedule_id}"
 API_SCHEDULE_ENABLED = "/api/cloudschedule/{unit_id}/enabled"
-API_TELEMETRY_ACTUAL = "/api/telemetry/actual"
-API_TELEMETRY_OPERATION_MODE = "/api/telemetry/operationmode/{unit_id}"
-API_TELEMETRY_ENERGY = "/api/telemetry/energy/{unit_id}"
 
 # Operation Modes (Control API - Strings)
 # CRITICAL: AUTO mode is "Automatic" NOT "Auto"!
@@ -222,16 +222,3 @@ HEADERS_JSON = {
 
 # For state-changing operations (PUT, POST, DELETE)
 HEADERS_CSRF = HEADERS_JSON  # Same as HEADERS_JSON since x-csrf is always required
-
-# Schedule Days (0 = Sunday)
-SCHEDULE_DAY_SUNDAY = 0
-SCHEDULE_DAY_MONDAY = 1
-SCHEDULE_DAY_TUESDAY = 2
-SCHEDULE_DAY_WEDNESDAY = 3
-SCHEDULE_DAY_THURSDAY = 4
-SCHEDULE_DAY_FRIDAY = 5
-SCHEDULE_DAY_SATURDAY = 6
-
-SCHEDULE_DAYS_WEEKDAYS = [1, 2, 3, 4, 5]
-SCHEDULE_DAYS_WEEKEND = [0, 6]
-SCHEDULE_DAYS_ALL = [0, 1, 2, 3, 4, 5, 6]

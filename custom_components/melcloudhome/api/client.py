@@ -14,17 +14,17 @@ import aiohttp
 from .auth import MELCloudHomeAuth
 from .client_ata import ATAControlClient
 from .client_atw import ATWControlClient
-from .const_ata import API_TELEMETRY_ENERGY
 from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
     MOCK_BASE_URL,
 )
 from .exceptions import ApiError, AuthenticationError
-from .models import AirToAirUnit, UserContext
+from .models import UserContext
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -162,40 +162,6 @@ class MELCloudHomeClient:
         data = await self._api_request("GET", API_USER_CONTEXT)
         self._user_context = UserContext.from_dict(data)
         return self._user_context
-
-    async def get_devices(self) -> list[AirToAirUnit]:
-        """
-        Get all air-to-air units across all buildings.
-
-        This is a convenience method that fetches user context
-        and returns a flat list of all devices.
-
-        Returns:
-            List of all air-to-air units
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        context = await self.get_user_context()
-        return context.get_all_units()
-
-    async def get_device(self, unit_id: str) -> AirToAirUnit | None:
-        """
-        Get a specific device by ID.
-
-        Args:
-            unit_id: Device ID (UUID)
-
-        Returns:
-            Device if found, None otherwise
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        context = await self.get_user_context()
-        return context.get_unit_by_id(unit_id)
 
     # =================================================================
     # Energy/Telemetry Methods (Shared)
