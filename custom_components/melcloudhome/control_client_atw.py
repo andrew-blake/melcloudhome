@@ -96,6 +96,14 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             power: True=ON, False=OFF
         """
+        # Skip if already in desired state (prevents duplicate API calls)
+        device = self._get_atw_device(unit_id)
+        if device and device.power == power:
+            _LOGGER.debug(
+                "Power already %s for ATW %s, skipping API call", power, unit_id[-8:]
+            )
+            return
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",

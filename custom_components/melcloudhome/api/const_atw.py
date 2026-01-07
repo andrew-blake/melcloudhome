@@ -47,10 +47,6 @@ ATW_TEMP_MIN_DHW = 40.0  # DHW tank minimum
 ATW_TEMP_MAX_DHW = 60.0  # DHW tank maximum
 ATW_TEMP_STEP = 0.5  # Temperature increment (most systems)
 
-# Note: Flow temperature ranges DEFERRED (Phase 2)
-# ATW_TEMP_MIN_FLOW = 30.0    # Likely range for flow temp mode
-# ATW_TEMP_MAX_FLOW = 60.0    # Likely range for flow temp mode
-
 __all__ = [
     "API_ATW_CONTROL_UNIT",
     "API_ATW_ERROR_LOG",
