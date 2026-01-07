@@ -233,7 +233,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",
-            control_fn=lambda unit: self._client.set_power_atw(unit.id, power),
+            control_fn=lambda unit: self._client.atw.set_power_atw(unit.id, power),
         )
 
     async def async_set_temperature_zone1(
@@ -248,7 +248,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 temperature",
-            control_fn=lambda unit: self._client.set_temperature_zone1(
+            control_fn=lambda unit: self._client.atw.set_temperature_zone1(
                 unit.id, temperature
             ),
         )
@@ -273,7 +273,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 temperature",
-            control_fn=lambda unit: self._client.set_temperature_zone2(
+            control_fn=lambda unit: self._client.atw.set_temperature_zone2(
                 unit.id, temperature
             ),
             pre_check=_check_zone2,
@@ -289,7 +289,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 mode",
-            control_fn=lambda unit: self._client.set_mode_zone1(unit.id, mode),
+            control_fn=lambda unit: self._client.atw.set_mode_zone1(unit.id, mode),
         )
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
@@ -310,7 +310,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 mode",
-            control_fn=lambda unit: self._client.set_mode_zone2(unit.id, mode),
+            control_fn=lambda unit: self._client.atw.set_mode_zone2(unit.id, mode),
             pre_check=_check_zone2,
         )
 
@@ -324,7 +324,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="DHW temperature",
-            control_fn=lambda unit: self._client.set_dhw_temperature(
+            control_fn=lambda unit: self._client.atw.set_dhw_temperature(
                 unit.id, temperature
             ),
         )
@@ -339,7 +339,9 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="forced DHW",
-            control_fn=lambda unit: self._client.set_forced_hot_water(unit.id, enabled),
+            control_fn=lambda unit: self._client.atw.set_forced_hot_water(
+                unit.id, enabled
+            ),
         )
 
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
@@ -352,7 +354,7 @@ class ControlClient:
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="standby mode",
-            control_fn=lambda unit: self._client.set_standby_mode(unit.id, standby),
+            control_fn=lambda unit: self._client.atw.set_standby_mode(unit.id, standby),
         )
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:

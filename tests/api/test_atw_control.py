@@ -24,7 +24,7 @@ async def test_set_temperature_zone1_below_minimum() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be between 10"):
-        await client.set_temperature_zone1("unit-id", 9.5)
+        await client.atw.set_temperature_zone1("unit-id", 9.5)
 
 
 @pytest.mark.asyncio
@@ -33,7 +33,7 @@ async def test_set_temperature_zone1_above_maximum() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be between"):
-        await client.set_temperature_zone1("unit-id", 35.0)
+        await client.atw.set_temperature_zone1("unit-id", 35.0)
 
 
 @pytest.mark.asyncio
@@ -42,7 +42,7 @@ async def test_set_temperature_zone2_out_of_range() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be between"):
-        await client.set_temperature_zone2("unit-id", 5.0)
+        await client.atw.set_temperature_zone2("unit-id", 5.0)
 
 
 @pytest.mark.asyncio
@@ -51,7 +51,7 @@ async def test_set_dhw_temperature_below_minimum() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be between 40"):
-        await client.set_dhw_temperature("unit-id", 35.0)
+        await client.atw.set_dhw_temperature("unit-id", 35.0)
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_set_dhw_temperature_above_maximum() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be between"):
-        await client.set_dhw_temperature("unit-id", 70.0)
+        await client.atw.set_dhw_temperature("unit-id", 70.0)
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_set_mode_zone1_invalid() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be one of"):
-        await client.set_mode_zone1("unit-id", "InvalidMode")
+        await client.atw.set_mode_zone1("unit-id", "InvalidMode")
 
 
 @pytest.mark.asyncio
@@ -78,7 +78,7 @@ async def test_set_mode_zone2_invalid() -> None:
     client = MELCloudHomeClient()
 
     with pytest.raises(ValueError, match="must be one of"):
-        await client.set_mode_zone2("unit-id", "InvalidMode")
+        await client.atw.set_mode_zone2("unit-id", "InvalidMode")
 
 
 # =============================================================================
@@ -104,7 +104,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     unit_id = atw_unit.id
 
     # Set power on
-    await mock_client.set_power_atw(unit_id, True)
+    await mock_client.atw.set_power_atw(unit_id, True)
 
     # Wait for state propagation
     await asyncio.sleep(0.5)
@@ -125,7 +125,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     atw_unit = ctx.buildings[0].air_to_water_units[0]
     unit_id = atw_unit.id
 
-    await mock_client.set_power_atw(unit_id, False)
+    await mock_client.atw.set_power_atw(unit_id, False)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -143,7 +143,7 @@ async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> No
     unit_id = atw_unit.id
     target_temp = 22.0
 
-    await mock_client.set_temperature_zone1(unit_id, target_temp)
+    await mock_client.atw.set_temperature_zone1(unit_id, target_temp)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -163,7 +163,7 @@ async def test_mock_set_temperature_zone1_half_degree(
     unit_id = atw_unit.id
     target_temp = 21.5
 
-    await mock_client.set_temperature_zone1(unit_id, target_temp)
+    await mock_client.atw.set_temperature_zone1(unit_id, target_temp)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -183,7 +183,7 @@ async def test_mock_set_mode_zone1_room_temperature(
     unit_id = atw_unit.id
     mode = "HeatRoomTemperature"
 
-    await mock_client.set_mode_zone1(unit_id, mode)
+    await mock_client.atw.set_mode_zone1(unit_id, mode)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -203,7 +203,7 @@ async def test_mock_set_mode_zone1_heat_curve(
     unit_id = atw_unit.id
     mode = "HeatCurve"
 
-    await mock_client.set_mode_zone1(unit_id, mode)
+    await mock_client.atw.set_mode_zone1(unit_id, mode)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -221,7 +221,7 @@ async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None
     unit_id = atw_unit.id
     target_temp = 50.0
 
-    await mock_client.set_dhw_temperature(unit_id, target_temp)
+    await mock_client.atw.set_dhw_temperature(unit_id, target_temp)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -240,7 +240,7 @@ async def test_mock_set_forced_hot_water_enable(
     atw_unit = ctx.buildings[0].air_to_water_units[0]
     unit_id = atw_unit.id
 
-    await mock_client.set_forced_hot_water(unit_id, True)
+    await mock_client.atw.set_forced_hot_water(unit_id, True)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -259,7 +259,7 @@ async def test_mock_set_forced_hot_water_disable(
     atw_unit = ctx.buildings[0].air_to_water_units[0]
     unit_id = atw_unit.id
 
-    await mock_client.set_forced_hot_water(unit_id, False)
+    await mock_client.atw.set_forced_hot_water(unit_id, False)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()
@@ -276,7 +276,7 @@ async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:
     atw_unit = ctx.buildings[0].air_to_water_units[0]
     unit_id = atw_unit.id
 
-    await mock_client.set_standby_mode(unit_id, True)
+    await mock_client.atw.set_standby_mode(unit_id, True)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()

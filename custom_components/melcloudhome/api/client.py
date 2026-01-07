@@ -1,4 +1,8 @@
-"""MELCloud Home API client."""
+"""MELCloud Home API client.
+
+This module provides backward compatibility by composing ATAControlClient
+and ATWControlClient while keeping shared methods (auth, context, energy).
+"""
 
 import logging
 from typing import Any
@@ -6,18 +10,9 @@ from typing import Any
 import aiohttp
 
 from .auth import MELCloudHomeAuth
-from .const import (
-    ATW_OPERATION_MODES_ZONE,
-    ATW_TEMP_MAX_DHW,
-    ATW_TEMP_MAX_ZONE,
-    ATW_TEMP_MIN_DHW,
-    ATW_TEMP_MIN_ZONE,
-    BASE_URL,
-    MOCK_BASE_URL,
-    TEMP_MAX_HEAT,
-    TEMP_MIN_HEAT,
-    TEMP_STEP,
-)
+from .client_ata import ATAControlClient
+from .client_atw import ATWControlClient
+from .const import BASE_URL, MOCK_BASE_URL
 from .exceptions import ApiError, AuthenticationError
 from .models import AirToAirUnit, UserContext
 
@@ -37,6 +32,10 @@ class MELCloudHomeClient:
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
         self._auth = MELCloudHomeAuth(debug_mode=debug_mode)
         self._user_context: UserContext | None = None
+
+        # Composition: Delegate ATA and ATW control to specialized clients
+        self.ata = ATAControlClient(self)
+        self.atw = ATWControlClient(self)
 
         if debug_mode:
             _LOGGER.info(
@@ -188,411 +187,33 @@ class MELCloudHomeClient:
         context = await self.get_user_context()
         return context.get_unit_by_id(unit_id)
 
-    def _build_ata_control_payload(self, **updates: Any) -> dict[str, Any]:
-        """Build ATA control payload with null defaults.
-
-        The API requires ALL control fields to be present in every request.
-        Fields being updated should have values, all others should be None.
-
-        Args:
-            **updates: Fields to update (e.g., power=True, setTemperature=22.5)
-
-        Returns:
-            Complete payload dictionary for ATA control endpoint
-
-        Example:
-            >>> self._build_ata_control_payload(power=True)
-            {"power": True, "operationMode": None, ...}
-        """
-        payload = {
-            "power": None,
-            "operationMode": None,
-            "setFanSpeed": None,
-            "vaneHorizontalDirection": None,
-            "vaneVerticalDirection": None,
-            "setTemperature": None,
-            "temperatureIncrementOverride": None,
-            "inStandbyMode": None,
-        }
-        payload.update(updates)
-        return payload
+    # =================================================================
+    # Backward Compatibility Wrappers for ATA Methods
+    # =================================================================
 
     async def set_power(self, unit_id: str, power: bool) -> None:
-        """
-        Turn device on or off.
-
-        Args:
-            unit_id: Device ID (UUID)
-            power: True to turn on, False to turn off
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        payload = self._build_ata_control_payload(power=power)
-
-        await self._api_request(
-            "PUT",
-            f"/api/ataunit/{unit_id}",
-            json=payload,
-        )
+        """Turn device on or off (backward compatibility wrapper)."""
+        return await self.ata.set_power(unit_id, power)
 
     async def set_temperature(self, unit_id: str, temperature: float) -> None:
-        """
-        Set target temperature.
-
-        Args:
-            unit_id: Device ID (UUID)
-            temperature: Target temperature in Celsius (10.0-31.0, 0.5° increments)
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-            ValueError: If temperature is out of range
-        """
-        if not TEMP_MIN_HEAT <= temperature <= TEMP_MAX_HEAT:
-            raise ValueError(
-                f"Temperature must be between {TEMP_MIN_HEAT} and {TEMP_MAX_HEAT}°C"
-            )
-
-        # Check if temperature is in correct increments
-        if (temperature / TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {TEMP_STEP}° increments")
-
-        payload = self._build_ata_control_payload(setTemperature=temperature)
-
-        await self._api_request(
-            "PUT",
-            f"/api/ataunit/{unit_id}",
-            json=payload,
-        )
+        """Set target temperature (backward compatibility wrapper)."""
+        return await self.ata.set_temperature(unit_id, temperature)
 
     async def set_mode(self, unit_id: str, mode: str) -> None:
-        """
-        Set operation mode.
-
-        Args:
-            unit_id: Device ID (UUID)
-            mode: Operation mode - "Heat", "Cool", "Automatic", "Dry", or "Fan"
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-            ValueError: If mode is invalid
-        """
-        valid_modes = {"Heat", "Cool", "Automatic", "Dry", "Fan"}
-        if mode not in valid_modes:
-            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
-
-        payload = self._build_ata_control_payload(operationMode=mode)
-
-        await self._api_request(
-            "PUT",
-            f"/api/ataunit/{unit_id}",
-            json=payload,
-        )
+        """Set operation mode (backward compatibility wrapper)."""
+        return await self.ata.set_mode(unit_id, mode)
 
     async def set_fan_speed(self, unit_id: str, speed: str) -> None:
-        """
-        Set fan speed.
-
-        Args:
-            unit_id: Device ID (UUID)
-            speed: Fan speed - "Auto", "One", "Two", "Three", "Four", or "Five"
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-            ValueError: If speed is invalid
-        """
-        valid_speeds = {"Auto", "One", "Two", "Three", "Four", "Five"}
-        if speed not in valid_speeds:
-            raise ValueError(
-                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
-            )
-
-        payload = self._build_ata_control_payload(setFanSpeed=speed)
-
-        await self._api_request(
-            "PUT",
-            f"/api/ataunit/{unit_id}",
-            json=payload,
-        )
+        """Set fan speed (backward compatibility wrapper)."""
+        return await self.ata.set_fan_speed(unit_id, speed)
 
     async def set_vanes(self, unit_id: str, vertical: str, horizontal: str) -> None:
-        """
-        Set vane directions.
-
-        Args:
-            unit_id: Device ID (UUID)
-            vertical: Vertical direction - "Auto", "Swing", "One", "Two", "Three",
-                      "Four", or "Five"
-            horizontal: Horizontal direction - "Auto", "Swing", "Left", "LeftCentre",
-                        "Centre", "RightCentre", or "Right" (British spelling)
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-            ValueError: If vertical or horizontal is invalid
-        """
-        valid_vertical = {"Auto", "Swing", "One", "Two", "Three", "Four", "Five"}
-        # Horizontal uses British-spelled named positions (official API format)
-        valid_horizontal = {
-            "Auto",
-            "Swing",
-            "Left",
-            "LeftCentre",
-            "Centre",
-            "RightCentre",
-            "Right",
-        }
-
-        if vertical not in valid_vertical:
-            raise ValueError(
-                f"Invalid vertical direction: {vertical}. "
-                f"Must be one of {valid_vertical}"
-            )
-
-        if horizontal not in valid_horizontal:
-            raise ValueError(
-                f"Invalid horizontal direction: {horizontal}. "
-                f"Must be one of {valid_horizontal}"
-            )
-
-        # Denormalize VERTICAL vane direction: convert word strings back to numeric
-        # strings that the API expects (API returns "0", "1", etc. which we normalize
-        # to "Auto", "One", etc. for HA, but need to convert back when sending)
-        vertical_to_numeric = {
-            "Auto": "0",
-            "Swing": "7",
-            "One": "1",
-            "Two": "2",
-            "Three": "3",
-            "Four": "4",
-            "Five": "5",
-        }
-
-        vertical_numeric = vertical_to_numeric.get(vertical, vertical)
-        # Horizontal uses named strings (British spelling) - send as-is
-        horizontal_string = horizontal
-
-        payload = self._build_ata_control_payload(
-            vaneVerticalDirection=vertical_numeric,
-            vaneHorizontalDirection=horizontal_string,
-        )
-
-        await self._api_request(
-            "PUT",
-            f"/api/ataunit/{unit_id}",
-            json=payload,
-        )
+        """Set vane directions (backward compatibility wrapper)."""
+        return await self.ata.set_vanes(unit_id, vertical, horizontal)
 
     # =================================================================
-    # Air-to-Water (A2W) Heat Pump Control
+    # Energy/Telemetry Methods (Shared - used by ATA)
     # =================================================================
-
-    async def _update_atw_unit(self, unit_id: str, payload: dict[str, Any]) -> None:
-        """Send sparse update to ATW unit.
-
-        Args:
-            unit_id: ATW unit ID
-            payload: Fields to update (others will be set to None)
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-
-        Note:
-            API requires ALL control fields present in payload.
-            Changed fields have values, unchanged fields are None.
-        """
-        # Build complete payload with nulls for unchanged fields
-        full_payload = {
-            "power": None,
-            "setTankWaterTemperature": None,
-            "forcedHotWaterMode": None,
-            "setTemperatureZone1": None,
-            "setTemperatureZone2": None,
-            "operationModeZone1": None,
-            "operationModeZone2": None,
-            "inStandbyMode": None,
-            "setHeatFlowTemperatureZone1": None,
-            "setCoolFlowTemperatureZone1": None,
-            "setHeatFlowTemperatureZone2": None,
-            "setCoolFlowTemperatureZone2": None,
-            **payload,  # Override with actual values
-        }
-
-        # Send request (returns None, follows ATA pattern)
-        await self._api_request("PUT", f"/api/atwunit/{unit_id}", json=full_payload)
-
-    async def set_power_atw(self, unit_id: str, power: bool) -> None:
-        """Power entire ATW heat pump ON/OFF.
-
-        Args:
-            unit_id: ATW unit ID
-            power: True=ON, False=OFF
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-
-        Note:
-            Powers off ENTIRE system (all zones + DHW).
-        """
-        payload = {"power": power}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_temperature_zone1(self, unit_id: str, temperature: float) -> None:
-        """Set Zone 1 target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (10-30°C)
-
-        Raises:
-            ValueError: If temperature out of safe range
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        # Validate against hardcoded safe defaults (never trust API ranges)
-        if not ATW_TEMP_MIN_ZONE <= temperature <= ATW_TEMP_MAX_ZONE:
-            raise ValueError(
-                f"Zone temperature must be between {ATW_TEMP_MIN_ZONE} and "
-                f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
-            )
-
-        payload = {"setTemperatureZone1": temperature}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_temperature_zone2(self, unit_id: str, temperature: float) -> None:
-        """Set Zone 2 target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (10-30°C)
-
-        Raises:
-            ValueError: If temperature out of safe range
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-
-        Note:
-            Does NOT validate has_zone2 capability (coordinator's responsibility).
-            API will return error if Zone 2 not available.
-        """
-        # Validate temperature range only (static validation)
-        if not ATW_TEMP_MIN_ZONE <= temperature <= ATW_TEMP_MAX_ZONE:
-            raise ValueError(
-                f"Zone temperature must be between {ATW_TEMP_MIN_ZONE} and "
-                f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
-            )
-
-        payload = {"setTemperatureZone2": temperature}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_mode_zone1(self, unit_id: str, mode: str) -> None:
-        """Set Zone 1 heating strategy.
-
-        Args:
-            unit_id: ATW unit ID
-            mode: One of ATW_OPERATION_MODES_ZONE:
-                - "HeatRoomTemperature" (thermostat control)
-                - "HeatFlowTemperature" (direct flow temp)
-                - "HeatCurve" (weather compensation)
-
-        Raises:
-            ValueError: If mode not in ATW_OPERATION_MODES_ZONE
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        # Validate mode using constants
-        if mode not in ATW_OPERATION_MODES_ZONE:
-            raise ValueError(
-                f"Zone mode must be one of {ATW_OPERATION_MODES_ZONE}, got {mode}"
-            )
-
-        payload = {"operationModeZone1": mode}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_mode_zone2(self, unit_id: str, mode: str) -> None:
-        """Set Zone 2 heating strategy.
-
-        Args:
-            unit_id: ATW unit ID
-            mode: One of ATW_OPERATION_MODES_ZONE
-
-        Raises:
-            ValueError: If mode not in ATW_OPERATION_MODES_ZONE
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-
-        Note:
-            Does NOT validate has_zone2 capability (coordinator's responsibility).
-        """
-        if mode not in ATW_OPERATION_MODES_ZONE:
-            raise ValueError(
-                f"Zone mode must be one of {ATW_OPERATION_MODES_ZONE}, got {mode}"
-            )
-
-        payload = {"operationModeZone2": mode}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
-        """Set DHW tank target temperature.
-
-        Args:
-            unit_id: ATW unit ID
-            temperature: Target temp in Celsius (40-60°C)
-
-        Raises:
-            ValueError: If temperature out of safe range
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        # Validate against hardcoded safe DHW range
-        if not ATW_TEMP_MIN_DHW <= temperature <= ATW_TEMP_MAX_DHW:
-            raise ValueError(
-                f"DHW temperature must be between {ATW_TEMP_MIN_DHW} and "
-                f"{ATW_TEMP_MAX_DHW}°C, got {temperature}"
-            )
-
-        payload = {"setTankWaterTemperature": temperature}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
-        """Enable/disable forced DHW priority mode.
-
-        Args:
-            unit_id: ATW unit ID
-            enabled: True=DHW priority (suspends zone heating)
-                    False=Normal balanced operation
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-
-        Note:
-            When enabled, 3-way valve prioritizes DHW tank heating.
-            Zone heating is suspended until DHW reaches target.
-        """
-        payload = {"forcedHotWaterMode": enabled}
-        await self._update_atw_unit(unit_id, payload)
-
-    async def set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True=standby (frost protection only)
-                    False=normal operation
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        payload = {"inStandbyMode": standby}
-        await self._update_atw_unit(unit_id, payload)
 
     async def get_energy_data(
         self,
