@@ -17,7 +17,8 @@ from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .const import DOMAIN, UPDATE_INTERVAL
-from .control_client import ControlClient
+from .control_client_ata import ATAControlClient
+from .control_client_atw import ATWControlClient
 from .energy_tracker import EnergyTracker
 
 if TYPE_CHECKING:
@@ -68,12 +69,20 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             get_coordinator_data=lambda: self.data,
         )
 
-        # Initialize control client
-        self.control_client = ControlClient(
+        # Initialize ATA control client
+        self.control_client_ata = ATAControlClient(
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,
             get_device=self.get_device,
+            async_request_refresh=self.async_request_refresh,
+        )
+
+        # Initialize ATW control client
+        self.control_client_atw = ATWControlClient(
+            hass=hass,
+            client=client,
+            execute_with_retry=self._execute_with_retry,
             get_atw_device=self.get_atw_device,
             async_request_refresh=self.async_request_refresh,
         )
@@ -271,24 +280,24 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             raise HomeAssistantError(f"API error: {err}") from err
 
     # =================================================================
-    # Air-to-Air (A2A) Control Methods - Delegate to ControlClient
+    # Air-to-Air (A2A) Control Methods - Delegate to ATAControlClient
     # =================================================================
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery."""
-        return await self.control_client.async_set_power(unit_id, power)
+        return await self.control_client_ata.async_set_power(unit_id, power)
 
     async def async_set_mode(self, unit_id: str, mode: str) -> None:
         """Set operation mode with automatic session recovery."""
-        return await self.control_client.async_set_mode(unit_id, mode)
+        return await self.control_client_ata.async_set_mode(unit_id, mode)
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery."""
-        return await self.control_client.async_set_temperature(unit_id, temperature)
+        return await self.control_client_ata.async_set_temperature(unit_id, temperature)
 
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery."""
-        return await self.control_client.async_set_fan_speed(unit_id, fan_speed)
+        return await self.control_client_ata.async_set_fan_speed(unit_id, fan_speed)
 
     async def async_set_vanes(
         self,
@@ -297,21 +306,23 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         horizontal: str,
     ) -> None:
         """Set vane positions with automatic session recovery."""
-        return await self.control_client.async_set_vanes(unit_id, vertical, horizontal)
+        return await self.control_client_ata.async_set_vanes(
+            unit_id, vertical, horizontal
+        )
 
     # =================================================================
-    # Air-to-Water (A2W) Heat Pump Control Methods - Delegate to ControlClient
+    # Air-to-Water (A2W) Heat Pump Control Methods - Delegate to ATWControlClient
     # =================================================================
 
     async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery."""
-        return await self.control_client.async_set_power_atw(unit_id, power)
+        return await self.control_client_atw.async_set_power_atw(unit_id, power)
 
     async def async_set_temperature_zone1(
         self, unit_id: str, temperature: float
     ) -> None:
         """Set Zone 1 target temperature."""
-        return await self.control_client.async_set_temperature_zone1(
+        return await self.control_client_atw.async_set_temperature_zone1(
             unit_id, temperature
         )
 
@@ -319,30 +330,34 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self, unit_id: str, temperature: float
     ) -> None:
         """Set Zone 2 target temperature."""
-        return await self.control_client.async_set_temperature_zone2(
+        return await self.control_client_atw.async_set_temperature_zone2(
             unit_id, temperature
         )
 
     async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
         """Set Zone 1 heating strategy."""
-        return await self.control_client.async_set_mode_zone1(unit_id, mode)
+        return await self.control_client_atw.async_set_mode_zone1(unit_id, mode)
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
         """Set Zone 2 heating strategy."""
-        return await self.control_client.async_set_mode_zone2(unit_id, mode)
+        return await self.control_client_atw.async_set_mode_zone2(unit_id, mode)
 
     async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
         """Set DHW tank target temperature."""
-        return await self.control_client.async_set_dhw_temperature(unit_id, temperature)
+        return await self.control_client_atw.async_set_dhw_temperature(
+            unit_id, temperature
+        )
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
         """Enable/disable forced DHW priority mode."""
-        return await self.control_client.async_set_forced_hot_water(unit_id, enabled)
+        return await self.control_client_atw.async_set_forced_hot_water(
+            unit_id, enabled
+        )
 
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
         """Enable/disable standby mode."""
-        return await self.control_client.async_set_standby_mode(unit_id, standby)
+        return await self.control_client_atw.async_set_standby_mode(unit_id, standby)
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing."""
-        return await self.control_client.async_request_refresh_debounced(delay)
+        return await self.control_client_ata.async_request_refresh_debounced(delay)

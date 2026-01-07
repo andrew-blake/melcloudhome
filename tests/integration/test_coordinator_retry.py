@@ -163,8 +163,8 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
     """Test debounced refresh coalesces multiple rapid calls into one."""
     # Mock the coordinator's refresh method that control_client will call
     mock_refresh = AsyncMock()
-    # Patch the control_client's stored reference to async_request_refresh
-    coordinator.control_client._async_request_refresh = mock_refresh
+    # Patch the control_client_ata's stored reference to async_request_refresh
+    coordinator.control_client_ata._async_request_refresh = mock_refresh
 
     # Make 5 rapid debounced refresh requests
     await coordinator.async_request_refresh_debounced(delay=0.1)

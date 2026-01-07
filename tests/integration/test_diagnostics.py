@@ -235,10 +235,11 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         building_data = user_context["buildings"][0]
         assert building_data["id"] == "building-1"
         assert building_data["name"] == "Home"
-        assert building_data["unit_count"] == 2
+        assert building_data["ata_unit_count"] == 2
+        assert building_data["atw_unit_count"] == 0
 
         # Verify units
-        units = building_data["units"]
+        units = building_data["ata_units"]
         assert len(units) == 2
 
         # Check unit 1
