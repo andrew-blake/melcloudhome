@@ -133,16 +133,16 @@ async def test_api_error_converts_to_home_assistant_error(coordinator):
 @pytest.mark.asyncio
 async def test_wrapper_methods_call_client(coordinator):
     """Test coordinator wrapper methods call client correctly."""
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
     await coordinator.async_set_power("unit123", True)
 
-    coordinator.client.set_power.assert_called_once_with("unit123", True)
+    coordinator.client.ata.set_power.assert_called_once_with("unit123", True)
 
 
 @pytest.mark.asyncio
 async def test_wrapper_method_handles_session_expiry(coordinator):
     """Test wrapper methods automatically recover from session expiry."""
-    coordinator.client.set_power = AsyncMock(
+    coordinator.client.ata.set_power = AsyncMock(
         side_effect=[
             AuthenticationError("Session expired"),  # First attempt
             AuthenticationError("Session expired"),  # Double-check
@@ -153,7 +153,9 @@ async def test_wrapper_method_handles_session_expiry(coordinator):
     await coordinator.async_set_power("unit123", True)
 
     assert coordinator.client.login.call_count == 1
-    assert coordinator.client.set_power.call_count == 3  # First + double-check + retry
+    assert (
+        coordinator.client.ata.set_power.call_count == 3
+    )  # First + double-check + retry
 
 
 @pytest.mark.asyncio
@@ -208,13 +210,13 @@ async def test_deduplication_skips_same_value(coordinator):
     )
     coordinator._units = {"unit123": unit}
 
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
 
     # Try to set power to True (already True)
     await coordinator.async_set_power("unit123", True)
 
     # Should NOT call API
-    assert coordinator.client.set_power.call_count == 0
+    assert coordinator.client.ata.set_power.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -242,10 +244,10 @@ async def test_deduplication_sends_different_value(coordinator):
     )
     coordinator._units = {"unit123": unit}
 
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
 
     # Try to set power to True (currently False)
     await coordinator.async_set_power("unit123", True)
 
     # SHOULD call API
-    assert coordinator.client.set_power.call_count == 1
+    assert coordinator.client.ata.set_power.call_count == 1

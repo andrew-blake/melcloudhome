@@ -7,7 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-ha
 """
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.components.climate import HVACAction, HVACMode
@@ -102,11 +102,12 @@ async def setup_integration(hass: HomeAssistant) -> MockConfigEntry:
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         # Mock API control methods (called by service calls)
-        mock_client.set_power = AsyncMock()
-        mock_client.set_mode = AsyncMock()
-        mock_client.set_temperature = AsyncMock()
-        mock_client.set_fan_speed = AsyncMock()
-        mock_client.set_vanes = AsyncMock()
+        mock_client.ata = MagicMock()
+        mock_client.ata.set_power = AsyncMock()
+        mock_client.ata.set_mode = AsyncMock()
+        mock_client.ata.set_temperature = AsyncMock()
+        mock_client.ata.set_fan_speed = AsyncMock()
+        mock_client.ata.set_vanes = AsyncMock()
 
         entry = MockConfigEntry(
             domain=DOMAIN,

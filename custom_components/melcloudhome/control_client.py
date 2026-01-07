@@ -72,7 +72,7 @@ class ControlClient:
 
         _LOGGER.info("Setting power for %s to %s", unit_id[-8:], power)
         await self._execute_with_retry(
-            lambda: self._client.set_power(unit_id, power),
+            lambda: self._client.ata.set_power(unit_id, power),
             f"set_power({unit_id}, {power})",
         )
 
@@ -93,7 +93,7 @@ class ControlClient:
 
         _LOGGER.info("Setting mode for %s to %s", unit_id[-8:], mode)
         await self._execute_with_retry(
-            lambda: self._client.set_mode(unit_id, mode),
+            lambda: self._client.ata.set_mode(unit_id, mode),
             f"set_mode({unit_id}, {mode})",
         )
 
@@ -116,7 +116,7 @@ class ControlClient:
 
         _LOGGER.info("Setting temperature for %s to %.1f°C", unit_id[-8:], temperature)
         await self._execute_with_retry(
-            lambda: self._client.set_temperature(unit_id, temperature),
+            lambda: self._client.ata.set_temperature(unit_id, temperature),
             f"set_temperature({unit_id}, {temperature})",
         )
 
@@ -139,7 +139,7 @@ class ControlClient:
 
         _LOGGER.info("Setting fan speed for %s to %s", unit_id[-8:], fan_speed)
         await self._execute_with_retry(
-            lambda: self._client.set_fan_speed(unit_id, fan_speed),
+            lambda: self._client.ata.set_fan_speed(unit_id, fan_speed),
             f"set_fan_speed({unit_id}, {fan_speed})",
         )
 
@@ -175,7 +175,7 @@ class ControlClient:
             "Setting vanes for %s to V:%s H:%s", unit_id[-8:], vertical, horizontal
         )
         await self._execute_with_retry(
-            lambda: self._client.set_vanes(unit_id, vertical, horizontal),
+            lambda: self._client.ata.set_vanes(unit_id, vertical, horizontal),
             f"set_vanes({unit_id}, {vertical}, {horizontal})",
         )
 

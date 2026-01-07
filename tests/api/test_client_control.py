@@ -25,7 +25,7 @@ async def test_set_power_on(
 ) -> None:
     """Test turning device on."""
     # Turn device on
-    await authenticated_client.set_power(dining_room_unit_id, True)
+    await authenticated_client.ata.set_power(dining_room_unit_id, True)
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -43,7 +43,7 @@ async def test_set_power_off(
 ) -> None:
     """Test turning device off."""
     # Turn device off
-    await authenticated_client.set_power(dining_room_unit_id, False)
+    await authenticated_client.ata.set_power(dining_room_unit_id, False)
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -62,7 +62,7 @@ async def test_set_temperature(
     """Test setting target temperature."""
     # Set temperature to 22.0°C
     target_temp = 22.0
-    await authenticated_client.set_temperature(dining_room_unit_id, target_temp)
+    await authenticated_client.ata.set_temperature(dining_room_unit_id, target_temp)
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -81,7 +81,7 @@ async def test_set_temperature_half_degree(
     """Test setting temperature with 0.5° increment."""
     # Set temperature to 21.5°C
     target_temp = 21.5
-    await authenticated_client.set_temperature(dining_room_unit_id, target_temp)
+    await authenticated_client.ata.set_temperature(dining_room_unit_id, target_temp)
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -98,7 +98,7 @@ async def test_set_mode_heat(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test changing operation mode to Heat."""
-    await authenticated_client.set_mode(dining_room_unit_id, "Heat")
+    await authenticated_client.ata.set_mode(dining_room_unit_id, "Heat")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -115,7 +115,7 @@ async def test_set_mode_cool(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test changing operation mode to Cool."""
-    await authenticated_client.set_mode(dining_room_unit_id, "Cool")
+    await authenticated_client.ata.set_mode(dining_room_unit_id, "Cool")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -132,7 +132,7 @@ async def test_set_mode_automatic(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test changing operation mode to Automatic."""
-    await authenticated_client.set_mode(dining_room_unit_id, "Automatic")
+    await authenticated_client.ata.set_mode(dining_room_unit_id, "Automatic")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -149,7 +149,7 @@ async def test_set_fan_speed_auto(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test setting fan speed to Auto."""
-    await authenticated_client.set_fan_speed(dining_room_unit_id, "Auto")
+    await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Auto")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -166,7 +166,7 @@ async def test_set_fan_speed_three(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test setting fan speed to level Three."""
-    await authenticated_client.set_fan_speed(dining_room_unit_id, "Three")
+    await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Three")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -183,7 +183,7 @@ async def test_set_vanes_auto(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test setting vanes to Auto."""
-    await authenticated_client.set_vanes(dining_room_unit_id, "Auto", "Auto")
+    await authenticated_client.ata.set_vanes(dining_room_unit_id, "Auto", "Auto")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -201,7 +201,7 @@ async def test_set_vanes_swing(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test setting vanes to Swing."""
-    await authenticated_client.set_vanes(dining_room_unit_id, "Swing", "Swing")
+    await authenticated_client.ata.set_vanes(dining_room_unit_id, "Swing", "Swing")
 
     # Wait for state to propagate
     await asyncio.sleep(2)
@@ -224,16 +224,16 @@ async def test_multiple_controls_together(
     executed one after another without conflicts.
     """
     # Set power on, mode to Heat, temp to 20°C, fan to Auto
-    await authenticated_client.set_power(dining_room_unit_id, True)
+    await authenticated_client.ata.set_power(dining_room_unit_id, True)
     await asyncio.sleep(1)
 
-    await authenticated_client.set_mode(dining_room_unit_id, "Heat")
+    await authenticated_client.ata.set_mode(dining_room_unit_id, "Heat")
     await asyncio.sleep(1)
 
-    await authenticated_client.set_temperature(dining_room_unit_id, 20.0)
+    await authenticated_client.ata.set_temperature(dining_room_unit_id, 20.0)
     await asyncio.sleep(1)
 
-    await authenticated_client.set_fan_speed(dining_room_unit_id, "Auto")
+    await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Auto")
     await asyncio.sleep(2)
 
     # Verify all state changes

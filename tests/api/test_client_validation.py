@@ -19,7 +19,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
-            await client.set_temperature("unit-id", 9.5)
+            await client.ata.set_temperature("unit-id", 9.5)
 
     @pytest.mark.asyncio
     async def test_temperature_above_maximum(self) -> None:
@@ -27,7 +27,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
-            await client.set_temperature("unit-id", 31.5)
+            await client.ata.set_temperature("unit-id", 31.5)
 
     @pytest.mark.asyncio
     async def test_temperature_way_below_minimum(self) -> None:
@@ -35,7 +35,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
-            await client.set_temperature("unit-id", 0.0)
+            await client.ata.set_temperature("unit-id", 0.0)
 
     @pytest.mark.asyncio
     async def test_temperature_way_above_maximum(self) -> None:
@@ -43,7 +43,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
-            await client.set_temperature("unit-id", 50.0)
+            await client.ata.set_temperature("unit-id", 50.0)
 
     @pytest.mark.asyncio
     async def test_temperature_invalid_increment(self) -> None:
@@ -51,7 +51,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be in 0.5° increments"):
-            await client.set_temperature("unit-id", 20.3)
+            await client.ata.set_temperature("unit-id", 20.3)
 
     @pytest.mark.asyncio
     async def test_temperature_invalid_increment_small(self) -> None:
@@ -59,7 +59,7 @@ class TestTemperatureValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="must be in 0.5° increments"):
-            await client.set_temperature("unit-id", 20.1)
+            await client.ata.set_temperature("unit-id", 20.1)
 
     @pytest.mark.asyncio
     async def test_temperature_valid_minimum(self) -> None:
@@ -68,7 +68,7 @@ class TestTemperatureValidation:
 
         # Should raise AuthenticationError (not ValueError) since validation passes
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_temperature("unit-id", 10.0)
+            await client.ata.set_temperature("unit-id", 10.0)
 
     @pytest.mark.asyncio
     async def test_temperature_valid_maximum(self) -> None:
@@ -77,7 +77,7 @@ class TestTemperatureValidation:
 
         # Should raise AuthenticationError (not ValueError) since validation passes
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_temperature("unit-id", 31.0)
+            await client.ata.set_temperature("unit-id", 31.0)
 
     @pytest.mark.asyncio
     async def test_temperature_valid_half_degree(self) -> None:
@@ -86,7 +86,7 @@ class TestTemperatureValidation:
 
         # Should raise AuthenticationError (not ValueError) since validation passes
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_temperature("unit-id", 20.5)
+            await client.ata.set_temperature("unit-id", 20.5)
 
     @pytest.mark.asyncio
     async def test_temperature_valid_whole_number(self) -> None:
@@ -95,7 +95,7 @@ class TestTemperatureValidation:
 
         # Should raise AuthenticationError (not ValueError) since validation passes
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_temperature("unit-id", 21.0)
+            await client.ata.set_temperature("unit-id", 21.0)
 
 
 class TestModeValidation:
@@ -107,7 +107,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid mode.*Must be one of"):
-            await client.set_mode("unit-id", "InvalidMode")
+            await client.ata.set_mode("unit-id", "InvalidMode")
 
     @pytest.mark.asyncio
     async def test_mode_case_sensitive_lowercase(self) -> None:
@@ -115,7 +115,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid mode"):
-            await client.set_mode("unit-id", "heat")
+            await client.ata.set_mode("unit-id", "heat")
 
     @pytest.mark.asyncio
     async def test_mode_case_sensitive_uppercase(self) -> None:
@@ -123,7 +123,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid mode"):
-            await client.set_mode("unit-id", "HEAT")
+            await client.ata.set_mode("unit-id", "HEAT")
 
     @pytest.mark.asyncio
     async def test_mode_common_typo_auto(self) -> None:
@@ -131,7 +131,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid mode"):
-            await client.set_mode("unit-id", "Auto")
+            await client.ata.set_mode("unit-id", "Auto")
 
     @pytest.mark.asyncio
     async def test_mode_empty_string(self) -> None:
@@ -139,7 +139,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid mode"):
-            await client.set_mode("unit-id", "")
+            await client.ata.set_mode("unit-id", "")
 
     @pytest.mark.asyncio
     async def test_mode_valid_heat(self) -> None:
@@ -148,7 +148,7 @@ class TestModeValidation:
 
         # Should raise AuthenticationError (not ValueError) since validation passes
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Heat")
+            await client.ata.set_mode("unit-id", "Heat")
 
     @pytest.mark.asyncio
     async def test_mode_valid_cool(self) -> None:
@@ -156,7 +156,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Cool")
+            await client.ata.set_mode("unit-id", "Cool")
 
     @pytest.mark.asyncio
     async def test_mode_valid_automatic(self) -> None:
@@ -164,7 +164,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Automatic")
+            await client.ata.set_mode("unit-id", "Automatic")
 
     @pytest.mark.asyncio
     async def test_mode_valid_dry(self) -> None:
@@ -172,7 +172,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Dry")
+            await client.ata.set_mode("unit-id", "Dry")
 
     @pytest.mark.asyncio
     async def test_mode_valid_fan(self) -> None:
@@ -180,7 +180,7 @@ class TestModeValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Fan")
+            await client.ata.set_mode("unit-id", "Fan")
 
 
 class TestFanSpeedValidation:
@@ -192,7 +192,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "0")
+            await client.ata.set_fan_speed("unit-id", "0")
 
     @pytest.mark.asyncio
     async def test_numeric_string_one(self) -> None:
@@ -200,7 +200,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "1")
+            await client.ata.set_fan_speed("unit-id", "1")
 
     @pytest.mark.asyncio
     async def test_numeric_string_three(self) -> None:
@@ -208,7 +208,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "3")
+            await client.ata.set_fan_speed("unit-id", "3")
 
     @pytest.mark.asyncio
     async def test_out_of_range_six(self) -> None:
@@ -216,7 +216,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "Six")
+            await client.ata.set_fan_speed("unit-id", "Six")
 
     @pytest.mark.asyncio
     async def test_invalid_string(self) -> None:
@@ -224,7 +224,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "Invalid")
+            await client.ata.set_fan_speed("unit-id", "Invalid")
 
     @pytest.mark.asyncio
     async def test_case_sensitive_lowercase(self) -> None:
@@ -232,7 +232,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid fan speed"):
-            await client.set_fan_speed("unit-id", "auto")
+            await client.ata.set_fan_speed("unit-id", "auto")
 
     @pytest.mark.asyncio
     async def test_valid_auto(self) -> None:
@@ -240,7 +240,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_fan_speed("unit-id", "Auto")
+            await client.ata.set_fan_speed("unit-id", "Auto")
 
     @pytest.mark.asyncio
     async def test_valid_one(self) -> None:
@@ -248,7 +248,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_fan_speed("unit-id", "One")
+            await client.ata.set_fan_speed("unit-id", "One")
 
     @pytest.mark.asyncio
     async def test_valid_five(self) -> None:
@@ -256,7 +256,7 @@ class TestFanSpeedValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_fan_speed("unit-id", "Five")
+            await client.ata.set_fan_speed("unit-id", "Five")
 
 
 class TestVaneValidation:
@@ -268,7 +268,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.set_vanes("unit-id", "Up", "Auto")
+            await client.ata.set_vanes("unit-id", "Up", "Auto")
 
     @pytest.mark.asyncio
     async def test_invalid_horizontal_direction(self) -> None:
@@ -276,7 +276,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid horizontal direction"):
-            await client.set_vanes("unit-id", "Auto", "Invalid")
+            await client.ata.set_vanes("unit-id", "Auto", "Invalid")
 
     @pytest.mark.asyncio
     async def test_both_invalid(self) -> None:
@@ -285,7 +285,7 @@ class TestVaneValidation:
 
         # Vertical is checked first, so should raise vertical error
         with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.set_vanes("unit-id", "Invalid", "AlsoInvalid")
+            await client.ata.set_vanes("unit-id", "Invalid", "AlsoInvalid")
 
     @pytest.mark.asyncio
     async def test_vertical_numeric_string(self) -> None:
@@ -293,7 +293,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.set_vanes("unit-id", "1", "Auto")
+            await client.ata.set_vanes("unit-id", "1", "Auto")
 
     @pytest.mark.asyncio
     async def test_horizontal_numeric_string(self) -> None:
@@ -301,7 +301,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid horizontal direction"):
-            await client.set_vanes("unit-id", "Auto", "1")
+            await client.ata.set_vanes("unit-id", "Auto", "1")
 
     @pytest.mark.asyncio
     async def test_valid_auto_auto(self) -> None:
@@ -309,7 +309,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Auto", "Auto")
+            await client.ata.set_vanes("unit-id", "Auto", "Auto")
 
     @pytest.mark.asyncio
     async def test_valid_swing_swing(self) -> None:
@@ -317,7 +317,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Swing", "Swing")
+            await client.ata.set_vanes("unit-id", "Swing", "Swing")
 
     @pytest.mark.asyncio
     async def test_valid_vertical_positions(self) -> None:
@@ -325,7 +325,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Three", "Auto")
+            await client.ata.set_vanes("unit-id", "Three", "Auto")
 
     @pytest.mark.asyncio
     async def test_valid_horizontal_positions(self) -> None:
@@ -333,7 +333,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Auto", "Centre")
+            await client.ata.set_vanes("unit-id", "Auto", "Centre")
 
 
 class TestPowerValidation:
@@ -345,7 +345,7 @@ class TestPowerValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_power("unit-id", True)
+            await client.ata.set_power("unit-id", True)
 
 
 class TestAuthenticationRequired:
@@ -381,7 +381,7 @@ class TestAuthenticationRequired:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_temperature("unit-id", 20.0)
+            await client.ata.set_temperature("unit-id", 20.0)
 
     @pytest.mark.asyncio
     async def test_set_mode_requires_auth(self) -> None:
@@ -389,7 +389,7 @@ class TestAuthenticationRequired:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_mode("unit-id", "Heat")
+            await client.ata.set_mode("unit-id", "Heat")
 
     @pytest.mark.asyncio
     async def test_set_fan_speed_requires_auth(self) -> None:
@@ -397,7 +397,7 @@ class TestAuthenticationRequired:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_fan_speed("unit-id", "Auto")
+            await client.ata.set_fan_speed("unit-id", "Auto")
 
     @pytest.mark.asyncio
     async def test_set_vanes_requires_auth(self) -> None:
@@ -405,4 +405,4 @@ class TestAuthenticationRequired:
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.set_vanes("unit-id", "Auto", "Auto")
+            await client.ata.set_vanes("unit-id", "Auto", "Auto")

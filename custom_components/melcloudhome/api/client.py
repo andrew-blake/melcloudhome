@@ -1,7 +1,9 @@
 """MELCloud Home API client.
 
-This module provides backward compatibility by composing ATAControlClient
-and ATWControlClient while keeping shared methods (auth, context, energy).
+Provides unified API access using the Facade pattern:
+- Shared authentication and HTTP request handling
+- Device-specific control via composed clients (self.ata, self.atw)
+- Shared energy tracking and user context methods
 """
 
 import logging
@@ -188,31 +190,7 @@ class MELCloudHomeClient:
         return context.get_unit_by_id(unit_id)
 
     # =================================================================
-    # Backward Compatibility Wrappers for ATA Methods
-    # =================================================================
-
-    async def set_power(self, unit_id: str, power: bool) -> None:
-        """Turn device on or off (backward compatibility wrapper)."""
-        return await self.ata.set_power(unit_id, power)
-
-    async def set_temperature(self, unit_id: str, temperature: float) -> None:
-        """Set target temperature (backward compatibility wrapper)."""
-        return await self.ata.set_temperature(unit_id, temperature)
-
-    async def set_mode(self, unit_id: str, mode: str) -> None:
-        """Set operation mode (backward compatibility wrapper)."""
-        return await self.ata.set_mode(unit_id, mode)
-
-    async def set_fan_speed(self, unit_id: str, speed: str) -> None:
-        """Set fan speed (backward compatibility wrapper)."""
-        return await self.ata.set_fan_speed(unit_id, speed)
-
-    async def set_vanes(self, unit_id: str, vertical: str, horizontal: str) -> None:
-        """Set vane directions (backward compatibility wrapper)."""
-        return await self.ata.set_vanes(unit_id, vertical, horizontal)
-
-    # =================================================================
-    # Energy/Telemetry Methods (Shared - used by ATA)
+    # Energy/Telemetry Methods (Shared)
     # =================================================================
 
     async def get_energy_data(
