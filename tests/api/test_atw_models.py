@@ -7,11 +7,10 @@ These tests validate that models correctly parse real API responses.
 import logging
 from typing import Any, cast
 
-from custom_components.melcloudhome.api.models import (
+from custom_components.melcloudhome.api.models import Building, UserContext
+from custom_components.melcloudhome.api.models_atw import (
     AirToWaterCapabilities,
     AirToWaterUnit,
-    Building,
-    UserContext,
 )
 
 from .fixtures.atw_fixtures import (

@@ -10,7 +10,8 @@ from .const_ata import (
 )
 from .const_shared import BASE_URL, USER_AGENT
 from .exceptions import ApiError, AuthenticationError, MELCloudHomeError
-from .models import AirToAirUnit, Building, DeviceCapabilities, Schedule, UserContext
+from .models import Building, UserContext
+from .models_ata import AirToAirUnit, DeviceCapabilities, Schedule
 
 __all__ = [
     # Constants

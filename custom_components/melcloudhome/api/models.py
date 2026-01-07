@@ -1,28 +1,17 @@
-"""Data models for MELCloud Home API.
+"""Shared data models for MELCloud Home API.
 
-This module provides backward compatibility by re-exporting from
-models_ata and models_atw.
+Contains Building and UserContext which are used by both ATA and ATW devices.
+Device-specific models are in models_ata.py and models_atw.py.
 """
 
 from dataclasses import dataclass, field
 from typing import Any
 
-# Re-export ATA models
-from .models_ata import AirToAirUnit, DeviceCapabilities, Schedule
-
-# Re-export ATW models
-from .models_atw import AirToWaterCapabilities, AirToWaterUnit
+from .models_ata import AirToAirUnit
+from .models_atw import AirToWaterUnit
 
 __all__ = [
-    "AirToAirUnit",
-    # ATW models
-    "AirToWaterCapabilities",
-    "AirToWaterUnit",
-    # Shared models
     "Building",
-    # ATA models
-    "DeviceCapabilities",
-    "Schedule",
     "UserContext",
 ]
 

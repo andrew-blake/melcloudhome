@@ -9,7 +9,7 @@ Tests focus on edge cases in helper functions that could cause real bugs:
 Avoids theatre: Only tests non-trivial logic with real edge cases.
 """
 
-from custom_components.melcloudhome.api.models import AirToAirUnit
+from custom_components.melcloudhome.api.models_ata import AirToAirUnit
 
 
 class TestBooleanParsing:
