@@ -28,8 +28,8 @@ class ControlClient:
         execute_with_retry: Callable[
             [Callable[[], Awaitable[Any]], str], Awaitable[Any]
         ],
-        get_unit: Callable[[str], AirToAirUnit | None],
-        get_atw_unit: Callable[[str], AirToWaterUnit | None],
+        get_device: Callable[[str], AirToAirUnit | None],
+        get_atw_device: Callable[[str], AirToWaterUnit | None],
         async_request_refresh: Callable[[], Awaitable[None]],
     ) -> None:
         """Initialize control client.
@@ -38,15 +38,15 @@ class ControlClient:
             hass: Home Assistant instance
             client: MELCloud Home API client
             execute_with_retry: Coordinator's retry wrapper for API calls
-            get_unit: Callable to get ATA unit by ID
-            get_atw_unit: Callable to get ATW unit by ID
+            get_device: Callable to get ATA device by ID
+            get_atw_device: Callable to get ATW device by ID
             async_request_refresh: Callable to request coordinator refresh
         """
         self._hass = hass
         self._client = client
         self._execute_with_retry = execute_with_retry
-        self._get_unit = get_unit
-        self._get_atw_unit = get_atw_unit
+        self._get_device = get_device
+        self._get_atw_device = get_atw_device
         self._async_request_refresh = async_request_refresh
         # Debounced refresh to prevent race conditions from rapid service calls
         self._refresh_debounce_task: asyncio.Task | None = None
@@ -63,8 +63,8 @@ class ControlClient:
             power: True=ON, False=OFF
         """
         # Skip if already in desired state (prevents duplicate API calls)
-        unit = self._get_unit(unit_id)
-        if unit and unit.power == power:
+        device = self._get_device(unit_id)
+        if device and device.power == power:
             _LOGGER.debug(
                 "Power already %s for %s, skipping API call", power, unit_id[-8:]
             )
@@ -84,8 +84,8 @@ class ControlClient:
             mode: Operation mode string
         """
         # Skip if already in desired state
-        unit = self._get_unit(unit_id)
-        if unit and unit.operation_mode == mode:
+        device = self._get_device(unit_id)
+        if device and device.operation_mode == mode:
             _LOGGER.debug(
                 "Mode already %s for %s, skipping API call", mode, unit_id[-8:]
             )
@@ -105,8 +105,8 @@ class ControlClient:
             temperature: Target temperature in Celsius
         """
         # Skip if already at desired temperature
-        unit = self._get_unit(unit_id)
-        if unit and unit.set_temperature == temperature:
+        device = self._get_device(unit_id)
+        if device and device.set_temperature == temperature:
             _LOGGER.debug(
                 "Temperature already %.1f°C for %s, skipping API call",
                 temperature,
@@ -128,8 +128,8 @@ class ControlClient:
             fan_speed: Fan speed string
         """
         # Skip if already at desired fan speed
-        unit = self._get_unit(unit_id)
-        if unit and unit.set_fan_speed == fan_speed:
+        device = self._get_device(unit_id)
+        if device and device.set_fan_speed == fan_speed:
             _LOGGER.debug(
                 "Fan speed already %s for %s, skipping API call",
                 fan_speed,
@@ -157,11 +157,11 @@ class ControlClient:
             horizontal: Horizontal vane position
         """
         # Skip if already at desired vane positions
-        unit = self._get_unit(unit_id)
+        device = self._get_device(unit_id)
         if (
-            unit
-            and unit.vane_vertical_direction == vertical
-            and unit.vane_horizontal_direction == horizontal
+            device
+            and device.vane_vertical_direction == vertical
+            and device.vane_horizontal_direction == horizontal
         ):
             _LOGGER.debug(
                 "Vanes already V:%s H:%s for %s, skipping API call",
@@ -202,13 +202,13 @@ class ControlClient:
             HomeAssistantError: If unit not found or pre-check fails
         """
         # Get cached unit
-        atw_unit = self._get_atw_unit(unit_id)
-        if not atw_unit:
+        atw_device = self._get_atw_device(unit_id)
+        if not atw_device:
             raise HomeAssistantError(f"ATW unit {unit_id} not found")
 
         # Run pre-check if provided (e.g., Zone 2 capability validation)
         if pre_check:
-            pre_check(atw_unit)
+            pre_check(atw_device)
 
         # Log the operation
         _LOGGER.info(
@@ -219,7 +219,7 @@ class ControlClient:
 
         # Execute with automatic retry on session expiry
         await self._execute_with_retry(
-            lambda: control_fn(atw_unit),
+            lambda: control_fn(atw_device),
             f"{control_name}({unit_id})",
         )
 

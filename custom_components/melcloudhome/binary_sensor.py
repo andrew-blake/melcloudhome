@@ -170,10 +170,10 @@ class ATABinarySensor(
             return bool(self.coordinator.last_update_success)
 
         # For other sensors, use the value function
-        unit = self.coordinator.get_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_device(self._unit_id)
+        if device is None:
             return False
-        return bool(self.entity_description.value_fn(unit))
+        return bool(self.entity_description.value_fn(device))
 
     @property
     def available(self) -> bool:
@@ -186,11 +186,11 @@ class ATABinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        unit = self.coordinator.get_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_device(self._unit_id)
+        if device is None:
             return False
 
-        return self.entity_description.available_fn(unit)
+        return self.entity_description.available_fn(device)
 
 
 class ATWBinarySensor(
@@ -222,11 +222,11 @@ class ATWBinarySensor(
     @property
     def is_on(self) -> bool | None:
         """Return the binary sensor value."""
-        unit = self.coordinator.get_atw_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
             return None
 
-        return self.entity_description.value_fn(unit)
+        return self.entity_description.value_fn(device)
 
     @property
     def available(self) -> bool:
@@ -239,8 +239,8 @@ class ATWBinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        unit = self.coordinator.get_atw_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
             return False
 
-        return self.entity_description.available_fn(unit)
+        return self.entity_description.available_fn(device)

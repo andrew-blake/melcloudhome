@@ -241,10 +241,10 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def native_value(self) -> float | str | None:
         """Return the sensor value."""
-        unit = self.coordinator.get_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_device(self._unit_id)
+        if device is None:
             return None
-        return self.entity_description.value_fn(unit)
+        return self.entity_description.value_fn(device)
 
     @property
     def available(self) -> bool:
@@ -252,15 +252,15 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         if not self.coordinator.last_update_success:
             return False
 
-        unit = self.coordinator.get_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_device(self._unit_id)
+        if device is None:
             return False
 
         # Check if device is in error state
-        if unit.is_in_error:
+        if device.is_in_error:
             return False
 
-        return self.entity_description.available_fn(unit)
+        return self.entity_description.available_fn(device)
 
 
 class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: ignore[misc]
@@ -289,11 +289,11 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def native_value(self) -> float | str | None:
         """Return the sensor value."""
-        unit = self.coordinator.get_atw_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
             return None
 
-        return self.entity_description.value_fn(unit)
+        return self.entity_description.value_fn(device)
 
     @property
     def available(self) -> bool:
@@ -301,12 +301,12 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         if not self.coordinator.last_update_success:
             return False
 
-        unit = self.coordinator.get_atw_unit(self._unit_id)
-        if unit is None:
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
             return False
 
         # Check if device is in error state
-        if unit.is_in_error:
+        if device.is_in_error:
             return False
 
-        return self.entity_description.available_fn(unit)
+        return self.entity_description.available_fn(device)

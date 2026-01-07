@@ -31,48 +31,48 @@ class CoordinatorProtocol(Protocol):
         """Get current user context data with buildings and units."""
         ...
 
-    # Unit lookup methods
-    def get_unit(self, unit_id: str) -> AirToAirUnit | None:
-        """Get ATA unit by ID.
+    # Device lookup methods
+    def get_device(self, unit_id: str) -> AirToAirUnit | None:
+        """Get ATA device by ID.
 
         Args:
-            unit_id: Unit ID to look up
+            unit_id: Device unit ID to look up
 
         Returns:
-            AirToAirUnit if found, None otherwise
+            AirToAirUnit device if found, None otherwise
         """
         ...
 
-    def get_atw_unit(self, unit_id: str) -> AirToWaterUnit | None:
-        """Get ATW unit by ID.
+    def get_atw_device(self, unit_id: str) -> AirToWaterUnit | None:
+        """Get ATW device by ID.
 
         Args:
-            unit_id: ATW unit ID to look up
+            unit_id: ATW device unit ID to look up
 
         Returns:
-            AirToWaterUnit if found, None otherwise
+            AirToWaterUnit device if found, None otherwise
         """
         ...
 
-    def get_building_for_unit(self, unit_id: str) -> Building | None:
-        """Get the building that contains the specified ATA unit.
+    def get_building_for_device(self, unit_id: str) -> Building | None:
+        """Get the building that contains the specified ATA device.
 
         Args:
-            unit_id: ATA unit ID
+            unit_id: ATA device unit ID
 
         Returns:
-            Building containing the unit, or None if not found
+            Building containing the device, or None if not found
         """
         ...
 
-    def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
-        """Get the building that contains the specified ATW unit.
+    def get_building_for_atw_device(self, unit_id: str) -> Building | None:
+        """Get the building that contains the specified ATW device.
 
         Args:
-            unit_id: ATW unit ID
+            unit_id: ATW device unit ID
 
         Returns:
-            Building containing the unit, or None if not found
+            Building containing the device, or None if not found
         """
         ...
 

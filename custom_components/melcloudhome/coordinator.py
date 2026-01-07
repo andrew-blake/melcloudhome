@@ -73,8 +73,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,
-            get_unit=self.get_unit,
-            get_atw_unit=self.get_atw_unit,
+            get_device=self.get_device,
+            get_atw_device=self.get_atw_device,
             async_request_refresh=self.async_request_refresh,
         )
 
@@ -167,33 +167,33 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._cancel_energy_updates()
         await self.client.close()
 
-    def get_unit(self, unit_id: str) -> AirToAirUnit | None:
-        """Get unit by ID - O(1) lookup."""
+    def get_device(self, unit_id: str) -> AirToAirUnit | None:
+        """Get ATA device by ID - O(1) lookup."""
         return self._units.get(unit_id)
 
-    def get_building_for_unit(self, unit_id: str) -> Building | None:
-        """Get the building that contains the specified unit - O(1) lookup."""
+    def get_building_for_device(self, unit_id: str) -> Building | None:
+        """Get the building that contains the specified ATA device - O(1) lookup."""
         return self._unit_to_building.get(unit_id)
 
-    def get_atw_unit(self, unit_id: str) -> AirToWaterUnit | None:
-        """Get ATW unit by ID from cache.
+    def get_atw_device(self, unit_id: str) -> AirToWaterUnit | None:
+        """Get ATW device by ID from cache.
 
         Args:
-            unit_id: ATW unit ID
+            unit_id: ATW device unit ID
 
         Returns:
-            Cached AirToWaterUnit if found, None otherwise
+            Cached AirToWaterUnit device if found, None otherwise
         """
         return self._atw_units.get(unit_id)
 
-    def get_building_for_atw_unit(self, unit_id: str) -> Building | None:
-        """Get the building that contains the specified ATW unit - O(1) lookup.
+    def get_building_for_atw_device(self, unit_id: str) -> Building | None:
+        """Get the building that contains the specified ATW device - O(1) lookup.
 
         Args:
-            unit_id: ATW unit ID
+            unit_id: ATW device unit ID
 
         Returns:
-            Building containing the unit, or None if not found
+            Building containing the device, or None if not found
         """
         return self._atw_unit_to_building.get(unit_id)
 
