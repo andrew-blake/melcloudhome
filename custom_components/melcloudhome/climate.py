@@ -1,7 +1,6 @@
 """Climate platform for MELCloud Home integration.
 
-This module provides backward compatibility by re-exporting from
-climate_ata and climate_atw.
+Platform entry point that sets up both ATA and ATW climate entities.
 """
 
 from __future__ import annotations
@@ -18,8 +17,6 @@ from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
-__all__ = ["ATAClimate", "ATWClimateZone1", "async_setup_entry"]
 
 
 async def async_setup_entry(

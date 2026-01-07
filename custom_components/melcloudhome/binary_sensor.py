@@ -1,7 +1,6 @@
 """Binary sensor platform for MELCloud Home integration.
 
-This module provides backward compatibility by re-exporting from
-binary_sensor_ata and binary_sensor_atw.
+Platform entry point that sets up both ATA and ATW binary sensor entities.
 """
 
 from __future__ import annotations
@@ -15,27 +14,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .binary_sensor_ata import (
     BINARY_SENSOR_TYPES,
     ATABinarySensor,
-    ATABinarySensorEntityDescription,
 )
 from .binary_sensor_atw import (
     ATW_BINARY_SENSOR_TYPES,
     ATWBinarySensor,
-    ATWBinarySensorEntityDescription,
 )
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
-__all__ = [
-    "ATW_BINARY_SENSOR_TYPES",
-    "BINARY_SENSOR_TYPES",
-    "ATABinarySensor",
-    "ATABinarySensorEntityDescription",
-    "ATWBinarySensor",
-    "ATWBinarySensorEntityDescription",
-    "async_setup_entry",
-]
 
 
 async def async_setup_entry(

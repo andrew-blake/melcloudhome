@@ -1,7 +1,6 @@
 """Sensor platform for MELCloud Home integration.
 
-This module provides backward compatibility by re-exporting from
-sensor_ata and sensor_atw.
+Platform entry point that sets up both ATA and ATW sensor entities.
 """
 
 from __future__ import annotations
@@ -14,25 +13,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
-from .sensor_ata import SENSOR_TYPES, ATASensor, ATASensorEntityDescription
+from .sensor_ata import SENSOR_TYPES, ATASensor
 from .sensor_atw import (
     ATW_SENSOR_TYPES,
     ATWSensor,
-    ATWSensorEntityDescription,
     _create_sensors_for_unit,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-__all__ = [
-    "ATW_SENSOR_TYPES",
-    "SENSOR_TYPES",
-    "ATASensor",
-    "ATASensorEntityDescription",
-    "ATWSensor",
-    "ATWSensorEntityDescription",
-    "async_setup_entry",
-]
 
 
 async def async_setup_entry(
