@@ -74,7 +74,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,
-            get_device=self.get_device,
+            get_device=self.get_ata_device,
             async_request_refresh=self.async_request_refresh,
         )
 
