@@ -17,8 +17,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, AirToWaterUnit, Building
-from .const import DOMAIN, initialize_entity_base
+from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
+from .helpers import initialize_entity_base
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)

@@ -34,11 +34,10 @@ from .const import (
     VANE_POSITIONS,
     ATAEntityBase,
     ATWEntityBase,
-    create_atw_device_info,
-    create_device_info,
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
+from .helpers import create_atw_device_info, create_device_info
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)

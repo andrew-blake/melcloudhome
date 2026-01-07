@@ -22,10 +22,10 @@ from .const import (
     WATER_HEATER_FORCED_DHW_TO_HA,
     WATER_HEATER_HA_TO_FORCED_DHW,
     ATWEntityBase,
-    create_atw_device_info,
     with_debounced_refresh,
 )
 from .coordinator import MELCloudHomeCoordinator
+from .helpers import create_atw_device_info
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
