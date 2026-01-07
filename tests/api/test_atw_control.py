@@ -104,7 +104,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     unit_id = atw_unit.id
 
     # Set power on
-    await mock_client.atw.set_power_atw(unit_id, True)
+    await mock_client.atw.set_power(unit_id, True)
 
     # Wait for state propagation
     await asyncio.sleep(0.5)
@@ -125,7 +125,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     atw_unit = ctx.buildings[0].air_to_water_units[0]
     unit_id = atw_unit.id
 
-    await mock_client.atw.set_power_atw(unit_id, False)
+    await mock_client.atw.set_power(unit_id, False)
     await asyncio.sleep(0.5)
 
     ctx = await mock_client.get_user_context()

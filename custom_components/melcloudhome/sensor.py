@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
-from .sensor_ata import SENSOR_TYPES, ATASensor
+from .sensor_ata import ATA_SENSOR_TYPES, ATASensor
 from .sensor_atw import (
     ATW_SENSOR_TYPES,
     ATWSensor,
@@ -40,7 +40,7 @@ async def async_setup_entry(
     # ATA (Air-to-Air) sensors
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
-            for description in SENSOR_TYPES:
+            for description in ATA_SENSOR_TYPES:
                 # Use should_create_fn if defined, otherwise use available_fn
                 create_check = (
                     description.should_create_fn

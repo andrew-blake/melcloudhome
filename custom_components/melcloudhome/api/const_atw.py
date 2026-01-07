@@ -50,3 +50,23 @@ ATW_TEMP_STEP = 0.5  # Temperature increment (most systems)
 # Note: Flow temperature ranges DEFERRED (Phase 2)
 # ATW_TEMP_MIN_FLOW = 30.0    # Likely range for flow temp mode
 # ATW_TEMP_MAX_FLOW = 60.0    # Likely range for flow temp mode
+
+__all__ = [
+    "API_ATW_CONTROL_UNIT",
+    "API_ATW_ERROR_LOG",
+    "API_FIELD_AIR_TO_WATER_UNITS",
+    "API_FROST_PROTECTION",
+    "API_HOLIDAY_MODE",
+    "ATW_MODE_HEAT_CURVE",
+    "ATW_MODE_HEAT_FLOW_TEMP",
+    "ATW_MODE_HEAT_ROOM_TEMP",
+    "ATW_OPERATION_MODES_ZONE",
+    "ATW_OPERATION_STATUSES",
+    "ATW_STATUS_HOT_WATER",
+    "ATW_STATUS_STOP",
+    "ATW_TEMP_MAX_DHW",
+    "ATW_TEMP_MAX_ZONE",
+    "ATW_TEMP_MIN_DHW",
+    "ATW_TEMP_MIN_ZONE",
+    "ATW_TEMP_STEP",
+]

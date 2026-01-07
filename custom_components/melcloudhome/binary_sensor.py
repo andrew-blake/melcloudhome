@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .binary_sensor_ata import (
-    BINARY_SENSOR_TYPES,
+    ATA_BINARY_SENSOR_TYPES,
     ATABinarySensor,
 )
 from .binary_sensor_atw import (
@@ -42,7 +42,7 @@ async def async_setup_entry(
     # ATA (Air-to-Air) binary sensors
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
-            for description in BINARY_SENSOR_TYPES:
+            for description in ATA_BINARY_SENSOR_TYPES:
                 entities.append(
                     ATABinarySensor(coordinator, unit, building, entry, description)
                 )
