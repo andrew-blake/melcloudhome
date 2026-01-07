@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.models import AirToWaterUnit, Building
-from .const import DOMAIN, with_debounced_refresh
+from .const import DOMAIN
 from .const_atw import (
     ATW_TEMP_MAX_DHW,
     ATW_TEMP_MIN_DHW,
@@ -24,7 +24,7 @@ from .const_atw import (
     ATWEntityBase,
 )
 from .coordinator import MELCloudHomeCoordinator
-from .helpers import create_atw_device_info
+from .helpers import create_atw_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)

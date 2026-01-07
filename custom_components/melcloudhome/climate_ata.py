@@ -16,7 +16,6 @@ from homeassistant.config_entries import ConfigEntry
 from .api.const import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
 from .api.models import AirToAirUnit, Building
 from .climate_helpers import HVACActionDeterminer
-from .const import with_debounced_refresh
 from .const_ata import (
     FAN_SPEEDS,
     HA_TO_MELCLOUD_MODE,
@@ -25,7 +24,7 @@ from .const_ata import (
     VANE_POSITIONS,
     ATAEntityBase,
 )
-from .helpers import create_device_info
+from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
