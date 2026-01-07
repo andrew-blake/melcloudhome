@@ -1,0 +1,155 @@
+"""Air-to-Water (Heat Pump) sensor platform for MELCloud Home integration."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfTemperature
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .api.models import AirToWaterUnit, Building
+from .helpers import initialize_entity_base
+from .protocols import CoordinatorProtocol
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
+    """ATW sensor entity description with value extraction.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees SensorEntityDescription as 'Any'.
+    """
+
+    value_fn: Callable[[AirToWaterUnit], float | str | None]
+    """Function to extract sensor value from unit data."""
+
+    available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
+    """Function to determine if sensor is available."""
+
+    should_create_fn: Callable[[AirToWaterUnit], bool] | None = None
+    """Function to determine if sensor should be created. If None, uses available_fn."""
+
+
+ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
+    # Zone 1 room temperature
+    ATWSensorEntityDescription(
+        key="zone_1_temperature",
+        translation_key="zone_1_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.room_temperature_zone1,
+        should_create_fn=lambda unit: True,
+        available_fn=lambda unit: unit.room_temperature_zone1 is not None,
+    ),
+    # Tank water temperature
+    ATWSensorEntityDescription(
+        key="tank_temperature",
+        translation_key="tank_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.tank_water_temperature,
+        should_create_fn=lambda unit: True,
+        available_fn=lambda unit: unit.tank_water_temperature is not None,
+    ),
+    # Operation status (3-way valve position - raw API values)
+    ATWSensorEntityDescription(
+        key="operation_status",
+        translation_key="operation_status",
+        device_class=None,  # Categorical (not numeric)
+        value_fn=lambda unit: unit.operation_status,  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
+    ),
+)
+
+
+def _create_sensors_for_unit(
+    coordinator: CoordinatorProtocol,
+    unit: AirToWaterUnit,
+    building: Building,
+    entry: ConfigEntry,
+    descriptions: tuple[ATWSensorEntityDescription, ...],
+) -> list[ATWSensor]:
+    """Create sensors for a single ATW unit (extracted pattern to reduce duplication).
+
+    Args:
+        coordinator: Data update coordinator
+        unit: ATW unit to create sensors for
+        building: Building containing the unit
+        entry: Config entry
+        descriptions: Tuple of sensor descriptions to create
+
+    Returns:
+        List of ATWSensor instances
+    """
+    entities = []
+    for description in descriptions:
+        # Use should_create_fn if defined, otherwise use available_fn
+        create_check: Callable[[AirToWaterUnit], bool] = (
+            description.should_create_fn
+            if description.should_create_fn
+            else description.available_fn
+        )
+        if create_check(unit):
+            entities.append(ATWSensor(coordinator, unit, building, entry, description))
+    return entities
+
+
+class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: ignore[misc]
+    """Representation of a MELCloud Home ATW sensor.
+
+    Note: type: ignore[misc] required because HA is not installed in dev environment
+    (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
+    """
+
+    _attr_has_entity_name = True  # Use device name + entity name pattern
+    entity_description: ATWSensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: CoordinatorProtocol,
+        unit: AirToWaterUnit,
+        building: Building,
+        entry: ConfigEntry,
+        description: ATWSensorEntityDescription,
+    ) -> None:
+        """Initialize the ATW sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        initialize_entity_base(self, unit, building, entry, description)
+
+    @property
+    def native_value(self) -> float | str | None:
+        """Return the sensor value."""
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
+            return None
+
+        return self.entity_description.value_fn(device)
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
+
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
+            return False
+
+        # Check if device is in error state
+        if device.is_in_error:
+            return False
+
+        return self.entity_description.available_fn(device)
