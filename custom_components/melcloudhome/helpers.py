@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.helpers.device_registry import DeviceInfo
+
+from .api.models import AirToWaterUnit
+from .const import DOMAIN
+
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.helpers.device_registry import DeviceInfo
     from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-    from .api.models import AirToAirUnit, AirToWaterUnit, Building
+    from .api.models import AirToAirUnit, Building
 
     # Type alias for units that work with generic helpers
     DeviceUnit = AirToAirUnit | AirToWaterUnit
@@ -93,11 +97,6 @@ def create_device_info(unit: DeviceUnit, building: Building) -> DeviceInfo:
     Returns:
         DeviceInfo dict with identifiers, name, manufacturer, model, area
     """
-    from homeassistant.helpers.device_registry import DeviceInfo
-
-    from .api.models import AirToWaterUnit
-    from .const import DOMAIN
-
     # Extract UUID fragments for stable device naming
     unit_id_clean = unit.id.replace("-", "")
     device_name = f"melcloudhome_{unit_id_clean[:4]}_{unit_id_clean[-4:]}"
