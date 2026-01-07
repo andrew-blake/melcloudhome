@@ -1,7 +1,7 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .const_ata import (
@@ -143,53 +143,6 @@ class DeviceCapabilities:
 
 
 @dataclass
-class Schedule:
-    """Schedule entry for automated device control."""
-
-    id: str
-    days: list[int]
-    time: str
-    power: bool
-    operation_mode: int
-    set_point: float | None = None
-    vane_vertical_direction: int | None = None
-    vane_horizontal_direction: int | None = None
-    set_fan_speed: int | None = None
-    enabled: bool | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Schedule":
-        """Create from API response dict."""
-        return cls(
-            id=data["id"],
-            days=data["days"],
-            time=data["time"],
-            power=data["power"],
-            operation_mode=data["operationMode"],
-            set_point=data.get("setPoint"),
-            vane_vertical_direction=data.get("vaneVerticalDirection"),
-            vane_horizontal_direction=data.get("vaneHorizontalDirection"),
-            set_fan_speed=data.get("setFanSpeed"),
-            enabled=data.get("enabled"),
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to API request dict."""
-        return {
-            "id": self.id,
-            "days": self.days,
-            "time": self.time,
-            "power": self.power,
-            "operationMode": self.operation_mode,
-            "setPoint": self.set_point,
-            "vaneVerticalDirection": self.vane_vertical_direction,
-            "vaneHorizontalDirection": self.vane_horizontal_direction,
-            "setFanSpeed": self.set_fan_speed,
-            "enabled": self.enabled,
-        }
-
-
-@dataclass
 class AirToAirUnit:
     """Air-to-air unit device."""
 
@@ -206,8 +159,6 @@ class AirToAirUnit:
     is_in_error: bool
     rssi: int | None
     capabilities: DeviceCapabilities
-    schedule: list[Schedule] = field(default_factory=list)
-    schedule_enabled: bool = False
     # Energy monitoring (set by coordinator, not from main API)
     energy_consumed: float | None = None  # kWh
 
@@ -220,9 +171,6 @@ class AirToAirUnit:
         """
         capabilities_data = data.get("capabilities", {})
         capabilities = DeviceCapabilities.from_dict(capabilities_data)
-
-        schedules_data = data.get("schedule", [])
-        schedules = [Schedule.from_dict(s) for s in schedules_data]
 
         # Parse settings array into dict for easy access
         settings_list = data.get("settings", [])
@@ -280,6 +228,4 @@ class AirToAirUnit:
             is_in_error=_parse_bool(settings.get("IsInError")),
             rssi=data.get("rssi"),
             capabilities=capabilities,
-            schedule=schedules,
-            schedule_enabled=data.get("scheduleEnabled", False),
         )

@@ -1,7 +1,7 @@
 """Air-to-Water (Heat Pump) data models for MELCloud Home API."""
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .const_atw import ATW_MODE_HEAT_ROOM_TEMP, ATW_STATUS_STOP
@@ -233,10 +233,6 @@ class AirToWaterUnit:
     set_temperature_zone2: float | None = None
     room_temperature_zone2: float | None = None
 
-    # Schedule (read-only for now - creation deferred)
-    schedule: list[dict[str, Any]] = field(default_factory=list)
-    schedule_enabled: bool = False
-
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False
     frost_protection_enabled: bool = False
@@ -264,9 +260,6 @@ class AirToWaterUnit:
             has_zone2 = has_zone2_value != "0" and has_zone2_value.lower() != "false"
         else:
             has_zone2 = bool(has_zone2_value)
-
-        # Parse schedule (basic parsing - creation not supported yet)
-        schedule_data = data.get("schedule", [])
 
         # Parse holiday mode and frost protection
         holiday_data = data.get("holidayMode", {})
@@ -321,9 +314,6 @@ class AirToWaterUnit:
             ftc_model=int(settings.get("FTCModel", "3")),
             # Capabilities
             capabilities=capabilities,
-            # Schedule (read-only)
-            schedule=schedule_data,
-            schedule_enabled=data.get("scheduleEnabled", False),
             # Holiday Mode & Frost Protection
             holiday_mode_enabled=holiday_enabled,
             frost_protection_enabled=frost_enabled,
