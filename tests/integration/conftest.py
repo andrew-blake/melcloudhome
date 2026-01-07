@@ -12,11 +12,8 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-    from custom_components.melcloudhome.api.models import (
-        AirToWaterUnit,
-        Building,
-        UserContext,
-    )
+    from custom_components.melcloudhome.api.models import Building, UserContext
+    from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 
 # Import fixtures from pytest-homeassistant-custom-component
 pytest_plugins = ["pytest_homeassistant_custom_component"]
@@ -97,7 +94,7 @@ def create_mock_atw_unit(
     Uses real model class with realistic data. All parameters can be customized
     to test different scenarios (error states, forced DHW, etc.).
     """
-    from custom_components.melcloudhome.api.models import (
+    from custom_components.melcloudhome.api.models_atw import (
         AirToWaterCapabilities,
         AirToWaterUnit,
     )

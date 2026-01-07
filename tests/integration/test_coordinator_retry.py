@@ -185,7 +185,7 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
 @pytest.mark.asyncio
 async def test_deduplication_skips_same_value(coordinator):
     """Test smart deduplication skips API call when value unchanged."""
-    from custom_components.melcloudhome.api.models import (
+    from custom_components.melcloudhome.api.models_ata import (
         AirToAirUnit,
         DeviceCapabilities,
     )
@@ -220,7 +220,7 @@ async def test_deduplication_skips_same_value(coordinator):
 @pytest.mark.asyncio
 async def test_deduplication_sends_different_value(coordinator):
     """Test smart deduplication sends API call when value changed."""
-    from custom_components.melcloudhome.api.models import (
+    from custom_components.melcloudhome.api.models_ata import (
         AirToAirUnit,
         DeviceCapabilities,
     )
