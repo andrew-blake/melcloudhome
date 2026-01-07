@@ -11,11 +11,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.models import AirToWaterUnit, Building
-from .const import (
-    DOMAIN,
-    ATWEntityBase,
-    with_debounced_refresh,
-)
+from .const import DOMAIN, with_debounced_refresh
+from .const_atw import ATWEntityBase
 from .coordinator import MELCloudHomeCoordinator
 from .helpers import create_atw_device_info
 from .protocols import CoordinatorProtocol

@@ -15,7 +15,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 
 from .api.models import AirToWaterUnit, Building
-from .const import (
+from .const import with_debounced_refresh
+from .const_atw import (
     ATW_PRESET_MODES,
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_ZONE,
@@ -23,7 +24,6 @@ from .const import (
     ATW_TO_HA_PRESET,
     HA_TO_ATW_PRESET,
     ATWEntityBase,
-    with_debounced_refresh,
 )
 from .helpers import create_atw_device_info
 from .protocols import CoordinatorProtocol

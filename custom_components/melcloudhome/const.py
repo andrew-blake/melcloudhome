@@ -1,7 +1,6 @@
-"""Constants for the MELCloud Home integration.
+"""Shared constants for the MELCloud Home integration.
 
-This module provides backward compatibility by re-exporting from
-const_ata and const_atw.
+Device-specific constants are in const_ata.py and const_atw.py.
 """
 
 from collections.abc import Callable
@@ -9,38 +8,14 @@ from datetime import timedelta
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Union
 
-# Re-export ATA constants
-from .const_ata import (
-    FAN_SPEEDS,
-    HA_TO_MELCLOUD_MODE,
-    MELCLOUD_TO_HA_MODE,
-    VANE_HORIZONTAL_POSITIONS,
-    VANE_POSITIONS,
-    ATAEntityBase,
-)
-
-# Re-export ATW constants
-from .const_atw import (
-    ATW_PRESET_MODES,
-    ATW_TEMP_MAX_DHW,
-    ATW_TEMP_MAX_ZONE,
-    ATW_TEMP_MIN_DHW,
-    ATW_TEMP_MIN_ZONE,
-    ATW_TEMP_STEP,
-    ATW_TO_HA_PRESET,
-    HA_TO_ATW_PRESET,
-    WATER_HEATER_FORCED_DHW_TO_HA,
-    WATER_HEATER_HA_TO_FORCED_DHW,
-    ATWEntityBase,
-)
-
 if TYPE_CHECKING:
     from .api.models import AirToAirUnit, AirToWaterUnit
 
-# Type alias for any device unit (ATA or ATW)
-DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
+# =================================================================
+# Shared Constants
+# =================================================================
 
-# Domain and update interval (shared)
+# Domain and update interval (shared by all device types)
 DOMAIN = "melcloudhome"
 UPDATE_INTERVAL = timedelta(seconds=60)
 PLATFORMS = ["climate"]
@@ -48,28 +23,14 @@ PLATFORMS = ["climate"]
 # Configuration keys
 CONF_DEBUG_MODE = "debug_mode"
 
+# Type alias for any device unit (ATA or ATW)
+DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
+
 __all__ = [
-    "ATW_PRESET_MODES",
-    "ATW_TEMP_MAX_DHW",
-    "ATW_TEMP_MAX_ZONE",
-    "ATW_TEMP_MIN_DHW",
-    "ATW_TEMP_MIN_ZONE",
-    "ATW_TEMP_STEP",
-    "ATW_TO_HA_PRESET",
     "CONF_DEBUG_MODE",
     "DOMAIN",
-    "FAN_SPEEDS",
-    "HA_TO_ATW_PRESET",
-    "HA_TO_MELCLOUD_MODE",
-    "MELCLOUD_TO_HA_MODE",
     "PLATFORMS",
     "UPDATE_INTERVAL",
-    "VANE_HORIZONTAL_POSITIONS",
-    "VANE_POSITIONS",
-    "WATER_HEATER_FORCED_DHW_TO_HA",
-    "WATER_HEATER_HA_TO_FORCED_DHW",
-    "ATAEntityBase",
-    "ATWEntityBase",
     "DeviceUnit",
     "with_debounced_refresh",
 ]
