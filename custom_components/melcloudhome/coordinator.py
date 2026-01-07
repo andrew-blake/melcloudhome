@@ -176,11 +176,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._cancel_energy_updates()
         await self.client.close()
 
-    def get_device(self, unit_id: str) -> AirToAirUnit | None:
+    def get_ata_device(self, unit_id: str) -> AirToAirUnit | None:
         """Get ATA device by ID - O(1) lookup."""
         return self._units.get(unit_id)
 
-    def get_building_for_device(self, unit_id: str) -> Building | None:
+    def get_building_for_ata_device(self, unit_id: str) -> Building | None:
         """Get the building that contains the specified ATA device - O(1) lookup."""
         return self._unit_to_building.get(unit_id)
 

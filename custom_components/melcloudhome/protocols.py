@@ -54,7 +54,7 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
-    def get_building_for_device(self, unit_id: str) -> Building | None:
+    def get_building_for_ata_device(self, unit_id: str) -> Building | None:
         """Get the building that contains the specified ATA device.
 
         Args:

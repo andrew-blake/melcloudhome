@@ -38,7 +38,7 @@ class ATABinarySensorEntityDescription(
     """Function to determine if sensor is available."""
 
 
-BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
+ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
     ATABinarySensorEntityDescription(
         key="error_state",
@@ -91,7 +91,7 @@ class ATABinarySensor(
             return bool(self.coordinator.last_update_success)
 
         # For other sensors, use the value function
-        device = self.coordinator.get_device(self._unit_id)
+        device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return False
         return bool(self.entity_description.value_fn(device))
@@ -107,7 +107,7 @@ class ATABinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        device = self.coordinator.get_device(self._unit_id)
+        device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return False
 

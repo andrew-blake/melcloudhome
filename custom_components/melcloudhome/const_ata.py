@@ -75,11 +75,11 @@ class ATAEntityBase(CoordinatorEntity):  # type: ignore[misc]
 
         Changed from property to method to clarify this is an action, not attribute.
         """
-        return self.coordinator.get_device(self._unit_id)  # type: ignore[no-any-return]
+        return self.coordinator.get_ata_device(self._unit_id)  # type: ignore[no-any-return]
 
     def get_building(self) -> "Building | None":
         """Get building from coordinator - O(1) cached lookup."""
-        return self.coordinator.get_building_for_device(self._unit_id)  # type: ignore[no-any-return]
+        return self.coordinator.get_building_for_ata_device(self._unit_id)  # type: ignore[no-any-return]
 
     @property
     def available(self) -> bool:

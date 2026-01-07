@@ -46,7 +46,7 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     """Function to determine if sensor should be created. If None, uses available_fn."""
 
 
-SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
+ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
     # Room temperature - for statistics and history
     # Climate entity has this as an attribute, but separate sensor enables long-term statistics
     ATASensorEntityDescription(
@@ -113,7 +113,7 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def native_value(self) -> float | str | None:
         """Return the sensor value."""
-        device = self.coordinator.get_device(self._unit_id)
+        device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return None
         return self.entity_description.value_fn(device)
@@ -124,7 +124,7 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         if not self.coordinator.last_update_success:
             return False
 
-        device = self.coordinator.get_device(self._unit_id)
+        device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return False
 

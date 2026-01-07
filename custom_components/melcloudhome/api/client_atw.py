@@ -10,6 +10,7 @@ from .const_atw import (
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
+    ATW_TEMP_STEP,
 )
 
 if TYPE_CHECKING:
@@ -102,6 +103,10 @@ class ATWControlClient:
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
 
+        # Check if temperature is in correct increments
+        if (temperature / ATW_TEMP_STEP) % 1 != 0:
+            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
+
         payload = {"setTemperatureZone1": temperature}
         await self._update_atw_unit(unit_id, payload)
 
@@ -127,6 +132,10 @@ class ATWControlClient:
                 f"Zone temperature must be between {ATW_TEMP_MIN_ZONE} and "
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
+
+        # Check if temperature is in correct increments
+        if (temperature / ATW_TEMP_STEP) % 1 != 0:
+            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
 
         payload = {"setTemperatureZone2": temperature}
         await self._update_atw_unit(unit_id, payload)
@@ -196,6 +205,10 @@ class ATWControlClient:
                 f"DHW temperature must be between {ATW_TEMP_MIN_DHW} and "
                 f"{ATW_TEMP_MAX_DHW}°C, got {temperature}"
             )
+
+        # Check if temperature is in correct increments
+        if (temperature / ATW_TEMP_STEP) % 1 != 0:
+            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
 
         payload = {"setTankWaterTemperature": temperature}
         await self._update_atw_unit(unit_id, payload)
