@@ -1,19 +1,8 @@
 """Air-to-Air (A/C) constants for MELCloud Home API Client."""
 
-import os
-
-# API Base URLs
-BASE_URL = "https://melcloudhome.com"  # Production
-MOCK_BASE_URL = os.getenv(
-    "MELCLOUD_MOCK_URL", "http://localhost:8080"
-)  # Development (configurable via env var for Docker Compose)
-
-# Required User-Agent to avoid bot detection
-# CRITICAL: Must use Chrome User-Agent or requests will be blocked
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+from .const_shared import BASE_URL, USER_AGENT
 
 # API Endpoints - ATA
-API_USER_CONTEXT = "/api/user/context"
 API_CONTROL_UNIT = "/api/ataunit/{unit_id}"
 API_ERROR_LOG = "/api/ataunit/{unit_id}/errorlog"
 API_SCHEDULE_CREATE = "/api/cloudschedule/{unit_id}"

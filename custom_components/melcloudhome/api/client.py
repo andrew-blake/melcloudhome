@@ -12,7 +12,7 @@ import aiohttp
 from .auth import MELCloudHomeAuth
 from .client_ata import ATAControlClient
 from .client_atw import ATWControlClient
-from .const_ata import BASE_URL, MOCK_BASE_URL
+from .const_shared import BASE_URL, MOCK_BASE_URL
 from .exceptions import ApiError, AuthenticationError
 from .models import AirToAirUnit, UserContext
 
