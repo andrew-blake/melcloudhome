@@ -4,6 +4,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from .const_ata import (
+    FAN_SPEED_NUMERIC_TO_WORD,
+    OPERATION_MODE_HEAT,
+    VANE_HORIZONTAL_AMERICAN_TO_BRITISH,
+    VANE_HORIZONTAL_DIRECTIONS,
+    VANE_NUMERIC_TO_WORD,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -224,40 +232,21 @@ class AirToAirUnit:
         def normalize_fan_speed(value: str | None) -> str | None:
             if value is None:
                 return None
-            # Map numeric strings to word strings
-            fan_speed_map = {
-                "0": "Auto",
-                "1": "One",
-                "2": "Two",
-                "3": "Three",
-                "4": "Four",
-                "5": "Five",
-            }
             # If already a word string, return as-is
-            if value in fan_speed_map.values():
+            if value in FAN_SPEED_NUMERIC_TO_WORD.values():
                 return value
             # Otherwise map from numeric string
-            return fan_speed_map.get(value, value)
+            return FAN_SPEED_NUMERIC_TO_WORD.get(value, value)
 
         # Helper to normalize vertical vane direction (API returns numeric strings)
         def normalize_vertical_vane(value: str | None) -> str | None:
             if value is None:
                 return None
-            # Map numeric strings to word strings
-            vane_map = {
-                "0": "Auto",
-                "7": "Swing",
-                "1": "One",
-                "2": "Two",
-                "3": "Three",
-                "4": "Four",
-                "5": "Five",
-            }
             # If already a word string, return as-is
-            if value in vane_map.values():
+            if value in VANE_NUMERIC_TO_WORD.values():
                 return value
             # Otherwise map from numeric string
-            return vane_map.get(value, value)
+            return VANE_NUMERIC_TO_WORD.get(value, value)
 
         # Helper to normalize horizontal vane direction
         # API uses British-spelled named positions
@@ -265,25 +254,11 @@ class AirToAirUnit:
             if value is None:
                 return None
             # Official API format (British spelling) - these are correct
-            valid_positions = {
-                "Auto",
-                "Swing",
-                "Left",
-                "LeftCentre",
-                "Centre",
-                "RightCentre",
-                "Right",
-            }
-            if value in valid_positions:
+            if value in VANE_HORIZONTAL_DIRECTIONS:
                 return value
             # Handle American spelling variants
-            american_to_british = {
-                "CenterLeft": "LeftCentre",
-                "Center": "Centre",
-                "CenterRight": "RightCentre",
-            }
-            if value in american_to_british:
-                return american_to_british[value]
+            if value in VANE_HORIZONTAL_AMERICAN_TO_BRITISH:
+                return VANE_HORIZONTAL_AMERICAN_TO_BRITISH[value]
             # Return as-is (unknown value)
             return value
 
@@ -291,7 +266,7 @@ class AirToAirUnit:
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
             power=_parse_bool(settings.get("Power")),
-            operation_mode=settings.get("OperationMode", "Heat"),
+            operation_mode=settings.get("OperationMode", OPERATION_MODE_HEAT),
             set_temperature=_parse_float(settings.get("SetTemperature")),
             room_temperature=_parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),

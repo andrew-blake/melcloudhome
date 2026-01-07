@@ -9,7 +9,14 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import TraceConfig, TraceRequestEndParams, TraceRequestStartParams
 
-from .const_shared import BASE_URL, MOCK_BASE_URL, USER_AGENT
+from .const_shared import (
+    AUTH_BASE_URL,
+    BASE_URL,
+    COGNITO_BASE_URL,
+    COGNITO_DOMAIN_SUFFIX,
+    MOCK_BASE_URL,
+    USER_AGENT,
+)
 from .exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,10 +38,8 @@ class MELCloudHomeAuth:
 
         # AWS Cognito OAuth configuration (from discovery docs)
         # Not used in debug mode
-        self._cognito_base = (
-            "https://live-melcloudhome.auth.eu-west-1.amazoncognito.com"
-        )
-        self._auth_base = "https://auth.melcloudhome.com"
+        self._cognito_base = COGNITO_BASE_URL
+        self._auth_base = AUTH_BASE_URL
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Ensure aiohttp session exists."""
@@ -237,7 +242,7 @@ class MELCloudHomeAuth:
                 parsed = urlparse(final_url)
                 if not (
                     parsed.hostname
-                    and parsed.hostname.endswith(".amazoncognito.com")
+                    and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
                     and "/login" in parsed.path
                 ):
                     raise AuthenticationError(f"Unexpected redirect URL: {final_url}")
@@ -308,7 +313,7 @@ class MELCloudHomeAuth:
 
                 # If we're still on Cognito, credentials were wrong
                 parsed = urlparse(final_url)
-                if parsed.hostname and parsed.hostname.endswith(".amazoncognito.com"):
+                if parsed.hostname and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX):
                     raise AuthenticationError(
                         "Authentication failed: Invalid username or password"
                     )

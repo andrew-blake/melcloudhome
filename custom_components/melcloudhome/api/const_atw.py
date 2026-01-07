@@ -4,6 +4,9 @@
 # Air-to-Water (Heat Pump) Constants
 # ==============================================================================
 
+# API Response Field Names - ATW
+API_FIELD_AIR_TO_WATER_UNITS = "airToWaterUnits"
+
 # API Endpoints - ATW
 API_ATW_CONTROL_UNIT = "/api/atwunit/{unit_id}"
 API_ATW_ERROR_LOG = "/api/atwunit/{unit_id}/errorlog"

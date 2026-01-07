@@ -4,6 +4,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from .const_atw import ATW_MODE_HEAT_ROOM_TEMP, ATW_STATUS_STOP
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -287,10 +289,10 @@ class AirToWaterUnit:
             # Operation Status (READ-ONLY)
             # CRITICAL: This is "OperationMode" in API but renamed to avoid confusion
             # with operationModeZone1 (which is the control field)
-            operation_status=settings.get("OperationMode", "Stop"),
+            operation_status=settings.get("OperationMode", ATW_STATUS_STOP),
             # Zone 1
             operation_mode_zone1=settings.get(
-                "OperationModeZone1", "HeatRoomTemperature"
+                "OperationModeZone1", ATW_MODE_HEAT_ROOM_TEMP
             ),
             set_temperature_zone1=_parse_float(settings.get("SetTemperatureZone1")),
             room_temperature_zone1=_parse_float(settings.get("RoomTemperatureZone1")),

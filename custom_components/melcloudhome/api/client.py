@@ -14,7 +14,15 @@ import aiohttp
 from .auth import MELCloudHomeAuth
 from .client_ata import ATAControlClient
 from .client_atw import ATWControlClient
-from .const_shared import BASE_URL, MOCK_BASE_URL
+from .const_ata import API_TELEMETRY_ENERGY
+from .const_shared import (
+    API_FIELD_MEASURE_DATA,
+    API_FIELD_VALUE,
+    API_FIELD_VALUES,
+    API_USER_CONTEXT,
+    BASE_URL,
+    MOCK_BASE_URL,
+)
 from .exceptions import ApiError, AuthenticationError
 from .models import AirToAirUnit, UserContext
 
@@ -151,7 +159,7 @@ class MELCloudHomeClient:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
         """
-        data = await self._api_request("GET", "/api/user/context")
+        data = await self._api_request("GET", API_USER_CONTEXT)
         self._user_context = UserContext.from_dict(data)
         return self._user_context
 
@@ -216,7 +224,7 @@ class MELCloudHomeClient:
             AuthenticationError: If session expired
             ApiError: If API request fails
         """
-        endpoint = f"/api/telemetry/energy/{unit_id}"
+        endpoint = API_TELEMETRY_ENERGY.format(unit_id=unit_id)
         params = {
             "from": from_time.strftime("%Y-%m-%d %H:%M"),
             "to": to_time.strftime("%Y-%m-%d %H:%M"),
@@ -274,20 +282,20 @@ class MELCloudHomeClient:
         Returns:
             Energy value in kWh, or None if no data
         """
-        if not data or "measureData" not in data:
+        if not data or API_FIELD_MEASURE_DATA not in data:
             return None
 
-        measure_data = data.get("measureData", [])
+        measure_data = data.get(API_FIELD_MEASURE_DATA, [])
         if not measure_data:
             return None
 
-        values = measure_data[0].get("values", [])
+        values = measure_data[0].get(API_FIELD_VALUES, [])
         if not values:
             return None
 
         # Get most recent value
         latest = values[-1]
-        value_str = latest.get("value")
+        value_str = latest.get(API_FIELD_VALUE)
         if not value_str:
             return None
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
@@ -11,6 +10,7 @@ from homeassistant.core import HomeAssistant
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToAirUnit
+from .control_client_base import ControlClientBase
 
 if TYPE_CHECKING:
     pass
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class ATAControlClient:
+class ATAControlClient(ControlClientBase):
     """Handles ATA device control operations with retry logic and debounced refresh."""
 
     def __init__(
@@ -40,13 +40,19 @@ class ATAControlClient:
             get_device: Callable to get ATA device by ID
             async_request_refresh: Callable to request coordinator refresh
         """
-        self._hass = hass
+        # Initialize base class with hass and coordinator refresh callable
+        # This provides shared debouncing logic
+        super().__init__(
+            hass,
+            type(
+                "RefreshWrapper", (), {"async_request_refresh": async_request_refresh}
+            )(),
+        )
+
         self._client = client
         self._execute_with_retry = execute_with_retry
         self._get_device = get_device
         self._async_request_refresh = async_request_refresh
-        # Debounced refresh to prevent race conditions from rapid service calls
-        self._refresh_debounce_task: asyncio.Task | None = None
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
@@ -171,26 +177,3 @@ class ATAControlClient:
             lambda: self._client.ata.set_vanes(unit_id, vertical, horizontal),
             f"set_vanes({unit_id}, {vertical}, {horizontal})",
         )
-
-    async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
-        """Request a coordinator refresh with debouncing.
-
-        Multiple rapid calls will cancel previous timers and only refresh once
-        after the last call settles. This prevents race conditions when scenes
-        or automations make multiple rapid service calls.
-
-        Args:
-            delay: Seconds to wait before refreshing (default 2.0)
-        """
-        # Cancel any pending refresh
-        if self._refresh_debounce_task and not self._refresh_debounce_task.done():
-            self._refresh_debounce_task.cancel()
-            _LOGGER.debug("Cancelled pending debounced refresh, resetting timer")
-
-        async def _delayed_refresh() -> None:
-            """Wait then refresh."""
-            await asyncio.sleep(delay)
-            _LOGGER.debug("Debounced refresh executing after %.1fs delay", delay)
-            await self._async_request_refresh()
-
-        self._refresh_debounce_task = self._hass.async_create_task(_delayed_refresh())

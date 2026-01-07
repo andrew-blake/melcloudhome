@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from .const_atw import (
+    API_ATW_CONTROL_UNIT,
     ATW_OPERATION_MODES_ZONE,
     ATW_TEMP_MAX_DHW,
     ATW_TEMP_MAX_ZONE,
@@ -62,7 +63,7 @@ class ATWControlClient:
 
         # Send request (returns None, follows ATA pattern)
         await self._client._api_request(
-            "PUT", f"/api/atwunit/{unit_id}", json=full_payload
+            "PUT", API_ATW_CONTROL_UNIT.format(unit_id=unit_id), json=full_payload
         )
 
     async def set_power_atw(self, unit_id: str, power: bool) -> None:

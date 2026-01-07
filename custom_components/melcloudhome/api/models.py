@@ -7,6 +7,7 @@ Device-specific models are in models_ata.py and models_atw.py.
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import const_ata, const_atw, const_shared
 from .models_ata import AirToAirUnit
 from .models_atw import AirToWaterUnit
 
@@ -34,11 +35,11 @@ class Building:
     def from_dict(cls, data: dict[str, Any]) -> "Building":
         """Create from API response dict."""
         # Parse A2A units (existing)
-        a2a_units_data = data.get("airToAirUnits", [])
+        a2a_units_data = data.get(const_ata.API_FIELD_AIR_TO_AIR_UNITS, [])
         a2a_units = [AirToAirUnit.from_dict(u) for u in a2a_units_data]
 
         # Parse A2W units (NEW)
-        a2w_units_data = data.get("airToWaterUnits", [])
+        a2w_units_data = data.get(const_atw.API_FIELD_AIR_TO_WATER_UNITS, [])
         a2w_units = [AirToWaterUnit.from_dict(u) for u in a2w_units_data]
 
         return cls(
@@ -58,7 +59,7 @@ class UserContext:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "UserContext":
         """Create from API response dict."""
-        buildings_data = data.get("buildings", [])
+        buildings_data = data.get(const_shared.API_FIELD_BUILDINGS, [])
         buildings = [Building.from_dict(b) for b in buildings_data]
 
         return cls(buildings=buildings)

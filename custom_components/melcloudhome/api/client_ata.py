@@ -3,7 +3,17 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .const_ata import TEMP_MAX_HEAT, TEMP_MIN_HEAT, TEMP_STEP
+from .const_ata import (
+    API_CONTROL_UNIT,
+    FAN_SPEEDS,
+    OPERATION_MODES,
+    TEMP_MAX_HEAT,
+    TEMP_MIN_HEAT,
+    TEMP_STEP,
+    VANE_HORIZONTAL_DIRECTIONS,
+    VANE_VERTICAL_DIRECTIONS,
+    VANE_WORD_TO_NUMERIC,
+)
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -67,7 +77,7 @@ class ATAControlClient:
 
         await self._client._api_request(
             "PUT",
-            f"/api/ataunit/{unit_id}",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )
 
@@ -97,7 +107,7 @@ class ATAControlClient:
 
         await self._client._api_request(
             "PUT",
-            f"/api/ataunit/{unit_id}",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )
 
@@ -114,7 +124,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If mode is invalid
         """
-        valid_modes = {"Heat", "Cool", "Automatic", "Dry", "Fan"}
+        valid_modes = set(OPERATION_MODES)
         if mode not in valid_modes:
             raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
 
@@ -122,7 +132,7 @@ class ATAControlClient:
 
         await self._client._api_request(
             "PUT",
-            f"/api/ataunit/{unit_id}",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )
 
@@ -139,7 +149,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If speed is invalid
         """
-        valid_speeds = {"Auto", "One", "Two", "Three", "Four", "Five"}
+        valid_speeds = set(FAN_SPEEDS)
         if speed not in valid_speeds:
             raise ValueError(
                 f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
@@ -149,7 +159,7 @@ class ATAControlClient:
 
         await self._client._api_request(
             "PUT",
-            f"/api/ataunit/{unit_id}",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )
 
@@ -169,17 +179,9 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If vertical or horizontal is invalid
         """
-        valid_vertical = {"Auto", "Swing", "One", "Two", "Three", "Four", "Five"}
+        valid_vertical = set(VANE_VERTICAL_DIRECTIONS)
         # Horizontal uses British-spelled named positions (official API format)
-        valid_horizontal = {
-            "Auto",
-            "Swing",
-            "Left",
-            "LeftCentre",
-            "Centre",
-            "RightCentre",
-            "Right",
-        }
+        valid_horizontal = set(VANE_HORIZONTAL_DIRECTIONS)
 
         if vertical not in valid_vertical:
             raise ValueError(
@@ -196,17 +198,7 @@ class ATAControlClient:
         # Denormalize VERTICAL vane direction: convert word strings back to numeric
         # strings that the API expects (API returns "0", "1", etc. which we normalize
         # to "Auto", "One", etc. for HA, but need to convert back when sending)
-        vertical_to_numeric = {
-            "Auto": "0",
-            "Swing": "7",
-            "One": "1",
-            "Two": "2",
-            "Three": "3",
-            "Four": "4",
-            "Five": "5",
-        }
-
-        vertical_numeric = vertical_to_numeric.get(vertical, vertical)
+        vertical_numeric = VANE_WORD_TO_NUMERIC.get(vertical, vertical)
         # Horizontal uses named strings (British spelling) - send as-is
         horizontal_string = horizontal
 
@@ -217,6 +209,6 @@ class ATAControlClient:
 
         await self._client._api_request(
             "PUT",
-            f"/api/ataunit/{unit_id}",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )

@@ -2,6 +2,9 @@
 
 from .const_shared import BASE_URL, USER_AGENT
 
+# API Response Field Names - ATA
+API_FIELD_AIR_TO_AIR_UNITS = "airToAirUnits"
+
 # API Endpoints - ATA
 API_CONTROL_UNIT = "/api/ataunit/{unit_id}"
 API_ERROR_LOG = "/api/ataunit/{unit_id}/errorlog"
@@ -157,6 +160,41 @@ VANE_HORIZONTAL_TO_SCHEDULE = {
 # Reverse mappings
 SCHEDULE_TO_VANE_VERTICAL = {v: k for k, v in VANE_VERTICAL_TO_SCHEDULE.items()}
 SCHEDULE_TO_VANE_HORIZONTAL = {v: k for k, v in VANE_HORIZONTAL_TO_SCHEDULE.items()}
+
+# Vane Direction Mappings (Control API numeric strings <-> word strings)
+# Used for normalization when API returns "0"-"7" but we use "Auto", "One"-"Five", "Swing"
+VANE_NUMERIC_TO_WORD = {
+    "0": VANE_AUTO,
+    "1": VANE_POSITION_ONE,
+    "2": VANE_POSITION_TWO,
+    "3": VANE_POSITION_THREE,
+    "4": VANE_POSITION_FOUR,
+    "5": VANE_POSITION_FIVE,
+    "7": VANE_SWING,
+}
+
+VANE_WORD_TO_NUMERIC = {v: k for k, v in VANE_NUMERIC_TO_WORD.items()}
+
+# Fan Speed Mappings (Control API numeric strings <-> word strings)
+# Used for normalization when API returns "0"-"5" but we use "Auto", "One"-"Five"
+FAN_SPEED_NUMERIC_TO_WORD = {
+    "0": FAN_SPEED_AUTO,
+    "1": FAN_SPEED_ONE,
+    "2": FAN_SPEED_TWO,
+    "3": FAN_SPEED_THREE,
+    "4": FAN_SPEED_FOUR,
+    "5": FAN_SPEED_FIVE,
+}
+
+FAN_SPEED_WORD_TO_NUMERIC = {v: k for k, v in FAN_SPEED_NUMERIC_TO_WORD.items()}
+
+# American-to-British spelling mappings for horizontal vanes
+# Some API responses use American spelling, normalize to British
+VANE_HORIZONTAL_AMERICAN_TO_BRITISH = {
+    "CenterLeft": VANE_CENTER_LEFT,
+    "Center": VANE_CENTER,
+    "CenterRight": VANE_CENTER_RIGHT,
+}
 
 # Temperature Ranges (Celsius)
 TEMP_MIN_HEAT = 10.0
