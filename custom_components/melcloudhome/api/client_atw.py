@@ -66,7 +66,7 @@ class ATWControlClient:
             "PUT", API_ATW_CONTROL_UNIT.format(unit_id=unit_id), json=full_payload
         )
 
-    async def set_power_atw(self, unit_id: str, power: bool) -> None:
+    async def set_power(self, unit_id: str, power: bool) -> None:
         """Power entire ATW heat pump ON/OFF.
 
         Args:

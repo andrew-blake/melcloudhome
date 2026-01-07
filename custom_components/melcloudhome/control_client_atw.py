@@ -89,7 +89,7 @@ class ATWControlClient(ControlClientBase):
             f"{control_name}({unit_id})",
         )
 
-    async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
+    async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
 
         Args:
@@ -99,7 +99,7 @@ class ATWControlClient(ControlClientBase):
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",
-            control_fn=lambda unit: self._client.atw.set_power_atw(unit.id, power),
+            control_fn=lambda unit: self._client.atw.set_power(unit.id, power),
         )
 
     async def async_set_temperature_zone1(

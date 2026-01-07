@@ -316,7 +316,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     async def async_set_power_atw(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery."""
-        return await self.control_client_atw.async_set_power_atw(unit_id, power)
+        return await self.control_client_atw.async_set_power(unit_id, power)
 
     async def async_set_temperature_zone1(
         self, unit_id: str, temperature: float
