@@ -2,7 +2,7 @@
 
 from .auth import MELCloudHomeAuth
 from .client import MELCloudHomeClient
-from .const import (
+from .const_ata import (
     BASE_URL,
     FAN_SPEEDS,
     OPERATION_MODES,

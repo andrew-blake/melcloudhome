@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import TraceConfig, TraceRequestEndParams, TraceRequestStartParams
 
-from .const import BASE_URL, MOCK_BASE_URL, USER_AGENT
+from .const_ata import BASE_URL, MOCK_BASE_URL, USER_AGENT
 from .exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
