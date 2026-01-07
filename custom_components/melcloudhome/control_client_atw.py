@@ -41,14 +41,8 @@ class ATWControlClient(ControlClientBase):
             get_atw_device: Callable to get ATW device by ID
             async_request_refresh: Callable to request coordinator refresh
         """
-        # Initialize base class with hass and coordinator refresh callable
-        # This provides shared debouncing logic
-        super().__init__(
-            hass,
-            type(
-                "RefreshWrapper", (), {"async_request_refresh": async_request_refresh}
-            )(),
-        )
+        # Initialize base class (provides shared debouncing logic)
+        super().__init__(hass)
 
         self._client = client
         self._execute_with_retry = execute_with_retry

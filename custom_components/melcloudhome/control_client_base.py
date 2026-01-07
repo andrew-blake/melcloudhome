@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -10,30 +10,20 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class RefreshRequester(Protocol):
-    """Protocol for objects that can request coordinator refresh."""
-
-    async def async_request_refresh(self) -> None:
-        """Request immediate coordinator refresh."""
-        ...
-
-
 class ControlClientBase:
-    """Base class for control clients with shared debouncing logic."""
+    """Base class for control clients with shared debouncing logic.
 
-    def __init__(
-        self,
-        hass: "HomeAssistant",
-        coordinator_refresh: RefreshRequester,
-    ) -> None:
+    Subclasses must set self._async_request_refresh to the coordinator's
+    refresh method in their __init__.
+    """
+
+    def __init__(self, hass: "HomeAssistant") -> None:
         """Initialize base control client.
 
         Args:
             hass: Home Assistant instance
-            coordinator_refresh: Object with async_request_refresh method
         """
         self._hass = hass
-        self._coordinator_refresh = coordinator_refresh
         self._refresh_debounce_task: asyncio.Task | None = None
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
@@ -55,6 +45,6 @@ class ControlClientBase:
             """Wait then refresh."""
             await asyncio.sleep(delay)
             _LOGGER.debug("Debounced refresh executing after %.1fs delay", delay)
-            await self._coordinator_refresh.async_request_refresh()
+            await self._async_request_refresh()  # type: ignore[attr-defined]
 
         self._refresh_debounce_task = self._hass.async_create_task(_delayed_refresh())
