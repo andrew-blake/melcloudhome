@@ -67,8 +67,6 @@ def create_mock_unit(
         is_in_error=False,
         rssi=rssi,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=energy_consumed,
     )
 

@@ -60,8 +60,6 @@ def create_mock_unit(
         is_in_error=is_in_error,
         rssi=-50,
         capabilities=DeviceCapabilities(),
-        schedule=[],
-        schedule_enabled=False,
     )
 
 

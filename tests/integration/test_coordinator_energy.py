@@ -55,8 +55,6 @@ def create_mock_unit_with_energy(
         is_in_error=False,
         rssi=-50,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=None,  # Will be populated by coordinator
     )
 
