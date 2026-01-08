@@ -61,8 +61,7 @@ async def test_turn_on_powers_atw_system(hass: HomeAssistant) -> None:
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.atw = MagicMock()
-
-        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw.set_power = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -89,7 +88,7 @@ async def test_turn_on_powers_atw_system(hass: HomeAssistant) -> None:
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.atw.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, True)
 
 
 @pytest.mark.asyncio
@@ -105,7 +104,8 @@ async def test_turn_off_powers_off_atw_system(hass: HomeAssistant) -> None:
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw = MagicMock()
+        mock_client.atw.set_power = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -132,7 +132,7 @@ async def test_turn_off_powers_off_atw_system(hass: HomeAssistant) -> None:
 
         # Verify API was called correctly
         await hass.async_block_till_done()
-        mock_client.atw.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, False)
+        mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, False)
 
 
 @pytest.mark.asyncio
