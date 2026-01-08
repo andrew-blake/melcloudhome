@@ -10,10 +10,48 @@ Avoids theatre: Only tests non-trivial logic with real edge cases.
 """
 
 from custom_components.melcloudhome.api.models_ata import AirToAirUnit
+from custom_components.melcloudhome.api.parsing import (
+    parse_bool,
+    parse_int,
+)
+
+
+class TestParsingUtilities:
+    """Test parsing utility functions directly (covers missing lines)."""
+
+    def test_parse_bool_with_bool_input(self) -> None:
+        """Test parse_bool passes through bool values unchanged (line 22)."""
+        assert parse_bool(True) is True
+        assert parse_bool(False) is False
+
+    def test_parse_int_with_none(self) -> None:
+        """Test parse_int handles None (line 60)."""
+        assert parse_int(None) is None
+
+    def test_parse_int_with_empty_string(self) -> None:
+        """Test parse_int handles empty string (line 60)."""
+        assert parse_int("") is None
+
+    def test_parse_int_with_valid_string(self) -> None:
+        """Test parse_int converts valid strings."""
+        assert parse_int("42") == 42
+        assert parse_int("0") == 0
+        assert parse_int("-5") == -5
+
+    def test_parse_int_with_invalid_string(self) -> None:
+        """Test parse_int handles invalid strings (lines 62-65)."""
+        assert parse_int("invalid") is None
+        assert parse_int("12.5") is None  # Not an int
+        assert parse_int("abc123") is None
+
+    def test_parse_int_with_int_input(self) -> None:
+        """Test parse_int handles int input directly."""
+        assert parse_int(42) == 42
+        assert parse_int(0) == 0
 
 
 class TestBooleanParsing:
-    """Test parse_bool helper edge cases."""
+    """Test parse_bool helper edge cases via model integration."""
 
     def test_parse_bool_handles_none_as_false(self) -> None:
         """Test that None values are parsed as False (defensive programming)."""
