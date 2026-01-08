@@ -5,6 +5,15 @@ from typing import TYPE_CHECKING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+# Import temperature constants from API (single source of truth)
+from .api.const_atw import (  # noqa: F401
+    ATW_TEMP_MAX_DHW,
+    ATW_TEMP_MAX_ZONE,
+    ATW_TEMP_MIN_DHW,
+    ATW_TEMP_MIN_ZONE,
+    ATW_TEMP_STEP,
+)
+
 if TYPE_CHECKING:
     from .api.models import AirToWaterUnit, Building
 
@@ -33,12 +42,7 @@ WATER_HEATER_HA_TO_FORCED_DHW = {
     "Force DHW": True,
 }
 
-# ATW Temperature limits
-ATW_TEMP_MIN_ZONE = 10  # °C
-ATW_TEMP_MAX_ZONE = 30  # °C
-ATW_TEMP_MIN_DHW = 40  # °C
-ATW_TEMP_MAX_DHW = 60  # °C
-ATW_TEMP_STEP = 1  # °C
+# Note: ATW_TEMP_* constants imported from api.const_atw (floats with 0.5° precision)
 
 
 # =================================================================

@@ -17,8 +17,6 @@ USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 # Shared API Endpoints (used by both ATA and ATW)
 API_USER_CONTEXT = "/api/user/context"
-API_TELEMETRY_ACTUAL = "/api/telemetry/actual"
-API_TELEMETRY_OPERATION_MODE = "/api/telemetry/operationmode/{unit_id}"
 API_TELEMETRY_ENERGY = "/api/telemetry/energy/{unit_id}"
 
 # API Response Field Names (used in parsing responses - shared across device types)
@@ -37,9 +35,7 @@ __all__ = [
     "API_FIELD_MEASURE_DATA",
     "API_FIELD_VALUE",
     "API_FIELD_VALUES",
-    "API_TELEMETRY_ACTUAL",
     "API_TELEMETRY_ENERGY",
-    "API_TELEMETRY_OPERATION_MODE",
     "API_USER_CONTEXT",
     "AUTH_BASE_URL",
     "BASE_URL",

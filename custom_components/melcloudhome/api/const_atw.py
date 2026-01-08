@@ -9,35 +9,21 @@ API_FIELD_AIR_TO_WATER_UNITS = "airToWaterUnits"
 
 # API Endpoints - ATW
 API_ATW_CONTROL_UNIT = "/api/atwunit/{unit_id}"
-API_ATW_ERROR_LOG = "/api/atwunit/{unit_id}/errorlog"
-API_HOLIDAY_MODE = "/api/holidaymode"
-API_FROST_PROTECTION = "/api/protection/frost"
 
 # Operation Modes - Zone Control (Control API - Strings)
 # These determine HOW the zone is heated
 ATW_MODE_HEAT_ROOM_TEMP = "HeatRoomTemperature"  # Thermostat mode
-ATW_MODE_HEAT_FLOW_TEMP = "HeatFlowTemperature"  # Direct flow control (DEFERRED)
-ATW_MODE_HEAT_CURVE = "HeatCurve"  # Weather compensation
 
 ATW_OPERATION_MODES_ZONE = [
-    ATW_MODE_HEAT_ROOM_TEMP,
-    ATW_MODE_HEAT_FLOW_TEMP,
-    ATW_MODE_HEAT_CURVE,
+    "HeatRoomTemperature",
+    "HeatFlowTemperature",  # Direct flow control (not yet implemented)
+    "HeatCurve",  # Weather compensation (not yet implemented)
 ]
 
 # Operation Status Values (Read-only STATUS field)
 # These indicate WHAT the 3-way valve is doing RIGHT NOW
 ATW_STATUS_STOP = "Stop"  # Idle (target reached)
-ATW_STATUS_HOT_WATER = "HotWater"  # Heating DHW tank
-# Status can also be zone mode string when heating zone
-
-ATW_OPERATION_STATUSES = [
-    ATW_STATUS_STOP,
-    ATW_STATUS_HOT_WATER,
-    ATW_MODE_HEAT_ROOM_TEMP,
-    ATW_MODE_HEAT_FLOW_TEMP,
-    ATW_MODE_HEAT_CURVE,
-]
+# Status can also be zone mode string when heating zone (e.g., "HeatRoomTemperature", "HotWater")
 
 # Temperature Ranges (Celsius) - SAFE HARDCODED DEFAULTS
 # DO NOT use API-reported ranges (known to be unreliable)
@@ -49,16 +35,9 @@ ATW_TEMP_STEP = 0.5  # Temperature increment (most systems)
 
 __all__ = [
     "API_ATW_CONTROL_UNIT",
-    "API_ATW_ERROR_LOG",
     "API_FIELD_AIR_TO_WATER_UNITS",
-    "API_FROST_PROTECTION",
-    "API_HOLIDAY_MODE",
-    "ATW_MODE_HEAT_CURVE",
-    "ATW_MODE_HEAT_FLOW_TEMP",
     "ATW_MODE_HEAT_ROOM_TEMP",
     "ATW_OPERATION_MODES_ZONE",
-    "ATW_OPERATION_STATUSES",
-    "ATW_STATUS_HOT_WATER",
     "ATW_STATUS_STOP",
     "ATW_TEMP_MAX_DHW",
     "ATW_TEMP_MAX_ZONE",
