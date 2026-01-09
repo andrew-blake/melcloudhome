@@ -9,14 +9,14 @@ Your ATA devices must have energy meters. Verify by checking for energy sensor e
 
 1. **Set credentials in `.env`:**
    ```bash
-   echo "MELCLOUD_EMAIL=your@email.com" >> .env
+   echo "MELCLOUD_USER=your@email.com" >> .env
    echo "MELCLOUD_PASSWORD=yourpassword" >> .env
    source .env
    ```
 
 2. **Verify credentials:**
    ```bash
-   echo $MELCLOUD_EMAIL
+   echo $MELCLOUD_USER
    ```
 
 ## Recording Energy VCR Cassettes

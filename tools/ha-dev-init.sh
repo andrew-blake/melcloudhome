@@ -97,7 +97,7 @@ if [ ! -f "${CONFIG_DIR}/secrets.yaml" ]; then
     cat > "${CONFIG_DIR}/secrets.yaml" <<'EOF'
 # Development secrets file
 # Add your MELCloud credentials here for testing
-# melcloud_email: test@example.com
+# MELCLOUD_USER: test@example.com
 # melcloud_password: test123
 EOF
 fi
