@@ -43,17 +43,16 @@
 
 ## Compatible Hardware (Theoretical)
 
-Based on HAR analysis, should work with:
+Based on HAR analysis from one user system:
 
 - Mitsubishi Electric Ecodan heat pumps
-- FTC6 controllers (confirmed in HARs)
-- FTC4/FTC5 controllers (likely compatible)
-- EHSCVM2D Hydrokit (confirmed in HARs)
+- EHSCVM2D Hydrokit (HAR data from Discussion #26)
+- FTC controllers with `ftcModel: 3` in API (physical model unknown)
 
-**User's test system:**
+**User's test system (Discussion #26):**
 
 - Model: Ecodan EHSCVM2D Hydrokit
-- Controller: FTC6
+- API reports: `ftcModel: 3` (physical FTC controller model not confirmed)
 - Zones: Single zone + DHW
 
 ---
@@ -150,9 +149,16 @@ Based on HAR analysis, should work with:
 
 ### Help Wanted
 
-- Hardware testers with Ecodan systems
-- HAR captures from different FTC models
-- Feedback on entity behavior and UX
+**Have hardware?**
+- Test with real Ecodan systems
+- Capture HAR files from different FTC controllers
+- Report entity behavior and UX feedback
+
+**Want to help without hardware?**
+- Use our reverse engineering tools to understand API behavior
+- Analyze HAR captures from users
+- Contribute to API documentation
+- **See:** [tools/reverse-engineering/](tools/reverse-engineering/) for Chrome override and request proxying tools
 
 ---
 

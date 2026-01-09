@@ -146,24 +146,46 @@ ADRs document significant architectural decisions and their rationale. When maki
 
 ## API Discovery and Reverse Engineering
 
-The MELCloud Home API was reverse engineered by systematically interacting with the web application whilst capturing network traffic.
+The MELCloud Home API was reverse engineered by observing the official web application. This enables contributing device support without owning the hardware.
 
-**Methodology for discovering new endpoints:**
+### Reverse Engineering Tools
 
-If you're adding support for new device types (e.g., ATW heat pumps, ERV ventilators):
+**We provide specialized tools** for understanding API behavior without real devices:
 
-1. Use browser DevTools Network tab to monitor API calls
-2. Interact with the MELCloud Home web app for your device type
+- **Chrome Local Overrides** - Inject captured API data into official web app
+- **Request Proxying** - Capture control commands without affecting real hardware
+- **Mock Server** - Simulate API responses for local testing
+
+**Full guide:** [tools/reverse-engineering/README.md](tools/reverse-engineering/README.md) and [docs/research/REVERSE_ENGINEERING.md](docs/research/REVERSE_ENGINEERING.md)
+
+### Contributing Without Hardware
+
+**You can help add device support even if you don't own the device:**
+
+1. User reports unsupported device (e.g., different Ecodan model)
+2. They capture HAR file from https://melcloudhome.com
+3. You use Chrome Local Overrides to inject that data
+4. Observe official web app behavior
+5. Document API structure and mappings
+6. Implement integration support
+
+**See:** [Workflow 1 in REVERSE_ENGINEERING.md](docs/research/REVERSE_ENGINEERING.md#workflow-1-add-support-for-user-reported-device)
+
+### Adding New Device Types
+
+If you're adding support for new device types (e.g., ERV ventilators):
+
+1. Capture HAR from official web app
+2. Use reverse engineering tools to understand API
 3. Document request/response patterns
 4. Update openapi.yaml with new endpoints
 5. Implement corresponding client methods
 6. Add tests with VCR cassettes
 
-**Tools used in this project:**
-
-- Chrome DevTools for network inspection
-- Claude Code with Chrome DevTools MCP server for systematic API exploration
-- pytest-recording (VCR) for capturing real API interactions
+**Tools:**
+- Chrome DevTools + Local Overrides
+- Mock server for testing
+- pytest-recording (VCR) for API tests
 
 The openapi.yaml specification serves as the authoritative API reference. Update it when adding new endpoints.
 

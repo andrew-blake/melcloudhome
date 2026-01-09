@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild version-patch version-minor version-major release
+.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -118,6 +118,16 @@ dev-rebuild:  ## Rebuild mock server image (after updating mock server code)
 	docker compose -f docker-compose.dev.yml build --no-cache melcloud-mock
 	docker compose -f docker-compose.dev.yml up -d
 	@echo "✅ Mock server rebuilt and restarted"
+
+# Production deployment commands (pre-release testing only)
+deploy:  ## Deploy to production HA (requires .env with HA_SSH_HOST, HA_CONTAINER)
+	uv run python tools/deploy_custom_component.py melcloudhome
+
+deploy-test:  ## Deploy to production HA and test via API
+	uv run python tools/deploy_custom_component.py melcloudhome --test
+
+deploy-watch:  ## Deploy to production HA and watch logs
+	uv run python tools/deploy_custom_component.py melcloudhome --watch
 
 # Version management commands
 version-patch:  ## Bump patch version (x.y.Z)

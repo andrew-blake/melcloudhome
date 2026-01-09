@@ -132,10 +132,44 @@ pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv
 
 # Production Deployment (Pre-Release Testing ONLY)
 # Use this ONLY for final integration testing before releases
-./tools/deploy_custom_component.py melcloudhome          # Deploy to production HA
-./tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
-./tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
+make deploy          # Deploy to production HA
+make deploy-test     # Deploy + test via API
+make deploy-watch    # Deploy + watch logs
 ```
+
+### API Reverse Engineering Tools
+
+**Purpose:** Understand MELCloud API behavior by observing the official web application without needing real hardware.
+
+**When to use:**
+- User reports unsupported device (e.g., different controller type)
+- Need to verify undocumented API behavior
+- Want to contribute device support without owning hardware
+- Resolving API mapping questions
+
+**Tools location:** `tools/reverse-engineering/`
+
+**Quick reference:**
+
+```bash
+# Chrome Local Overrides (inject API data into official web app)
+# 1. DevTools (F12) → Sources → Overrides
+# 2. Select: tools/reverse-engineering/chrome_override
+# 3. Edit: chrome_override/melcloudhome.com/api/user/context
+# 4. Visit: https://melcloudhome.com
+# 5. Observe what official app displays
+
+# Request Proxying (capture control commands)
+# 1. Start mock server: make dev-up
+# 2. Chrome console on melcloudhome.com
+# 3. Paste: tools/reverse-engineering/proxy_mutations.js
+# 4. Run: blockMutations()
+# 5. Use web app, check logs for captured payloads
+```
+
+**Full guides:**
+- Quick start: `tools/reverse-engineering/README.md`
+- Comprehensive: `docs/research/REVERSE_ENGINEERING.md`
 
 ### Branching Strategy (GitHub Flow)
 
@@ -301,17 +335,14 @@ make dev-reset
 The repository includes an automated deployment tool that handles the complete cycle:
 
 ```bash
-# Deploy to remote HA instance (script is executable)
-./tools/deploy_custom_component.py melcloudhome
+# Deploy to remote HA instance
+make deploy
 
 # Deploy + test via API
-./tools/deploy_custom_component.py melcloudhome --test
+make deploy-test
 
 # Deploy + watch logs
-./tools/deploy_custom_component.py melcloudhome --watch
-
-# Or explicitly with python3 if needed
-python3 tools/deploy_custom_component.py melcloudhome
+make deploy-watch
 ```
 
 The tool automatically:

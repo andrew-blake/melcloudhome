@@ -67,7 +67,7 @@ async def test_set_temperature(authenticated_client):
 **Our deployment tool enables this:**
 ```bash
 # Fast deploy and test cycle
-python tools/deploy_custom_component.py melcloudhome --reload --test
+make deploy-test
 ```
 
 **What we test:**
@@ -161,7 +161,7 @@ uv run ruff check custom_components/
 uv run mypy custom_components/melcloudhome
 
 # 4. Deploy and test
-python tools/deploy_custom_component.py melcloudhome --reload --test
+make deploy-test
 
 # 5. Manual verification in HA UI
 ```
@@ -179,13 +179,13 @@ git commit -m "..."
 uv run pytest tests/ --cov
 
 # 2. Full deployment test
-python tools/deploy_custom_component.py melcloudhome
+make deploy
 
 # 3. Manual testing checklist
 # See local development notes
 
 # 4. Monitor logs
-python tools/deploy_custom_component.py melcloudhome --watch
+make deploy-watch
 ```
 
 ---
