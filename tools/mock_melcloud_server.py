@@ -105,7 +105,7 @@ class MockMELCloudServer:
                 "has_zone2": False,
                 "in_standby_mode": False,
                 "is_in_error": False,
-                "ftc_model": 4,  # FTC6 model
+                "ftc_model": 4,  # API internal value, mapping to physical FTC controller unknown
             },
         }
 
@@ -691,7 +691,7 @@ class MockMELCloudServer:
             "hasHeatZone1": True,
             "hasMeasuredEnergyConsumption": True,
             "hasEstimatedEnergyConsumption": False,
-            "ftcModel": 4,  # FTC6
+            "ftcModel": 4,  # API internal value
         }
 
     def print_startup_banner(self, host: str, port: int):

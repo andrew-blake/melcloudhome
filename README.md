@@ -96,6 +96,20 @@ For the complete list of tested hardware, technical notes, and compatibility det
 
 Your devices will be automatically discovered and added.
 
+## Important Notes
+
+### Device and Entity Names
+
+This integration uses **stable UUID-based entity IDs** (e.g., `climate.melcloudhome_bf8d_5119`) to ensure your automations never break when device names change.
+
+**Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
+
+**⚠️ Entity ID Recreation Warning:**
+
+- If you delete entities and use the **"Recreate entity IDs"** option, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID
+- This will change entity IDs from `climate.melcloudhome_bf8d_5119` to `climate.living_room`, breaking existing automations
+- **To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
+
 ## Entities Created
 
 ### Air-to-Air (ATA) Systems
@@ -137,7 +151,8 @@ For each heat pump system, the following entities are created:
 #### Switch Entity
 
 - **Entity ID**: `switch.melcloudhome_<unit_id>_system_power`
-- **Features**: System power control (alternative to climate/water heater power)
+- **Features**: System power control (primary power control point)
+- **Note**: Climate OFF delegates to this switch. Water heater has read-only power state.
 
 #### Sensors
 

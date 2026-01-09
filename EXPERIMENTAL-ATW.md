@@ -96,9 +96,11 @@ Based on HAR analysis, should work with:
 
 ### What to Test
 
-- [ ] Climate entity: Temperature setting, mode changes, preset modes
+- [ ] Climate entity: Temperature setting, mode changes, preset modes, HVAC mode (OFF delegates to switch)
 - [ ] Water heater: Tank temperature, operation modes (Auto/Force DHW)
-- [ ] Switch: System power on/off
+  - **Note**: Water heater does NOT control system power (read-only power state)
+- [ ] Switch: System power on/off (primary power control point)
+  - **Note**: Both climate OFF and switch OFF control the same system power
 - [ ] Sensors: Verify readings match physical display
 - [ ] Multi-hour operation: Check for stability over time
 - [ ] Error conditions: How system handles connection losses

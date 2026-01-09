@@ -400,31 +400,39 @@ custom_components/melcloudhome/api/
 ├── __init__.py          # Package exports
 ├── auth.py              # AWS Cognito OAuth (shared)
 ├── exceptions.py        # Custom exceptions (shared)
-├── const.py             # Constants for both A2A and A2W
-├── models.py            # Models for both device types
-└── client.py            # Unified client with device-specific methods
+├── client.py            # Facade pattern - composes ata/atw clients
+├── client_ata.py        # ATA-specific control methods
+├── client_atw.py        # ATW-specific control methods
+├── const_shared.py      # Shared constants (User-Agent, endpoints)
+├── const_ata.py         # ATA-specific constants (modes, fan speeds)
+├── const_atw.py         # ATW-specific constants (zone modes, temp ranges)
+├── models.py            # Shared models (Building, UserContext)
+├── models_ata.py        # ATA-specific models (AirToAirUnit)
+├── models_atw.py        # ATW-specific models (AirToWaterUnit)
+└── parsing.py           # Shared parsing utilities
 ```
 
 ### Separation Strategy
 
-**By method naming:**
+**Facade pattern with composition:**
 
 ```python
-# A2A methods (existing)
-client.set_temperature(unit_id, temp)    # Room temp
-client.set_mode(unit_id, mode)           # Operation mode
-client.set_fan_speed(unit_id, speed)     # Fan
+# Main client provides unified interface
+client = MELCloudHomeClient()
 
-# A2W methods (new)
-client.set_zone_temperature(unit_id, temp)     # Zone heating
-client.set_dhw_temperature(unit_id, temp)      # DHW tank
-client.set_zone_mode(unit_id, mode)            # Zone mode
-client.set_forced_hot_water(unit_id, enabled)  # DHW priority
-client.set_holiday_mode(unit_ids, ...)         # Multi-unit
-client.set_frost_protection(unit_ids, ...)     # Multi-unit
+# ATA methods (via client.ata facade)
+await client.ata.set_temperature(unit_id, temp)
+await client.ata.set_mode(unit_id, mode)
+await client.ata.set_fan_speed(unit_id, speed)
+
+# ATW methods (via client.atw facade)
+await client.atw.set_temperature_zone1(unit_id, temp)
+await client.atw.set_dhw_temperature(unit_id, temp)
+await client.atw.set_power(unit_id, power)
+await client.atw.set_forced_hot_water(unit_id, enabled)
 ```
 
-**Rationale:** Method names make device type obvious. No need for separate client classes.
+**Rationale:** Facade pattern provides single entry point while maintaining clean separation. See [ADR-011](decisions/011-multi-device-type-architecture.md) "Implementation Evolution" section for details.
 
 ---
 
