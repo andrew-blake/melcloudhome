@@ -251,3 +251,149 @@ Our architecture should mirror this reality. Separating into modules would be fi
 - Easy thing: Add methods to existing client
 - Right thing: Leverage shared infrastructure
 - Result: Easy thing IS the right thing
+
+---
+
+## Implementation Evolution
+
+**Date:** 2026-01-09
+**Status:** Actual implementation differs from original plan (Option A), but maintains core principles
+
+### Actual Implementation
+
+While the decision chose **Option A** (extend current module), the implementation evolved during development to better support maintainability and code organization.
+
+**API Layer Structure (as implemented):**
+
+```
+custom_components/melcloudhome/api/
+├── __init__.py              # Exports MELCloudHomeClient facade
+├── auth.py                  # Shared authentication (AWS Cognito OAuth)
+├── exceptions.py            # Shared exception classes
+├── client.py                # Facade pattern - composes client_ata + client_atw
+├── client_ata.py            # ATA-specific control methods
+├── client_atw.py            # ATW-specific control methods
+├── const_shared.py          # Shared constants (User-Agent, endpoints)
+├── const_ata.py             # ATA-specific constants (modes, fan speeds)
+├── const_atw.py             # ATW-specific constants (zone modes, temp ranges)
+├── models.py                # Shared models (Building, UserContext)
+├── models_ata.py            # ATA-specific models (AirToAirUnit)
+├── models_atw.py            # ATW-specific models (AirToWaterUnit)
+└── parsing.py               # Shared parsing utilities
+```
+
+**Integration Layer Structure (as implemented):**
+
+```
+custom_components/melcloudhome/
+├── const.py                 # Integration-level constants
+├── const_ata.py             # ATA entity constants (HVAC modes, fan modes)
+├── const_atw.py             # ATW entity constants (preset modes, temp ranges)
+├── climate_ata.py           # ATA climate entity
+├── climate_atw.py           # ATW climate entity (Zone 1)
+├── water_heater.py          # ATW water heater entity
+├── switch.py                # ATW system power switch
+├── sensor.py                # Both ATA and ATW sensors
+└── binary_sensor.py         # Both ATA and ATW binary sensors
+```
+
+### Facade Pattern Implementation
+
+**MELCloudHomeClient** acts as a facade that composes specialized clients:
+
+```python
+# client.py
+class MELCloudHomeClient:
+    """Main client - Facade pattern."""
+
+    def __init__(self):
+        self._auth = MELCloudHomeAuth()
+        self._ata_client = ATAClient(self._auth)
+        self._atw_client = ATWClient(self._auth)
+
+    # Delegate to specialized clients
+    async def set_temperature(self, unit_id, temp):
+        return await self._ata_client.set_temperature(unit_id, temp)
+
+    async def set_temperature_zone1(self, unit_id, temp):
+        return await self._atw_client.set_temperature_zone1(unit_id, temp)
+```
+
+### Why This Is Better Than Option A
+
+**Original Option A:** Add all methods to single client file, all constants to single const file, all models to single models file.
+
+**Actual Implementation Benefits:**
+
+1. **Better Single Responsibility Principle**
+   - Each client file focuses on one device type
+   - Each const file contains related constants only
+   - Each model file contains related models only
+
+2. **Easier Navigation and Maintenance**
+   - Developers can quickly find ATA-specific or ATW-specific code
+   - Smaller files are easier to review and understand
+   - Clear separation reduces cognitive load
+
+3. **Facade Pattern Advantages**
+   - Main client provides unified interface (maintains Option A goal)
+   - Internal complexity hidden from consumers
+   - Easy to extend with new device types (A2W2, etc.)
+
+4. **Maintains All Benefits of Option A**
+   - ✅ Zero duplication - shared auth, session, validation
+   - ✅ Single source of truth - one place for all API interaction
+   - ✅ Simpler testing - single facade to mock
+   - ✅ Easy discovery - all API methods available from main client
+   - ✅ Consistent with ADR-001 - still bundled
+
+5. **File Sizes Remain Manageable**
+   - `client_ata.py`: ~300 lines
+   - `client_atw.py`: ~250 lines
+   - `models_ata.py`: ~150 lines
+   - `models_atw.py`: ~200 lines
+   - All files under 400 lines (very maintainable)
+
+### Design Evolution Rationale
+
+During implementation, it became clear that:
+
+1. **Natural Separation Points Emerged**
+   - ATA and ATW have completely different control APIs
+   - Constants don't overlap (different modes, different ranges)
+   - Models have different fields and parsing logic
+
+2. **Facade Pattern Was Natural Fit**
+   - Client needed to delegate to device-specific logic anyway
+   - Composition better than inheritance for this use case
+   - Maintains single import for consumers: `from .api import MELCloudHomeClient`
+
+3. **SRP Violations Would Occur in Option A**
+   - Single `client.py` with 700+ lines mixing ATA and ATW logic
+   - Single `const.py` with unrelated constants side-by-side
+   - Single `models.py` with very different parsing requirements
+
+**Conclusion:** The implementation evolved to a cleaner architecture while maintaining all the benefits of Option A. The facade pattern provides the "single client" interface while internal structure follows better software engineering principles.
+
+### Migration Path Still Valid
+
+The migration path described in the original ADR remains valid. If needed, we could:
+1. Further split into `api/ata/` and `api/atw/` submodules
+2. Keep facade at `api/client.py` for backward compatibility
+3. This would be non-breaking for integration layer
+
+However, current structure is already clean and maintainable, so such migration is not needed.
+
+### Key Takeaway
+
+**Original Decision (Option A) was correct in principle:**
+- Single API module ✅
+- Shared infrastructure ✅
+- Bundled approach ✅
+
+**Implementation refined the structure:**
+- Facade pattern for cleaner code organization
+- Better SRP compliance
+- Same external interface
+
+This evolution demonstrates good software engineering: Make initial architectural decisions based on principles, then refine implementation details as code reveals natural boundaries.

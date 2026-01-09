@@ -61,8 +61,8 @@ class ATWClimateZone1(
         self._attr_unique_id = f"{unit.id}_zone_1"
         self._entry = entry
 
-        # HVAC modes (ATW is heat-only, use switch for power control)
-        self._attr_hvac_modes = [HVACMode.HEAT]
+        # HVAC modes (ATW is heat-only, OFF delegates to switch power control)
+        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
 
         # Preset modes (NEW: Not used in ATA)
         self._attr_preset_modes = ATW_PRESET_MODES
@@ -161,16 +161,18 @@ class ATWClimateZone1(
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode.
 
-        Note: Only HEAT mode is supported. Use the system power switch to turn off.
+        HEAT: Turn on system power
+        OFF: Turn off system power (delegates to switch.py logic)
+
+        Note: Climate OFF and switch OFF both call the same power control method.
+        This provides standard HA UX while maintaining single responsibility.
         """
         if hvac_mode == HVACMode.HEAT:
-            # Turn on the system (HEAT mode)
             await self.coordinator.async_set_power_atw(self._unit_id, True)
+        elif hvac_mode == HVACMode.OFF:
+            await self.coordinator.async_set_power_atw(self._unit_id, False)
         else:
-            _LOGGER.warning(
-                "Invalid HVAC mode %s for ATW. Only HEAT is supported. Use switch entity for power control.",
-                hvac_mode,
-            )
+            _LOGGER.warning("Invalid HVAC mode %s for ATW", hvac_mode)
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:

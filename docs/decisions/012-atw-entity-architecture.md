@@ -110,17 +110,25 @@ From [PR #32078](https://github.com/home-assistant/core/pull/32078) implementing
 
 **Per ATW device, create:**
 
+#### **switch Entity** (System Power)
+
+- **Entity ID:** `switch.{device_name}_system_power`
+- **Controls:**
+  - **System power (ON/OFF)** - Entire heat pump system
+- **State:** Reflects device `power` field
+
 #### **water_heater Entity** (DHW Tank)
 
 - **Entity ID:** `water_heater.{device_name}_tank`
 - **Controls:**
   - DHW tank target temperature (40-60°C)
-  - Operation mode (eco, heat_pump, performance)
-  - **SYSTEM POWER** (turn_on/turn_off controls entire heat pump)
+  - Operation mode (eco, performance)
 - **State attributes:**
   - `operation_status` - 3-way valve position (OperationMode STATUS field)
   - `forced_dhw_active` - Boolean (ForcedHotWaterMode)
   - `zone_heating_suspended` - Boolean (true when valve on DHW)
+  - `current_temperature` - Tank temperature (read-only)
+- **Note:** Water heater does NOT control system power (read-only power state)
 
 #### **climate Entity** (Zone 1)
 
@@ -134,11 +142,11 @@ From [PR #32078](https://github.com/home-assistant/core/pull/32078) implementing
   - `weather_compensation` → HeatCurve (weather-based)
 - **HVAC modes:** HEAT, OFF
   - HEAT = system on, zone heating
-  - **OFF = powers off ENTIRE system** (all zones + DHW)
-    - **Implementation:** Sets `power: false` (system-wide)
-    - **Rationale:** Matches official MELCloud implementation
+  - **OFF = delegates to switch power control**
+    - **Implementation:** Calls same `async_set_power_atw()` method as switch
+    - **Rationale:** Standard HA UX, maintains single responsibility
     - **Effect:** Entire heat pump powers off (not zone-specific)
-    - **Trade-off:** Climate OFF also stops other zones and DHW
+    - **Note:** Climate OFF and switch OFF both use same underlying method
 - **HVAC action:** Reflects 3-way valve status
   - HEATING = valve on this zone and temp below target
   - IDLE = valve on DHW or temp at target
@@ -165,61 +173,100 @@ Same as Zone 1 but for Zone 2 parameters
 
 ### 2. Power Control Architecture ⭐ **CRITICAL**
 
-**Decision:** System power controlled by BOTH water_heater and climate entities (matches official MELCloud).
+**Decision:** System power controlled by **switch entity** as primary control point, with climate entity delegating to the same underlying method.
 
-**Decision Rationale:** Official MELCloud code analysis shows **both entities** control power. Following official pattern for consistency and user expectations.
+**Entity Responsibilities:**
+
+| Entity Type | Power Control | Responsibility |
+|-------------|---------------|----------------|
+| **switch** | ✅ Primary | System power ON/OFF (entire heat pump) |
+| **climate** | ✅ Delegation | Zone control + power delegation (OFF mode supported) |
+| **water_heater** | ❌ Read-only | DHW control only (power state read-only) |
 
 **Implementation:**
 
 ```python
-# water_heater.py
-async def async_turn_on(self):
-    """Turn ON entire heat pump system."""
-    await self._client.set_power_atw(self._device.id, True)
+# switch.py (PRIMARY power control)
+class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):
+    """Switch entity for ATW system power control."""
 
-async def async_turn_off(self):
-    """Turn OFF entire heat pump system."""
-    await self._client.set_power_atw(self._device.id, False)
+    async def async_turn_on(self, **kwargs):
+        """Turn the ATW system on."""
+        await self.coordinator.async_set_power_atw(self._unit_id, True)
 
-# climate.py (Zone entity)
-async def async_set_hvac_mode(self, hvac_mode):
-    """Set HVAC mode - CAN control system power (matches official MELCloud).
+    async def async_turn_off(self, **kwargs):
+        """Turn the ATW system off."""
+        await self.coordinator.async_set_power_atw(self._unit_id, False)
 
-    OFF = Powers off ENTIRE system (all zones + DHW)
-    HEAT = Powers on system (if off) and sets zone to heat mode
-    """
-    if hvac_mode == HVACMode.OFF:
-        # Power off entire heat pump system
-        # Matches official MELCloud implementation
-        # Note: Also turns off other zones and DHW
-        await self._client.set_power_atw(self._device.id, False)
-    elif hvac_mode == HVACMode.HEAT:
-        # Power on system if currently off
-        # Then ensure zone is not in standby
-        if not self._device.power:
-            await self._client.set_power_atw(self._device.id, True)
-        # Zone temperature and mode are separate controls
+# climate.py (Zone control with power DELEGATION)
+class ATWClimateZone1(ATWEntityBase, ClimateEntity):
+    """Climate entity for ATW Zone 1."""
+
+    async def async_set_hvac_mode(self, hvac_mode):
+        """Set new HVAC mode.
+
+        HEAT: Turn on system power
+        OFF: Turn off system power (delegates to switch.py logic)
+
+        Note: Climate OFF and switch OFF both call the same power control method.
+        This provides standard HA UX while maintaining single responsibility.
+        """
+        if hvac_mode == HVACMode.HEAT:
+            await self.coordinator.async_set_power_atw(self._unit_id, True)
+        elif hvac_mode == HVACMode.OFF:
+            await self.coordinator.async_set_power_atw(self._unit_id, False)
+
+# water_heater.py (NO power control)
+class ATWWaterHeater(ATWEntityBase, WaterHeaterEntity):
+    """Water heater entity for ATW DHW tank."""
+    # No turn_on/turn_off methods - power state is read-only
+
+    @property
+    def state(self):
+        """Return current state."""
+        device = self.get_device()
+        if device is None or not device.power:
+            return STATE_OFF
+        # DHW control logic...
 ```
 
-**Note:** HAR analysis found no zone-specific standby control. `InStandbyMode` is read-only status.
+**Design Rationale:**
 
-**Implementation matches official MELCloud:** Climate OFF powers off entire system (not zone-specific).
+1. **Switch as Primary Control Point**
+   - Clearer UX: Single obvious place to control system power
+   - Standard HA pattern: Switches control power/binary states
+   - Prevents confusion: No ambiguity about which entity controls power
 
-**Rationale:**
+2. **Why NOT Water Heater?**
+   - Water heater traditionally controls DHW-specific settings
+   - Official MELCloud pattern creates confusion in multi-zone systems
+   - Switch is more intuitive for "whole system" power control
 
-1. **Official Implementation Precedent:** Actual MELCloud code allows both entities to control power
-2. **User Expectations:** Users expect climate OFF to turn off heating (standard HA UX)
-3. **Physical Reality:** Heat pump is ONE device with one power supply
-4. **Simplicity:** Direct power control, no workarounds needed
-5. **Single-Zone Systems:** Most common use case - climate OFF makes sense
+3. **Climate Delegation Maintains Good UX**
+   - Users expect climate.turn_off() to turn off heating (standard HA)
+   - Climate OFF delegates to same method as switch (no duplication)
+   - Single Responsibility Principle: No duplicate power control logic
+
+4. **Diverging from Official MELCloud**
+   - Official integration allows both water_heater AND climate to control power
+   - This creates ambiguity about which entity is the "source of truth"
+   - Our design choice: Explicit primary control (switch) with delegation (climate)
+
+**Benefits:**
+
+- ✅ Clear single source of truth (switch entity)
+- ✅ Standard HA UX maintained (climate OFF works as expected)
+- ✅ No duplicate logic (both delegate to same coordinator method)
+- ✅ Single Responsibility Principle maintained
+- ✅ Easier to understand and maintain
 
 **Trade-offs Accepted:**
 
-- ⚠️ Climate OFF on Zone 1 also powers off Zone 2 (multi-zone systems)
-- ⚠️ Climate OFF stops DHW heating also
-- ⚠️ Two entities can control same parameter (power)
-- ✅ Matches official implementation (proven pattern)
-- ✅ Simpler than alternatives (minimum temp workaround)
+- ⚠️ Climate OFF powers off entire system (not zone-specific)
+- ⚠️ Water heater cannot control system power (deliberate choice)
+- ⚠️ Diverges from official MELCloud implementation (but clearer UX)
+
+**Note:** HAR analysis found no zone-specific standby control. `InStandbyMode` is read-only status. Climate OFF must power off entire system.
 
 ### 3. Forced DHW Mode Implementation
 
@@ -430,20 +477,38 @@ set_power_atw(unit_id, power)          # Suffix for clarity (avoid conflict)
 
 **Rejected:** Extra entity clutter, less standard than operation mode
 
-### Alternative C: Climate-Exclusive Power Control
+### Alternative C: Dual Power Control (MELCloud Pattern)
 
-**Rejected:** Only climate entities control power (water_heater has no power control)
+**Considered:** BOTH water_heater AND climate entities control power (matches official MELCloud)
+
+**Rationale for consideration:**
+- Follows official MELCloud implementation precedent
+- Provides flexibility (multiple control points)
+- Standard HA water_heater pattern includes power control
+
+**Rejected because:**
+- Creates ambiguity about which entity is "source of truth"
+- Water heater power control creates confusion (DHW vs system power)
+- Better solution: Switch as primary with climate delegation
+
+### Alternative D: Climate-Exclusive Power Control
+
+**Rejected:** Only climate entities control power (water_heater AND switch have no power control)
 
 **Rationale for rejection:**
-- Violates MELCloud precedent (official integration provides power in water_heater)
-- Creates confusion in multi-zone systems about which climate controls power
-- Water heater is natural location for "whole system" power control
+- Creates confusion in multi-zone systems (which climate controls power?)
+- Unconventional for HA (switches typically control power/binary states)
+- Violates single responsibility (climate does both zone AND system control)
 
-**Accepted Solution:** Dual power control - BOTH water_heater AND climate can control system power (matches official MELCloud implementation)
-
-### Alternative D: Generic Preset Names (eco/comfort/boost)
+### Alternative E: Generic Preset Names (eco/comfort/boost)
 
 **Rejected:** Less clear mapping to technical modes, prefer descriptive names
+
+---
+
+**Accepted Solution: Switch-Exclusive with Climate Delegation**
+
+See Section 2 "Power Control Architecture" for full details on the accepted approach.
 
 ---
 
@@ -504,27 +569,36 @@ set_power_atw(unit_id, power)          # Suffix for clarity (avoid conflict)
 
 ## Notes
 
-This ADR establishes **architectural boundaries** for entity responsibilities (revised 2026-01-03):
+This ADR establishes **architectural boundaries** for entity responsibilities (revised 2026-01-09):
 
-1. ⭐ **System power = BOTH water_heater AND climate** (matches official MELCloud)
-2. ⭐ **Climate OFF = system power off** (NOT zone-specific standby - API doesn't support that)
-3. ⭐ **3-way valve status = visible to users** via `operation_status` field
-4. ⭐ **Water heater operation modes = eco/performance** (maps to forcedHotWaterMode boolean)
+1. ⭐ **System power = switch entity (primary) with climate delegation**
+2. ⭐ **Climate OFF = delegates to switch power control** (standard HA UX maintained)
+3. ⭐ **Water heater = NO power control** (read-only power state)
+4. ⭐ **3-way valve status = visible to users** via `operation_status` field
+5. ⭐ **Water heater operation modes = eco/performance** (maps to forcedHotWaterMode boolean)
+
+**Design Choice Rationale:**
+
+- **Switch as primary:** Clearer UX than official MELCloud's dual control (water_heater + climate)
+- **Climate delegation:** Maintains standard HA UX without duplicate logic
+- **Single Responsibility:** Each entity has one clear purpose
+- **Diverges from official MELCloud:** Deliberate choice for better architecture
 
 **Key Findings from Analysis:**
 
-- Official MELCloud implementation uses dual power control (climate + water_heater)
-- Official MELCloud documentation differs from actual code regarding climate power control
+- Official MELCloud uses dual power control (creates ambiguity in multi-zone systems)
 - No zone-specific standby control exists in API (verified via 137 API calls)
+- Climate OFF must power off entire system (API limitation)
 - Water heater operation modes are emulated from `forcedHotWaterMode` boolean
 
 These decisions are based on:
 
-- ✅ Actual official HA MELCloud implementation code
 - ✅ HAR file analysis (137 API calls)
 - ✅ Physical heat pump hardware limitations
 - ✅ HA entity type best practices
-- ⚠️ Documentation (found to be incorrect in some areas)
+- ✅ Single Responsibility Principle
+- ✅ User experience clarity
+- ⚠️ Intentionally diverges from official MELCloud (for better design)
 
 **Do not deviate from these boundaries** without updating this ADR.
 
@@ -556,9 +630,11 @@ These decisions are based on:
 
 Implementation correctly follows this ADR when:
 
-✅ `water_heater.turn_off()` turns off entire heat pump
-✅ `climate.set_hvac_mode(OFF)` ALSO turns off entire heat pump (matches official MELCloud)
-✅ Both entities can control system power (proven pattern from official integration)
+✅ `switch.turn_off()` turns off entire heat pump (primary control)
+✅ `switch.turn_on()` turns on entire heat pump (primary control)
+✅ `climate.set_hvac_mode(OFF)` delegates to same power control method
+✅ `climate.set_hvac_mode(HEAT)` delegates to same power control method
+✅ `water_heater` does NOT have turn_on/turn_off methods (read-only power)
 ✅ `water_heater` attributes show 3-way valve status via `operation_status` field
 ✅ `climate.hvac_action` shows IDLE when valve on DHW
 ✅ Water heater operation mode "performance" enables forced DHW (forcedHotWaterMode=True)
@@ -568,6 +644,8 @@ Implementation correctly follows this ADR when:
 ✅ API methods follow naming convention: descriptive names, `set_power_atw()` for power
 
 **Testing:**
-- ✅ Verify climate.set_hvac_mode(OFF) powers off system (power=false API call)
-- ✅ Verify water_heater.turn_off() also powers off system
-- ✅ Both methods have same effect (dual control is acceptable)
+- ✅ Verify switch.turn_on/off() powers system on/off (primary control)
+- ✅ Verify climate.set_hvac_mode(OFF) powers off system (delegation)
+- ✅ Verify climate.set_hvac_mode(HEAT) powers on system (delegation)
+- ✅ Verify both methods call same coordinator method (no duplication)
+- ✅ Verify water_heater.state reflects power but cannot control it

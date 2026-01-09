@@ -336,54 +336,40 @@ stateDiagram-v2
 
 ## 5. HA Entity Responsibility Boundaries
 
-**Reference:** [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
+**Reference:** [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md) for detailed power control architecture and implementation examples.
 
-### Power Control Architecture ⭐ **CRITICAL**
+### Entity Responsibilities
 
-**System power is controlled EXCLUSIVELY by water_heater entity.**
-
-```python
-# ✅ CORRECT: System power via water_heater
-await hass.services.async_call("water_heater", "turn_on", {
-    "entity_id": "water_heater.house_heat_pump_tank"
-})
-
-# ❌ WRONG: Climate entity does NOT control system power
-await hass.services.async_call("climate", "turn_off", {
-    "entity_id": "climate.house_heat_pump_zone_1"
-})
-# This sets zone standby ONLY, NOT system power!
-```
-
-**Entity Responsibilities:**
+**ATW (Air-to-Water) Heat Pump Entities:**
 
 | Entity Type | Controls | Does NOT Control |
 |-------------|----------|------------------|
-| **water_heater** | • System power (ON/OFF)<br/>• DHW tank temperature<br/>• DHW operation mode<br/>• Forced DHW priority | • Zone temperatures<br/>• Zone operation modes |
-| **climate (zone)** | • Zone target temperature<br/>• Zone standby mode<br/>• Zone heating method (presets) | • **System power**<br/>• DHW tank settings<br/>• Other zones |
+| **switch** | • System power (ON/OFF)<br/>• Entire heat pump system | • Zone temperatures<br/>• DHW settings |
+| **climate (zone)** | • Zone target temperature<br/>• Zone heating method (presets)<br/>• HVAC mode (HEAT/OFF delegates to power) | • Other zones<br/>• DHW tank settings |
+| **water_heater** | • DHW tank temperature<br/>• DHW operation mode (eco/performance) | • **System power** (read-only)<br/>• Zone settings |
+
+**Key Architectural Decisions:**
+
+1. **Switch = Primary Power Control**
+   - Single obvious control point for system power
+   - Standard HA pattern for binary states
+
+2. **Climate OFF = Power Delegation**
+   - Climate OFF delegates to same power control method as switch
+   - Maintains standard HA UX (users expect climate OFF to turn off heating)
+   - No duplicate logic (Single Responsibility Principle)
+
+3. **Water Heater = DHW Control Only**
+   - No turn_on/turn_off methods (power state is read-only)
+   - Focuses on DHW-specific settings
+   - Clearer responsibility boundaries
 
 **Rationale:**
 
-1. **Physical Reality:** Heat pump is ONE device with one power supply
-2. **HA Precedent:** MELCloud core integration uses this pattern:
-   > "Water heater platform entities allow control of power, which controls the entire system."
-   > "The system cannot be turned on/off through the climate entities."
-3. **User Clarity:** Single control point prevents confusion
-4. **State Consistency:** Avoids conflicts from multiple power controllers
-
-### Climate Entity HVAC Modes
-
-**HEAT** - Zone active (heating enabled)
-
-- Allows temperature control
-- Respects 3-way valve (may be idle if valve on DHW)
-
-**OFF** - Zone standby mode (`inStandbyMode` flag)
-
-- Zone will not request heating
-- Does NOT turn off heat pump
-- Other zones can still heat
-- DHW can still heat
+- **Physical Reality:** Heat pump is ONE device with one power supply
+- **Single Responsibility:** Each entity has one clear purpose
+- **User Clarity:** Switch is obvious place for system power control
+- **Standard HA UX:** Climate OFF works as expected (delegates to power control)
 
 ### 3-Way Valve Status Visibility
 
@@ -457,18 +443,19 @@ client.set_frost_protection(unit_ids, ...)     # Multi-unit
 
 **Entities created per A2W unit:**
 
-- `climate.melcloudhome_{name}_zone1` - Zone 1 heating control
-- `water_heater.melcloudhome_{name}_dhw` - DHW control
-- `switch.melcloudhome_{name}_forced_hot_water` - DHW priority
-- `sensor.melcloudhome_{name}_operation_mode` - Current status (Stop/HotWater/Zone)
-- `sensor.melcloudhome_{name}_room_temperature_zone1` - Room temp
-- `sensor.melcloudhome_{name}_tank_water_temperature` - DHW temp
-- `sensor.melcloudhome_{name}_flow_temperature` - Flow temp (optional)
-- `sensor.melcloudhome_{name}_return_temperature` - Return temp (optional)
+- `switch.melcloudhome_{name}_system_power` - System power (ON/OFF)
+- `climate.melcloudhome_{name}_zone_1` - Zone 1 heating control
+- `water_heater.melcloudhome_{name}_tank` - DHW tank control (no power control)
+- `sensor.melcloudhome_{name}_operation_status` - 3-way valve status (Stop/HotWater/Zone)
+- `sensor.melcloudhome_{name}_zone_1_temperature` - Zone 1 room temp
+- `sensor.melcloudhome_{name}_tank_temperature` - DHW tank temp
+- `sensor.melcloudhome_{name}_outdoor_temperature` - Outdoor temp
 - `sensor.melcloudhome_{name}_wifi_signal` - RSSI
-- `sensor.melcloudhome_{name}_energy` - Energy consumption (if available)
+- `binary_sensor.melcloudhome_{name}_error` - Error state
+- `binary_sensor.melcloudhome_{name}_connection` - Connection status
+- `binary_sensor.melcloudhome_{name}_forced_dhw_active` - Forced DHW mode active
 
-**Note:** Zone 2 support planned for future release (v2.0.0 supports Zone 1 only)
+**Note:** Zone 2 support planned for future release (current version supports Zone 1 only)
 
 ---
 
