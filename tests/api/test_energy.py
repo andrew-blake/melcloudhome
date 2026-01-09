@@ -4,7 +4,7 @@ Tests cover energy data retrieval, parsing, and error handling.
 Uses VCR cassettes to test against real API responses.
 
 Recording VCR cassettes:
-1. Set credentials in .env: MELCLOUD_EMAIL, MELCLOUD_PASSWORD
+1. Set credentials in .env: MELCLOUD_USER, MELCLOUD_PASSWORD
 2. Delete existing cassette: rm tests/api/cassettes/test_get_energy_*.yaml
 3. Run test: pytest tests/api/test_energy.py::test_get_energy_data_hourly -v
 4. Cassette will be recorded automatically
@@ -12,50 +12,30 @@ Recording VCR cassettes:
 Reference: docs/testing-best-practices.md
 """
 
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-import pytest_asyncio
+from freezegun import freeze_time
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
 
 
-@pytest.fixture
-def credentials() -> tuple[str, str]:
-    """Get credentials from environment."""
-    import os
-
-    email = os.getenv("MELCLOUD_EMAIL", "test@example.com")
-    password = os.getenv("MELCLOUD_PASSWORD", "testpassword")
-    return email, password
-
-
-@pytest_asyncio.fixture
-async def authenticated_client(
-    credentials: tuple[str, str],
-) -> AsyncGenerator[MELCloudHomeClient]:
-    """Create authenticated client for testing."""
-    email, password = credentials
-    client = MELCloudHomeClient(debug_mode=False)
-    await client.login(email, password)
-    yield client
-    await client.close()
-
-
 class TestEnergyDataRetrieval:
     """Test energy telemetry endpoint (requires VCR cassettes)."""
 
+    @freeze_time("2026-01-08 17:38:00", real_asyncio=True)
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_get_energy_data_hourly(
-        self, authenticated_client: MELCloudHomeClient
-    ) -> None:
+    async def test_get_energy_data_hourly(self, credentials: tuple[str, str]) -> None:
         """Test fetching hourly energy data for ATA unit."""
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
         # Get user context to find a unit with energy meter
-        context = await authenticated_client.get_user_context()
+        context = await client.get_user_context()
 
         # Find first ATA unit with energy meter
         unit = None
@@ -70,12 +50,12 @@ class TestEnergyDataRetrieval:
         if not unit:
             pytest.skip("No ATA units with energy meters found")
 
-        # Request last 24 hours of data
+        # Request last 24 hours (time frozen for VCR consistency)
         to_time = datetime.now(UTC)
         from_time = to_time - timedelta(hours=24)
 
         assert unit is not None  # Type narrowing
-        result = await authenticated_client.get_energy_data(
+        result = await client.get_energy_data(
             unit_id=unit.id,
             from_time=from_time,
             to_time=to_time,
@@ -89,13 +69,18 @@ class TestEnergyDataRetrieval:
             # Energy responses have measureData structure
             assert "measureData" in result or len(result) == 0
 
+        await client.close()
+
+    @freeze_time("2026-01-08 17:38:00", real_asyncio=True)
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_get_energy_data_daily(
-        self, authenticated_client: MELCloudHomeClient
-    ) -> None:
+    async def test_get_energy_data_daily(self, credentials: tuple[str, str]) -> None:
         """Test fetching daily energy data for ATA unit."""
-        context = await authenticated_client.get_user_context()
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
+        context = await client.get_user_context()
 
         # Find first ATA unit with energy meter
         unit = None
@@ -110,12 +95,12 @@ class TestEnergyDataRetrieval:
         if not unit:
             pytest.skip("No ATA units with energy meters found")
 
-        # Request last 7 days
+        # Request last 7 days (time frozen for VCR consistency)
         to_time = datetime.now(UTC)
         from_time = to_time - timedelta(days=7)
 
         assert unit is not None  # Type narrowing
-        result = await authenticated_client.get_energy_data(
+        result = await client.get_energy_data(
             unit_id=unit.id,
             from_time=from_time,
             to_time=to_time,
@@ -126,6 +111,8 @@ class TestEnergyDataRetrieval:
         assert result is not None or result is None
         if result:
             assert isinstance(result, dict)
+
+        await client.close()
 
     @pytest.mark.asyncio
     async def test_get_energy_data_requires_authentication(self) -> None:
