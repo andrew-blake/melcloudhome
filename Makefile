@@ -30,7 +30,7 @@ test-cov:  ## Run tests with coverage report
 	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing
 
 pre-commit:  ## Run all pre-commit hooks
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 clean:  ## Clean up cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

@@ -102,6 +102,9 @@ make type-check                  # Type check with mypy
 make all                         # Run all checks
 
 # Pre-commit hooks run automatically on git commit
+# IMPORTANT: Always run pre-commit in advance and fix up errors before attempting to git commit
+make pre-commit                      # Run pre-commit checks manually (recommended)
+uv run pre-commit run --all-files    # Or run directly with uv
 
 # Local Development Environment (Primary Workflow)
 # Use this for daily development and testing with mock API
@@ -337,3 +340,4 @@ ssh ha "sudo docker restart homeassistant"
 The repository includes VSCode settings that associate `*.yaml` files with the `home-assistant` file type for proper syntax highlighting and validation.
 
 - NEVER work around pre-commit hooks. They are important code quality checks.
+- ALWAYS use `uv run pre-commit` not `pre-commit` directly when running pre-commit manually.
