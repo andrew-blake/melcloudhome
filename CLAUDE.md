@@ -255,6 +255,95 @@ The release appears at: https://github.com/andrew-blake/melcloudhome/releases
 - Date format: YYYY-MM-DD (ISO 8601)
 - The `make version-*` command creates a template with "Changed" section only - add other sections as needed
 
+### Beta Release Process
+
+**For features requiring community testing (experimental features, hardware-specific support):**
+
+Beta releases enable HACS users to opt-in to pre-release testing. The GitHub workflow automatically detects beta versions and marks them as pre-releases.
+
+#### Creating a Beta Release
+
+```bash
+# 1. Edit manifest.json manually
+# Change version: "1.3.4" → "2.0.0-beta.1"
+
+# 2. Update CHANGELOG.md
+# Add new entry: ## [2.0.0-beta.1] - YYYY-MM-DD
+# Mark as beta and include HACS instructions:
+#   - How to enable beta in HACS
+#   - What to test
+#   - Where to report issues
+
+# 3. Commit and create PR
+git add custom_components/melcloudhome/manifest.json CHANGELOG.md
+git commit -m "chore: Release 2.0.0-beta.1"
+git push -u origin feature/atw-beta
+gh pr create --title "Beta: ATW heat pump support" \
+  --body "Pre-release for community testing"
+gh pr merge --squash
+
+# 4. Tag and release
+git checkout main && git pull
+git tag -a v2.0.0-beta.1 -m "Release v2.0.0-beta.1"
+git push --tags
+# GitHub Actions automatically:
+# - Detects "-beta." in version
+# - Marks as pre-release (HACS users with beta switch see it)
+# - Validates, tests, and publishes
+```
+
+#### Incrementing Beta Versions
+
+```bash
+# Fix bugs reported by beta testers, then:
+# 1. Edit manifest.json: "2.0.0-beta.1" → "2.0.0-beta.2"
+# 2. Update CHANGELOG.md with fixes
+# 3. Commit, merge PR, tag as v2.0.0-beta.2
+# 4. Push tags
+```
+
+#### Graduating to Stable
+
+```bash
+# After successful beta testing:
+# 1. Edit manifest.json: "2.0.0-beta.2" → "2.0.0"
+# 2. Update CHANGELOG.md:
+#    - Add ## [2.0.0] entry
+#    - Consolidate beta notes into stable release notes
+# 3. Commit, merge PR, tag as v2.0.0
+# 4. Push tags
+# GitHub Actions detects stable version (no suffix)
+# All HACS users see the update
+```
+
+#### When to Use Beta Releases
+
+**✅ Use beta releases for:**
+- Experimental features (e.g., ATW heat pump support)
+- Hardware-specific features requiring real-world testing
+- Breaking changes requiring user validation
+- Major refactoring with regression risk
+
+**❌ Don't use beta releases for:**
+- Bug fixes (use patch: `make version-patch`)
+- Documentation updates
+- Internal refactoring (no user impact)
+- Small feature additions (low risk)
+
+#### How HACS Users Enable Beta Testing
+
+Include this in beta CHANGELOG entries:
+
+```markdown
+**How to test this beta:**
+1. Enable beta releases in HACS:
+   - HACS → Integrations → MELCloud Home
+   - Click menu (⋮) → Repository
+   - Enable "Show beta versions" switch
+2. Install this beta version
+3. Report issues: https://github.com/andrew-blake/melcloudhome/issues
+```
+
 ### Testing Standards
 
 **⚠️ CRITICAL: Follow Home Assistant testing best practices**

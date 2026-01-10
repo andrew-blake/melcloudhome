@@ -6,21 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.0.0] - 2026-01-06
+## [2.0.0-beta.1] - 2026-01-10
 
-### ⚠️ Experimental Features
+### ⚠️ Beta Release - Testers Wanted
 
-**Air-to-Water (ATW) Heat Pump Support - EXPERIMENTAL**
+**Air-to-Water (ATW) Heat Pump Support - BETA TESTING**
 
-This release adds experimental support for Ecodan ATW heat pumps. **This feature is NOT tested on real hardware** and is based entirely on HAR captures from a user's MELCloud Home web interface.
+This is a **pre-release beta** for community testing. ATW heat pump support is based on HAR captures and has **NOT been tested on real hardware**.
+
+**How to test:**
+1. Enable beta releases in HACS (Settings → Entities → enable "Show beta versions" switch for MELCloud Home)
+2. Install this beta version
+3. Test with your Ecodan ATW system
+4. Report findings: https://github.com/andrew-blake/melcloudhome/issues
 
 **⚠️ USE AT YOUR OWN RISK ⚠️**
 
 - Implementation is theoretical and may not work correctly with physical hardware
 - No guarantees of safety or correctness
-- Testers wanted! See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for details
-
-**If you have an Ecodan ATW system and want to test, please read the experimental documentation carefully and report your findings.**
+- See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
 
 ### Added
 
