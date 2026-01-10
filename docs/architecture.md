@@ -35,7 +35,8 @@ graph LR
         Coordinator[Update Coordinator<br/>Polling & State Management]
 
         subgraph "Control Client Layer"
-            ControlClient[Control Clients<br/>Deduplication & Retry]
+            ControlATA[ATAControlClient<br/>Session Recovery & Dedup]
+            ControlATW[ATWControlClient<br/>Session Recovery & Dedup]
         end
 
         subgraph "Models Layer"
@@ -61,8 +62,10 @@ graph LR
     WaterHeater --> Coordinator
     Sensors --> Coordinator
 
-    Coordinator --> ControlClient
-    ControlClient --> Client
+    Coordinator -->|ATA operations| ControlATA
+    Coordinator -->|ATW operations| ControlATW
+    ControlATA --> Client
+    ControlATW --> Client
     Client --> Auth
     Client --> Context
 
@@ -193,8 +196,8 @@ graph TD
     ControlATA[ATAControlClient]
     ControlATW[ATWControlClient]
     APIClient[MELCloudHomeClient]
-    ATAAPI[ATAControlClient Facade]
-    ATWAPI[ATWControlClient Facade]
+    ATAAPI[ATAClient Facade<br/>client.ata.*]
+    ATWAPI[ATWClient Facade<br/>client.atw.*]
 
     Coordinator -->|ATA controls| ControlATA
     Coordinator -->|ATW controls| ControlATW
