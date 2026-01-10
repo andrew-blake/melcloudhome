@@ -74,8 +74,8 @@ The mock server provides three pre-configured test devices:
 
 1. **Living Room**
    - UUID: `0efce33f-5847-4042-88eb-aaf3ff6a76db`
-   - Entity prefix: `melcloudhome_0efc_76db`
-   - Example entity: `climate.melcloudhome_0efc_76db_climate`
+   - Entity prefix: `melcloudhome_0efc_87db`
+   - Example entity: `climate.melcloudhome_0efc_87db_climate`
    - Model: MSZ-AP35VG
    - Capabilities: Heat, Cool, Dry, Fan, Auto modes
    - Fan speeds: Auto, Low, Medium, High, Very High
@@ -83,9 +83,9 @@ The mock server provides three pre-configured test devices:
    - Current: 20°C → Target: 22°C
 
 2. **Bedroom**
-   - UUID: `bf2d5666-e5ca-4c85-9faa-aaaa1234abcd`
-   - Entity prefix: `melcloudhome_bf2d_abcd`
-   - Example entity: `climate.melcloudhome_bf2d_abcd_climate`
+   - UUID: `bf8d5678-90ab-cdef-0123-456789ab5119`
+   - Entity prefix: `melcloudhome_bf8d_5119`
+   - Example entity: `climate.melcloudhome_bf8d_5119_climate`
    - Model: MSZ-LN25VG
    - Same capabilities as Living Room
    - Current: 18°C → Target: 20°C
@@ -93,12 +93,12 @@ The mock server provides three pre-configured test devices:
 **ATW Device (Air-to-Water Heat Pump / Ecodan):**
 
 3. **Ecodan System**
-   - UUID: `a1b2c3d4-e5f6-4321-abcd-ef1234567890`
-   - Entity prefix: `melcloudhome_a1b2_7890`
+   - UUID: `bf2d256c-42ac-4799-a6d8-c6ab433e5666`
+   - Entity prefix: `melcloudhome_bf2d_5666`
    - Example entities:
-     - `climate.melcloudhome_a1b2_7890_zone_1`
-     - `water_heater.melcloudhome_a1b2_7890_tank`
-     - `switch.melcloudhome_a1b2_7890_system_power`
+     - `climate.melcloudhome_bf2d_5666_zone_1`
+     - `water_heater.melcloudhome_bf2d_5666_tank`
+     - `switch.melcloudhome_bf2d_5666_system_power`
    - Controller: FTC6
    - Zone 1 (underfloor heating): Target 25°C, Current 23°C
    - Hot water tank: Target 50°C, Current 48°C
