@@ -6,12 +6,18 @@ Contains two types of tests:
 """
 
 import asyncio
+import os
 from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+
+# Skip mock server tests in CI (mock server not running)
+skip_if_no_mock_server = pytest.mark.skipif(
+    os.getenv("CI") == "true", reason="Mock server not available in CI"
+)
 
 # =============================================================================
 # Validation Tests (No Network - Fast Unit Tests)
@@ -95,6 +101,7 @@ async def mock_client() -> AsyncIterator[MELCloudHomeClient]:
     await client.close()
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     """Test turning ATW heat pump on via mock server."""
@@ -118,6 +125,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is True
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     """Test turning ATW heat pump off via mock server."""
@@ -135,6 +143,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is False
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> None:
     """Test setting Zone 1 target temperature via mock server."""
@@ -153,6 +162,7 @@ async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> No
     assert unit.set_temperature_zone1 == target_temp
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1_half_degree(
     mock_client: MELCloudHomeClient,
@@ -173,6 +183,7 @@ async def test_mock_set_temperature_zone1_half_degree(
     assert unit.set_temperature_zone1 == target_temp
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_room_temperature(
     mock_client: MELCloudHomeClient,
@@ -193,6 +204,7 @@ async def test_mock_set_mode_zone1_room_temperature(
     assert unit.operation_mode_zone1 == mode
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_heat_curve(
     mock_client: MELCloudHomeClient,
@@ -213,6 +225,7 @@ async def test_mock_set_mode_zone1_heat_curve(
     assert unit.operation_mode_zone1 == mode
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None:
     """Test setting DHW tank target temperature via mock server."""
@@ -231,6 +244,7 @@ async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None
     assert unit.set_tank_water_temperature == target_temp
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_enable(
     mock_client: MELCloudHomeClient,
@@ -250,6 +264,7 @@ async def test_mock_set_forced_hot_water_enable(
     assert unit.forced_hot_water_mode is True
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_disable(
     mock_client: MELCloudHomeClient,
@@ -269,6 +284,7 @@ async def test_mock_set_forced_hot_water_disable(
     assert unit.forced_hot_water_mode is False
 
 
+@skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:
     """Test enabling standby mode via mock server."""
