@@ -22,22 +22,19 @@
 
 ## What's Implemented (v2.0.0)
 
-### Tested via HAR Captures
+### Implementation Status
 
-- ✅ Zone 1 climate control (heating mode, temperature, preset modes)
-- ✅ DHW tank control via water heater platform
-- ✅ System power control via switch platform
-- ✅ Temperature sensors (Zone 1 room, DHW tank)
-- ✅ Operation status sensor (3-way valve position)
-- ✅ Binary sensors (error state, connection, forced DHW mode)
-- ✅ Preset modes (Room Temperature, Flow Temperature, Weather Compensation)
-
-### Known Limitations
-
-- ❌ Not tested on real hardware
-- ❌ Zone 2 support not implemented (single zone only)
-- ❌ Error handling may be incomplete
-- ❌ API behavior might differ from actual hardware
+| Feature | Status | Testing |
+|---------|--------|---------|
+| Zone 1 climate control | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| DHW tank control (water heater) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| System power control (switch) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Temperature sensors (Zone 1, tank) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Operation status sensor | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Binary sensors (error, connection, forced DHW) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Preset modes (Room/Flow/Curve) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Zone 2 support | ❌ Not implemented | Deferred to Phase 4 |
+| Energy monitoring | ❌ Not implemented | Planned for future release |
 
 ---
 
@@ -102,9 +99,9 @@ Based on HAR analysis from one user system:
 - [ ] **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
 - [ ] Temperature setting (10-30°C range)
 - [ ] Preset mode changes:
-  - [ ] `room` - Room Temperature (thermostat control)
-  - [ ] `flow` - Flow Temperature (direct flow control)
-  - [ ] `curve` - Weather Compensation Curve
+  - [ ] **Room** - Room Temperature mode (thermostat control)
+  - [ ] **Flow** - Flow Temperature mode (direct flow control)
+  - [ ] **Curve** - Weather Compensation Curve mode
 - [ ] HVAC mode:
   - [ ] `HEAT` - Turn on system and enable Zone 1 heating
   - [ ] `OFF` - Turn off entire system (delegates to switch)
@@ -210,3 +207,12 @@ Use of this integration with ATW systems is entirely at your own risk.
 - **API Reference:** docs/api/atw-api-reference.md
 
 **Please clearly label all ATW-related issues as "experimental ATW"**
+
+---
+
+## See Also
+
+- **[README.md](README.md)** - General integration overview and installation
+- **[SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md)** - Hardware compatibility and tested models
+- **[docs/api/atw-api-reference.md](docs/api/atw-api-reference.md)** - Complete ATW API specification
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to report findings and contribute

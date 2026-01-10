@@ -33,8 +33,8 @@ This is a **pre-release beta** for community testing. ATW heat pump support is b
   - Switch platform for system power control
   - Climate platform for Zone 1 heating
   - Preset modes (Room Temperature, Flow Temperature, Curve Control)
-  - ATW-specific sensors (tank temperature, flow temperature, return temperature, DHW flow temperature)
-  - Binary sensors (error status, connection status)
+  - ATW-specific sensors (Zone 1 room temperature, tank temperature, operation status)
+  - Binary sensors (error state, connection state, forced DHW active)
   - See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
 - Local development environment with Docker Compose and mock API server
 - Upgrade verification tooling (`tools/compare_upgrade_snapshots.py`)

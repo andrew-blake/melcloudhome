@@ -466,8 +466,8 @@ await client.atw.set_forced_hot_water(unit_id, enabled)
 
 **Entities created per A2A unit:**
 
-- `climate.melcloudhome_<uuid>` - Main climate control
-  - Example: `climate.melcloudhome_bf8d_5119`
+- `climate.melcloudhome_<uuid>_climate` - Main climate control
+  - Example: `climate.melcloudhome_bf8d_5119_climate`
 - `sensor.melcloudhome_<uuid>_room_temperature` - Current temp
   - Example: `sensor.melcloudhome_bf8d_5119_room_temperature`
 - `sensor.melcloudhome_<uuid>_wifi_signal` - RSSI (diagnostic)

@@ -63,10 +63,10 @@ class ATWWaterHeater:
 
 ### Other Key Decisions
 
-**Forced DHW:** Water heater operation modes (eco/performance), not separate switch
+**Forced DHW:** Water heater operation modes (Auto/Force DHW), not separate switch
 
-- `eco` → `forcedHotWaterMode=False`
-- `performance` → `forcedHotWaterMode=True`
+- `Auto` → `forcedHotWaterMode=False` - Normal automatic DHW heating
+- `Force DHW` → `forcedHotWaterMode=True` - Priority mode, immediate DHW heating
 
 **Zone modes:** Climate preset modes (room_temperature, flow_temperature, weather_compensation)
 

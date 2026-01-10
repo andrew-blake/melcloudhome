@@ -29,14 +29,17 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 
 ### ⚠️ Air-to-Water (ATW) Heat Pumps (EXPERIMENTAL)
 
-- **Climate Control**: Zone 1 heating with temperature and mode control
-- **DHW Tank Control**: Water heater platform for domestic hot water management
-- **System Power**: Switch platform for system on/off control
-- **Preset Modes**: Room Temperature, Flow Temperature, Curve Control
-- **Sensors**: Zone 1 temperature, tank temperature, operation status (3-way valve position)
-- **Binary Sensors**: Error state, connection status, forced DHW active
-- **⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
-- **See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
+**Platforms Implemented:**
+- **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
+- **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Auto/Force DHW)
+- **Switch** (System Power): System on/off control (primary power control point)
+- **Sensors**: Zone 1 room temperature, tank temperature, operation status (3-way valve position)
+- **Binary Sensors**: Error state, connection state, forced DHW mode active
+- **Note**: Energy monitoring not yet implemented for ATW devices (planned for future release)
+
+**⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
+
+**See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
 
 ## Requirements
 
@@ -100,14 +103,19 @@ Your devices will be automatically discovered and added.
 
 ### Device and Entity Names
 
-This integration uses **stable UUID-based entity IDs** (e.g., `climate.melcloudhome_bf8d_5119`) to ensure your automations never break when device names change.
+This integration uses **stable UUID-based entity IDs** to ensure your automations never break when device names change.
+
+**Entity ID Format:** `{domain}.melcloudhome_{device_uuid}_{entity_name}`
+- ATA climate example: `climate.melcloudhome_bf8d_5119_climate`
+- ATW climate example: `climate.melcloudhome_bf8d_5119_zone_1`
+- ATW water heater example: `water_heater.melcloudhome_bf8d_5119_tank`
 
 **Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
 
 **⚠️ Entity ID Recreation Warning:**
 
 - If you delete entities and use the **"Recreate entity IDs"** option, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID
-- This will change entity IDs from `climate.melcloudhome_bf8d_5119` to `climate.living_room`, breaking existing automations
+- This will change entity IDs from `climate.melcloudhome_bf8d_5119_climate` to `climate.living_room`, breaking existing automations
 - **To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
 
 ## Entities Created
@@ -118,7 +126,7 @@ For each air conditioning unit, the following entities are created:
 
 #### Climate Entity
 
-- **Entity ID**: `climate.melcloudhome_<unit_id>`
+- **Entity ID**: `climate.melcloudhome_<unit_id>_climate`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
@@ -137,17 +145,15 @@ For each air conditioning unit, the following entities are created:
 
 For each heat pump system, the following entities are created:
 
-> **Note:** Entity IDs use stable UUID-based device names (e.g., `melcloudhome_bf8d_5119`). The friendly device name is displayed in the UI.
-
 #### Climate Entity (Zone 1)
 
 - **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
   - Example: `climate.melcloudhome_bf8d_5119_zone_1`
 - **Features**: Zone 1 heating control, temperature setting, preset modes
 - **Preset Modes**:
-  - `room` - Room Temperature (thermostat control)
-  - `flow` - Flow Temperature (direct flow control)
-  - `curve` - Weather Compensation Curve
+  - **Room** - Room Temperature mode (thermostat control)
+  - **Flow** - Flow Temperature mode (direct flow control)
+  - **Curve** - Weather Compensation Curve mode
 
 #### Water Heater Entity (DHW Tank)
 

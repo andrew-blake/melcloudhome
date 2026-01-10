@@ -393,7 +393,11 @@ await hass.services.async_call(
 - **Auto Mode:** "Automatic" NOT "Auto"
 - **Rate Limiting:** Minimum 60-second polling interval
 
-See `docs/api/ata-api-reference.md` (ATA) and `docs/api/atw-api-reference.md` (ATW) for complete API details. See `docs/api/device-type-comparison.md` for ATA vs ATW comparison.
+**API Documentation:**
+- `docs/api/ata-api-reference.md` - Air-to-Air (A/C units) complete API specification
+- `docs/api/atw-api-reference.md` - Air-to-Water (heat pumps) complete API specification
+- `docs/api/device-type-comparison.md` - ATA vs ATW comparison (control patterns, capabilities)
+- `docs/api/melcloudhome-telemetry-endpoints.md` - Telemetry and energy reporting endpoints
 
 ### Local Development Environment
 
