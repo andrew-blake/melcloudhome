@@ -2,26 +2,30 @@ openapi: 3.0.3
 info:
   title: MELCloud Home API
   description: |
-    API for controlling Mitsubishi Electric MELCloud Home air conditioning systems.
+    API for controlling Mitsubishi Electric MELCloud Home systems.
+
+    **Supported Devices:**
+    - Air-to-Air (A2A): Air conditioning units
+    - Air-to-Water (A2W): Heat pumps (Ecodan, Hydrobox)
 
     **Authentication:** Uses AWS Cognito OAuth 2.0 with PKCE flow.
 
     **Important:** All requests must include a proper Chrome User-Agent header to avoid bot detection.
 
-    **API Coverage:** ~87% documented and verified through UI observation.
-
     **CRITICAL: API Type Inconsistencies**
-    - **Control API** (PUT /api/ataunit/{unitId}): Uses STRING enums
-      - Modes: "Heat", "Cool", "Automatic", "Dry", "Fan"
-      - Fan speeds: "Auto", "One", "Two", "Three", "Four", "Five"
-      - Vanes: "Auto", "Swing", "One"-"Five", "Left", "Centre*", "Right"
-    - **Schedule API** (POST /api/cloudschedule/{unitId}): Uses INTEGER enums
-      - Modes: 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
-      - Fan speeds: 0=Auto, 1-5=speed levels
-      - Vanes: 1-5=positions, 6=Auto, 7=Swing
+    - **Control API** (PUT /api/ataunit or /api/atwunit): Uses STRING enums
+      - A2A Modes: "Heat", "Cool", "Automatic", "Dry", "Fan"
+      - A2A Fan speeds: "Auto", "One", "Two", "Three", "Four", "Five"
+      - A2A Vanes: "Auto", "Swing", "One"-"Five", "Left", "Centre*", "Right"
+      - A2W Modes: "HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"
+    - **Schedule API** (POST /api/cloudschedule or /api/atwcloudschedule): Uses INTEGER enums
+      - A2A Modes: 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
+      - A2A Fan speeds: 0=Auto, 1-5=speed levels
+      - A2A Vanes: 1-5=positions, 6=Auto, 7=Swing
+      - A2W Modes: Integer mapping unknown (requires testing)
 
-    Based on reverse engineering and documentation version 1.1 (2025-11-16).
-  version: 1.0.0
+    Based on reverse engineering and community contributions.
+  version: 2.0.0
   contact:
     name: API Documentation
     url: https://melcloudhome.com
@@ -317,6 +321,178 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnergyTelemetry'
 
+  /api/atwunit/{unitId}:
+    put:
+      summary: Control air-to-water heat pump unit
+      description: |
+        Update device settings. Supports partial updates - only send changed fields,
+        set others to null.
+
+        **Important:**
+        - Temperature ranges: Zone 1: 10-30°C, DHW: 40-60°C
+        - Operation modes use STRINGS (schedules use integers)
+        - OperationMode in response is STATUS only (3-way valve position)
+      tags:
+        - devices
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ATWControlRequest'
+      responses:
+        '200':
+          description: Device updated successfully (empty response body)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/atwunit/{unitId}/errorlog:
+    get:
+      summary: Get heat pump error log
+      tags:
+        - devices
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Error log retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ErrorLogEntry'
+
+  /api/atwcloudschedule/{unitId}:
+    post:
+      summary: Create a schedule for air-to-water unit
+      description: |
+        Create a new schedule for the specified unit. The schedule ID must be
+        client-generated (UUID v4).
+
+        **Important:** operationModeZone1 uses INTEGERS (not strings like control API).
+        Mapping unknown - requires testing.
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ATWSchedule'
+      responses:
+        '200':
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                type: string
+                format: uuid
+
+  /api/atwcloudschedule/{unitId}/{scheduleId}:
+    delete:
+      summary: Delete a schedule
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Schedule deleted successfully
+
+  /api/atwcloudschedule/{unitId}/enabled:
+    put:
+      summary: Enable or disable all schedules for an ATW unit
+      tags:
+        - schedules
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+              required:
+                - enabled
+      responses:
+        '200':
+          description: Schedule state updated
+
+  /api/holidaymode:
+    post:
+      summary: Configure holiday mode (multi-unit support)
+      description: |
+        Set holiday mode for one or more ATW units.
+        Can apply to multiple units simultaneously.
+      tags:
+        - devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HolidayModeRequest'
+      responses:
+        '200':
+          description: Holiday mode configured
+
+  /api/protection/frost:
+    post:
+      summary: Configure frost protection (multi-unit support)
+      description: |
+        Set frost protection for one or more ATW units.
+        Prevents system from freezing in cold weather.
+      tags:
+        - devices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrostProtectionRequest'
+      responses:
+        '200':
+          description: Frost protection configured
+
 components:
   securitySchemes:
     cookieAuth:
@@ -353,6 +529,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AirToAirUnit'
+        airToWaterUnits:
+          type: array
+          items:
+            $ref: '#/components/schemas/AirToWaterUnit'
 
     AirToAirUnit:
       type: object
@@ -720,6 +900,314 @@ components:
                 type: number
                 format: float
                 description: Cumulative energy in kWh
+
+    AirToWaterUnit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        givenDisplayName:
+          type: string
+        macAddress:
+          type: string
+        power:
+          type: boolean
+        operationMode:
+          type: string
+          description: |
+            STATUS field showing 3-way valve position (read-only):
+            - "Stop": Zone 1 idle
+            - "HotWater": Heating DHW
+            - Other: Heating Zone 1
+        operationModeZone1:
+          type: string
+          enum:
+            - HeatRoomTemperature
+            - HeatFlowTemperature
+            - HeatCurve
+        setTemperatureZone1:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 30
+        roomTemperatureZone1:
+          type: number
+          format: float
+        setTankWaterTemperature:
+          type: number
+          format: float
+          minimum: 40
+          maximum: 60
+        tankWaterTemperature:
+          type: number
+          format: float
+        forcedHotWaterMode:
+          type: boolean
+        hasZone2:
+          type: integer
+          description: 0 or 1
+        inStandbyMode:
+          type: boolean
+        isInError:
+          type: boolean
+        isConnected:
+          type: boolean
+        ftcModel:
+          type: integer
+        rssi:
+          type: integer
+          description: WiFi signal strength
+        capabilities:
+          $ref: '#/components/schemas/AirToWaterCapabilities'
+        schedule:
+          type: array
+          items:
+            $ref: '#/components/schemas/ATWSchedule'
+        scheduleEnabled:
+          type: boolean
+
+    AirToWaterCapabilities:
+      type: object
+      properties:
+        hasHotWater:
+          type: boolean
+        minSetTankTemperature:
+          type: number
+          description: API may report 0, use 40 as safe default
+        maxSetTankTemperature:
+          type: number
+        minSetTemperature:
+          type: number
+          description: For Zone 1. API may be incorrect, use 10 as safe default
+        maxSetTemperature:
+          type: number
+          description: For Zone 1. API may be incorrect, use 30 as safe default
+        hasHalfDegrees:
+          type: boolean
+        hasZone2:
+          type: boolean
+        hasThermostatZone1:
+          type: boolean
+        hasThermostatZone2:
+          type: boolean
+        hasHeatZone1:
+          type: boolean
+        hasHeatZone2:
+          type: boolean
+        hasMeasuredEnergyConsumption:
+          type: boolean
+        hasMeasuredEnergyProduction:
+          type: boolean
+        hasEstimatedEnergyConsumption:
+          type: boolean
+        hasEstimatedEnergyProduction:
+          type: boolean
+        ftcModel:
+          type: integer
+        hasDemandSideControl:
+          type: boolean
+
+    ATWControlRequest:
+      type: object
+      description: Partial update - set unchanged fields to null
+      properties:
+        power:
+          type: boolean
+          nullable: true
+        setTemperatureZone1:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 30
+          nullable: true
+          description: Zone 1 heating target (°C)
+        setTemperatureZone2:
+          type: number
+          format: float
+          nullable: true
+          description: Zone 2 heating target (if hasZone2=true)
+        operationModeZone1:
+          type: string
+          enum:
+            - HeatRoomTemperature
+            - HeatFlowTemperature
+            - HeatCurve
+          nullable: true
+        operationModeZone2:
+          type: string
+          nullable: true
+        setTankWaterTemperature:
+          type: number
+          format: float
+          minimum: 40
+          maximum: 60
+          nullable: true
+          description: DHW tank target temperature (°C)
+        forcedHotWaterMode:
+          type: boolean
+          nullable: true
+          description: DHW priority mode
+        setHeatFlowTemperatureZone1:
+          type: number
+          format: float
+          nullable: true
+          description: Advanced - direct flow control
+        setCoolFlowTemperatureZone1:
+          type: number
+          format: float
+          nullable: true
+        setHeatFlowTemperatureZone2:
+          type: number
+          format: float
+          nullable: true
+        setCoolFlowTemperatureZone2:
+          type: number
+          format: float
+          nullable: true
+      example:
+        power: null
+        setTemperatureZone1: 21
+        setTemperatureZone2: null
+        operationModeZone1: null
+        operationModeZone2: null
+        setTankWaterTemperature: 50
+        forcedHotWaterMode: null
+        setHeatFlowTemperatureZone1: null
+        setCoolFlowTemperatureZone1: null
+        setHeatFlowTemperatureZone2: null
+        setCoolFlowTemperatureZone2: null
+
+    ATWSchedule:
+      type: object
+      description: |
+        Schedule entry for ATW unit.
+
+        **Important:** operationModeZone1 uses INTEGERS (not strings like control API).
+        Mapping unknown - requires testing.
+      required:
+        - id
+        - days
+        - time
+        - power
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated UUID
+        days:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: Array of day numbers (0=Sunday, 6=Saturday)
+          example: [1, 2, 3, 4, 5]
+        time:
+          type: string
+          pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+          example: "06:00:00"
+        power:
+          type: boolean
+        setTemperatureZone1:
+          type: number
+          format: float
+          nullable: true
+          minimum: 10
+          maximum: 30
+        setTemperatureZone2:
+          type: number
+          format: float
+          nullable: true
+        operationModeZone1:
+          type: integer
+          nullable: true
+          description: Integer mode (mapping unknown - requires testing)
+        operationModeZone2:
+          type: integer
+          nullable: true
+        setTankWaterTemperature:
+          type: number
+          format: float
+          nullable: true
+          minimum: 40
+          maximum: 60
+        forcedHotWaterMode:
+          type: boolean
+          nullable: true
+      example:
+        id: "66b7ec57-d718-495e-a2f1-98f84c0b5443"
+        days: [1, 2, 3, 4, 5]
+        time: "06:00:00"
+        power: true
+        setTemperatureZone1: 21
+        setTemperatureZone2: null
+        operationModeZone1: 0
+        operationModeZone2: null
+        setTankWaterTemperature: 50
+        forcedHotWaterMode: false
+
+    HolidayModeRequest:
+      type: object
+      required:
+        - enabled
+        - startDate
+        - endDate
+        - units
+      properties:
+        enabled:
+          type: boolean
+        startDate:
+          type: string
+          format: date-time
+          example: "2026-01-10T10:00:00"
+        endDate:
+          type: string
+          format: date-time
+          example: "2026-01-20T18:00:00"
+        units:
+          type: object
+          properties:
+            ATW:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Array of ATW unit IDs
+          required:
+            - ATW
+
+    FrostProtectionRequest:
+      type: object
+      required:
+        - enabled
+        - min
+        - max
+        - units
+      properties:
+        enabled:
+          type: boolean
+        min:
+          type: number
+          format: float
+          description: Minimum temperature threshold (°C)
+          example: 9
+        max:
+          type: number
+          format: float
+          description: Maximum temperature threshold (°C)
+          example: 11
+        units:
+          type: object
+          properties:
+            ATW:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Array of ATW unit IDs
+          required:
+            - ATW
 
   responses:
     UnauthorizedError:

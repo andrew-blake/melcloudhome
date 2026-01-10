@@ -12,6 +12,8 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
+from .diagnostics_ata import serialize_ata_unit
+from .diagnostics_atw import serialize_atw_unit
 
 TO_REDACT = {CONF_EMAIL, CONF_PASSWORD}
 
@@ -60,23 +62,13 @@ async def async_get_config_entry_diagnostics(
                 {
                     "id": building.id,
                     "name": building.name,
-                    "unit_count": len(building.air_to_air_units),
-                    "units": [
-                        {
-                            "id": unit.id,
-                            "name": unit.name,
-                            "power": unit.power,
-                            "operation_mode": unit.operation_mode,
-                            "set_temperature": unit.set_temperature,
-                            "room_temperature": unit.room_temperature,
-                            "set_fan_speed": unit.set_fan_speed,
-                            "vane_vertical_direction": unit.vane_vertical_direction,
-                            "vane_horizontal_direction": unit.vane_horizontal_direction,
-                            "has_energy_consumed_meter": unit.capabilities.has_energy_consumed_meter
-                            if unit.capabilities
-                            else None,
-                        }
-                        for unit in building.air_to_air_units
+                    "ata_unit_count": len(building.air_to_air_units),
+                    "atw_unit_count": len(building.air_to_water_units),
+                    "ata_units": [
+                        serialize_ata_unit(unit) for unit in building.air_to_air_units
+                    ],
+                    "atw_units": [
+                        serialize_atw_unit(unit) for unit in building.air_to_water_units
                     ],
                 }
                 for building in coordinator.data.buildings

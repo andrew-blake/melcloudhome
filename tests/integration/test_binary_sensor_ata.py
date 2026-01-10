@@ -1,4 +1,4 @@
-"""Tests for MELCloud Home binary sensor entities.
+"""Tests for MELCloud Home ATA binary sensor entities.
 
 Tests cover binary sensor entity creation, connection/error state reporting.
 Follows HA best practices: test observable behavior through hass.states, not internals.
@@ -14,11 +14,10 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import (
+from custom_components.melcloudhome.api.models import Building, UserContext
+from custom_components.melcloudhome.api.models_ata import (
     AirToAirUnit,
-    Building,
     DeviceCapabilities,
-    UserContext,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -52,8 +51,6 @@ def create_mock_unit(
         is_in_error=is_in_error,
         rssi=-50,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=None,
     )
 

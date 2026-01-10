@@ -42,25 +42,19 @@ Automates the complete deployment cycle for custom Home Assistant integrations:
 **Basic deployment:**
 
 ```bash
-python tools/deploy_custom_component.py melcloudhome
+make deploy
 ```
 
 **Deploy + API testing:**
 
 ```bash
-python tools/deploy_custom_component.py melcloudhome --test
+make deploy-test
 ```
 
 **Deploy + watch logs:**
 
 ```bash
-python tools/deploy_custom_component.py melcloudhome --watch
-```
-
-**Deploy different component:**
-
-```bash
-python tools/deploy_custom_component.py my_other_integration
+make deploy-watch
 ```
 
 ### What It Does
@@ -125,7 +119,7 @@ Fast iterative development cycle:
 vim custom_components/melcloudhome/climate.py
 
 # 2. Deploy and test
-python tools/deploy_custom_component.py melcloudhome --test
+make deploy-test
 
 # 3. Check results in logs or UI
 
@@ -205,6 +199,40 @@ See also:
 - `claude-homeassistant/tools/reload_config.py` - Reload HA config without restart
 - `claude-homeassistant/tools/ha_api_diagnostic.py` - Comprehensive API testing
 - `claude-homeassistant/tools/entity_explorer.py` - Explore entities in detail
+
+## API Reverse Engineering Tools
+
+**Purpose:** Understand MELCloud Home API behavior by observing the official web application without needing physical hardware.
+
+**Location:** `reverse-engineering/`
+
+**Key capabilities:**
+- Capture API responses from users with different hardware
+- Inject captured data into official web app to observe behavior
+- Test control commands without affecting real devices
+- Contribute device support without owning the hardware
+
+**Quick start:**
+```bash
+# Chrome Local Overrides: Inject API data
+# See: reverse-engineering/README.md
+
+# Request Proxying: Capture commands
+# 1. make dev-up (start mock server)
+# 2. Paste reverse-engineering/proxy_mutations.js in Chrome console
+# 3. Run: blockMutations()
+```
+
+**Full documentation:**
+- Quick start: [reverse-engineering/README.md](reverse-engineering/README.md)
+- Comprehensive guide: [../docs/research/REVERSE_ENGINEERING.md](../docs/research/REVERSE_ENGINEERING.md)
+
+**Use cases:**
+- User reports unsupported Ecodan → Use their HAR to implement support
+- Need to know exact API payload format → Proxy requests to mock server
+- Test different device configurations → Mock server + Chrome overrides
+
+---
 
 ## Other Tools
 

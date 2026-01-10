@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 async def test_get_devices(authenticated_client: "MELCloudHomeClient") -> None:
     """Test fetching all devices from the API."""
-    devices = await authenticated_client.get_devices()
+    context = await authenticated_client.get_user_context()
+    devices = context.get_all_units()
 
     # Should have at least one device
     assert len(devices) >= 1
@@ -41,7 +42,8 @@ async def test_get_device_by_id(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test fetching a specific device by ID."""
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
 
     assert device is not None
     assert device.id == dining_room_unit_id
@@ -62,7 +64,8 @@ async def test_device_state_attributes(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
     """Test that device state includes all expected attributes."""
-    device = await authenticated_client.get_device(dining_room_unit_id)
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
 
     # Core attributes
     assert hasattr(device, "id")
@@ -94,9 +97,12 @@ async def test_device_state_attributes(
 async def test_multiple_devices_consistency(
     authenticated_client: "MELCloudHomeClient",
 ) -> None:
-    """Test that calling get_devices multiple times returns consistent data."""
-    devices1 = await authenticated_client.get_devices()
-    devices2 = await authenticated_client.get_devices()
+    """Test that calling get_user_context multiple times returns consistent data."""
+    context1 = await authenticated_client.get_user_context()
+    devices1 = context1.get_all_units()
+
+    context2 = await authenticated_client.get_user_context()
+    devices2 = context2.get_all_units()
 
     # Should return same number of devices
     assert len(devices1) == len(devices2)

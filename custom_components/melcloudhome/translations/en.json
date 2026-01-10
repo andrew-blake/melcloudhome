@@ -6,7 +6,11 @@
         "description": "Enter your MELCloud Home credentials",
         "data": {
           "email": "Email",
-          "password": "Password"
+          "password": "Password",
+          "debug_mode": "Connect to Mock Server"
+        },
+        "data_description": {
+          "debug_mode": "For development only - connects to local mock server instead of production MELCloud API"
         }
       },
       "reconfigure": {
@@ -28,6 +32,19 @@
     }
   },
   "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Room",
+              "flow": "Flow",
+              "curve": "Curve"
+            }
+          }
+        }
+      }
+    },
     "sensor": {
       "room_temperature": {
         "name": "Room temperature"
@@ -37,6 +54,15 @@
       },
       "energy": {
         "name": "Energy"
+      },
+      "zone_1_temperature": {
+        "name": "Zone 1 temperature"
+      },
+      "tank_temperature": {
+        "name": "Tank temperature"
+      },
+      "operation_status": {
+        "name": "Operation status"
       }
     },
     "binary_sensor": {
@@ -45,6 +71,9 @@
       },
       "connection_state": {
         "name": "Connection state"
+      },
+      "forced_dhw_active": {
+        "name": "Forced DHW active"
       }
     }
   },

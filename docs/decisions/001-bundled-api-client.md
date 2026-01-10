@@ -79,6 +79,13 @@ custom_components/melcloudhome/
 └── ...
 ```
 
+> **Note:** Post-v2.0, the API client structure evolved to support multi-device types (see ADR-011):
+> - `models.py` → `models.py` (shared), `models_ata.py`, `models_atw.py`
+> - `client.py` uses facade pattern with `client_ata.py` and `client_atw.py`
+> - `const.py` → `const_shared.py`, `const_ata.py`, `const_atw.py`
+>
+> The bundled approach remains unchanged - all files still in `api/` subfolder.
+
 **Import pattern:**
 ```python
 from .api import MELCloudHomeClient

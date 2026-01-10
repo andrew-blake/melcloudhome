@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Mock MELCloud API Server
+  melcloud-mock:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    command: python tools/mock_melcloud_server.py --debug --host 0.0.0.0 --port 8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - ha-dev
+    restart: unless-stopped
+
+  # Home Assistant with auto-setup
+  homeassistant:
+    image: homeassistant/home-assistant:latest
+    container_name: ha-melcloud-dev
+    ports:
+      - "127.0.0.1:8123:8123"
+    volumes:
+      # Mount the integration
+      - ./custom_components/melcloudhome:/config/custom_components/melcloudhome:ro
+      # Mount pre-configured setup
+      - ./dev-config:/config
+      # Mount init script
+      - ./tools/ha-dev-init.sh:/init.sh:ro
+    environment:
+      - HASS_USERNAME=${HASS_USERNAME:-dev}
+      - HASS_PASSWORD=${HASS_PASSWORD:-dev}
+      - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
+    networks:
+      - ha-dev
+    depends_on:
+      - melcloud-mock
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        # Run init script if needed
+        if [ -f /init.sh ]; then
+          /init.sh
+        fi
+        # Start Home Assistant
+        exec python -m homeassistant --config /config
+
+networks:
+  ha-dev:
+    name: ha-melcloud-dev

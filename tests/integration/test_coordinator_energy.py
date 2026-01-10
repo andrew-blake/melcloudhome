@@ -14,17 +14,16 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import (
+from custom_components.melcloudhome.api.models import Building, UserContext
+from custom_components.melcloudhome.api.models_ata import (
     AirToAirUnit,
-    Building,
     DeviceCapabilities,
-    UserContext,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
 # Mock at API boundary (NOT coordinator)
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-MOCK_STORE_PATH = "custom_components.melcloudhome.coordinator.Store"
+MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker.Store"
 
 # Test device UUID - generates entity_id: sensor.melcloudhome_0efc_9abc_energy
 TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
@@ -56,8 +55,6 @@ def create_mock_unit_with_energy(
         is_in_error=False,
         rssi=-50,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=None,  # Will be populated by coordinator
     )
 
@@ -404,7 +401,9 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
                 [("2025-12-09 09:00:00.000000000", 300.0)]  # Increased from 100!
             )
         )
-        await coordinator._async_update_energy_data()
+        await coordinator.energy_tracker.async_update_energy_data()
+        coordinator.energy_tracker.update_unit_energy_data(coordinator._units)
+        coordinator.async_update_listeners()
         await hass.async_block_till_done()
 
         # ✅ Should add delta: 0.3 - 0.1 = 0.2 kWh → 10.1 + 0.2 = 10.3 kWh
@@ -421,7 +420,9 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
                 ]
             )
         )
-        await coordinator._async_update_energy_data()
+        await coordinator.energy_tracker.async_update_energy_data()
+        coordinator.energy_tracker.update_unit_energy_data(coordinator._units)
+        coordinator.async_update_listeners()
         await hass.async_block_till_done()
 
         # ✅ Should add: delta 09:00 (0.1) + new 10:00 (0.1) = 0.2 kWh
@@ -574,7 +575,7 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         assert state.state == "unavailable"
 
         # Verify integration didn't crash - other sensors still work
-        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc")
+        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc_climate")
         assert climate_state is not None
         assert climate_state.state == "heat"  # Climate entity still functional
 

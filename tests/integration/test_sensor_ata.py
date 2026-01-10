@@ -1,4 +1,4 @@
-"""Tests for MELCloud Home sensor entities.
+"""Tests for MELCloud Home ATA sensor entities.
 
 Tests cover sensor entity creation, state updates, and conditional creation.
 Follows HA best practices: test observable behavior through hass.states, not internals.
@@ -14,17 +14,16 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import (
+from custom_components.melcloudhome.api.models import Building, UserContext
+from custom_components.melcloudhome.api.models_ata import (
     AirToAirUnit,
-    Building,
     DeviceCapabilities,
-    UserContext,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
 # Mock at API boundary (NOT coordinator or sensor classes)
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-MOCK_STORE_PATH = "custom_components.melcloudhome.coordinator.Store"
+MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker.Store"
 
 # Test device UUID - generates entity_id: sensor.melcloudhome_0efc_9abc_*
 TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
@@ -68,8 +67,6 @@ def create_mock_unit(
         is_in_error=False,
         rssi=rssi,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=energy_consumed,
     )
 

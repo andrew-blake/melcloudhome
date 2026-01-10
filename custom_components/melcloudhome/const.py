@@ -1,45 +1,33 @@
-"""Constants for the MELCloud Home integration."""
+"""Shared constants for the MELCloud Home integration.
+
+Device-specific constants are in const_ata.py and const_atw.py.
+"""
 
 from datetime import timedelta
+from typing import TYPE_CHECKING, Union
 
-from homeassistant.components.climate import (
-    HVACMode,
-)
+if TYPE_CHECKING:
+    from .api.models import AirToAirUnit, AirToWaterUnit
 
+# =================================================================
+# Shared Constants
+# =================================================================
+
+# Domain and update interval (shared by all device types)
 DOMAIN = "melcloudhome"
 UPDATE_INTERVAL = timedelta(seconds=60)
 PLATFORMS = ["climate"]
 
-# MELCloud API uses "Automatic" not "Auto"
-MELCLOUD_TO_HA_MODE = {
-    "Heat": HVACMode.HEAT,
-    "Cool": HVACMode.COOL,
-    "Automatic": HVACMode.AUTO,
-    "Dry": HVACMode.DRY,
-    "Fan": HVACMode.FAN_ONLY,
-}
+# Configuration keys
+CONF_DEBUG_MODE = "debug_mode"
 
-HA_TO_MELCLOUD_MODE = {
-    HVACMode.HEAT: "Heat",
-    HVACMode.COOL: "Cool",
-    HVACMode.AUTO: "Automatic",
-    HVACMode.DRY: "Dry",
-    HVACMode.FAN_ONLY: "Fan",
-}
+# Type alias for any device unit (ATA or ATW)
+DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
 
-# Fan speed mappings
-FAN_SPEEDS = ["Auto", "One", "Two", "Three", "Four", "Five"]
-
-# Vane position mappings (vertical)
-VANE_POSITIONS = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
-
-# Horizontal vane position mappings (API uses British spelling)
-VANE_HORIZONTAL_POSITIONS = [
-    "Auto",
-    "Swing",
-    "Left",
-    "LeftCentre",
-    "Centre",
-    "RightCentre",
-    "Right",
+__all__ = [
+    "CONF_DEBUG_MODE",
+    "DOMAIN",
+    "PLATFORMS",
+    "UPDATE_INTERVAL",
+    "DeviceUnit",
 ]

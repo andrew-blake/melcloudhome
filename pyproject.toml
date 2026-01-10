@@ -3,11 +3,12 @@ name = "melcloudhome-integration"
 version = "0.1.0"
 description = "Home Assistant custom component for MELCloud Home"
 authors = [
-    { name = "Andrew Blake", email = "a.blake01@gmail.com" }
+    { name = "Andrew Blake", email = "github@blakenet.uk" }
 ]
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.2",
+    "aiohttp-cors>=0.8.1",
     "playwright>=1.56.0",
 ]
 
@@ -121,4 +122,5 @@ dev = [
     "ruff>=0.14.5",
     "vcrpy>=7.0.0",
     "voluptuous>=0.15.0",
+    "freezegun>=1.5.5",
 ]

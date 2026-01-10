@@ -14,11 +14,10 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import (
+from custom_components.melcloudhome.api.models import Building, UserContext
+from custom_components.melcloudhome.api.models_ata import (
     AirToAirUnit,
-    Building,
     DeviceCapabilities,
-    UserContext,
 )
 from custom_components.melcloudhome.const import DOMAIN
 from custom_components.melcloudhome.diagnostics import (
@@ -59,8 +58,6 @@ def create_mock_unit(
         is_in_error=False,
         rssi=-50,
         capabilities=capabilities,
-        schedule=[],
-        schedule_enabled=False,
         energy_consumed=None,
     )
 
@@ -163,7 +160,7 @@ async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
         entities = diagnostics["entities"]
 
         # Should have climate entity (entity ID derived from UUID: 0efc1234-...9abc)
-        climate_entity_id = "climate.melcloudhome_0efc_9abc"
+        climate_entity_id = "climate.melcloudhome_0efc_9abc_climate"
         assert climate_entity_id in entities
         assert entities[climate_entity_id]["state"] == "heat"
         assert "attributes" in entities[climate_entity_id]
@@ -236,10 +233,11 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         building_data = user_context["buildings"][0]
         assert building_data["id"] == "building-1"
         assert building_data["name"] == "Home"
-        assert building_data["unit_count"] == 2
+        assert building_data["ata_unit_count"] == 2
+        assert building_data["atw_unit_count"] == 0
 
         # Verify units
-        units = building_data["units"]
+        units = building_data["ata_units"]
         assert len(units) == 2
 
         # Check unit 1

@@ -13,7 +13,7 @@ from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from custom_components.melcloudhome.api.exceptions import ApiError
 
 
-async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str):
+async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str) -> None:
     """Test all vertical vane positions."""
     positions = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
     horizontal = "Auto"  # Keep horizontal constant
@@ -25,7 +25,9 @@ async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str):
     for position in positions:
         print(f"\nTesting vertical position: {position}")
         try:
-            await client.set_vanes(unit_id, vertical=position, horizontal=horizontal)
+            await client.ata.set_vanes(
+                unit_id, vertical=position, horizontal=horizontal
+            )
             print(f"  ✓ SUCCESS: {position}")
             await asyncio.sleep(1)
         except ApiError as e:
@@ -34,7 +36,7 @@ async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str):
             print(f"  ✗ ERROR: {position} - {type(e).__name__}: {e}")
 
 
-async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str):
+async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str) -> None:
     """Test all horizontal vane positions."""
     positions = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
     vertical = "Auto"  # Keep vertical constant
@@ -46,7 +48,7 @@ async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str):
     for position in positions:
         print(f"\nTesting horizontal position: {position}")
         try:
-            await client.set_vanes(unit_id, vertical=vertical, horizontal=position)
+            await client.ata.set_vanes(unit_id, vertical=vertical, horizontal=position)
             print(f"  ✓ SUCCESS: {position}")
             await asyncio.sleep(1)
         except ApiError as e:
@@ -55,16 +57,16 @@ async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str):
             print(f"  ✗ ERROR: {position} - {type(e).__name__}: {e}")
 
 
-async def main():
+async def main() -> None:
     """Main test function."""
     # Get credentials from environment
-    email = os.getenv("MELCLOUD_EMAIL")
+    email = os.getenv("MELCLOUD_USER")
     password = os.getenv("MELCLOUD_PASSWORD")
 
     if not email or not password:
-        print("Error: MELCLOUD_EMAIL and MELCLOUD_PASSWORD must be set")
+        print("Error: MELCLOUD_USER and MELCLOUD_PASSWORD must be set")
         print(
-            "Usage: MELCLOUD_EMAIL=user@example.com MELCLOUD_PASSWORD=password python test_vane_positions.py [unit_id]"
+            "Usage: MELCLOUD_USER=user@example.com MELCLOUD_PASSWORD=password python test_vane_positions.py [unit_id]"
         )
         sys.exit(1)
 
@@ -96,7 +98,7 @@ async def main():
         print("\n" + "=" * 60)
         print("Resetting to Auto/Auto")
         print("=" * 60)
-        await client.set_vanes(unit_id, vertical="Auto", horizontal="Auto")
+        await client.ata.set_vanes(unit_id, vertical="Auto", horizontal="Auto")
         print("  ✓ Reset complete")
 
     except Exception as e:

@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.0.0-beta.1] - 2026-01-10
+
+### ⚠️ Beta Release - Testers Wanted
+
+**Air-to-Water (ATW) Heat Pump Support - BETA TESTING**
+
+This is a **pre-release beta** for community testing. ATW heat pump support is based on HAR captures and has **NOT been tested on real hardware**.
+
+**How to test:**
+1. Enable beta releases in HACS:
+   - Go to **Settings → Devices & Services → Integrations → HACS**
+   - Find **MELCloud Home** in your repository list
+   - Enable the **"Show beta versions"** switch entity (disabled by default)
+2. Install this beta version (will appear in available updates)
+3. Test with your Ecodan ATW system
+4. Report findings: https://github.com/andrew-blake/melcloudhome/issues
+
+**⚠️ USE AT YOUR OWN RISK ⚠️**
+
+- Implementation is theoretical and may not work correctly with physical hardware
+- No guarantees of safety or correctness
+- See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
+
+### Added
+
+- **⚠️ EXPERIMENTAL:** Air-to-Water (ATW) heat pump support (Ecodan)
+  - Water heater platform for DHW tank control
+  - Switch platform for system power control
+  - Climate platform for Zone 1 heating
+  - Preset modes (Room Temperature, Flow Temperature, Curve Control)
+  - ATW-specific sensors (Zone 1 room temperature, tank temperature, operation status)
+  - Binary sensors (error state, connection state, forced DHW active)
+  - See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
+- Local development environment with Docker Compose and mock API server
+- Upgrade verification tooling (`tools/compare_upgrade_snapshots.py`)
+
+### Changed
+
+- Entity naming pattern updated to use `has_entity_name=True` for Home Assistant compatibility
+  - **Existing installations:** Entity IDs preserved, device names automatically set to friendly location names
+  - **New installations:** ATA Climate entity IDs include descriptive suffix (e.g., `_climate`)
+  - Device names show friendly locations (e.g., "Living Room") instead of UUIDs
+  - **No action required** for existing users
+
+### Fixed
+
+- "Recreate entity ID" button now generates stable IDs instead of breaking automations
+
 ## [1.3.4] - 2025-12-09
 
 ### Fixed

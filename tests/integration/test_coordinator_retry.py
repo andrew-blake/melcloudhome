@@ -1,7 +1,7 @@
 """Tests for coordinator retry logic on session expiry."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -133,16 +133,16 @@ async def test_api_error_converts_to_home_assistant_error(coordinator):
 @pytest.mark.asyncio
 async def test_wrapper_methods_call_client(coordinator):
     """Test coordinator wrapper methods call client correctly."""
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
     await coordinator.async_set_power("unit123", True)
 
-    coordinator.client.set_power.assert_called_once_with("unit123", True)
+    coordinator.client.ata.set_power.assert_called_once_with("unit123", True)
 
 
 @pytest.mark.asyncio
 async def test_wrapper_method_handles_session_expiry(coordinator):
     """Test wrapper methods automatically recover from session expiry."""
-    coordinator.client.set_power = AsyncMock(
+    coordinator.client.ata.set_power = AsyncMock(
         side_effect=[
             AuthenticationError("Session expired"),  # First attempt
             AuthenticationError("Session expired"),  # Double-check
@@ -153,36 +153,41 @@ async def test_wrapper_method_handles_session_expiry(coordinator):
     await coordinator.async_set_power("unit123", True)
 
     assert coordinator.client.login.call_count == 1
-    assert coordinator.client.set_power.call_count == 3  # First + double-check + retry
+    assert (
+        coordinator.client.ata.set_power.call_count == 3
+    )  # First + double-check + retry
 
 
 @pytest.mark.asyncio
 async def test_debounced_refresh_coalesces_calls(coordinator, hass):
     """Test debounced refresh coalesces multiple rapid calls into one."""
-    with patch.object(
-        coordinator, "async_request_refresh", AsyncMock()
-    ) as mock_refresh:
-        # Make 5 rapid debounced refresh requests
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
-        await coordinator.async_request_refresh_debounced(delay=0.1)
+    # Mock the coordinator's refresh method that control_client will call
+    mock_refresh = AsyncMock()
+    # Patch the control_client_ata's stored reference to async_request_refresh
+    coordinator.control_client_ata._async_request_refresh = mock_refresh
 
-        # Should not have called refresh yet
-        assert mock_refresh.call_count == 0
+    # Make 5 rapid debounced refresh requests
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
+    await coordinator.async_request_refresh_debounced(delay=0.1)
 
-        # Wait for debounce delay
-        await asyncio.sleep(0.15)
+    # Should not have called refresh yet
+    assert mock_refresh.call_count == 0
 
-        # Should have called refresh exactly once
-        assert mock_refresh.call_count == 1
+    # Wait for debounce delay and let hass process the task
+    await asyncio.sleep(0.15)
+    await hass.async_block_till_done()
+
+    # Should have called refresh exactly once
+    assert mock_refresh.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_deduplication_skips_same_value(coordinator):
     """Test smart deduplication skips API call when value unchanged."""
-    from custom_components.melcloudhome.api.models import (
+    from custom_components.melcloudhome.api.models_ata import (
         AirToAirUnit,
         DeviceCapabilities,
     )
@@ -205,19 +210,19 @@ async def test_deduplication_skips_same_value(coordinator):
     )
     coordinator._units = {"unit123": unit}
 
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
 
     # Try to set power to True (already True)
     await coordinator.async_set_power("unit123", True)
 
     # Should NOT call API
-    assert coordinator.client.set_power.call_count == 0
+    assert coordinator.client.ata.set_power.call_count == 0
 
 
 @pytest.mark.asyncio
 async def test_deduplication_sends_different_value(coordinator):
     """Test smart deduplication sends API call when value changed."""
-    from custom_components.melcloudhome.api.models import (
+    from custom_components.melcloudhome.api.models_ata import (
         AirToAirUnit,
         DeviceCapabilities,
     )
@@ -239,10 +244,10 @@ async def test_deduplication_sends_different_value(coordinator):
     )
     coordinator._units = {"unit123": unit}
 
-    coordinator.client.set_power = AsyncMock()
+    coordinator.client.ata.set_power = AsyncMock()
 
     # Try to set power to True (currently False)
     await coordinator.async_set_power("unit123", True)
 
     # SHOULD call API
-    assert coordinator.client.set_power.call_count == 1
+    assert coordinator.client.ata.set_power.call_count == 1

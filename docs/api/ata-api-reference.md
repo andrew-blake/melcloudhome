@@ -1,9 +1,24 @@
-# MELCloud Home API Reference
-## Complete Parameter Specification (UI-Verified)
+# MELCloud Home API Reference - Air-to-Air Units
+## Complete Air-to-Air (ATA) API Specification
 
-**Document Version:** 1.0
-**Last Updated:** 2025-11-16
+> **Note:** This document covers Air-to-Air (ATA) units only.
+> - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
+> - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
+
+**Document Version:** 1.1
+**Last Updated:** 2026-01-03
+**Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
+
+---
+
+## 📖 About This Document
+
+This is a **complete API reference** documenting all endpoints for Air-to-Air (ATA) devices.
+
+**Implementation Status:** The control endpoints documented here are **fully implemented** in the Home Assistant integration. This documentation serves as both a user reference and contributor guide.
+
+For current integration features, see [README.md](../../README.md).
 
 ---
 
@@ -48,7 +63,7 @@ https://melcloudhome.com
 ```
 
 ### Authentication
-- Uses OAuth 2.0 + AWS Cognito (see `melcloudhome-api-discovery.md` for details)
+- Uses OAuth 2.0 + AWS Cognito (see [../architecture.md](../architecture.md) for details)
 - Session cookies managed automatically by client
 - Session expires ~8 hours
 
@@ -524,9 +539,11 @@ Use these capabilities to:
 
 ## Related Documentation
 
-- **`melcloudhome-api-discovery.md`** - Complete API discovery including authentication flow
-- **`melcloudhome-integration-guide.md`** - Home Assistant integration patterns and best practices
-- **`NEXT-STEPS.md`** - Project roadmap and implementation options
+- **[Architecture Overview](../architecture.md)** - System design and component interactions
+- **[Testing Best Practices](../testing-best-practices.md)** - Home Assistant integration patterns
+- **[Contributing Guide](../../CONTRIBUTING.md)** - Development workflow and standards
+- **[ATW API Reference](atw-api-reference.md)** - Air-to-Water heat pump API
+- **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
 
 ---
 

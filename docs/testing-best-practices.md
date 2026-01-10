@@ -334,27 +334,54 @@ await set_temperature(20.0)  # Duplicate
 ### Run All Tests
 
 ```bash
-# API tests (fast)
-pytest tests/api/ -v
+# API tests (fast, no Docker needed)
+make test                        # or: pytest tests/api/ -v
 
-# Integration tests (requires HA fixtures)
+# Integration tests (in Docker - requires pytest-homeassistant-custom-component)
 make test-ha
 
-# All tests
-make test
+# Note: Integration tests run in Docker because pytest-homeassistant-custom-component
+# has dependency conflicts with local dev environment (aiohttp version incompatibility).
+# See tests/integration/Dockerfile for test environment setup.
+```
+
+### Docker Integration Test Details
+
+**Why Docker?**
+- `pytest-homeassistant-custom-component` requires Home Assistant
+- HA requires aiohttp 3.8-3.11 (incompatible with our aiohttp >=3.13.2)
+- Docker provides isolated environment with correct dependencies
+
+**What happens when you run `make test-ha`:**
+1. Builds Docker image from `tests/integration/Dockerfile` (Python 3.12 + HA test fixtures)
+2. Mounts repository as `/app` in container
+3. Runs pytest from `tests/integration/` directory (treats it as root for pytest_plugins)
+4. Outputs results to terminal
+
+**Manual Docker commands:**
+```bash
+# Build test image
+docker build -t melcloudhome-test:latest -f tests/integration/Dockerfile .
+
+# Run integration tests
+docker run --rm -v $(PWD):/app melcloudhome-test:latest
+
+# Run specific test file
+docker run --rm -v $(PWD):/app melcloudhome-test:latest pytest test_climate.py -v
+
+# Run specific test
+docker run --rm -v $(PWD):/app melcloudhome-test:latest pytest test_climate.py::test_name -vv
 ```
 
 ### Run with Coverage
 
 ```bash
-# Overall coverage
-pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv
-
-# API coverage only
+# API coverage only (local)
 pytest tests/api/ --cov=custom_components.melcloudhome.api --cov-report term-missing -vv
 
-# Integration coverage only
-pytest tests/integration/ --cov=custom_components.melcloudhome --cov-report term-missing -vv
+# Integration coverage (in Docker)
+docker run --rm -v $(PWD):/app melcloudhome-test:latest \
+  pytest . --cov=custom_components.melcloudhome --cov-report term-missing -vv
 ```
 
 ### Update VCR Cassettes
@@ -383,20 +410,6 @@ When publishing to HACS, ensure:
 - Comprehensive `README.md`
 - `hacs.json` for HACS-specific configuration
 - GitHub releases for version management
-
-### Repository Structure
-
-```
-custom_components/melcloudhome/
-├── __init__.py
-├── manifest.json
-├── climate.py
-├── sensor.py
-└── api/
-    ├── __init__.py
-    ├── client.py
-    └── models.py
-```
 
 ### Best Practices
 

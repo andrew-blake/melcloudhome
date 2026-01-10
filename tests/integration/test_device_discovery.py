@@ -137,6 +137,9 @@ async def test_device_discovery_detects_new_device(
             task_arg = mock_create_task.call_args[0][0]
             assert task_arg is not None
 
+            # Close the coroutine to prevent ResourceWarning without executing it
+            task_arg.close()
+
             # Verify known_device_ids was updated (prevents infinite loop)
             assert "device_2" in hass.data[DOMAIN][entry.entry_id]["known_device_ids"]
 

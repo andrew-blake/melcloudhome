@@ -12,6 +12,15 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-006: Entity Description Pattern](decisions/006-entity-description-pattern.md) - Sensor/binary_sensor implementation
 - [ADR-007: Defer WebSocket Implementation](decisions/007-defer-websocket-implementation.md) - Real-time updates deferral
 - [ADR-008: Energy Monitoring Architecture](decisions/008-energy-monitoring-architecture.md) - Energy tracking with persistence
+- [ADR-009: Reconfigure Password-Only](decisions/009-reconfigure-password-only.md) - Config flow password updates
+- [ADR-010: Entity ID Prefix Change](decisions/010-entity-id-prefix-change.md) - Breaking change for stable IDs
+- [ADR-011: Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md) - ATA/ATW unified client (facade pattern)
+- [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md) - Power control and entity design for heat pumps
+- [ADR-013: Automatic Friendly Device Names](decisions/013-automatic-friendly-device-names.md) - UX improvement via name_by_user
+
+## Architecture
+
+- [Architecture Overview](architecture.md) - High-level system architecture with visual diagrams: multi-device-type patterns, ATW entity design, 3-way valve behavior, API layer structure
 
 ## Quality Reviews
 

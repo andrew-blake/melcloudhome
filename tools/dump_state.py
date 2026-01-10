@@ -16,13 +16,13 @@ from custom_components.melcloudhome.api.client import MELCloudHomeClient
 async def main():
     """Main function to dump state."""
     # Get credentials from environment
-    email = os.getenv("MELCLOUD_EMAIL")
+    email = os.getenv("MELCLOUD_USER")
     password = os.getenv("MELCLOUD_PASSWORD")
 
     if not email or not password:
-        print("Error: MELCLOUD_EMAIL and MELCLOUD_PASSWORD must be set")
+        print("Error: MELCLOUD_USER and MELCLOUD_PASSWORD must be set")
         print(
-            "Usage: MELCLOUD_EMAIL=user@example.com MELCLOUD_PASSWORD=password python dump_state.py"
+            "Usage: MELCLOUD_USER=user@example.com MELCLOUD_PASSWORD=password python dump_state.py"
         )
         sys.exit(1)
 

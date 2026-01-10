@@ -62,7 +62,7 @@
 **Option A: Manual Testing in Real HA** (Recommended for personal use)
 ```bash
 # Deploy and test in actual HA instance
-python tools/deploy_custom_component.py melcloudhome --test
+make deploy-test
 # Then manually verify in HA UI
 ```
 
@@ -129,11 +129,14 @@ from homeassistant.setup import async_setup_component
 
 **New Features:**
 ```bash
-# Full restart (initial installation)
-python tools/deploy_custom_component.py melcloudhome
+# Deploy to production HA
+make deploy
 
-# Fast reload (updates only, 2-5s instead of 30-60s)
-python tools/deploy_custom_component.py melcloudhome --reload
+# Deploy with API testing
+make deploy-test
+
+# Deploy with log monitoring
+make deploy-watch
 ```
 
 **How it Works:**
@@ -305,30 +308,19 @@ set_schedule:
 - ⚠️ No rollback mechanism
 - ⚠️ No version checking
 
-### Recommended Improvements
+### Deployment Commands
 
-1. **Add Reload Option:**
-```python
-# For updates (not initial install)
-python tools/deploy_custom_component.py melcloudhome --reload
-```
+Available deployment commands via Makefile:
 
-2. **Add Version Check:**
-```python
-# Check if newer version before deploy
-# Warn if downgrading
-```
+```bash
+# Basic deployment
+make deploy
 
-3. **Add Backup:**
-```python
-# Backup existing version before deploy
-# Allow rollback: python tools/deploy_custom_component.py --rollback
-```
+# Deploy with API testing
+make deploy-test
 
-4. **Add Dry Run:**
-```python
-# Test deployment without actual changes
-python tools/deploy_custom_component.py melcloudhome --dry-run
+# Deploy with log monitoring
+make deploy-watch
 ```
 
 ---

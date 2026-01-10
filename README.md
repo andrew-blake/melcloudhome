@@ -10,7 +10,19 @@
 
 Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Electric air conditioning units via the MELCloud Home API.
 
+## Terminology
+
+- **ATA (Air-to-Air)**: Split-system air conditioners and heat pumps that heat/cool air directly
+- **ATW (Air-to-Water)**: Ecodan/Hydrobox heat pump systems that heat water for underfloor heating and domestic hot water
+- **FTC Controller**: Floor-standing controller unit for ATW systems
+- **MELCloud Home**: Mitsubishi Electric's cloud service for residential HVAC control
+- **DHW**: Domestic Hot Water (hot water tank in ATW systems)
+
+Throughout this documentation, we use **ATA** and **ATW** as the primary abbreviations.
+
 ## Features
+
+### Air-to-Air (ATA) Systems
 
 - **HVAC Control**: Power, temperature, mode (heat/cool/dry/fan/auto), fan speed, and swing modes
 - **Energy Monitoring**: Track cumulative energy consumption with persistent storage
@@ -25,6 +37,21 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - **Automatic Updates**: 60-second polling for climate/sensors, 30-minute polling for energy data
 - **Diagnostics Support**: Export integration diagnostics for troubleshooting
 
+### ⚠️ Air-to-Water (ATW) Heat Pumps (EXPERIMENTAL)
+
+**Platforms Implemented:**
+
+- **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
+- **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Auto/Force DHW)
+- **Switch** (System Power): System on/off control (primary power control point)
+- **Sensors**: Zone 1 room temperature, tank temperature, operation status (3-way valve position)
+- **Binary Sensors**: Error state, connection state, forced DHW mode active
+- **Note**: Energy monitoring is an ATA-only feature (not available for ATW devices)
+
+**⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
+
+**See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
+
 ## Requirements
 
 - Home Assistant 2024.11.0 or newer
@@ -32,6 +59,8 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - Internet connection for cloud API access
 
 ## Supported Devices
+
+### Air-to-Air (ATA) - Air Conditioning Units
 
 This integration supports Mitsubishi Electric air conditioning units connected via **MELCloud Home** WiFi adapters.
 
@@ -42,6 +71,14 @@ This integration supports Mitsubishi Electric air conditioning units connected v
 > **Note:** If your system uses the classic **MELCloud** app (not MELCloud Home), use the official Home Assistant MELCloud integration instead.
 
 For the complete list of tested hardware, technical notes, and compatibility details, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
+
+### ⚠️ Air-to-Water (ATW) - Heat Pumps (EXPERIMENTAL)
+
+- **Status:** NOT yet tested on real hardware - based on HAR captures only
+- **Implementation targets:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
+- **Reference system:** Ecodan EHSCVM2D Hydrokit
+- **Supports:** Zone 1 heating, DHW control, 3-way valve systems (single zone only)
+- **⚠️ Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) before using ATW features**
 
 ## Installation
 
@@ -73,28 +110,64 @@ For the complete list of tested hardware, technical notes, and compatibility det
 
 Your devices will be automatically discovered and added.
 
+## Important Notes
+
+### Device and Entity Names
+
+This integration uses **stable UUID-based entity IDs** to ensure your automations never break when device names change.
+
+**Entity ID Format:** `{domain}.melcloudhome_{short_id}` or `{domain}.melcloudhome_{short_id}_{entity_name}`
+
+The `short_id` is derived from the MELCloud device UUID by taking the first 4 and last 4 characters (after removing hyphens).
+
+**Example:** UUID `bf8d5119-abcd-1234-5678-9999abcd5119` → short ID `bf8d_5119`
+
+**Entity ID Examples:**
+- ATA climate: `climate.melcloudhome_bf8d_5119_climate`
+- ATW zone climate: `climate.melcloudhome_bf8d_5119_zone_1`
+- ATW water heater: `water_heater.melcloudhome_bf8d_5119_tank`
+- ATW tank sensor: `sensor.melcloudhome_bf8d_5119_tank_temperature`
+
+**Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
+
+**⚠️ Entity ID Recreation Warning:**
+
+- If you delete entities and use the **"Recreate entity IDs"** option, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID
+- This will change entity IDs from `climate.melcloudhome_bf8d_5119_climate` to `climate.living_room_climate`, breaking existing automations
+- **To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
+
 ## Entities Created
+
+### Air-to-Air (ATA) Systems
 
 For each air conditioning unit, the following entities are created:
 
-### Climate Entity
+#### Climate Entity
 
-- **Entity ID**: `climate.melcloudhome_<unit_id>`
+- **Entity ID**: `climate.melcloudhome_{short_id}_climate`
+  - Example: `climate.melcloudhome_bf8d_5119_climate`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
-### Sensors
+#### Sensors
 
-- **Room Temperature**: `sensor.melcloudhome_<unit_id>_room_temperature`
-- **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal` (diagnostic)
-- **Energy**: `sensor.melcloudhome_<unit_id>_energy` (cumulative kWh)
+- **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_room_temperature`
+- **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
+  - Example: `sensor.melcloudhome_bf8d_5119_wifi_signal`
+- **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
+  - Example: `sensor.melcloudhome_bf8d_5119_energy`
 
-### Binary Sensors
+#### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
-- **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
+- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
 
-## Supported HVAC Modes
+#### ATA Control Options
+
+**Supported HVAC Modes:**
 
 - **Off**: Unit powered off
 - **Heat**: Heating mode
@@ -103,7 +176,7 @@ For each air conditioning unit, the following entities are created:
 - **Fan Only**: Fan only (no heating/cooling)
 - **Auto**: Automatic mode
 
-## Fan Speeds
+**Fan Speeds:**
 
 - Auto
 - Level 1 (Quiet)
@@ -112,29 +185,15 @@ For each air conditioning unit, the following entities are created:
 - Level 4 (High)
 - Level 5 (Very High)
 
-## Swing Modes
+**Swing Modes (Vertical):**
 
-### Vertical (Standard Swing)
+- Auto, Swing, One (Top), Two, Three (Middle), Four, Five (Bottom)
 
-- Auto
-- Swing
-- One (Top)
-- Two
-- Three (Middle)
-- Four
-- Five (Bottom)
+**Swing Modes (Horizontal):**
 
-### Horizontal (Swing Horizontal Mode)
+- Auto, Swing, Left, LeftCentre, Centre, RightCentre, Right
 
-- Auto
-- Swing
-- Left
-- LeftCentre
-- Centre
-- RightCentre
-- Right
-
-## Energy Dashboard Integration
+#### ATA Energy Dashboard Integration
 
 Energy consumption sensors are compatible with Home Assistant's Energy Dashboard:
 
@@ -142,6 +201,99 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 2. Add your devices under "Individual devices"
 3. Select the energy sensor for each unit
 4. Energy data accumulates over time and persists across restarts
+
+### ⚠️ Air-to-Water (ATW) Systems (EXPERIMENTAL)
+
+For each heat pump system, the following entities are created:
+
+#### Climate Entity (Zone 1)
+
+- **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
+  - Example: `climate.melcloudhome_bf8d_5119_zone_1`
+- **Features**: Zone 1 heating control, temperature setting (10-30°C), preset modes, HVAC modes
+
+#### Water Heater Entity (DHW Tank)
+
+- **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
+  - Example: `water_heater.melcloudhome_bf8d_5119_tank`
+- **Features**: DHW tank temperature control (40-60°C), operation modes
+- **Note**: Water heater reflects system power state but cannot control it (use switch for power)
+
+#### Switch Entity (System Power)
+
+- **Entity ID**: `switch.melcloudhome_{short_id}_system_power`
+  - Example: `switch.melcloudhome_bf8d_5119_system_power`
+- **Features**: System power control (primary power control point)
+- **Note**: Climate OFF also controls system power (both delegate to same control method)
+
+#### Sensors
+
+- **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
+- **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_tank_temperature`
+- **Operation Status**: `sensor.melcloudhome_{short_id}_operation_status`
+  - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
+  - Shows current 3-way valve position: "Stop", "HotWater", "HeatRoomTemperature", etc.
+
+#### Binary Sensors
+
+- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
+- **Forced DHW Active**: `binary_sensor.melcloudhome_{short_id}_forced_dhw_active`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
+
+#### ATW Control Options
+
+**Supported HVAC Modes:**
+
+- **OFF**: System powered off
+- **HEAT**: Zone 1 heating enabled (system on)
+
+**Zone Preset Modes** (heating strategies):
+
+- **Room** (Recommended) - Maintains room at target temperature (like a thermostat)
+- **Flow** (Advanced) - Directly controls heating water temperature
+- **Curve** (Advanced) - Auto-adjusts based on outdoor temperature
+
+💡 **Most users should use Room mode** - it's the most intuitive
+
+**Water Heater Operation Modes:**
+
+- **Auto** - DHW heats automatically when below target temperature
+- **Force DHW** - Force immediate DHW heating (priority mode, suspends zone heating)
+
+**Temperature Ranges:**
+
+- Zone 1: 10-30°C
+- DHW Tank: 40-60°C
+
+#### Understanding ATW Operation (3-Way Valve)
+
+**3-Way Valve Limitation:**
+Your heat pump can only heat ONE thing at a time:
+
+- Either Zone 1 (space heating)
+- OR DHW tank (hot water)
+- NOT both simultaneously
+
+**What You'll See:**
+
+- Climate entity shows "Heating" only when valve serves Zone 1
+- Climate shows "Idle" when valve serves DHW (even if zone below target)
+- Operation Status sensor shows current valve position
+- Force DHW mode temporarily suspends zone heating
+
+**Example:**
+
+1. Zone target: 21°C, DHW target: 50°C
+2. Zone at 19°C (needs heat), DHW at 48°C (needs heat)
+3. System heats Zone 1 → Climate shows "Heating"
+4. Zone reaches 21°C → System switches to DHW
+5. System heats DHW → Climate shows "Idle", Operation Status shows "HotWater"
+6. DHW reaches 50°C → System returns to monitoring both
 
 ## Troubleshooting
 
@@ -189,7 +341,11 @@ These intervals balance update frequency with API rate limits.
 - API tests: Authentication, device control, data parsing
 - Quality gates: All PRs require passing tests and coverage checks
 
-For development setup and testing guidelines, see [docs/testing-best-practices.md](docs/testing-best-practices.md).
+**Documentation:**
+
+- [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
+- [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
+- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-013)
 
 ## Support
 

@@ -172,9 +172,19 @@ def reload_integration(component_name):
         return False
 
 
-def deploy_component(component_name, ssh_host, container_name, use_reload=False):
-    """Deploy custom component to Home Assistant."""
-    component_path = Path("custom_components") / component_name
+def deploy_component(
+    component_name, ssh_host, container_name, use_reload=False, source_dir="."
+):
+    """Deploy custom component to Home Assistant.
+
+    Args:
+        component_name: Name of the component to deploy
+        ssh_host: SSH hostname
+        container_name: Docker container name
+        use_reload: Use API reload instead of restart
+        source_dir: Source directory containing custom_components (default: current directory)
+    """
+    component_path = Path(source_dir) / "custom_components" / component_name
 
     if not component_path.exists():
         print(f"{RED}❌ Error: Component not found at {component_path}{NC}")
@@ -399,6 +409,11 @@ def main():
         action="store_true",
         help="Reload integration via API instead of full restart (faster)",
     )
+    parser.add_argument(
+        "--source-dir",
+        default=".",
+        help="Source directory containing custom_components (default: current directory)",
+    )
 
     args = parser.parse_args()
 
@@ -408,8 +423,16 @@ def main():
     ssh_host = os.getenv("HA_SSH_HOST", "ha")
     container = os.getenv("HA_CONTAINER", "homeassistant")
 
+    # Validate source directory
+    source_dir = Path(args.source_dir)
+    if not source_dir.exists():
+        print(f"{RED}❌ Error: Source directory not found: {source_dir}{NC}")
+        sys.exit(1)
+
     # Deploy
-    success = deploy_component(args.component, ssh_host, container, args.reload)
+    success = deploy_component(
+        args.component, ssh_host, container, args.reload, str(source_dir)
+    )
 
     if not success:
         sys.exit(1)

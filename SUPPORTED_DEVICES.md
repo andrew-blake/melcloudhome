@@ -1,110 +1,136 @@
 # Supported Devices
 
-This document lists hardware that has been tested with the **MELCloud Home** Home Assistant custom integration.
+This document lists hardware tested with the **MELCloud Home** Home Assistant custom integration.
 
-> **Note**
-> This integration is *unofficial* and not affiliated with Mitsubishi Electric. It targets the **MELCloud Home** platform only, not the legacy **MELCloud** service.
-
----
-
-## Wi‑Fi Adapters
-
-These Wi‑Fi interfaces determine whether your system uses **MELCloud Home** (supported by this integration) or the older **MELCloud** (not supported here).
-
-### Confirmed compatible (MELCloud Home)
-
-These adapters have been tested with this integration and are known to work with MELCloud Home:
-
-- **MAC‑597**
-  - 4th‑generation Wi‑Fi adapter
-  - Uses the **MELCloud Home** app / API
-  - Tested and working with this integration
-
-- **MAC‑577**
-  - Wi‑Fi adapter compatible with MELCloud Home
-  - Confirmed working with dual‑split systems
-  - Full model designation: MAC‑577IF‑E
-
-- **MAC‑567**
-  - Wi‑Fi adapter with Bluetooth variant (MAC‑567IFB‑E)
-  - Confirmed working with dual‑split systems
-  - Full model designations: MAC‑567IF‑E, MAC‑567IFB‑E
-
-- **MAC‑587**
-  - Wi‑Fi adapter compatible with MELCloud Home
-  - Confirmed working with multi‑split systems
-  - Full model designation: MAC‑587IF‑E
-
-> **Note:** Model numbers shown are shortened for readability. Full designations include regional suffixes like ‑IF‑E or ‑IFB‑E (Interface Bluetooth).
-
-### Legacy MELCloud (not supported)
-
-If your system appears in the **classic MELCloud app** (not MELCloud Home), you should use the built‑in Home Assistant **MELCloud** integration instead of this custom integration.
+> **Note:** This integration is *unofficial* and targets **MELCloud Home** only, not the legacy **MELCloud** service.
 
 ---
 
-## Indoor Units
+## Compatibility Check
 
-### Notes on Multi‑Split Systems
+### Is your WiFi adapter supported?
 
-Some indoor units connected to **multi‑split** outdoor units may not expose per‑indoor **energy usage** through the MELCloud Home API. In these cases, the official MELCloud Home app itself may show missing or incorrect energy values. When this happens, the Home Assistant integration cannot provide accurate `kWh` sensors for those specific indoor units.
+This integration **only works with MELCloud Home** (not the legacy MELCloud app).
 
-Do not to set the indoor unit to Auto or set conflicting Heat/Cool on linked indoor units to avoid invalid outdoor unit states.
+**✅ Compatible WiFi adapters:**
 
-### Tested by Community
+- MAC-567 (including MAC-567IF-E, MAC-567IFB-E)
+- MAC-577 (including MAC-577IF-E, MAC-577IF-2)
+- MAC-587 (including MAC-587IF-E)
+- MAC-597
 
-Below is a list of indoor units that have been reported to work with the MELCloud Home integration. In all cases, the unit must be connected to MELCloud Home (typically via a MAC‑597 or built‑in equivalent).
+**❌ Not supported:**
 
-| Indoor Unit Model    | Wi‑Fi Adapter | Notes                |
-|----------------------|---------------|----------------------|
-| **MSZ‑AY25VGK2**     | MAC‑597       | Single‑split system. |
-| **MSZ‑AY25VGK2**     | MAC‑597       | Multi‑split system.  |
-| **MSZ‑LN35VG2B**     | MAC‑597       | Confirmed working.   |
-| **MSZ‑LN25VGWRAC**   | MAC‑587       | Multi‑split system.  |
+- Legacy MELCloud adapters → Use the official [Home Assistant MELCloud integration](https://www.home-assistant.io/integrations/melcloud/) instead
 
-> **Tip**
-> Model numbers may vary slightly by region (e.g. “VG” vs “VGK” or numerical suffixes). If your model is similar to one listed here, it may still work, but please treat it as *untested* until confirmed.
+> **How to check:** If your system uses the **MELCloud Home** mobile app, you're compatible. If it uses the classic **MELCloud** app, use the official HA integration.
 
 ---
 
-## Multi‑Split and Other Topologies
+## Air-to-Air (ATA) Systems
 
-Multi‑split, ducted, or VRF systems may behave differently depending on how Mitsubishi exposes them to MELCloud Home (e.g. multiple logical devices vs a single aggregate device).
+Air-to-Air systems are air conditioning units (wall-mounted, ducted, or console) that provide heating and cooling.
 
-Current status:
+### Confirmed Working Models
 
-- **Multi‑split systems**: *Not yet tested.*
-- **Ducted units**: *Not yet tested.*
-- **Commercial / VRF systems**: *Not supported* unless they appear as standard devices in the MELCloud Home app.
+| Indoor Unit | WiFi Adapter | Type | Notes |
+|-------------|--------------|------|-------|
+| MSZ-AY20VKGP | MAC-577 | Wall split | |
+| MSZ-AY25VKGP | MAC-577 | Wall split | Energy tracking works |
+| MSZ-AY25VGK / VGK2 | MAC-597 | Wall split | Single or multi-split |
+| MSZ-AY35VKGP | MAC-577 | Wall split | |
+| MSZ-AY42VKGP | MAC-577 | Wall split | |
+| MSZ-AY50VGK | MAC-587 | Wall split | Energy tracking works |
+| MSZ-LN25VGWRAC | MAC-587 | Wall split | Multi-split |
+| MSZ-LN35VG2B | MAC-597 | Wall split | |
+| MFZ-KT50VG | MAC-587 | Console | |
+| PEAD-M50JA2 + SUZ-M50VAR2 | MAC-587 + PAR-41MAA | Ducted commercial | Energy tracking works |
+| PEAD-M71JAQ | MAC-587 | Ducted | |
 
-If you successfully use this integration with one of these configurations, please consider contributing details (see below).
+> **Note:** Model suffixes may vary by region (VG/VGK/VGK2). Similar models likely work but are untested.
+
+### Multi-Split & Topology Notes
+
+**Multi-split systems:** ✅ Confirmed working
+
+- Multiple indoor units report correctly as separate entities
+- ⚠️ **Energy tracking limitation**: Some multi-split indoor units may not report individual energy consumption (API/hardware limitation, also affects official MELCloud Home app)
+- Do not set units to Auto or conflicting Heat/Cool modes on linked indoor units
+
+**Ducted systems:** ✅ Confirmed working
+
+- Both residential and commercial ducted systems tested
+
+**Console units:** ✅ Confirmed working
+
+**Commercial / VRF systems:** Limited support - Only works if they appear as standard devices in MELCloud Home app
+
+---
+
+## Air-to-Water (ATW) Heat Pumps
+
+Air-to-Water systems are heat pumps for underfloor heating/radiators and domestic hot water (DHW).
+
+### ⚠️ Status: Experimental
+
+ATW support is **EXPERIMENTAL** - Available in v2.0.0+ but **NOT tested on real hardware**. Implementation based on reverse-engineered API only.
+
+**Before testing:** Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for complete details, safety warnings, and testing checklist.
+
+**Current Implementation (v2.0.0-beta.1):**
+- Zone 1 heating control ✓
+- DHW tank control ✓
+- System power control ✓
+- Temperature sensors (Zone 1 room, DHW tank) ✓
+- Operation status monitoring ✓
+- Single zone systems only (no Zone 2)
+
+### Implementation Target Models
+
+| Model | Notes |
+|-------|-------|
+| EHSCVM2D Hydrokit | Based on HAR analysis from Discussion #26. Zone 1 + DHW support. |
+
+> **⚠️ Use at your own risk.** See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and safety warnings.
+
+**Call for testers:** If you have an Ecodan heat pump (any model) and can help test, see [Discussion #26](https://github.com/andrew-blake/melcloudhome/discussions/26).
 
 ---
 
 ## Contributing Tested Hardware
 
-Contributions to expand this list are very welcome.
+Contributions to expand this list are very welcome!
 
-When opening a pull request to add or update a device, please include:
+### For ATA (Air-to-Air) Systems
 
-1. **Indoor unit model** (full designation, e.g. `MSZ‑AY25VGK2`).
-2. **Wi‑Fi adapter model** (e.g. `MAC‑597`).
-3. **MELCloud platform** used:
-   - `MELCloud Home` (this integration)
-   - `MELCloud` (use the core HA integration instead)
-4. Any **notable quirks**:
-   - Missing features compared to the official app
-   - Known issues (e.g. slow state updates, limited modes)
-   - Firmware versions if relevant
+Please include:
 
-A simple template for additions:
+1. **Indoor unit model** (e.g. `MSZ-AY25VGK2`)
+2. **WiFi adapter** (e.g. `MAC-597`)
+3. **Type** (Wall split, Ducted, Console)
+4. **Notable quirks** (if any): Energy tracking, multi-split behavior, missing features
 
-```text
-### Tested and working
+**Example:**
 
-| Indoor Unit Model | Wi‑Fi Adapter | Notes |
-|-------------------|--------------|-------|
-| MSZ‑AY25VGK2      | MAC‑597      | Works with MELCloud Home integration vX.Y.Z. |
+```markdown
+| MSZ-AY25VGK2 | MAC-597 | Wall split | Energy tracking works |
 ```
 
-Thank you to everyone who helps confirm models and improve this list.
+### For ATW (Air-to-Water) Heat Pumps
+
+Please include:
+
+1. **Heat pump model** (e.g. `EHSCVM2D Hydrokit`)
+2. **Configuration** (Zone 1 only, Zone 1 + 2, DHW support)
+3. **Test results**: What works, what doesn't, any issues encountered
+4. **Diagnostics**: Include `ftc_model` value from entity attributes (for our records)
+
+**Example:**
+
+```markdown
+| EHSCVM2D Hydrokit | Zone 1 + DHW working, no issues found (ftc_model=3) |
+```
+
+> **Important:** For ATW systems, please test thoroughly and report any issues. These systems control heating and hot water - safety is critical!
+
+Thank you to everyone who helps confirm models and improve this list!

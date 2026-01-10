@@ -40,7 +40,8 @@ When diagnosing issues:
 1. **Check container status:** `ssh ha "sudo docker ps"`
 2. **View logs:** `ssh ha "sudo docker logs homeassistant --tail 500"`
 3. **Filter errors:** `ssh ha "sudo docker logs homeassistant --tail 500 2>&1 | grep -i error | tail -50"`
-4. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
+5. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
+6. **Check entity states:** `ssh ha "sudo docker exec homeassistant ha states list | grep melcloudhome.*"`
 
 See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic workflows and common issue patterns.
 
@@ -50,34 +51,92 @@ See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic
 
 ```text
 custom_components/melcloudhome/  # Custom component (bundled approach)
-├── api/                         # Bundled API client library
+├── api/                         # Bundled API client library (see ADR-001)
+│   ├── client.py                # Facade - composes ata + atw clients (see ADR-011)
+│   ├── client_ata.py            # ATA control methods (~214 lines)
+│   ├── client_atw.py            # ATW control methods (~248 lines)
+│   ├── models*.py               # Data models (shared, ATA-specific, ATW-specific)
+│   ├── const*.py                # Constants (shared, ATA, ATW)
 │   ├── auth.py                  # AWS Cognito OAuth authentication
-│   ├── client.py                # Main API client
-│   ├── const.py                 # API constants & enum mappings
-│   ├── exceptions.py            # Custom exceptions
-│   └── models.py                # Data models
-├── climate.py                   # Climate platform (HVAC control)
-├── sensor.py                    # Sensor platform (temperature, WiFi, energy)
-├── binary_sensor.py             # Binary sensors (error, connection)
-├── config_flow.py               # Configuration UI
-├── coordinator.py               # Data update coordinator
-└── diagnostics.py               # Diagnostic data export
+│   ├── parsing.py               # Shared parsing utilities
+│   └── exceptions.py            # Custom exceptions
+│
+├── Platform Routers (HA entry points)
+│   ├── climate.py               # Dispatches to climate_ata.py + climate_atw.py
+│   ├── sensor.py                # Dispatches to sensor_ata.py + sensor_atw.py
+│   ├── binary_sensor.py         # Dispatches to binary_sensor_ata.py + binary_sensor_atw.py
+│   ├── diagnostics.py           # Dispatches to diagnostics_ata.py + diagnostics_atw.py
+│   ├── water_heater.py          # ATW-only (DHW tank control, no router needed)
+│   └── switch.py                # ATW-only (system power, no router needed)
+│
+├── Device-Specific Implementations
+│   ├── *_ata.py                 # ATA (air-to-air) platform implementations
+│   └── *_atw.py                 # ATW (air-to-water) platform implementations
+│
+├── Control Client Layer (Coordinator ↔ API bridge)
+│   ├── control_client_base.py   # Shared: debounced refresh, retry infrastructure
+│   ├── control_client_ata.py    # ATA: state checking, session recovery (~180 lines)
+│   └── control_client_atw.py    # ATW: state checking, session recovery (~250 lines)
+│   # Purpose: Sits between coordinator and API client
+│   # Provides: Duplicate call prevention, debounced refresh, retry logic
+│
+└── Core Integration Files
+    ├── coordinator.py           # Data update coordinator (polling, state management)
+    ├── __init__.py              # Integration setup, device name migration
+    ├── config_flow.py           # Configuration UI flow
+    ├── const*.py                # Integration constants (shared, ATA, ATW)
+    ├── helpers.py               # Shared utilities
+    └── protocols.py             # Type protocols for type safety
 
 docs/
+├── architecture.md              # High-level system architecture (visual diagrams)
+│                                # - Multi-device-type patterns, ATW entity design
+│                                # - 3-way valve behavior, API layer structure
 ├── api/                         # API documentation
-│   ├── melcloudhome-api-reference.md
+│   ├── ata-api-reference.md     # Air-to-Air API reference
+│   ├── atw-api-reference.md     # Air-to-Water API reference
+│   ├── device-type-comparison.md # ATA vs ATW comparison
 │   └── melcloudhome-telemetry-endpoints.md
 ├── decisions/                   # Architecture Decision Records (ADRs)
-├── research/                    # Research and planning documents
-├── integration-review.md        # Integration review notes
-├── testing-best-practices.md    # Testing standards (HA/HACS guidelines)
-└── testing-strategy.md          # Testing strategy document
+│                                # - ADR-001 through ADR-013 (see docs/README.md)
+│                                # - Key: ADR-011 (multi-device arch), ADR-012 (ATW entities)
+├── research/                    # Current research documents
+│   └── REVERSE_ENGINEERING.md   # Comprehensive reverse engineering guide
+├── archive/research/            # Historical research and planning documents
+├── testing-*.md                 # Testing standards and strategy
+└── integration-review.md        # Integration review notes
 
 tests/                           # Test suite with VCR cassettes
+├── api/                         # API tests (no Docker needed)
+└── integration/                 # HA integration tests (Docker required)
+
 tools/                           # Development and deployment tools
+├── reverse-engineering/         # API discovery tools (Chrome overrides, proxying)
+└── deploy_to_ha.py              # Automated deployment script
+
 openapi.yaml                     # OpenAPI 3.0.3 specification
 _claude/                         # Session notes (local only, not in git)
 ```
+
+### Entity ID Convention
+
+**Stable UUID-based entity IDs** ensure automations never break when device names change.
+
+**Format:** `{domain}.melcloudhome_{short_id}_{entity_name}`
+
+**short_id derivation:**
+- Take device UUID from API (e.g., `bf8d5119-abcd-1234-5678-9999abcd5119`)
+- Remove hyphens: `bf8d5119abcd12345678999abcd5119`
+- Extract: first 4 chars + `_` + last 4 chars
+- Result: `bf8d_5119`
+
+**Examples:**
+- ATA climate: `climate.melcloudhome_bf8d_5119_climate`
+- ATW Zone 1: `climate.melcloudhome_bf8d_5119_zone_1`
+- ATW DHW tank: `water_heater.melcloudhome_bf8d_5119_tank`
+- ATW system power: `switch.melcloudhome_bf8d_5119_system_power`
+
+**Implementation:** See `helpers.py::create_device_name()` for ID generation logic.
 
 ### Key Decisions
 
@@ -102,18 +161,79 @@ make type-check                  # Type check with mypy
 make all                         # Run all checks
 
 # Pre-commit hooks run automatically on git commit
+# IMPORTANT: Always run pre-commit in advance and fix up errors before attempting to git commit
+make pre-commit                      # Run pre-commit checks manually (recommended)
+uv run pre-commit run --all-files    # Or run directly with uv
+
+# Local Development Environment (Primary Workflow)
+# Use this for daily development and testing with mock API
+make dev-up          # Start dev environment
+make dev-restart     # Restart HA after code changes
+make dev-logs        # View Home Assistant logs
+make dev-reset       # Reset (clear entity registry, fresh start)
+make dev-rebuild     # Rebuild mock server image
+make dev-down        # Stop dev environment
+
+# See DEV-SETUP.md for complete guide:
+# - Mock MELCloud API with 2 ATA + 1 ATW devices
+# - Home Assistant on http://localhost:8123 (dev/dev)
+# - Auto-skip onboarding, debug logging enabled
+
+# IMPORTANT: Enable Advanced Mode in profile to see "Connect to Mock Server" option
+# 1. Click profile (bottom left)
+# 2. Toggle "Advanced Mode" ON
+# 3. Add integration with "Connect to Mock Server" enabled
 
 # Testing
-make test                        # Run all tests
-make test-ha                     # Run integration tests
-pytest tests/api/ -v             # Run API tests only
+make test                        # Run API tests (no Docker needed)
+make test-ha                     # Run HA integration tests in Docker
+pytest tests/api/ -v             # Run API tests only (local)
 pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
 
-# Deployment (see tools/README.md for details)
-./tools/deploy_custom_component.py melcloudhome          # Deploy to HA
-./tools/deploy_custom_component.py melcloudhome --test   # Deploy + test via API
-./tools/deploy_custom_component.py melcloudhome --watch  # Deploy + watch logs
+# Integration tests require Docker (uses pytest-homeassistant-custom-component)
+# Docker runs tests from tests/integration directory to avoid pytest_plugins error
+# See tests/integration/Dockerfile for test environment configuration
+
+# Production Deployment (Pre-Release Testing ONLY)
+# Use this ONLY for final integration testing before releases
+make deploy          # Deploy to production HA
+make deploy-test     # Deploy + test via API
+make deploy-watch    # Deploy + watch logs
 ```
+
+### API Reverse Engineering Tools
+
+**Purpose:** Understand MELCloud API behavior by observing the official web application without needing real hardware.
+
+**When to use:**
+- User reports unsupported device (e.g., different controller type)
+- Need to verify undocumented API behavior
+- Want to contribute device support without owning hardware
+- Resolving API mapping questions
+
+**Tools location:** `tools/reverse-engineering/`
+
+**Quick reference:**
+
+```bash
+# Chrome Local Overrides (inject API data into official web app)
+# 1. DevTools (F12) → Sources → Overrides
+# 2. Select: tools/reverse-engineering/chrome_override
+# 3. Edit: chrome_override/melcloudhome.com/api/user/context
+# 4. Visit: https://melcloudhome.com
+# 5. Observe what official app displays
+
+# Request Proxying (capture control commands)
+# 1. Start mock server: make dev-up
+# 2. Chrome console on melcloudhome.com
+# 3. Paste: tools/reverse-engineering/proxy_mutations.js
+# 4. Run: blockMutations()
+# 5. Use web app, check logs for captured payloads
+```
+
+**Full guides:**
+- Quick start: `tools/reverse-engineering/README.md`
+- Comprehensive: `docs/research/REVERSE_ENGINEERING.md`
 
 ### Branching Strategy (GitHub Flow)
 
@@ -192,11 +312,120 @@ The release appears at: https://github.com/andrew-blake/melcloudhome/releases
 - Date format: YYYY-MM-DD (ISO 8601)
 - The `make version-*` command creates a template with "Changed" section only - add other sections as needed
 
+### Beta Release Process
+
+**For features requiring community testing (experimental features, hardware-specific support):**
+
+Beta releases enable HACS users to opt-in to pre-release testing. The GitHub workflow automatically detects beta versions and marks them as pre-releases.
+
+#### Creating a Beta Release
+
+```bash
+# 1. Edit manifest.json manually
+# Change version: "1.3.4" → "2.0.0-beta.1"
+
+# 2. Update CHANGELOG.md
+# Add new entry: ## [2.0.0-beta.1] - YYYY-MM-DD
+# Mark as beta and include HACS instructions:
+#   - How to enable beta in HACS
+#   - What to test
+#   - Where to report issues
+
+# 3. Commit and create PR
+git add custom_components/melcloudhome/manifest.json CHANGELOG.md
+git commit -m "chore: Release 2.0.0-beta.1"
+git push -u origin feature/atw-beta
+gh pr create --title "Beta: ATW heat pump support" \
+  --body "Pre-release for community testing"
+gh pr merge --squash
+
+# 4. Tag and release
+git checkout main && git pull
+git tag -a v2.0.0-beta.1 -m "Release v2.0.0-beta.1"
+git push --tags
+# GitHub Actions automatically:
+# - Detects "-beta." in version
+# - Marks as pre-release (HACS users with beta switch see it)
+# - Validates, tests, and publishes
+```
+
+#### Incrementing Beta Versions
+
+```bash
+# Fix bugs reported by beta testers, then:
+# 1. Edit manifest.json: "2.0.0-beta.1" → "2.0.0-beta.2"
+# 2. Update CHANGELOG.md with fixes
+# 3. Commit, merge PR, tag as v2.0.0-beta.2
+# 4. Push tags
+```
+
+#### Graduating to Stable
+
+```bash
+# After successful beta testing:
+# 1. Edit manifest.json: "2.0.0-beta.2" → "2.0.0"
+# 2. Update CHANGELOG.md:
+#    - Add ## [2.0.0] entry
+#    - Consolidate beta notes into stable release notes
+# 3. Commit, merge PR, tag as v2.0.0
+# 4. Push tags
+# GitHub Actions detects stable version (no suffix)
+# All HACS users see the update
+```
+
+#### When to Use Beta Releases
+
+**✅ Use beta releases for:**
+- Experimental features (e.g., ATW heat pump support)
+- Hardware-specific features requiring real-world testing
+- Breaking changes requiring user validation
+- Major refactoring with regression risk
+
+**❌ Don't use beta releases for:**
+- Bug fixes (use patch: `make version-patch`)
+- Documentation updates
+- Internal refactoring (no user impact)
+- Small feature additions (low risk)
+
+#### How HACS Users Enable Beta Testing
+
+Include this in beta CHANGELOG entries:
+
+```markdown
+**How to test this beta:**
+1. Enable beta releases in HACS:
+   - Go to **Settings → Devices & Services → Integrations → HACS**
+   - Find **MELCloud Home** in your repository list
+   - Enable the **"Show beta versions"** switch entity (disabled by default)
+2. Install this beta version (will appear in available updates)
+3. Report issues: https://github.com/andrew-blake/melcloudhome/issues
+```
+
 ### Testing Standards
 
 **⚠️ CRITICAL: Follow Home Assistant testing best practices**
 
 See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
+
+**Testing Workflow:**
+
+**API tests** (run natively):
+```bash
+make test              # Run API tests (no Docker needed)
+pytest tests/api/ -v   # Run specific API tests
+```
+- Test API client in isolation with VCR cassettes
+- No Home Assistant dependencies required
+
+**Integration tests** (Docker - PRIMARY workflow):
+```bash
+make test-ha           # Run HA integration tests (recommended)
+```
+- Docker is the **primary and recommended** approach for integration tests
+- Provides clean environment matching CI with all Home Assistant dependencies
+- Uses `pytest-homeassistant-custom-component` (cannot install locally due to aiohttp conflicts)
+- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
+- Automatically builds image and runs tests
 
 **Quick rules for integration tests:**
 - ✅ Test through `hass.states` and `hass.services` ONLY
@@ -235,26 +464,63 @@ await hass.services.async_call(
 - **Auto Mode:** "Automatic" NOT "Auto"
 - **Rate Limiting:** Minimum 60-second polling interval
 
-See `docs/api/melcloudhome-api-reference.md` for complete API details.
+**API Documentation:**
+- `docs/api/ata-api-reference.md` - Air-to-Air (A/C units) complete API specification
+- `docs/api/atw-api-reference.md` - Air-to-Water (heat pumps) complete API specification
+- `docs/api/device-type-comparison.md` - ATA vs ATW comparison (control patterns, capabilities)
+- `docs/api/melcloudhome-telemetry-endpoints.md` - Telemetry and energy reporting endpoints
 
-### Deployment & Testing
+### Local Development Environment
 
-**Automated Deployment Tool** (Recommended):
+**⚠️ PRIMARY WORKFLOW:** Use the local Docker Compose environment for daily development:
+
+```bash
+# Start dev environment (Mock API + Home Assistant)
+make dev-up
+
+# Access at http://localhost:8123 (username: dev, password: dev)
+# Make code changes, then restart HA to reload
+make dev-restart
+
+# View logs
+make dev-logs
+
+# Reset environment (clear entity registry)
+make dev-reset
+```
+
+**Features:**
+- Mock MELCloud API with 2 ATA + 1 ATW test devices
+- Auto-setup with skip onboarding
+- Debug logging enabled
+- Changes reload with simple restart
+
+**Development Mode Setup:**
+1. Start dev environment: `make dev-up`
+2. Login to HA: http://localhost:8123 (dev/dev)
+3. Enable Advanced Mode in profile settings
+4. Add integration → Enable "Connect to Mock Server" checkbox
+5. Integration connects to mock server at http://melcloud-mock:8080
+
+**See [DEV-SETUP.md](DEV-SETUP.md) for complete guide.**
+
+### Production Deployment
+
+**⚠️ PRE-RELEASE TESTING ONLY:** Only deploy to production HA for final integration testing before releases.
+
+**Automated Deployment Tool:**
 
 The repository includes an automated deployment tool that handles the complete cycle:
 
 ```bash
-# Deploy to remote HA instance (script is executable)
-./tools/deploy_custom_component.py melcloudhome
+# Deploy to remote HA instance
+make deploy
 
 # Deploy + test via API
-./tools/deploy_custom_component.py melcloudhome --test
+make deploy-test
 
 # Deploy + watch logs
-./tools/deploy_custom_component.py melcloudhome --watch
-
-# Or explicitly with python3 if needed
-python3 tools/deploy_custom_component.py melcloudhome
+make deploy-watch
 ```
 
 The tool automatically:
@@ -265,7 +531,16 @@ The tool automatically:
 - Monitors logs for errors
 - Tests entities via API (with `--test`)
 
-**Configuration:** Set `HA_SSH_HOST`, `HA_CONTAINER`, `HA_URL`, and `HA_TOKEN` in `.env`
+**Configuration:** Create `.env` in project root:
+
+```bash
+HA_SSH_HOST=ha
+HA_CONTAINER=homeassistant
+HA_URL=http://homeassistant.local:8123
+HA_TOKEN=your_long_lived_access_token
+```
+
+**Where to get token:** Settings → Your Profile → Long-lived access tokens
 
 **Full documentation:** See [tools/README.md](tools/README.md)
 
@@ -283,3 +558,4 @@ ssh ha "sudo docker restart homeassistant"
 The repository includes VSCode settings that associate `*.yaml` files with the `home-assistant` file type for proper syntax highlighting and validation.
 
 - NEVER work around pre-commit hooks. They are important code quality checks.
+- ALWAYS use `uv run pre-commit` not `pre-commit` directly when running pre-commit manually.

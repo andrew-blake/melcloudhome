@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean version-patch version-minor version-major release
+.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -24,13 +24,13 @@ test:  ## Run API tests (no HA dependency)
 
 test-ha:  ## Run HA integration tests in Docker (fast with caching)
 	@docker build -q -t melcloudhome-test:latest -f tests/integration/Dockerfile . 2>/dev/null || true
-	docker run --rm -v $(PWD):/app -w /app melcloudhome-test:latest pytest tests/integration/ -v -c tests/integration/pytest.ini
+	docker run --rm -v $(PWD):/app melcloudhome-test:latest
 
 test-cov:  ## Run tests with coverage report
 	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing
 
 pre-commit:  ## Run all pre-commit hooks
-	pre-commit run --all-files
+	uv run pre-commit run --all-files
 
 clean:  ## Clean up cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -42,6 +42,92 @@ clean:  ## Clean up cache files
 	find . -type f -name ".coverage" -delete 2>/dev/null || true
 
 all: format lint type-check test  ## Run format, lint, type-check, and tests
+
+# Development environment commands (docker-compose)
+dev-up:  ## Start dev environment (mock API + Home Assistant)
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment started"
+	@echo "🌐 Home Assistant: http://localhost:8123 (dev/dev)"
+	@echo "🔧 Mock API: http://localhost:8080"
+
+dev-down:  ## Stop dev environment
+	docker compose -f docker-compose.dev.yml down
+
+dev-restart:  ## Restart Home Assistant (quick reload after code changes)
+	docker compose -f docker-compose.dev.yml restart homeassistant
+	@echo "✅ Home Assistant restarted - code changes loaded"
+
+dev-reset:  ## Reset dev environment (restore to clean snapshot with dev user)
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage dev-config/home-assistant*.db* dev-config/home-assistant.log*
+	cp -r dev-config-template/.storage dev-config/
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment reset to clean snapshot"
+	@echo "🌐 Home Assistant: http://localhost:8123 (dev/dev)"
+	@echo "➕ Add integration via Settings → Devices & Services"
+
+dev-reset-full:  ## Complete reset (wipe everything, run init script)
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage dev-config/*.db* dev-config/*.log* dev-config/*.yaml
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Dev environment completely reset"
+	@echo "🌐 Home Assistant: http://localhost:8123"
+	@echo "⚠️  You'll need to create user and configure integration"
+
+dev-snapshot:  ## Save current dev environment state (SNAPSHOT=path/to/save)
+	@if [ -z "$(SNAPSHOT)" ]; then \
+		echo "❌ Error: SNAPSHOT parameter required"; \
+		echo "Usage: make dev-snapshot SNAPSHOT=dev-config-snapshots/my-test-state"; \
+		exit 1; \
+	fi
+	@if [ ! "$$(docker ps -q -f name=ha-melcloud-dev)" ]; then \
+		echo "❌ Error: Home Assistant container not running"; \
+		echo "Start it first with: make dev-up"; \
+		exit 1; \
+	fi
+	@mkdir -p $(SNAPSHOT)
+	docker cp ha-melcloud-dev:/config/.storage $(SNAPSHOT)/
+	docker cp ha-melcloud-dev:/config/.storage/core.entity_registry $(SNAPSHOT)/entity_registry.json
+	docker cp ha-melcloud-dev:/config/.storage/core.device_registry $(SNAPSHOT)/device_registry.json
+	@echo "✅ Snapshot saved to: $(SNAPSHOT)"
+	@echo "📊 Restore with: make dev-restore-snapshot SNAPSHOT=$(SNAPSHOT)"
+
+dev-restore-snapshot:  ## Restore dev environment from snapshot (SNAPSHOT=path/to/snapshot)
+	@if [ -z "$(SNAPSHOT)" ]; then \
+		echo "❌ Error: SNAPSHOT parameter required"; \
+		echo "Usage: make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/scenario-a-real-api/prod-baseline"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(SNAPSHOT)/.storage" ]; then \
+		echo "❌ Error: Snapshot not found: $(SNAPSHOT)/.storage"; \
+		exit 1; \
+	fi
+	docker compose -f docker-compose.dev.yml down
+	rm -rf dev-config/.storage
+	cp -r $(SNAPSHOT)/.storage dev-config/
+	docker compose -f docker-compose.dev.yml up homeassistant -d
+	@echo "✅ Dev environment restored from snapshot: $(SNAPSHOT)"
+	@echo "🌐 Home Assistant: http://localhost:8123"
+	@echo "⚠️  Mock server NOT started (use 'make dev-up' if needed)"
+
+dev-logs:  ## View Home Assistant logs (Ctrl+C to exit)
+	docker compose -f docker-compose.dev.yml logs -f homeassistant
+
+dev-rebuild:  ## Rebuild mock server image (after updating mock server code)
+	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.dev.yml build --no-cache melcloud-mock
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Mock server rebuilt and restarted"
+
+# Production deployment commands (pre-release testing only)
+deploy:  ## Deploy to production HA (requires .env with HA_SSH_HOST, HA_CONTAINER)
+	uv run python tools/deploy_custom_component.py melcloudhome
+
+deploy-test:  ## Deploy to production HA and test via API
+	uv run python tools/deploy_custom_component.py melcloudhome --test
+
+deploy-watch:  ## Deploy to production HA and watch logs
+	uv run python tools/deploy_custom_component.py melcloudhome --watch
 
 # Version management commands
 version-patch:  ## Bump patch version (x.y.Z)

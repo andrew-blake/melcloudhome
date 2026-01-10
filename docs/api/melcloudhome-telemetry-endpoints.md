@@ -1,8 +1,36 @@
 # MELCloud Home Telemetry & Reporting Endpoints
 
 **Document Version:** 1.0
-**Last Updated:** 2025-11-16
+**Last Updated:** 2026-01-10
 **Discovery Method:** Passive UI observation
+
+---
+
+## 📖 About This Document
+
+This is a **complete API reference** documenting all read-only (GET) telemetry and reporting endpoints available in the MELCloud Home API.
+
+**Implementation Status:**
+- ✅ **Implemented** - Available in Home Assistant integration
+- 📋 **Reference Only** - Documented for contributors but not yet integrated
+
+**Currently Implemented:**
+- Energy consumption telemetry (Section 3) - Used for energy monitoring sensors in ATA devices
+- WiFi RSSI for ATA devices (sourced from UserContext, not telemetry polling endpoint)
+
+**Reference Only (Not Implemented):**
+- Actual telemetry data polling (Section 1) - Flow/return temps for ATW, RSSI via polling endpoint
+- Operation mode history (Section 4) - Historical operation tracking
+- Error log endpoint (Section 2) - Device error history
+- Report types (Section 5) - Historical reporting features
+
+**Why not implemented?**
+- UserContext already provides current temperatures (zone, tank) and RSSI for ATA
+- Telemetry polling requires separate API call per measure per device (significant API load)
+- Energy monitoring is the high-value use case and is implemented
+- Additional sensors (flow/return temps for ATW) can be added in future releases if users request them
+
+For current integration features, see [README.md](../../README.md).
 
 ---
 
@@ -14,7 +42,7 @@ MELCloud Home provides several reporting and telemetry endpoints for reading his
 
 ## Telemetry Endpoints
 
-### 1. Actual Telemetry Data
+### 1. Actual Telemetry Data 📋 (Reference Only)
 
 **GET** `/api/telemetry/actual/{unit_id}`
 
@@ -82,7 +110,7 @@ x-csrf: 1
 
 ---
 
-### 2. Operation Mode History
+### 2. Operation Mode History 📋 (Reference Only)
 
 **GET** `/api/telemetry/operationmode/{unit_id}`
 
@@ -125,11 +153,15 @@ GET /api/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-
 
 ---
 
-### 3. Energy Consumption
+### 3. Energy Consumption ✅ (Implemented)
 
 **GET** `/api/telemetry/energy/{unit_id}`
 
 Retrieves energy consumption data over a specified time range.
+
+> **✅ Implementation:** This endpoint is implemented in the integration.
+> See `client.py:170-236` (`get_energy_data()` method).
+> Used by energy monitoring sensors in ATA devices.
 
 **Query Parameters:**
 - `from` - Start datetime (format: `YYYY-MM-DD HH:MM`)
@@ -193,7 +225,7 @@ GET /api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2
 
 ## Diagnostic Endpoints
 
-### 4. Error Log
+### 4. Error Log 📋 (Reference Only)
 
 **GET** `/api/ataunit/{unit_id}/errorlog`
 
@@ -237,7 +269,7 @@ GET /api/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
 
 ---
 
-## Report Types
+## Report Types 📋 (Reference Only)
 
 The MELCloud Home UI provides 4 report types:
 
@@ -451,9 +483,11 @@ async def safe_telemetry_fetch(session, unit_id, measure):
 
 ## Related Documentation
 
-- **`melcloudhome-api-reference.md`** - Control API with all parameters
-- **`melcloudhome-api-discovery.md`** - Authentication and base API discovery
-- **`melcloudhome-integration-guide.md`** - Home Assistant integration patterns
+- **[ATA API Reference](ata-api-reference.md)** - Air-to-Air control API
+- **[ATW API Reference](atw-api-reference.md)** - Air-to-Water control API
+- **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
+- **[Architecture Overview](../architecture.md)** - System design and authentication flow
+- **[Testing Best Practices](../testing-best-practices.md)** - Home Assistant integration patterns
 
 ---
 

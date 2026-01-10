@@ -9,6 +9,7 @@ in the dev environment. Integration testing happens via deployment to actual HA.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -16,9 +17,14 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
+    from .coordinator import MELCloudHomeCoordinator
+
 from .api.client import MELCloudHomeClient
 
 _LOGGER = logging.getLogger(__name__)
+
+# Pattern for auto-generated device names (used by device name migration)
+UUID_DEVICE_NAME_PATTERN = re.compile(r"^melcloudhome_[0-9a-f]{4}_[0-9a-f]{4}$")
 
 
 def _create_discovery_listener(
@@ -47,23 +53,27 @@ def _create_discovery_listener(
             if not coordinator.data:
                 return
 
-            # Find current device IDs from API
+            # Find current device IDs from API (both ATA and ATW)
             current_ids: set[str] = set()
             for building in coordinator.data.buildings:
                 for unit in building.air_to_air_units:
+                    current_ids.add(unit.id)
+                for unit in building.air_to_water_units:
                     current_ids.add(unit.id)
 
             # Detect new devices
             new_device_ids = current_ids - known_ids
 
             if new_device_ids:
-                # Get names of new devices
-                new_device_names = [
-                    unit.name
-                    for building in coordinator.data.buildings
-                    for unit in building.air_to_air_units
-                    if unit.id in new_device_ids
-                ]
+                # Get names of new devices (check both ATA and ATW)
+                new_device_names = []
+                for building in coordinator.data.buildings:
+                    for unit in building.air_to_air_units:
+                        if unit.id in new_device_ids:
+                            new_device_names.append(f"{unit.name} (ATA)")
+                    for unit in building.air_to_water_units:
+                        if unit.id in new_device_ids:
+                            new_device_names.append(f"{unit.name} (ATW)")
 
                 _LOGGER.info(
                     "Discovered %d new device(s): %s",
@@ -109,27 +119,117 @@ def _create_discovery_listener(
     return _device_discovery_listener
 
 
+async def _migrate_device_names(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: MELCloudHomeCoordinator,
+) -> None:
+    """Migrate device names from UUID format to friendly API names.
+
+    Sets name_by_user to friendly location names for devices that:
+    1. Have auto-generated UUID names (melcloudhome_XXXX_YYYY pattern)
+    2. Haven't been customized by user (name_by_user is None)
+    3. Exist in coordinator data with valid building/unit names
+
+    This provides friendly device names in UI while preserving stable
+    UUID-based entity IDs (critical for automation compatibility).
+    """
+    from homeassistant.helpers import device_registry as dr
+
+    from .const import DOMAIN
+
+    device_reg = dr.async_get(hass)
+
+    # Build mapping: unit_id -> friendly_name
+    friendly_names: dict[str, str] = {}
+
+    for building in coordinator.data.buildings:
+        # ATA devices (Air-to-Air)
+        for unit in building.air_to_air_units:
+            friendly_names[unit.id] = f"{building.name} {unit.name}"
+
+        # ATW devices (Air-to-Water)
+        for unit in building.air_to_water_units:
+            friendly_names[unit.id] = f"{building.name} {unit.name}"
+
+    # Iterate devices and update if needed
+    migrated_count = 0
+    for device in device_reg.devices.values():
+        # Check if device belongs to this config entry
+        if entry.entry_id not in device.config_entries:
+            continue
+
+        # Check if device belongs to this integration
+        unit_id = None
+        for identifier in device.identifiers:
+            if identifier[0] == DOMAIN:
+                unit_id = identifier[1]
+                break
+
+        if unit_id is None:
+            continue
+
+        # Skip if name doesn't match UUID pattern (already migrated or customized)
+        if not UUID_DEVICE_NAME_PATTERN.match(device.name):
+            continue
+
+        # Skip if user already customized the name
+        if device.name_by_user is not None:
+            continue
+
+        # Get friendly name from mapping
+        friendly_name = friendly_names.get(unit_id)
+        if not friendly_name:
+            _LOGGER.warning(
+                "Cannot migrate device %s: unit %s not found in coordinator data",
+                device.id,
+                unit_id,
+            )
+            continue
+
+        # Update name_by_user
+        device_reg.async_update_device(
+            device.id,
+            name_by_user=friendly_name,
+        )
+        migrated_count += 1
+        _LOGGER.debug(
+            "Migrated device name: %s -> %s (device_id=%s)",
+            device.name,
+            friendly_name,
+            device.id[:8],
+        )
+
+    if migrated_count > 0:
+        _LOGGER.info(
+            "Device name migration complete: %d device(s) updated", migrated_count
+        )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
     # Lazy imports - see module docstring for explanation
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
     from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
-    from .const import DOMAIN
+    from .const import CONF_DEBUG_MODE, DOMAIN
     from .coordinator import MELCloudHomeCoordinator
 
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
+    debug_mode = entry.data.get(CONF_DEBUG_MODE, False)
 
     platforms: list[Platform] = [
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.SWITCH,
+        Platform.WATER_HEATER,
     ]
 
     # Create API client and coordinator
     # Note: Coordinator will handle authentication on first refresh
-    client = MELCloudHomeClient()
+    client = MELCloudHomeClient(debug_mode=debug_mode)
     coordinator = MELCloudHomeCoordinator(hass, client, email, password)
 
     # Fetch initial data (coordinator handles login automatically)
@@ -148,10 +248,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up energy polling
     await coordinator.async_setup()
 
-    # Initialize known device IDs from first fetch
+    # Initialize known device IDs from first fetch (both ATA and ATW)
     known_device_ids: set[str] = set()
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
+            known_device_ids.add(unit.id)
+        for unit in building.air_to_water_units:
             known_device_ids.add(unit.id)
 
     _LOGGER.info("Initial device discovery: %d device(s) found", len(known_device_ids))
@@ -187,6 +289,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
+    # Migrate device names from UUID format to friendly names
+    # This runs after platform setup to ensure devices exist in registry
+    await _migrate_device_names(hass, entry, coordinator)
+
     # Set up coordinator listener for new device discovery
     entry.async_on_unload(
         coordinator.async_add_listener(_create_discovery_listener(hass, entry))
@@ -207,6 +313,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         Platform.BINARY_SENSOR,
         Platform.CLIMATE,
         Platform.SENSOR,
+        Platform.SWITCH,
+        Platform.WATER_HEATER,
     ]
 
     # Unload platforms
