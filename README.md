@@ -123,7 +123,7 @@ The `short_id` is derived from the MELCloud device UUID by taking the first 4 an
 **Example:** UUID `bf8d5119-abcd-1234-5678-9999abcd5119` → short ID `bf8d_5119`
 
 **Entity ID Examples:**
-- ATA climate: `climate.melcloudhome_bf8d_5119`
+- ATA climate: `climate.melcloudhome_bf8d_5119_climate`
 - ATW zone climate: `climate.melcloudhome_bf8d_5119_zone_1`
 - ATW water heater: `water_heater.melcloudhome_bf8d_5119_tank`
 - ATW tank sensor: `sensor.melcloudhome_bf8d_5119_tank_temperature`
@@ -133,7 +133,7 @@ The `short_id` is derived from the MELCloud device UUID by taking the first 4 an
 **⚠️ Entity ID Recreation Warning:**
 
 - If you delete entities and use the **"Recreate entity IDs"** option, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID
-- This will change entity IDs from `climate.melcloudhome_bf8d_5119` to `climate.living_room`, breaking existing automations
+- This will change entity IDs from `climate.melcloudhome_bf8d_5119_climate` to `climate.living_room_climate`, breaking existing automations
 - **To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
 
 ## Entities Created
