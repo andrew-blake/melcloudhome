@@ -451,19 +451,24 @@ await client.atw.set_forced_hot_water(unit_id, enabled)
 
 **Entities created per A2W unit:**
 
+**Primary Control:**
 - `switch.melcloudhome_{name}_system_power` - System power (ON/OFF)
+
+**Climate & Water Heating:**
 - `climate.melcloudhome_{name}_zone_1` - Zone 1 heating control
 - `water_heater.melcloudhome_{name}_tank` - DHW tank control (no power control)
-- `sensor.melcloudhome_{name}_operation_status` - 3-way valve status (Stop/HotWater/Zone)
+
+**Temperature Sensors:**
 - `sensor.melcloudhome_{name}_zone_1_temperature` - Zone 1 room temp
 - `sensor.melcloudhome_{name}_tank_temperature` - DHW tank temp
-- `sensor.melcloudhome_{name}_outdoor_temperature` - Outdoor temp
-- `sensor.melcloudhome_{name}_wifi_signal` - RSSI
+
+**Status Sensors:**
+- `sensor.melcloudhome_{name}_operation_status` - 3-way valve position
+
+**Binary Sensors:**
 - `binary_sensor.melcloudhome_{name}_error` - Error state
 - `binary_sensor.melcloudhome_{name}_connection` - Connection status
 - `binary_sensor.melcloudhome_{name}_forced_dhw_active` - Forced DHW mode active
-
-**Note:** Zone 2 support planned for future release (current version supports Zone 1 only)
 
 ---
 
@@ -765,7 +770,7 @@ payload = {
 ```python
 # Check capabilities before controlling
 if unit.capabilities.has_zone2:
-    # Zone 2 control (planned for future release)
+    # Zone 2 control
     await client.set_zone2_temperature(unit.id, 20.0)
 ```
 

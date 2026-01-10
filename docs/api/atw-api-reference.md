@@ -430,47 +430,7 @@ POST /api/protection/frost
 
 ---
 
-## 7. Telemetry (Real-time Data)
-
-```
-GET /api/telemetry/actual/{unitId}?from=2026-01-03T00:00&to=2026-01-03T23:59&measure=tank_water_temperature
-```
-
-**Available Measures:**
-- `tank_water_temperature` - Current DHW temp
-- `set_tank_water_temperature` - DHW target temp
-- `flow_temperature` - Heating system output
-- `flow_temperature_zone1` - Zone-specific flow
-- `flow_temperature_boiler` - Boiler flow
-- `return_temperature` - Heating system return
-- `return_temperature_zone1` - Zone-specific return
-- `return_temperature_boiler` - Boiler return
-- `rssi` - WiFi signal strength
-
-**Response:**
-```json
-{
-  "measureData": [
-    {
-      "deviceId": "unit-uuid",
-      "type": "tank_water_temperature",
-      "values": [
-        {"time": "2026-01-03 10:15:30", "value": "45.0"},
-        {"time": "2026-01-03 10:20:30", "value": "46.0"}
-      ]
-    }
-  ]
-}
-```
-
-**Notes:**
-- Each measure requires separate API call
-- Returns time-series data
-- Can query hourly, daily, or monthly ranges
-
----
-
-## 8. Energy Reporting
+## 7. Energy Reporting
 
 ```
 GET /api/telemetry/energy/{unitId}?from=2026-01-01T00:00&to=2026-01-31T23:59&interval=Day&measure=interval_energy_consumed
@@ -486,7 +446,7 @@ GET /api/telemetry/energy/{unitId}?from=2026-01-01T00:00&to=2026-01-31T23:59&int
 
 ---
 
-## 9. Error Log
+## 8. Error Log
 
 ```
 GET /api/atwunit/{unitId}/errorlog
@@ -651,38 +611,17 @@ Endpoint: GET /api/user/context
 Purpose: Device discovery and state
 ```
 
-**Optional telemetry:**
-```
-Interval: 5-10 minutes (if needed for graphs)
-Endpoint: GET /api/telemetry/actual/{unitId}
-Purpose: Historical data visualization
-Caution: Each measure requires separate API call (9 measures = 9 calls)
-```
-
 **Error monitoring:**
 ```
-Interval: On state change or periodic (5-15 minutes)
+Interval: Periodic (5-15 minutes) or on state change
 Endpoint: GET /api/atwunit/{unitId}/errorlog
 Purpose: Error detection and notifications
 ```
 
-**Energy reporting:**
-```
-Interval: On-demand or daily
-Endpoint: GET /api/telemetry/energy/{unitId}
-Purpose: Energy consumption tracking
-```
-
 ### Rate Limiting Considerations
 - **Minimum interval:** 60 seconds for UserContext (per A2A experience)
-- **Avoid excessive telemetry polling:** 9 measure types × frequent polling = high load
-- **Batch considerations:** Cannot batch measure queries (separate calls required)
-
-**Recommended strategy:**
-1. Use UserContext for state (60s interval)
-2. Skip telemetry polling for MVP (state has current temps)
-3. Add telemetry only if users request historical graphs
-4. Energy reporting: on-demand only
+- **Keep it simple:** UserContext provides all essential state (temperatures, operation status)
+- **Error logs:** Poll periodically for proactive error detection
 
 ---
 

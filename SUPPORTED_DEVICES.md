@@ -75,6 +75,14 @@ Air-to-Water systems are heat pumps for underfloor heating/radiators and domesti
 
 ATW support is **EXPERIMENTAL** - Available in v2.0.0+ but **NOT tested on real hardware**. Implementation based on reverse-engineered API only.
 
+**Current Implementation (v2.0.0):**
+- Zone 1 heating control ✓
+- DHW tank control ✓
+- System power control ✓
+- Temperature sensors (Zone 1 room, DHW tank) ✓
+- Operation status monitoring ✓
+- Single zone systems only (no Zone 2)
+
 ### Theoretically Compatible Models
 
 | Model | Notes |

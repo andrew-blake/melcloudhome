@@ -20,22 +20,22 @@
 
 ---
 
-## What's Implemented
+## What's Implemented (v2.0.0)
 
 ### Tested via HAR Captures
 
-- ✅ Zone 1 climate control (read/write)
-- ✅ DHW tank control via water heater platform (read/write)
+- ✅ Zone 1 climate control (heating mode, temperature, preset modes)
+- ✅ DHW tank control via water heater platform
 - ✅ System power control via switch platform
-- ✅ Temperature sensors (tank, flow, return, DHW flow)
-- ✅ WiFi signal and error sensors
-- ✅ Preset modes (Room, Flow, Curve)
+- ✅ Temperature sensors (Zone 1 room, DHW tank)
+- ✅ Operation status sensor (3-way valve position)
+- ✅ Binary sensors (error state, connection, forced DHW mode)
+- ✅ Preset modes (Room Temperature, Flow Temperature, Weather Compensation)
 
 ### Known Limitations
 
 - ❌ Not tested on real hardware
-- ❌ Zone 2 support not yet implemented (planned)
-- ❌ Some advanced features may be missing
+- ❌ Zone 2 support not implemented (single zone only)
 - ❌ Error handling may be incomplete
 - ❌ API behavior might differ from actual hardware
 
@@ -139,13 +139,6 @@ Based on HAR analysis from one user system:
 - ✅ Sensor platform (temperatures, WiFi, errors)
 - ✅ Mock API server for development
 - ✅ Integration tests (mock-based)
-
-### Planned (Future Versions)
-
-- ⏳ Zone 2 climate support
-- ⏳ Real hardware validation
-- ⏳ Advanced features (holiday mode, etc.)
-- ⏳ Energy consumption tracking for ATW
 
 ### Help Wanted
 

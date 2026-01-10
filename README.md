@@ -62,8 +62,7 @@ For the complete list of tested hardware, technical notes, and compatibility det
 - **Status:** NOT yet tested on real hardware - based on HAR captures only
 - **Theoretical compatibility:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
 - **Reference system:** Ecodan EHSCVM2D Hydrokit with FTC6 controller
-- **Supports:** Zone 1 heating, DHW control, 3-way valve systems
-- **Coming soon:** Zone 2 heating support, real hardware validation
+- **Supports:** Zone 1 heating, DHW control, 3-way valve systems (single zone only)
 - **⚠️ Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) before using ATW features**
 
 ## Installation
@@ -157,16 +156,14 @@ For each heat pump system, the following entities are created:
 #### Sensors
 
 - **Zone 1 Temperature**: `sensor.melcloudhome_<unit_id>_zone_1_temperature`
-- **DHW Tank Temperature**: `sensor.melcloudhome_<unit_id>_dhw_tank_temperature`
-- **Flow Temperature**: `sensor.melcloudhome_<unit_id>_flow_temperature`
-- **Return Temperature**: `sensor.melcloudhome_<unit_id>_return_temperature`
-- **DHW Flow Temperature**: `sensor.melcloudhome_<unit_id>_dhw_flow_temperature`
-- **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal`
+- **Tank Temperature**: `sensor.melcloudhome_<unit_id>_tank_temperature`
+- **Operation Status**: `sensor.melcloudhome_<unit_id>_operation_status` (3-way valve position)
 
 #### Binary Sensors
 
 - **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
 - **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
+- **Forced DHW Active**: `binary_sensor.melcloudhome_<unit_id>_forced_dhw_active`
 
 ## Supported HVAC Modes
 
