@@ -8,17 +8,7 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
-Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Electric air conditioning units via the MELCloud Home API.
-
-## Terminology
-
-- **ATA (Air-to-Air)**: Split-system air conditioners and heat pumps that heat/cool air directly
-- **ATW (Air-to-Water)**: Ecodan/Hydrobox heat pump systems that heat water for underfloor heating and domestic hot water
-- **FTC Controller**: Floor-standing controller unit for ATW systems
-- **MELCloud Home**: Mitsubishi Electric's cloud service for residential HVAC control
-- **DHW**: Domestic Hot Water (hot water tank in ATW systems)
-
-Throughout this documentation, we use **ATA** and **ATW** as the primary abbreviations.
+Home Assistant custom integration for **MELCloud Home**.
 
 ## Features
 
