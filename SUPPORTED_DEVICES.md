@@ -77,7 +77,7 @@ ATW support is **EXPERIMENTAL** - Available in v2.0.0+ but **NOT tested on real 
 
 **Before testing:** Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for complete details, safety warnings, and testing checklist.
 
-**Current Implementation (v2.0.0):**
+**Current Implementation (v2.0.0-beta.1):**
 - Zone 1 heating control ✓
 - DHW tank control ✓
 - System power control ✓

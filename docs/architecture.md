@@ -110,7 +110,7 @@ Files are organized by device type: `client_ata.py` (Air-to-Air), `client_atw.py
 
 ## Entity ID Strategy
 
-All entities use UUID-based device names for stable entity IDs (format: `melcloudhome_<uuid>_<entity_type>`). Friendly device names are set via `name_by_user` in device registry.
+All entities use UUID-based device names for stable entity IDs (format: `melcloudhome_{short_id}_{entity_type}` where short_id is first 4 + last 4 chars of UUID). Friendly device names are set via `name_by_user` in device registry.
 
 **ATA (Air-to-Air):** `climate`, temperature/energy sensors, error/connection binary sensors
 

@@ -118,6 +118,26 @@ openapi.yaml                     # OpenAPI 3.0.3 specification
 _claude/                         # Session notes (local only, not in git)
 ```
 
+### Entity ID Convention
+
+**Stable UUID-based entity IDs** ensure automations never break when device names change.
+
+**Format:** `{domain}.melcloudhome_{short_id}_{entity_name}`
+
+**short_id derivation:**
+- Take device UUID from API (e.g., `bf8d5119-abcd-1234-5678-9999abcd5119`)
+- Remove hyphens: `bf8d5119abcd12345678999abcd5119`
+- Extract: first 4 chars + `_` + last 4 chars
+- Result: `bf8d_5119`
+
+**Examples:**
+- ATA climate: `climate.melcloudhome_bf8d_5119_climate`
+- ATW Zone 1: `climate.melcloudhome_bf8d_5119_zone_1`
+- ATW DHW tank: `water_heater.melcloudhome_bf8d_5119_tank`
+- ATW system power: `switch.melcloudhome_bf8d_5119_system_power`
+
+**Implementation:** See `helpers.py::create_device_name()` for ID generation logic.
+
 ### Key Decisions
 
 - **Bundled API Client:** Library code in `api/` subfolder (KISS/YAGNI) - See [ADR-001](docs/decisions/001-bundled-api-client.md)

@@ -2,7 +2,7 @@
 
 **Status:** EXPERIMENTAL - Not tested on real hardware
 **Based On:** HAR captures from user's MELCloud Home web interface
-**Version:** v2.0.0+
+**Version:** v2.0.0-beta.1 (beta pre-release)
 **Last Updated:** 2026-01-06
 
 ---
@@ -92,11 +92,12 @@ Based on HAR analysis from one user system:
 
 ### What to Test
 
-> **Entity ID Format:** All entities use pattern `{domain}.melcloudhome_<uuid>_{entity_name}`
-> Example device ID: `melcloudhome_bf8d_5119`
+> **Entity ID Format:** All entities use pattern `{domain}.melcloudhome_{short_id}_{entity_name}`
+> The short_id is derived from device UUID (first 4 + last 4 chars). Example: `melcloudhome_bf8d_5119`
 
 #### Climate Entity (Zone 1)
-- [ ] **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
+- [ ] **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
+  - Example: `climate.melcloudhome_bf8d_5119_zone_1`
 - [ ] Temperature setting (10-30°C range)
 - [ ] Preset mode changes (heating strategies):
   - [ ] **Room** (Recommended) - Maintains room at target temp (like a thermostat)
@@ -107,7 +108,8 @@ Based on HAR analysis from one user system:
   - [ ] `OFF` - Turn off entire system (delegates to switch)
 
 #### Water Heater Entity (DHW Tank)
-- [ ] **Entity ID**: `water_heater.melcloudhome_<uuid>_tank`
+- [ ] **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
+  - Example: `water_heater.melcloudhome_bf8d_5119_tank`
 - [ ] Tank temperature setting (40-60°C range)
 - [ ] Operation mode changes:
   - [ ] `Auto` - DHW heats automatically when below target
@@ -116,24 +118,31 @@ Based on HAR analysis from one user system:
 - [ ] Verify operation_status attribute shows valve position
 
 #### Switch Entity (System Power)
-- [ ] **Entity ID**: `switch.melcloudhome_<uuid>_system_power`
+- [ ] **Entity ID**: `switch.melcloudhome_{short_id}_system_power`
+  - Example: `switch.melcloudhome_bf8d_5119_system_power`
 - [ ] Turn on system power
 - [ ] Turn off system power
 - [ ] **Note**: Both climate OFF and switch OFF control the same system power (by design)
 
 #### Sensors
-- [ ] **Zone 1 Temperature**: `sensor.melcloudhome_<uuid>_zone_1_temperature`
+- [ ] **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
   - Verify reading matches physical thermostat display
-- [ ] **Tank Temperature**: `sensor.melcloudhome_<uuid>_tank_temperature`
+- [ ] **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_tank_temperature`
   - Verify reading matches DHW tank display
-- [ ] **Operation Status**: `sensor.melcloudhome_<uuid>_operation_status`
+- [ ] **Operation Status**: `sensor.melcloudhome_{short_id}_operation_status`
+  - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
   - Values: "Stop", "HotWater", "HeatRoomTemperature", etc.
   - Shows current 3-way valve position
 
 #### Binary Sensors
-- [ ] **Error State**: `binary_sensor.melcloudhome_<uuid>_error_state`
-- [ ] **Connection**: `binary_sensor.melcloudhome_<uuid>_connection_state`
-- [ ] **Forced DHW Active**: `binary_sensor.melcloudhome_<uuid>_forced_dhw_active`
+- [ ] **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- [ ] **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
+- [ ] **Forced DHW Active**: `binary_sensor.melcloudhome_{short_id}_forced_dhw_active`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
 
 #### System Behavior
 - [ ] Multi-hour operation: Check for stability over time

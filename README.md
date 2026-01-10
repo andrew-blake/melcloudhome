@@ -144,20 +144,26 @@ For each air conditioning unit, the following entities are created:
 
 #### Climate Entity
 
-- **Entity ID**: `climate.melcloudhome_<unit_id>_climate`
+- **Entity ID**: `climate.melcloudhome_{short_id}_climate`
+  - Example: `climate.melcloudhome_bf8d_5119_climate`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
 #### Sensors
 
-- **Room Temperature**: `sensor.melcloudhome_<unit_id>_room_temperature`
-- **WiFi Signal**: `sensor.melcloudhome_<unit_id>_wifi_signal` (diagnostic)
-- **Energy**: `sensor.melcloudhome_<unit_id>_energy` (cumulative kWh)
+- **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_room_temperature`
+- **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
+  - Example: `sensor.melcloudhome_bf8d_5119_wifi_signal`
+- **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
+  - Example: `sensor.melcloudhome_bf8d_5119_energy`
 
 #### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
-- **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
+- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
 
 #### ATA Control Options
 
@@ -202,36 +208,42 @@ For each heat pump system, the following entities are created:
 
 #### Climate Entity (Zone 1)
 
-- **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
+- **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
   - Example: `climate.melcloudhome_bf8d_5119_zone_1`
 - **Features**: Zone 1 heating control, temperature setting (10-30°C), preset modes, HVAC modes
 
 #### Water Heater Entity (DHW Tank)
 
-- **Entity ID**: `water_heater.melcloudhome_<uuid>_tank`
+- **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
   - Example: `water_heater.melcloudhome_bf8d_5119_tank`
 - **Features**: DHW tank temperature control (40-60°C), operation modes
 - **Note**: Water heater reflects system power state but cannot control it (use switch for power)
 
 #### Switch Entity (System Power)
 
-- **Entity ID**: `switch.melcloudhome_<uuid>_system_power`
+- **Entity ID**: `switch.melcloudhome_{short_id}_system_power`
   - Example: `switch.melcloudhome_bf8d_5119_system_power`
 - **Features**: System power control (primary power control point)
 - **Note**: Climate OFF also controls system power (both delegate to same control method)
 
 #### Sensors
 
-- **Zone 1 Temperature**: `sensor.melcloudhome_<uuid>_zone_1_temperature`
-- **Tank Temperature**: `sensor.melcloudhome_<uuid>_tank_temperature`
-- **Operation Status**: `sensor.melcloudhome_<uuid>_operation_status`
+- **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
+- **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
+  - Example: `sensor.melcloudhome_bf8d_5119_tank_temperature`
+- **Operation Status**: `sensor.melcloudhome_{short_id}_operation_status`
+  - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
   - Shows current 3-way valve position: "Stop", "HotWater", "HeatRoomTemperature", etc.
 
 #### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_<uuid>_error_state`
-- **Connection**: `binary_sensor.melcloudhome_<uuid>_connection_state`
-- **Forced DHW Active**: `binary_sensor.melcloudhome_<uuid>_forced_dhw_active`
+- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
+- **Forced DHW Active**: `binary_sensor.melcloudhome_{short_id}_forced_dhw_active`
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
 
 #### ATW Control Options
 
