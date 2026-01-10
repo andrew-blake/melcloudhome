@@ -41,7 +41,7 @@
 
 ---
 
-## Compatible Hardware (Theoretical)
+## Implementation Target Hardware
 
 Based on HAR analysis from one user system:
 

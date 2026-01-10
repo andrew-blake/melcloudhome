@@ -83,7 +83,7 @@ ATW support is **EXPERIMENTAL** - Available in v2.0.0+ but **NOT tested on real 
 - Operation status monitoring ✓
 - Single zone systems only (no Zone 2)
 
-### Theoretically Compatible Models
+### Implementation Target Models
 
 | Model | Notes |
 |-------|-------|

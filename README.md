@@ -60,8 +60,8 @@ For the complete list of tested hardware, technical notes, and compatibility det
 ### ⚠️ Air-to-Water (ATW) - Heat Pumps (EXPERIMENTAL)
 
 - **Status:** NOT yet tested on real hardware - based on HAR captures only
-- **Theoretical compatibility:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
-- **Reference system:** Ecodan EHSCVM2D Hydrokit with FTC6 controller
+- **Implementation targets:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
+- **Reference system:** Ecodan EHSCVM2D Hydrokit
 - **Supports:** Zone 1 heating, DHW control, 3-way valve systems (single zone only)
 - **⚠️ Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) before using ATW features**
 
