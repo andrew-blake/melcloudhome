@@ -38,7 +38,19 @@ Open your browser to: **http://localhost:8123**
 
 The onboarding wizard is skipped - you'll go straight to the dashboard.
 
+### 2.1. Enable Advanced Mode (Required for Development Mode)
+
+To see the "Connect to Mock Server" option during integration setup:
+
+1. Click your profile name (bottom left corner)
+2. Enable **Advanced Mode** toggle
+3. Click **Update** to save
+
+Without Advanced Mode enabled, the "Connect to Mock Server" checkbox will be hidden (production behavior).
+
 ### 3. Add the MELCloud Home integration
+
+**Prerequisites:** Enable Advanced Mode in your profile (see step 2.1)
 
 1. Go to **Settings → Devices & Services**
 2. Click **+ Add Integration**
@@ -46,9 +58,9 @@ The onboarding wizard is skipped - you'll go straight to the dashboard.
 4. Configure with mock server:
    - **Email:** `test@example.com` (any email works)
    - **Password:** `test123` (any password works)
-   - **Base URL (if prompted):** `http://melcloud-mock:8080`
+   - **Connect to Mock Server:** ☑️ **Enable** (only visible with Advanced Mode on)
 
-The mock server will accept any credentials and return sample devices.
+The "Connect to Mock Server" checkbox connects to the mock server instead of production MELCloud API. The mock server will accept any credentials and return sample devices.
 
 ## Development Workflow
 
@@ -228,6 +240,17 @@ ports:
 make dev-reset       # Restore to clean snapshot (fast)
 make dev-reset-full  # Complete wipe (slow)
 ```
+
+### "Connect to Mock Server" checkbox not visible
+
+**Symptom:** Can't see the "Connect to Mock Server" checkbox when adding the integration.
+
+**Solution:** Enable Advanced Mode in your Home Assistant profile:
+1. Click your profile (bottom left)
+2. Enable "Advanced Mode" toggle
+3. Return to integration setup
+
+The "Connect to Mock Server" field is hidden by default to prevent production users from accidentally enabling it.
 
 ## Architecture
 

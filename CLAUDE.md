@@ -127,6 +127,11 @@ make dev-down        # Stop dev environment
 # - Home Assistant on http://localhost:8123 (dev/dev)
 # - Auto-skip onboarding, debug logging enabled
 
+# IMPORTANT: Enable Advanced Mode in profile to see "Connect to Mock Server" option
+# 1. Click profile (bottom left)
+# 2. Toggle "Advanced Mode" ON
+# 3. Add integration with "Connect to Mock Server" enabled
+
 # Testing
 make test                        # Run API tests (no Docker needed)
 make test-ha                     # Run HA integration tests in Docker
@@ -337,10 +342,10 @@ Include this in beta CHANGELOG entries:
 ```markdown
 **How to test this beta:**
 1. Enable beta releases in HACS:
-   - HACS → Integrations → MELCloud Home
-   - Click menu (⋮) → Repository
-   - Enable "Show beta versions" switch
-2. Install this beta version
+   - Go to **Settings → Devices & Services → Integrations → HACS**
+   - Find **MELCloud Home** in your repository list
+   - Enable the **"Show beta versions"** switch entity (disabled by default)
+2. Install this beta version (will appear in available updates)
 3. Report issues: https://github.com/andrew-blake/melcloudhome/issues
 ```
 
@@ -423,6 +428,13 @@ make dev-reset
 - Auto-setup with skip onboarding
 - Debug logging enabled
 - Changes reload with simple restart
+
+**Development Mode Setup:**
+1. Start dev environment: `make dev-up`
+2. Login to HA: http://localhost:8123 (dev/dev)
+3. Enable Advanced Mode in profile settings
+4. Add integration → Enable "Connect to Mock Server" checkbox
+5. Integration connects to mock server at http://melcloud-mock:8080
 
 **See [DEV-SETUP.md](DEV-SETUP.md) for complete guide.**
 

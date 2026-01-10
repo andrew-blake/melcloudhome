@@ -6,7 +6,11 @@
         "description": "Enter your MELCloud Home credentials",
         "data": {
           "email": "Email",
-          "password": "Password"
+          "password": "Password",
+          "debug_mode": "Connect to Mock Server"
+        },
+        "data_description": {
+          "debug_mode": "For development only - connects to local mock server instead of production MELCloud API"
         }
       },
       "reconfigure": {

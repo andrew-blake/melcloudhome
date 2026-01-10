@@ -68,19 +68,22 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 )
 
         # Show form
+        # Build schema conditionally based on advanced mode
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_EMAIL): str,
+            vol.Required(CONF_PASSWORD): str,
+        }
+
+        # Only show debug_mode if user has enabled Advanced Mode in their profile
+        if self.show_advanced_options:
+            schema_dict[vol.Optional(CONF_DEBUG_MODE, default=False)] = (
+                BooleanSelector()
+            )
+
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_EMAIL): str,
-                    vol.Required(CONF_PASSWORD): str,
-                    vol.Optional(CONF_DEBUG_MODE, default=False): BooleanSelector(),
-                }
-            ),
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
-            description_placeholders={
-                "debug_help": "Enable to use mock server for development (http://melcloud-mock:8080)"
-            },
         )
 
     async def async_step_reconfigure(

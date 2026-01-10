@@ -207,3 +207,89 @@ async def test_initial_setup_connection_error(
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
     assert result["step_id"] == "user"
+
+
+@pytest.mark.asyncio
+async def test_debug_mode_hidden_by_default(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that debug_mode is hidden when advanced options disabled."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user", "show_advanced_options": False},
+    )
+
+    # Verify form schema doesn't include debug_mode
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    # Check schema doesn't have CONF_DEBUG_MODE key
+    assert not any(CONF_DEBUG_MODE in str(k) for k in result["data_schema"].schema)
+
+
+@pytest.mark.asyncio
+async def test_debug_mode_shown_when_advanced(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that debug_mode is shown when advanced options enabled."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user", "show_advanced_options": True},
+    )
+
+    # Verify form schema includes debug_mode
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert any(CONF_DEBUG_MODE in str(k) for k in result["data_schema"].schema)
+
+
+@pytest.mark.asyncio
+async def test_debug_mode_defaults_false_when_hidden(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+    mock_setup_entry,
+) -> None:
+    """Test that debug_mode defaults to False when field hidden."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user", "show_advanced_options": False},
+    )
+
+    # Submit without debug_mode field
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    # Verify entry created with debug_mode=False
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_DEBUG_MODE] is False
+
+
+@pytest.mark.asyncio
+async def test_debug_mode_true_when_explicitly_set(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+    mock_setup_entry,
+) -> None:
+    """Test that debug_mode=True is preserved when explicitly set."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user", "show_advanced_options": True},
+    )
+
+    # Submit WITH debug_mode field
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "password123",
+            CONF_DEBUG_MODE: True,
+        },
+    )
+
+    # Verify entry created with debug_mode=True
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_DEBUG_MODE] is True
+    assert result["title"] == "MELCloud Home (Debug)"
