@@ -51,15 +51,41 @@ See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic
 ```text
 custom_components/melcloudhome/  # Custom component (bundled approach)
 ├── api/                         # Bundled API client library (see ADR-001)
-│                                # - Facade pattern with device-specific clients (see ADR-011)
-│                                # - ATA (air-to-air) and ATW (air-to-water) implementations
-│                                # - Models, constants, auth, parsing utilities
-├── *.py                         # Platform implementations
-│                                # - climate, sensor, binary_sensor, water_heater, switch
-│                                # - Router pattern: base files dispatch to _ata.py/_atw.py modules
-│                                # - See ADR-011, ADR-012 for multi-device architecture
-└── ...                          # Standard HA integration files
-                                 # (config_flow, coordinator, diagnostics, helpers, etc.)
+│   ├── client.py                # Facade - composes ata + atw clients (see ADR-011)
+│   ├── client_ata.py            # ATA control methods (~214 lines)
+│   ├── client_atw.py            # ATW control methods (~248 lines)
+│   ├── models*.py               # Data models (shared, ATA-specific, ATW-specific)
+│   ├── const*.py                # Constants (shared, ATA, ATW)
+│   ├── auth.py                  # AWS Cognito OAuth authentication
+│   ├── parsing.py               # Shared parsing utilities
+│   └── exceptions.py            # Custom exceptions
+│
+├── Platform Routers (HA entry points)
+│   ├── climate.py               # Dispatches to climate_ata.py + climate_atw.py
+│   ├── sensor.py                # Dispatches to sensor_ata.py + sensor_atw.py
+│   ├── binary_sensor.py         # Dispatches to binary_sensor_ata.py + binary_sensor_atw.py
+│   ├── diagnostics.py           # Dispatches to diagnostics_ata.py + diagnostics_atw.py
+│   ├── water_heater.py          # ATW-only (DHW tank control, no router needed)
+│   └── switch.py                # ATW-only (system power, no router needed)
+│
+├── Device-Specific Implementations
+│   ├── *_ata.py                 # ATA (air-to-air) platform implementations
+│   └── *_atw.py                 # ATW (air-to-water) platform implementations
+│
+├── Control Client Layer (Coordinator ↔ API bridge)
+│   ├── control_client_base.py   # Shared: debounced refresh, retry infrastructure
+│   ├── control_client_ata.py    # ATA: state checking, session recovery (~180 lines)
+│   └── control_client_atw.py    # ATW: state checking, session recovery (~250 lines)
+│   # Purpose: Sits between coordinator and API client
+│   # Provides: Duplicate call prevention, debounced refresh, retry logic
+│
+└── Core Integration Files
+    ├── coordinator.py           # Data update coordinator (polling, state management)
+    ├── __init__.py              # Integration setup, device name migration
+    ├── config_flow.py           # Configuration UI flow
+    ├── const*.py                # Integration constants (shared, ATA, ATW)
+    ├── helpers.py               # Shared utilities
+    └── protocols.py             # Type protocols for type safety
 
 docs/
 ├── architecture.md              # High-level system architecture (visual diagrams)
