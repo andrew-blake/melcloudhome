@@ -22,7 +22,7 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 High-level component architecture showing how Home Assistant entities connect to the MELCloud API through the integration layers.
 
 ```mermaid
-graph TB
+graph LR
     subgraph "Home Assistant"
         Climate[Climate Entity<br/>A2A Units]
         WaterHeater[Water Heater Entity<br/>A2W DHW]
@@ -39,14 +39,16 @@ graph TB
         end
         subgraph "API Client Layer"
             Client[MELCloudHomeClient<br/>Single Unified Client]
-            Auth[Authentication<br/>AWS Cognito OAuth]
         end
-    end
 
+    end
     subgraph "MELCloud API"
         UserContextAPI["GET /api/user/context<br/>(SHARED)"]
         A2AAPI["PUT /api/ataunit/*<br/>(A2A Control)"]
         A2WAPI["PUT /api/atwunit/*<br/>(A2W Control)"]
+    end
+    subgraph "AWS Cognito"
+        Auth[Authentication<br/>AWS Cognito OAuth]
     end
 
     Climate --> Coordinator
