@@ -17,7 +17,7 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 
 ---
 
-## 1. System Overview
+## System Overview
 
 High-level component architecture showing how Home Assistant entities connect to the MELCloud API through the integration layers.
 
@@ -32,22 +32,21 @@ graph TB
     subgraph "MELCloud Home Integration"
         Coordinator[Update Coordinator<br/>Polling & State Management]
 
-        subgraph "API Client Layer"
-            Client[MELCloudHomeClient<br/>Single Unified Client]
-            Auth[Authentication<br/>AWS Cognito OAuth]
-        end
-
         subgraph "Models Layer"
             A2AModel[AirToAirUnit<br/>Model]
             A2WModel[AirToWaterUnit<br/>Model]
             Context[UserContext<br/>Multi-Type Container]
         end
+        subgraph "API Client Layer"
+            Client[MELCloudHomeClient<br/>Single Unified Client]
+            Auth[Authentication<br/>AWS Cognito OAuth]
+        end
     end
 
     subgraph "MELCloud API"
-        UserContextAPI[/api/user/context<br/>SHARED]
-        A2AAPI[/api/ataunit/*<br/>A2A Control]
-        A2WAPI[/api/atwunit/*<br/>A2W Control]
+        UserContextAPI["GET /api/user/context<br/>(SHARED)"]
+        A2AAPI["PUT /api/ataunit/*<br/>(A2A Control)"]
+        A2WAPI["PUT /api/atwunit/*<br/>(A2W Control)"]
     end
 
     Climate --> Coordinator
@@ -64,10 +63,6 @@ graph TB
     Client --> UserContextAPI
     Client --> A2AAPI
     Client --> A2WAPI
-
-    Auth -.session.-> UserContextAPI
-    Auth -.session.-> A2AAPI
-    Auth -.session.-> A2WAPI
 ```
 
 **Key Points:**
@@ -79,441 +74,41 @@ graph TB
 
 ---
 
-## 2. Device Type Control Flow
+## ATW Entity Architecture
 
-Sequence diagram showing authentication, device discovery, and control operations for both device types.
+Air-to-Water heat pumps present a unique challenge: one physical device with multiple control aspects (system power, zone heating, DHW). See [ADR-012](decisions/012-atw-entity-architecture.md) for full rationale.
 
-```mermaid
-sequenceDiagram
-    participant HA as Home Assistant
-    participant Coord as Coordinator
-    participant Client as MELCloudHomeClient
-    participant API as MELCloud API
+**Entity Responsibilities:**
 
-    Note over HA,API: Initial Setup
-    HA->>Client: login(user, pass)
-    Client->>API: OAuth flow (AWS Cognito)
-    API-->>Client: Session established
+| Entity | Controls | Rationale |
+|--------|----------|-----------|
+| **switch** | System power (ON/OFF) | Primary power control point. Standard HA pattern for system-level on/off. |
+| **climate** | Zone temperature & heating method | Zone-specific control. HVAC mode OFF delegates to switch. |
+| **water_heater** | DHW temperature & mode | DHW-specific control. Power state is read-only. |
 
-    Note over HA,API: Device Discovery
-    Coord->>Client: get_user_context()
-    Client->>API: GET /api/user/context
-    API-->>Client: { airToAirUnits[], airToWaterUnits[] }
-    Client-->>Coord: UserContext (both types)
+**Key Point:** Heat pump is ONE device with one power supply. Switch controls system power. Climate and water_heater control their respective subsystems when the system is on.
 
-    Note over HA,API: A2A Control
-    HA->>Coord: climate.set_temperature(a2a_id, 22°C)
-    Coord->>Client: set_temperature(a2a_id, 22)
-    Client->>API: PUT /api/ataunit/{id}
-    API-->>Client: 200 OK (empty)
-
-    Note over HA,API: A2W Control
-    HA->>Coord: climate.set_temperature(a2w_id, 21°C)
-    Coord->>Client: set_zone_temperature(a2w_id, 21)
-    Client->>API: PUT /api/atwunit/{id}
-    API-->>Client: 200 OK (empty)
-
-    Note over HA,API: A2W DHW Control
-    HA->>Coord: water_heater.set_temperature(a2w_id, 50°C)
-    Coord->>Client: set_dhw_temperature(a2w_id, 50)
-    Client->>API: PUT /api/atwunit/{id}
-    API-->>Client: 200 OK (empty)
-
-    Note over HA,API: Periodic State Update
-    loop Every 60 seconds
-        Coord->>Client: get_user_context()
-        Client->>API: GET /api/user/context
-        API-->>Client: Current state (all devices)
-        Client-->>Coord: Updated state
-        Coord->>HA: Update entities
-    end
-```
-
-**Key Points:**
-
-- **Single login** serves all devices
-- **UserContext returns both** device types in one call
-- **Device type determines** which control endpoint used
-- **Empty 200 responses** for all control commands
-- **Periodic polling** updates state for all devices
+**3-Way Valve Status:** Users can monitor valve position via `sensor.{device}_operation_status` (idle/heating_dhw/heating_zone_1) and `climate.hvac_action` (shows IDLE when valve on DHW).
 
 ---
 
-## 3. Data Model Relationships
+## API Layer Structure
 
-Class diagram showing how models are structured and related.
-
-```mermaid
-classDiagram
-    class MELCloudHomeClient {
-        -MELCloudHomeAuth auth
-        -UserContext user_context
-        +ATAControlClient ata
-        +ATWControlClient atw
-        +login(user, pass) bool
-        +logout() None
-        +close() None
-        +is_authenticated bool
-        +get_user_context() UserContext
-    }
-
-    class ATAControlClient {
-        -MELCloudHomeClient client
-        +set_temperature(id, temp) None
-        +set_mode(id, mode) None
-        +set_fan_speed(id, speed) None
-        +set_vane_vertical(id, dir) None
-        +set_vane_horizontal(id, dir) None
-        +set_power(id, enabled) None
-    }
-
-    class ATWControlClient {
-        -MELCloudHomeClient client
-        +set_temperature_zone1(id, temp) None
-        +set_temperature_dhw(id, temp) None
-        +set_operation_mode_zone1(id, mode) None
-        +set_forced_hot_water(id, enabled) None
-        +set_power(id, enabled) None
-        +set_holiday_mode(...) None
-        +set_frost_protection(...) None
-    }
-
-    class MELCloudHomeAuth {
-        -ClientSession session
-        -str access_token
-        +login(user, pass) bool
-        +logout() None
-        +get_session() ClientSession
-        +is_authenticated bool
-    }
-
-    class UserContext {
-        +str id
-        +str email
-        +List~Building~ buildings
-        +get_all_air_to_air_units() List
-        +get_all_air_to_water_units() List
-        +get_unit_by_id(id) Unit
-    }
-
-    class Building {
-        +str id
-        +str name
-        +str timezone
-        +List~AirToAirUnit~ air_to_air_units
-        +List~AirToWaterUnit~ air_to_water_units
-    }
-
-    class AirToAirUnit {
-        +str id
-        +str name
-        +bool power
-        +str operation_mode
-        +float set_temperature
-        +float room_temperature
-        +str set_fan_speed
-        +str vane_vertical_direction
-        +str vane_horizontal_direction
-        +bool in_standby_mode
-        +bool is_in_error
-        +DeviceCapabilities capabilities
-        +List~Schedule~ schedule
-    }
-
-    class AirToWaterUnit {
-        +str id
-        +str name
-        +bool power
-        +str operation_mode [STATUS]
-        +str operation_mode_zone1
-        +float set_temperature_zone1
-        +float room_temperature_zone1
-        +float set_tank_water_temperature
-        +float tank_water_temperature
-        +bool forced_hot_water_mode
-        +bool has_zone2
-        +bool is_in_error
-        +int ftc_model
-        +AirToWaterCapabilities capabilities
-        +List~ATWSchedule~ schedule
-    }
-
-    class DeviceCapabilities {
-        +int number_of_fan_speeds
-        +float min_temp_heat
-        +float max_temp_heat
-        +bool has_half_degree_increments
-        +bool has_cool_operation_mode
-        +bool has_heat_operation_mode
-        +bool has_swing
-    }
-
-    class AirToWaterCapabilities {
-        +bool has_hot_water
-        +float min_set_tank_temperature
-        +float max_set_tank_temperature
-        +float min_set_temperature
-        +float max_set_temperature
-        +bool has_zone2
-        +bool has_thermostat_zone1
-        +bool has_measured_energy_consumption
-        +int ftc_model
-    }
-
-    MELCloudHomeClient --> MELCloudHomeAuth : uses
-    MELCloudHomeClient --> ATAControlClient : composes
-    MELCloudHomeClient --> ATWControlClient : composes
-    ATAControlClient --> MELCloudHomeClient : delegates to
-    ATWControlClient --> MELCloudHomeClient : delegates to
-    MELCloudHomeClient --> UserContext : caches
-    UserContext --> Building : contains
-    Building --> AirToAirUnit : has many
-    Building --> AirToWaterUnit : has many
-    AirToAirUnit --> DeviceCapabilities : has one
-    AirToWaterUnit --> AirToWaterCapabilities : has one
-```
-
-**Key Points:**
-
-- **Facade Pattern:** `MELCloudHomeClient` composes specialized `ata` and `atw` clients
-- **Unified Entry Point:** Single import, device-type-specific methods via facades
-- **Usage:** `await client.ata.set_temperature(id, temp)` and `await client.atw.set_power(id, True)`
-- **Separate model classes** for each device type
-- **Separate capability classes** (different fields)
-- **UserContext** as multi-type container
-- **Building** holds both unit type arrays
+Files are organized by device type: `client_ata.py` (Air-to-Air), `client_atw.py` (Air-to-Water), with shared code in `client.py`, `auth.py`, and `models.py`. The `MELCloudHomeClient` composes device-specific facades (`client.ata`, `client.atw`) using the facade pattern. See [ADR-011](decisions/011-multi-device-type-architecture.md) for implementation details.
 
 ---
 
-## 4. A2W 3-Way Valve Behavior
+## Entity ID Strategy
 
-State diagram illustrating the Air-to-Water heat pump's 3-way valve operation and how it affects the `OperationMode` status field.
+All entities use UUID-based device names for stable entity IDs (format: `melcloudhome_<uuid>_<entity_type>`). Friendly device names are set via `name_by_user` in device registry.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Stop: power=false or all targets reached
-    Stop --> HeatingZone1: Zone 1 temp < target
-    Stop --> HeatingDHW: DHW temp < target
+**ATA (Air-to-Air):** `climate`, temperature/energy sensors, error/connection binary sensors
 
-    HeatingZone1 --> Stop: Zone 1 target reached
-    HeatingZone1 --> HeatingDHW: forcedHotWaterMode=true
-    HeatingZone1 --> HeatingDHW: DHW priority triggered
-
-    HeatingDHW --> Stop: DHW target reached
-    HeatingDHW --> HeatingZone1: DHW complete & Zone 1 needs heat
-
-    note right of Stop
-        OperationMode status: "Stop"
-
-        No active heating
-        All targets reached or power off
-    end note
-
-    note right of HeatingDHW
-        OperationMode status: "HotWater"
-
-        3-way valve directed to DHW tank
-        Zone 1 heating suspended
-    end note
-
-    note right of HeatingZone1
-        OperationMode status:
-        Shows current zone mode
-
-        - "HeatRoomTemperature"
-        - "HeatFlowTemperature"
-        - "HeatCurve"
-
-        3-way valve directed to Zone 1
-        DHW heating suspended
-    end note
-```
-
-**Critical Understanding:**
-
-1. **Physical Limitation:** Heat pump can only heat ONE thing at a time
-   - 3-way valve directs hot water to either Zone 1 OR DHW tank
-   - Cannot heat both simultaneously
-
-2. **OperationMode is STATUS:**
-   - Read-only field showing current valve position
-   - Automatically determined by system
-   - NOT a control parameter
-
-3. **Control vs Status:**
-   - **Control:** `operationModeZone1` = HOW to heat zone (user sets)
-   - **Status:** `OperationMode` = WHAT is heating NOW (system reports)
-
-4. **Forced Hot Water Mode:**
-   - When enabled: DHW gets priority
-   - Zone 1 suspended until DHW reaches target
-   - Then automatically switches back to zone heating
-
-5. **Summer Mode Workaround:**
-   - Set Zone 1 target to minimum (10°C)
-   - Room temp > target, so no zone heating
-   - System only heats DHW as needed
+**ATW (Air-to-Water):** `switch` (system power), `climate` (zones), `water_heater` (DHW), temperature sensors, operation status sensor, error/connection/forced-DHW binary sensors
 
 ---
 
-## 5. HA Entity Responsibility Boundaries
-
-**Reference:** [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md) for detailed power control architecture and implementation examples.
-
-### Entity Responsibilities
-
-**ATW (Air-to-Water) Heat Pump Entities:**
-
-| Entity Type | Controls | Does NOT Control |
-|-------------|----------|------------------|
-| **switch** | • System power (ON/OFF)<br/>• Entire heat pump system | • Zone temperatures<br/>• DHW settings |
-| **climate (zone)** | • Zone target temperature<br/>• Zone heating method (presets)<br/>• HVAC mode (HEAT/OFF delegates to power) | • Other zones<br/>• DHW tank settings |
-| **water_heater** | • DHW tank temperature<br/>• DHW operation mode (eco/performance) | • **System power** (read-only)<br/>• Zone settings |
-
-**Key Architectural Decisions:**
-
-1. **Switch = Primary Power Control**
-   - Single obvious control point for system power
-   - Standard HA pattern for binary states
-
-2. **Climate OFF = Power Delegation**
-   - Climate OFF delegates to same power control method as switch
-   - Maintains standard HA UX (users expect climate OFF to turn off heating)
-   - No duplicate logic (Single Responsibility Principle)
-
-3. **Water Heater = DHW Control Only**
-   - No turn_on/turn_off methods (power state is read-only)
-   - Focuses on DHW-specific settings
-   - Clearer responsibility boundaries
-
-**Rationale:**
-
-- **Physical Reality:** Heat pump is ONE device with one power supply
-- **Single Responsibility:** Each entity has one clear purpose
-- **User Clarity:** Switch is obvious place for system power control
-- **Standard HA UX:** Climate OFF works as expected (delegates to power control)
-
-### 3-Way Valve Status Visibility
-
-The 3-way valve position is exposed to users via:
-
-1. **water_heater state attributes:**
-   - `operation_status` - Current valve position ("HotWater", "HeatRoomTemperature", etc.)
-   - `zone_heating_suspended` - Boolean (true when valve directed to DHW)
-
-2. **Dedicated sensor:**
-   - `sensor.{device_name}_operation_status` - Human-readable status
-   - States: "idle", "heating_dhw", "heating_zone_1", "heating_zone_2"
-
-3. **climate.hvac_action:**
-   - Shows IDLE when valve is on DHW (even if zone temp below target)
-   - Shows HEATING only when valve actually on this zone
-
-**This visibility is critical for users to understand heat pump behavior.**
-
----
-
-## 6. API Layer Structure
-
-### File Organization
-
-```
-custom_components/melcloudhome/api/
-├── __init__.py          # Package exports
-├── auth.py              # AWS Cognito OAuth (shared)
-├── exceptions.py        # Custom exceptions (shared)
-├── client.py            # Facade pattern - composes ata/atw clients
-├── client_ata.py        # ATA-specific control methods
-├── client_atw.py        # ATW-specific control methods
-├── const_shared.py      # Shared constants (User-Agent, endpoints)
-├── const_ata.py         # ATA-specific constants (modes, fan speeds)
-├── const_atw.py         # ATW-specific constants (zone modes, temp ranges)
-├── models.py            # Shared models (Building, UserContext)
-├── models_ata.py        # ATA-specific models (AirToAirUnit)
-├── models_atw.py        # ATW-specific models (AirToWaterUnit)
-└── parsing.py           # Shared parsing utilities
-```
-
-### Separation Strategy
-
-**Facade pattern with composition:**
-
-```python
-# Main client provides unified interface
-client = MELCloudHomeClient()
-
-# ATA methods (via client.ata facade)
-await client.ata.set_temperature(unit_id, temp)
-await client.ata.set_mode(unit_id, mode)
-await client.ata.set_fan_speed(unit_id, speed)
-
-# ATW methods (via client.atw facade)
-await client.atw.set_temperature_zone1(unit_id, temp)
-await client.atw.set_dhw_temperature(unit_id, temp)
-await client.atw.set_power(unit_id, power)
-await client.atw.set_forced_hot_water(unit_id, enabled)
-```
-
-**Rationale:** Facade pattern provides single entry point while maintaining clean separation. See [ADR-011](decisions/011-multi-device-type-architecture.md) "Implementation Evolution" section for details.
-
----
-
-## Home Assistant Entity Mapping
-
-> **Entity ID Strategy:** All entities use UUID-based device names for stable IDs (e.g., `melcloudhome_bf8d_5119`). Friendly device names are set via `name_by_user` in device registry and displayed in UI.
-
-### Air-to-Air Units
-
-**Entities created per A2A unit:**
-
-- `climate.melcloudhome_<uuid>_climate` - Main climate control
-  - Example: `climate.melcloudhome_bf8d_5119_climate`
-- `sensor.melcloudhome_<uuid>_room_temperature` - Current temp
-  - Example: `sensor.melcloudhome_bf8d_5119_room_temperature`
-- `sensor.melcloudhome_<uuid>_wifi_signal` - RSSI (diagnostic)
-- `sensor.melcloudhome_<uuid>_energy` - Energy consumption (if available)
-- `binary_sensor.melcloudhome_<uuid>_error_state` - Error status
-- `binary_sensor.melcloudhome_<uuid>_connection_state` - Connection status
-
-### Air-to-Water Units
-
-**Entities created per A2W unit:**
-
-**Primary Control:**
-- `switch.melcloudhome_<uuid>_system_power` - System power (ON/OFF)
-  - Example: `switch.melcloudhome_bf8d_5119_system_power`
-  - Note: Primary control point for system power
-
-**Climate & Water Heating:**
-- `climate.melcloudhome_<uuid>_zone_1` - Zone 1 heating control
-  - Example: `climate.melcloudhome_bf8d_5119_zone_1`
-  - HVAC Mode OFF delegates to system power switch
-- `water_heater.melcloudhome_<uuid>_tank` - DHW tank control
-  - Example: `water_heater.melcloudhome_bf8d_5119_tank`
-  - Note: Does NOT control system power (read-only power state)
-
-**Temperature Sensors:**
-- `sensor.melcloudhome_<uuid>_zone_1_temperature` - Zone 1 room temp
-  - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
-- `sensor.melcloudhome_<uuid>_tank_temperature` - DHW tank temp
-  - Example: `sensor.melcloudhome_bf8d_5119_tank_temperature`
-
-**Status Sensors:**
-- `sensor.melcloudhome_<uuid>_operation_status` - 3-way valve position
-  - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
-  - Values: "Stop", "HotWater", "HeatRoomTemperature", etc.
-
-**Binary Sensors:**
-- `binary_sensor.melcloudhome_<uuid>_error_state` - Error state
-  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
-- `binary_sensor.melcloudhome_<uuid>_connection_state` - Connection status
-  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
-- `binary_sensor.melcloudhome_<uuid>_forced_dhw_active` - Forced DHW mode active
-  - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
-
----
-
-## 2. Device Type Control Flow
+## Device Type Control Flow
 
 Sequence diagram showing complete flow from authentication through control operations.
 
@@ -571,145 +166,86 @@ sequenceDiagram
 
 ---
 
-## 3. Data Model Relationships
+## Multi-Device Architecture
 
-Class diagram showing the structure of models and their relationships.
+Showing the facade pattern and model relationships. Facade pattern provides device-type-specific control via `client.ata` and `client.atw`.
 
 ```mermaid
 classDiagram
     class MELCloudHomeClient {
-        -MELCloudHomeAuth auth
-        -UserContext user_context
         +ATAControlClient ata
         +ATWControlClient atw
-        +login(user, pass) bool
-        +logout() None
-        +close() None
-        +is_authenticated bool
-        +get_user_context() UserContext
+        +login() / logout()
+        +get_user_context()
     }
 
     class ATAControlClient {
-        -MELCloudHomeClient client
-        +set_temperature(id, temp) None
-        +set_mode(id, mode) None
-        +set_fan_speed(id, speed) None
-        +set_vane_vertical(id, dir) None
-        +set_vane_horizontal(id, dir) None
-        +set_power(id, enabled) None
+        <<facade>>
+        +set_temperature()
+        +set_mode()
+        +set_fan_speed()
+        +set_power()
     }
 
     class ATWControlClient {
-        -MELCloudHomeClient client
-        +set_temperature_zone1(id, temp) None
-        +set_temperature_dhw(id, temp) None
-        +set_operation_mode_zone1(id, mode) None
-        +set_forced_hot_water(id, enabled) None
-        +set_power(id, enabled) None
-        +set_holiday_mode(...) None
-        +set_frost_protection(...) None
+        <<facade>>
+        +set_temperature_zone1()
+        +set_temperature_dhw()
+        +set_operation_mode_zone1()
+        +set_forced_hot_water()
+        +set_power()
     }
 
     class MELCloudHomeAuth {
-        -ClientSession session
-        -str access_token
-        -str refresh_token
-        +login(user, pass) bool
-        +logout() None
-        +get_session() ClientSession
-        +is_authenticated bool
+        <<authentication>>
+        +login() / logout()
+        +is_authenticated
     }
 
     class UserContext {
-        +str id
-        +str email
-        +str firstname
-        +str lastname
-        +List~Building~ buildings
-        +get_all_air_to_air_units() List~AirToAirUnit~
-        +get_all_air_to_water_units() List~AirToWaterUnit~
-        +get_unit_by_id(id) AirToAirUnit|AirToWaterUnit
+        +buildings List~Building~
+        +get_all_air_to_air_units()
+        +get_all_air_to_water_units()
     }
 
     class Building {
-        +str id
-        +str name
-        +str timezone
-        +List~AirToAirUnit~ air_to_air_units
-        +List~AirToWaterUnit~ air_to_water_units
+        +air_to_air_units List
+        +air_to_water_units List
     }
 
     class AirToAirUnit {
-        +str id
-        +str name
-        +bool power
-        +str operation_mode
-        +float set_temperature
-        +float room_temperature
-        +str set_fan_speed
-        +str vane_vertical_direction
-        +str vane_horizontal_direction
-        +bool in_standby_mode
-        +bool is_in_error
-        +int rssi
-        +DeviceCapabilities capabilities
-        +List~Schedule~ schedule
-        +bool schedule_enabled
+        +power / operation_mode
+        +temperatures / fan_speed
+        +vane_directions
+        +capabilities
     }
 
     class AirToWaterUnit {
-        +str id
-        +str name
-        +bool power
-        +str operation_mode [STATUS ONLY]
-        +str operation_mode_zone1
-        +float set_temperature_zone1
-        +float room_temperature_zone1
-        +float set_tank_water_temperature
-        +float tank_water_temperature
-        +bool forced_hot_water_mode
-        +bool has_zone2
-        +bool in_standby_mode
-        +bool is_in_error
-        +int ftc_model
-        +int rssi
-        +AirToWaterCapabilities capabilities
-        +List~ATWSchedule~ schedule
-        +bool schedule_enabled
+        +power
+        +operation_mode [STATUS]
+        +operation_mode_zone1 [CONTROL]
+        +zone temperatures
+        +dhw temperatures
+        +capabilities
     }
 
     class DeviceCapabilities {
-        +int number_of_fan_speeds
-        +float min_temp_heat
-        +float max_temp_heat
-        +float min_temp_cool_dry
-        +float max_temp_cool_dry
-        +bool has_half_degree_increments
-        +bool has_swing
-        +bool has_cool_operation_mode
-        +bool has_heat_operation_mode
+        +temperature ranges
+        +fan speeds
+        +operation modes
     }
 
     class AirToWaterCapabilities {
-        +bool has_hot_water
-        +float min_set_tank_temperature
-        +float max_set_tank_temperature
-        +float min_set_temperature
-        +float max_set_temperature
-        +bool has_half_degrees
-        +bool has_zone2
-        +bool has_thermostat_zone1
-        +bool has_heat_zone1
-        +bool has_measured_energy_consumption
-        +bool has_estimated_energy_consumption
-        +int ftc_model
+        +temperature ranges
+        +has_zone2
+        +has_hot_water
     }
 
     MELCloudHomeClient --> MELCloudHomeAuth : uses
     MELCloudHomeClient --> ATAControlClient : composes
     MELCloudHomeClient --> ATWControlClient : composes
-    ATAControlClient --> MELCloudHomeClient : delegates to
-    ATWControlClient --> MELCloudHomeClient : delegates to
+    ATAControlClient ..> MELCloudHomeClient : delegates
+    ATWControlClient ..> MELCloudHomeClient : delegates
     MELCloudHomeClient --> UserContext : caches
     UserContext --> Building : contains
     Building --> AirToAirUnit : has many
@@ -718,9 +254,17 @@ classDiagram
     AirToWaterUnit --> AirToWaterCapabilities : has one
 ```
 
+**Key Architectural Points:**
+
+- **Facade Pattern:** `MELCloudHomeClient` composes `ATAControlClient` and `ATWControlClient` facades
+- **Unified Entry Point:** Single client import, device-specific methods via `client.ata.*` and `client.atw.*`
+- **Multi-Type Container:** `UserContext` holds both device types discovered from `/api/user/context`
+- **Shared Authentication:** Single OAuth session serves all device types
+- **Capabilities-Driven:** Each device has capabilities object defining valid operations/ranges
+
 ---
 
-## 4. A2W 3-Way Valve Behavior
+## A2W 3-Way Valve Behavior
 
 State diagram showing how the Air-to-Water heat pump's 3-way valve determines what gets heated and how this affects the `OperationMode` status field.
 
@@ -804,53 +348,6 @@ Only ONE output active at a time
 
 ---
 
-## Design Patterns
-
-### 1. Sparse Update Pattern
-
-Both device types use sparse updates:
-
-```python
-# Only change what you want to change
-payload = {
-    "power": None,              # No change
-    "setTemperature": 22.0,     # Change this
-    "operationMode": None,      # No change
-    # ... all others: None
-}
-```
-
-### 2. Capabilities-Driven Logic
-
-```python
-# Check capabilities before controlling
-if unit.capabilities.has_zone2:
-    # Zone 2 control
-    await client.set_zone2_temperature(unit.id, 20.0)
-```
-
-### 3. Type-Safe Methods
-
-```python
-# A2A-specific methods won't work on A2W units
-# A2W-specific methods won't work on A2A units
-# No risk of cross-contamination
-```
-
-### 4. Multi-Device Discovery
-
-```python
-context = await client.get_user_context()
-
-# Iterate all device types
-for unit in context.get_all_air_to_air_units():
-    # Setup A2A climate entity
-
-for unit in context.get_all_air_to_water_units():
-    # Setup A2W climate + water_heater entities
-```
-
----
 
 ## Related Documentation
 
