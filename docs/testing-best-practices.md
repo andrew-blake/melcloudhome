@@ -422,7 +422,7 @@ custom_components/melcloudhome/
 └── api/
     ├── __init__.py
     ├── client.py
-    └── models.py
+    └── models.py  # Note: Now split into models.py, models_ata.py, models_atw.py
 ```
 
 ### Best Practices

@@ -298,6 +298,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator):
 
 Update `custom_components/melcloudhome/api/models.py`:
 
+> **Note:** Post-v2.0, ATA models moved to `api/models_ata.py` (see ADR-011).
+
 ```python
 @dataclass
 class AirToAirUnit:

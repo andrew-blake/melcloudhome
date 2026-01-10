@@ -201,7 +201,9 @@ If you've tested the integration with hardware not listed in [SUPPORTED_DEVICES.
 **For new device types (ATW, ERV):**
 
 - Document API endpoints used (update openapi.yaml)
-- Add corresponding data models in api/models.py
+- Add corresponding data models:
+  - Shared models: `api/models.py` (Building, UserContext, etc.)
+  - Device-specific: `api/models_ata.py` or `api/models_atw.py`
 - Implement platform files (e.g., water_heater.py for ATW)
 - Add integration tests
 - Update SUPPORTED_DEVICES.md
