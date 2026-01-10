@@ -50,31 +50,38 @@ See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic
 
 ```text
 custom_components/melcloudhome/  # Custom component (bundled approach)
-├── api/                         # Bundled API client library
-│   ├── auth.py                  # AWS Cognito OAuth authentication
-│   ├── client.py                # Main API client
-│   ├── const.py                 # API constants & enum mappings
-│   ├── exceptions.py            # Custom exceptions
-│   └── models.py                # Data models
-├── climate.py                   # Climate platform (HVAC control)
-├── sensor.py                    # Sensor platform (temperature, WiFi, energy)
-├── binary_sensor.py             # Binary sensors (error, connection)
-├── config_flow.py               # Configuration UI
-├── coordinator.py               # Data update coordinator
-└── diagnostics.py               # Diagnostic data export
+├── api/                         # Bundled API client library (see ADR-001)
+│                                # - Facade pattern with device-specific clients (see ADR-011)
+│                                # - ATA (air-to-air) and ATW (air-to-water) implementations
+│                                # - Models, constants, auth, parsing utilities
+├── *.py                         # Platform implementations
+│                                # - climate, sensor, binary_sensor, water_heater, switch
+│                                # - Router pattern: base files dispatch to _ata.py/_atw.py modules
+│                                # - See ADR-011, ADR-012 for multi-device architecture
+└── ...                          # Standard HA integration files
+                                 # (config_flow, coordinator, diagnostics, helpers, etc.)
 
 docs/
 ├── api/                         # API documentation
-│   ├── ata-api-reference.md
+│   ├── ata-api-reference.md     # Air-to-Air API reference
+│   ├── atw-api-reference.md     # Air-to-Water API reference
+│   ├── device-type-comparison.md # ATA vs ATW comparison
 │   └── melcloudhome-telemetry-endpoints.md
 ├── decisions/                   # Architecture Decision Records (ADRs)
-├── research/                    # Research and planning documents
-├── integration-review.md        # Integration review notes
-├── testing-best-practices.md    # Testing standards (HA/HACS guidelines)
-└── testing-strategy.md          # Testing strategy document
+├── research/                    # Current research documents
+│   └── REVERSE_ENGINEERING.md   # Comprehensive reverse engineering guide
+├── archive/research/            # Historical research and planning documents
+├── testing-*.md                 # Testing standards and strategy
+└── integration-review.md        # Integration review notes
 
 tests/                           # Test suite with VCR cassettes
+├── api/                         # API tests (no Docker needed)
+└── integration/                 # HA integration tests (Docker required)
+
 tools/                           # Development and deployment tools
+├── reverse-engineering/         # API discovery tools (Chrome overrides, proxying)
+└── deploy_to_ha.py              # Automated deployment script
+
 openapi.yaml                     # OpenAPI 3.0.3 specification
 _claude/                         # Session notes (local only, not in git)
 ```
@@ -297,7 +304,7 @@ await hass.services.async_call(
 - **Auto Mode:** "Automatic" NOT "Auto"
 - **Rate Limiting:** Minimum 60-second polling interval
 
-See `docs/api/ata-api-reference.md` (A2A) and `docs/api/atw-api-reference.md` (A2W) for complete API details.
+See `docs/api/ata-api-reference.md` (ATA) and `docs/api/atw-api-reference.md` (ATW) for complete API details. See `docs/api/device-type-comparison.md` for ATA vs ATW comparison.
 
 ### Local Development Environment
 

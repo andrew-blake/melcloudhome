@@ -33,7 +33,8 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 - **DHW Tank Control**: Water heater platform for domestic hot water management
 - **System Power**: Switch platform for system on/off control
 - **Preset Modes**: Room Temperature, Flow Temperature, Curve Control
-- **Sensors**: Tank temperature, flow temperature, return temperature, DHW flow temperature, WiFi signal, error status
+- **Sensors**: Zone 1 temperature, tank temperature, operation status (3-way valve position)
+- **Binary Sensors**: Error state, connection status, forced DHW active
 - **⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
 - **See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
 
