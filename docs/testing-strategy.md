@@ -33,9 +33,9 @@ Home Assistant entities use complex metaclasses that can't be properly mocked wi
 
 ---
 
-## Proper Testing Approaches for HA Integrations
+## Our Two-Tier Testing Strategy
 
-### Approach 1: **API Layer Testing** (Our Choice) ✅
+### Tier 1: **API Layer Testing** (Native Python) ✅
 
 **What we test:**
 - ✅ Complete API client functionality (82 tests)
@@ -43,15 +43,15 @@ Home Assistant entities use complex metaclasses that can't be properly mocked wi
 - ✅ Error handling and edge cases
 - ✅ Data model parsing and validation
 
-**Why this works:**
-- Tests the actual integration logic
-- Uses real API responses (recorded)
-- Fast (VCR replay)
-- No HA dependency needed
+**How it works:**
+- Tests the API client without any Home Assistant dependency
+- Uses real API responses (recorded with VCR cassettes)
+- Fast execution (~12s with VCR replay)
+- No Docker required
 
 **Example:**
 ```python
-# tests/test_client_control.py
+# tests/api/test_client_control.py
 @pytest.mark.vcr
 async def test_set_temperature(authenticated_client):
     """Test setting temperature."""
@@ -60,22 +60,77 @@ async def test_set_temperature(authenticated_client):
     assert device.set_temperature == 22.0
 ```
 
-**Coverage:** 82% of integration code
+**Run with:** `make test` or `pytest tests/api/`
 
-### Approach 2: **Manual Testing in Real HA** ✅
+**Coverage:** 82% of API client code
 
-**Our deployment tool enables this:**
-```bash
-# Fast deploy and test cycle
-make deploy-test
-```
+---
+
+### Tier 2: **Home Assistant Integration Testing** (Docker) ✅
 
 **What we test:**
-- ✅ Integration loads correctly
-- ✅ Config flow works
-- ✅ Entities appear in HA
-- ✅ Controls work in UI
-- ✅ State updates correctly
+- ✅ Integration setup and teardown
+- ✅ Config flow (user authentication, options)
+- ✅ Entity registration and lifecycle
+- ✅ State management through HA core
+- ✅ Service calls (climate controls, water heater)
+- ✅ Coordinator updates and error handling
+
+**How it works:**
+- Uses `pytest-homeassistant-custom-component` framework
+- Runs in Docker container with clean HA environment
+- Provides real HA fixtures (`hass`, `hass_client`, etc.)
+- Mocks API client at the boundary (not HA internals)
+- Tests through HA core interfaces (states, services)
+
+**Why Docker:**
+- `pytest-homeassistant-custom-component` has dependency conflicts with project dependencies
+- Requires specific HA environment and fixtures
+- Docker provides isolation and reproducibility
+- Matches CI/CD environment
+
+**Example:**
+```python
+# tests/integration/test_climate_ata.py
+async def test_set_temperature(hass, setup_integration):
+    """Test setting temperature through HA service."""
+    state = hass.states.get("climate.melcloudhome_test_unit")
+    assert state.state == HVACMode.HEAT
+
+    await hass.services.async_call(
+        "climate", "set_temperature",
+        {"entity_id": "climate.melcloudhome_test_unit", "temperature": 22},
+        blocking=True
+    )
+
+    state = hass.states.get("climate.melcloudhome_test_unit")
+    assert state.attributes["temperature"] == 22
+```
+
+**Run with:** `make test-ha` (builds Docker image and runs tests automatically)
+
+**Test structure:**
+- `tests/integration/` - HA integration tests
+- `tests/integration/Dockerfile` - Test environment
+- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
+
+**Coverage:** Config flow, entity platforms, coordinator, service calls
+
+---
+
+### Tier 3: **Manual Testing** (Production HA) ✅
+
+**When to use:**
+- Final verification before release
+- Testing with real MELCloud account
+- UI/UX validation
+- Long-running stability tests
+
+**Our deployment tool:**
+```bash
+make deploy-test  # Deploy + API verification
+make deploy-watch # Deploy + live log monitoring
+```
 
 **Manual test checklist:**
 - Configuration → Integrations → Add Integration
@@ -87,62 +142,37 @@ make deploy-test
 - Verify 60s polling works
 - Test error recovery
 
-### Approach 3: **pytest-homeassistant-custom-component** (Future)
-
-**When to use:**
-- Publishing to HACS
-- Multiple contributors
-- Need CI/CD integration
-
-**Requirements:**
-- Python 3.13+
-- homeassistant package
-- Complex dependency resolution
-
-**Example:**
-```python
-async def test_config_flow(hass):
-    """Test config flow with real HA fixtures."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}
-    )
-    assert result["type"] == "form"
-```
-
-**Why we're NOT using it:**
-- Dependency conflicts
-- Overkill for personal use
-- Manual testing is sufficient
-
-### Approach 4: **Home Assistant Test Framework** (Core Only)
-
-For integrations being added to HA core.
-
-**Not applicable** for custom components.
+**Note:** Use sparingly - Docker integration tests cover most scenarios.
 
 ---
 
-## Our Complete Testing Strategy
+## Complete Testing Stack
 
-### Layer 1: Unit Tests (API Client) ✅
+### 1. API Tests (Native Python) ✅
 - **Tool:** pytest + VCR
-- **What:** All API operations
-- **Coverage:** 82%
-- **Speed:** Fast (12s with VCR)
-- **Status:** Comprehensive
+- **What:** API client operations, models, error handling
+- **Coverage:** 82% of API client code
+- **Speed:** ~12 seconds
+- **Command:** `make test`
 
-### Layer 2: Integration Tests (Manual) ✅
-- **Tool:** deploy_custom_component.py + HA UI
-- **What:** Real HA integration behavior
-- **Coverage:** All user-facing features
-- **Speed:** 2-5s with --reload
-- **Status:** Manual checklist provided
+### 2. Integration Tests (Docker) ✅
+- **Tool:** pytest-homeassistant-custom-component
+- **What:** HA integration, config flow, entities, services
+- **Coverage:** Config flow, coordinator, entity platforms
+- **Speed:** ~30 seconds (includes Docker build cache)
+- **Command:** `make test-ha`
 
-### Layer 3: Code Quality ✅
+### 3. Code Quality ✅
 - **Tools:** ruff, mypy, pre-commit
 - **What:** Type safety, linting, formatting
 - **Coverage:** 100% of code
 - **Status:** All passing
+
+### 4. Manual Verification (Production HA) ✅
+- **Tool:** Deployment scripts + real HA instance
+- **What:** Final verification, UI/UX, real MELCloud API
+- **When:** Pre-release only
+- **Command:** `make deploy-test`
 
 ---
 
@@ -153,36 +183,42 @@ For integrations being added to HA core.
 # 1. Write/modify code
 vim custom_components/melcloudhome/climate.py
 
-# 2. Run API tests
-uv run pytest tests/
+# 2. Run API tests (fast)
+make test
 
-# 3. Run quality checks
-uv run ruff check custom_components/
-uv run mypy custom_components/melcloudhome
+# 3. Run integration tests (if touching HA integration code)
+make test-ha
 
-# 4. Deploy and test
-make deploy-test
+# 4. Run quality checks
+make lint
+make type-check
 
-# 5. Manual verification in HA UI
+# 5. Optional: Deploy to dev environment for manual testing
+make dev-up        # Start local dev environment
+make dev-restart   # Reload after changes
 ```
 
 ### Before Commit:
 ```bash
 # Pre-commit hooks run automatically
 git commit -m "..."
-# Runs: ruff, mypy, formatting, etc.
+# Runs: ruff format, ruff check, mypy, etc.
+
+# Or run manually:
+make pre-commit
 ```
 
 ### Before Release:
 ```bash
 # 1. Full test suite
-uv run pytest tests/ --cov
+make test      # API tests
+make test-ha   # Integration tests
 
-# 2. Full deployment test
-make deploy
+# 2. All quality checks
+make all       # format, lint, type-check
 
-# 3. Manual testing checklist
-# See local development notes
+# 3. Optional: Deploy to production HA for final verification
+make deploy-test
 
 # 4. Monitor logs
 make deploy-watch
@@ -193,41 +229,41 @@ make deploy-watch
 ## Best Practices for HA Custom Components
 
 ### ✅ DO:
-- Test API/business logic comprehensively
-- Use VCR for API testing
-- Test in real Home Assistant
-- Use deployment automation
-- Follow HA architecture patterns
-- Run code quality tools
+- Test API/business logic comprehensively with VCR
+- Test HA integration through `hass.states` and `hass.services` interfaces
+- Mock at the API boundary (not HA internals)
+- Use Docker for HA integration tests to avoid dependency conflicts
+- Run both API and integration test suites before releases
+- Follow HA architecture patterns (coordinator, entities)
+- Use code quality tools (ruff, mypy)
 
 ### ❌ DON'T:
-- Mock homeassistant modules
-- Skip testing in real HA
+- Mock homeassistant modules or core classes
+- Test coordinator/entity internals directly
+- Skip integration tests for HA-specific code
 - Test only happy paths
 - Ignore type checking
-- Skip manual verification
+- Manipulate coordinator.data directly in tests
 
 ---
 
 ## Why This Approach Works
 
-1. **API tests** ensure core functionality is correct
-2. **Real HA testing** verifies integration points
-3. **Fast deployment** enables rapid iteration
-4. **No mocking issues** from complex HA internals
+1. **API tests** ensure client functionality is correct (fast feedback)
+2. **Integration tests** verify HA integration points (real fixtures)
+3. **Docker isolation** avoids dependency hell
+4. **No HA mocking** prevents false positives from complex internals
 5. **Type safety** catches errors at development time
+6. **Local dev environment** enables rapid iteration
 
-**Result:** High confidence in integration quality without complex test infrastructure
+**Result:** High confidence in integration quality with comprehensive test coverage
 
 ---
 
-## Future Improvements (v1.1+)
+## Architecture Decision
 
-If publishing to HACS or adding collaborators:
+This testing strategy reflects **ADR-012: Docker-Based Integration Testing**.
 
-1. Set up Python 3.13 environment
-2. Install pytest-homeassistant-custom-component
-3. Add HA integration tests with real fixtures
-4. Set up CI/CD pipeline
+**Key decision:** Use Docker containers for HA integration tests instead of installing pytest-homeassistant-custom-component locally, avoiding dependency conflicts while maintaining comprehensive test coverage.
 
-**For now:** Current approach is excellent for personal use and development.
+See `docs/decisions/012-docker-integration-tests.md` for full rationale.

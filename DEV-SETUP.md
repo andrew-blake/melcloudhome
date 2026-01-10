@@ -66,6 +66,40 @@ Without Advanced Mode enabled, the "Connect to Mock Server" checkbox will be hid
 
 The "Connect to Mock Server" checkbox connects to the mock server instead of production MELCloud API. The mock server will accept any credentials and return sample devices.
 
+### Mock Server Test Devices
+
+The mock server provides three pre-configured test devices:
+
+**ATA Devices (Air-to-Air Heat Pumps):**
+
+1. **Living Room** (ID: `0efce33f-5847-4042-88eb-aaf3ff6a76db`)
+   - Model: MSZ-AP35VG
+   - Capabilities: Heat, Cool, Dry, Fan, Auto modes
+   - Fan speeds: Auto, Low, Medium, High, Very High
+   - Vane control: Horizontal and Vertical
+   - Current: 20°C → Target: 22°C
+
+2. **Bedroom** (ID: `bf2d5666-e5ca-4c85-9faa-aaaa1234abcd`)
+   - Model: MSZ-LN25VG
+   - Same capabilities as Living Room
+   - Current: 18°C → Target: 20°C
+
+**ATW Device (Air-to-Water Heat Pump / Ecodan):**
+
+3. **Ecodan System** (ID: `a1b2c3d4-e5f6-4321-abcd-ef1234567890`)
+   - Controller: FTC6
+   - Zone 1 (underfloor heating): Target 25°C, Current 23°C
+   - Hot water tank: Target 50°C, Current 48°C
+   - Outside temperature: 5°C
+   - 3-way valve: Zone heating mode
+
+**Customizing Mock Data:**
+
+To modify device characteristics or add new devices:
+1. Edit `mock-server/data/*.json` files
+2. Rebuild mock server: `make dev-rebuild`
+3. Restart environment: `make dev-restart`
+
 ## Development Workflow
 
 ### After changing integration code:

@@ -5,6 +5,8 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 **Last Updated:** 2026-01-03
 **Related:** [ADR-011: Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md)
 
+**Terminology:** This document uses **ATA** (Air-to-Air) and **ATW** (Air-to-Water) as primary abbreviations. Diagrams may use shortened forms (A2A/A2W) for space efficiency.
+
 ---
 
 ## Key Architectural Principles
@@ -13,7 +15,7 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 2. **Shared Authentication** - AWS Cognito OAuth session shared across all device types
 3. **Multi-Type Container** - `UserContext` holds both device types in parallel arrays
 4. **Device-Specific Methods** - Method names indicate which device type they control
-5. **3-Way Valve Awareness** - A2W architecture reflects physical hardware limitation
+5. **3-Way Valve Awareness** - ATW architecture reflects physical hardware limitation
 
 ---
 
@@ -31,6 +33,10 @@ graph LR
 
     subgraph "MELCloud Home Integration"
         Coordinator[Update Coordinator<br/>Polling & State Management]
+
+        subgraph "Control Client Layer"
+            ControlClient[Control Clients<br/>Deduplication & Retry]
+        end
 
         subgraph "Models Layer"
             A2AModel[AirToAirUnit<br/>Model]
@@ -55,7 +61,8 @@ graph LR
     WaterHeater --> Coordinator
     Sensors --> Coordinator
 
-    Coordinator --> Client
+    Coordinator --> ControlClient
+    ControlClient --> Client
     Client --> Auth
     Client --> Context
 
@@ -70,7 +77,8 @@ graph LR
 **Key Points:**
 
 - **Single coordinator** manages polling for all device types
-- **Single client** provides unified API interface
+- **Control client layer** provides deduplication, retry logic, and session recovery
+- **Single API client** provides unified interface to MELCloud API
 - **Shared auth** handles OAuth for all endpoints
 - **UserContext** endpoint returns both device types in one response
 
@@ -313,7 +321,7 @@ classDiagram
 
 ---
 
-## A2W 3-Way Valve Behavior
+## ATW 3-Way Valve Behavior
 
 State diagram showing how the Air-to-Water heat pump's 3-way valve determines what gets heated and how this affects the `OperationMode` status field.
 
@@ -391,7 +399,7 @@ stateDiagram-v2
 ## Related Documentation
 
 - **ADR-011:** [Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md)
-- **A2A API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
-- **A2W API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
+- **ATA API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
+- **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)
 - **OpenAPI Spec:** [../openapi.yaml](../openapi.yaml)

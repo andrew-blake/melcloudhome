@@ -12,6 +12,16 @@
 
 ---
 
+## 📖 About This Document
+
+This is a **complete API reference** documenting all endpoints for Air-to-Water (ATW) heat pump devices.
+
+**Implementation Status:** The control endpoints documented here are **fully implemented** in the Home Assistant integration. Schedule API endpoints are documented for reference but not yet integrated.
+
+For current integration features, see [README.md](../../README.md) and [EXPERIMENTAL-ATW.md](../../EXPERIMENTAL-ATW.md).
+
+---
+
 ## ⚠️ CRITICAL SAFETY NOTICE
 
 **This API controls production HVAC equipment. Safety guidelines:**
@@ -91,7 +101,7 @@ https://melcloudhome.com
 ```
 
 ### Authentication
-- Uses OAuth 2.0 + AWS Cognito (same as A2A)
+- Uses OAuth 2.0 + AWS Cognito (same as ATA)
 - Session cookies managed automatically
 - Session expires ~8 hours
 - **CRITICAL:** All requests require `x-csrf: 1` header

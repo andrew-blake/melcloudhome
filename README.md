@@ -10,6 +10,16 @@
 
 Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Electric air conditioning units via the MELCloud Home API.
 
+## Terminology
+
+- **ATA (Air-to-Air)**: Split-system air conditioners and heat pumps that heat/cool air directly
+- **ATW (Air-to-Water)**: Ecodan/Hydrobox heat pump systems that heat water for underfloor heating and domestic hot water
+- **FTC Controller**: Floor-standing controller unit for ATW systems
+- **MELCloud Home**: Mitsubishi Electric's cloud service for residential HVAC control
+- **DHW**: Domestic Hot Water (hot water tank in ATW systems)
+
+Throughout this documentation, we use **ATA** and **ATW** as the primary abbreviations.
+
 ## Features
 
 ### Air-to-Air (ATA) Systems
@@ -106,18 +116,24 @@ Your devices will be automatically discovered and added.
 
 This integration uses **stable UUID-based entity IDs** to ensure your automations never break when device names change.
 
-**Entity ID Format:** `{domain}.melcloudhome_{device_uuid}_{entity_name}`
+**Entity ID Format:** `{domain}.melcloudhome_{short_id}` or `{domain}.melcloudhome_{short_id}_{entity_name}`
 
-- ATA climate example: `climate.melcloudhome_bf8d_5119_climate`
-- ATW climate example: `climate.melcloudhome_bf8d_5119_zone_1`
-- ATW water heater example: `water_heater.melcloudhome_bf8d_5119_tank`
+The `short_id` is derived from the MELCloud device UUID by taking the first 4 and last 4 characters (after removing hyphens).
+
+**Example:** UUID `bf8d5119-abcd-1234-5678-9999abcd5119` → short ID `bf8d_5119`
+
+**Entity ID Examples:**
+- ATA climate: `climate.melcloudhome_bf8d_5119`
+- ATW zone climate: `climate.melcloudhome_bf8d_5119_zone_1`
+- ATW water heater: `water_heater.melcloudhome_bf8d_5119_tank`
+- ATW tank sensor: `sensor.melcloudhome_bf8d_5119_tank_temperature`
 
 **Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
 
 **⚠️ Entity ID Recreation Warning:**
 
 - If you delete entities and use the **"Recreate entity IDs"** option, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID
-- This will change entity IDs from `climate.melcloudhome_bf8d_5119_climate` to `climate.living_room`, breaking existing automations
+- This will change entity IDs from `climate.melcloudhome_bf8d_5119` to `climate.living_room`, breaking existing automations
 - **To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
 
 ## Entities Created

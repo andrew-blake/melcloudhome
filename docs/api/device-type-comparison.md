@@ -2,6 +2,8 @@
 
 Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) devices in the MELCloud Home API.
 
+> **Implementation Note:** This document provides a complete API comparison. Control endpoints for both device types are implemented in the integration. Telemetry endpoints (section 6) are mostly reference-only - see [melcloudhome-telemetry-endpoints.md](melcloudhome-telemetry-endpoints.md) for implementation status.
+
 **Last Updated:** 2026-01-03
 
 ---
