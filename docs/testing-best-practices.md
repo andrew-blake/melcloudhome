@@ -411,20 +411,6 @@ When publishing to HACS, ensure:
 - `hacs.json` for HACS-specific configuration
 - GitHub releases for version management
 
-### Repository Structure
-
-```
-custom_components/melcloudhome/
-├── __init__.py
-├── manifest.json
-├── climate.py
-├── sensor.py
-└── api/
-    ├── __init__.py
-    ├── client.py
-    └── models.py  # Note: Now split into models.py, models_ata.py, models_atw.py
-```
-
 ### Best Practices
 
 - Register with [home-assistant/brands](https://github.com/home-assistant/brands) for UI compliance
