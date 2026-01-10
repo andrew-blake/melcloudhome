@@ -15,8 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is a **pre-release beta** for community testing. ATW heat pump support is based on HAR captures and has **NOT been tested on real hardware**.
 
 **How to test:**
-1. Enable beta releases in HACS (Settings → Entities → enable "Show beta versions" switch for MELCloud Home)
-2. Install this beta version
+1. Enable beta releases in HACS:
+   - Go to **Settings → Devices & Services → Integrations → HACS**
+   - Find **MELCloud Home** in your repository list
+   - Enable the **"Show beta versions"** switch entity (disabled by default)
+2. Install this beta version (will appear in available updates)
 3. Test with your Ecodan ATW system
 4. Report findings: https://github.com/andrew-blake/melcloudhome/issues
 
