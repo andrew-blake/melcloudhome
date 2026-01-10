@@ -356,8 +356,9 @@ POST /api/atwcloudschedule/{unitId}
 - `days`: Array of day numbers (0=Sunday, 1=Monday, ..., 6=Saturday)
 - `time`: Time in HH:MM:SS format (24-hour)
 - `operationModeZone1`: **INTEGER** (not string like control API)
-  - Mapping unknown: likely 0/1/2 for the three modes
-  - Requires testing to confirm
+  - `0` = `"HeatRoomTemperature"` (Thermostat mode)
+  - `1` = `"HeatFlowTemperature"` (Flow temperature mode)
+  - `2` = `"HeatCurve"` (Weather compensation)
 
 ### Enable/Disable Schedules
 ```

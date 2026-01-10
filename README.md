@@ -136,34 +136,47 @@ For each air conditioning unit, the following entities are created:
 
 For each heat pump system, the following entities are created:
 
-#### Climate Entity
+> **Note:** Entity IDs use stable UUID-based device names (e.g., `melcloudhome_bf8d_5119`). The friendly device name is displayed in the UI.
 
-- **Entity ID**: `climate.melcloudhome_<unit_id>`
+#### Climate Entity (Zone 1)
+
+- **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
+  - Example: `climate.melcloudhome_bf8d_5119_zone_1`
 - **Features**: Zone 1 heating control, temperature setting, preset modes
-- **Preset Modes**: Room Temperature, Flow Temperature, Curve Control
+- **Preset Modes**:
+  - `room` - Room Temperature (thermostat control)
+  - `flow` - Flow Temperature (direct flow control)
+  - `curve` - Weather Compensation Curve
 
-#### Water Heater Entity
+#### Water Heater Entity (DHW Tank)
 
-- **Entity ID**: `water_heater.melcloudhome_<unit_id>`
-- **Features**: DHW tank temperature control, operation modes (Auto/Force DHW)
+- **Entity ID**: `water_heater.melcloudhome_<uuid>_tank`
+  - Example: `water_heater.melcloudhome_bf8d_5119_tank`
+- **Features**: DHW tank temperature control, operation modes
+- **Operation Modes**:
+  - `Auto` - DHW heats when below target
+  - `Force DHW` - Force immediate DHW heating (priority mode)
+- **Note**: Water heater does NOT control system power (power state is read-only)
 
-#### Switch Entity
+#### Switch Entity (System Power)
 
-- **Entity ID**: `switch.melcloudhome_<unit_id>_system_power`
+- **Entity ID**: `switch.melcloudhome_<uuid>_system_power`
+  - Example: `switch.melcloudhome_bf8d_5119_system_power`
 - **Features**: System power control (primary power control point)
-- **Note**: Climate OFF delegates to this switch. Water heater has read-only power state.
+- **Note**: Climate OFF also controls system power (delegates to same control method as switch)
 
 #### Sensors
 
-- **Zone 1 Temperature**: `sensor.melcloudhome_<unit_id>_zone_1_temperature`
-- **Tank Temperature**: `sensor.melcloudhome_<unit_id>_tank_temperature`
-- **Operation Status**: `sensor.melcloudhome_<unit_id>_operation_status` (3-way valve position)
+- **Zone 1 Temperature**: `sensor.melcloudhome_<uuid>_zone_1_temperature`
+- **Tank Temperature**: `sensor.melcloudhome_<uuid>_tank_temperature`
+- **Operation Status**: `sensor.melcloudhome_<uuid>_operation_status`
+  - Shows current 3-way valve position: "Stop", "HotWater", "HeatRoomTemperature", etc.
 
 #### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
-- **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
-- **Forced DHW Active**: `binary_sensor.melcloudhome_<unit_id>_forced_dhw_active`
+- **Error State**: `binary_sensor.melcloudhome_<uuid>_error_state`
+- **Connection**: `binary_sensor.melcloudhome_<uuid>_connection_state`
+- **Forced DHW Active**: `binary_sensor.melcloudhome_<uuid>_forced_dhw_active`
 
 ## Supported HVAC Modes
 

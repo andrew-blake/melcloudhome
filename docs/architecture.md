@@ -148,18 +148,34 @@ classDiagram
     class MELCloudHomeClient {
         -MELCloudHomeAuth auth
         -UserContext user_context
+        +ATAControlClient ata
+        +ATWControlClient atw
         +login(user, pass) bool
         +logout() None
+        +close() None
+        +is_authenticated bool
         +get_user_context() UserContext
-        +set_temperature(id, temp) None [A2A]
-        +set_mode(id, mode) None [A2A]
-        +set_fan_speed(id, speed) None [A2A]
-        +set_zone_temperature(id, temp) None [A2W]
-        +set_dhw_temperature(id, temp) None [A2W]
-        +set_zone_mode(id, mode) None [A2W]
-        +set_forced_hot_water(id, enabled) None [A2W]
-        +set_holiday_mode(...) None [A2W]
-        +set_frost_protection(...) None [A2W]
+    }
+
+    class ATAControlClient {
+        -MELCloudHomeClient client
+        +set_temperature(id, temp) None
+        +set_mode(id, mode) None
+        +set_fan_speed(id, speed) None
+        +set_vane_vertical(id, dir) None
+        +set_vane_horizontal(id, dir) None
+        +set_power(id, enabled) None
+    }
+
+    class ATWControlClient {
+        -MELCloudHomeClient client
+        +set_temperature_zone1(id, temp) None
+        +set_temperature_dhw(id, temp) None
+        +set_operation_mode_zone1(id, mode) None
+        +set_forced_hot_water(id, enabled) None
+        +set_power(id, enabled) None
+        +set_holiday_mode(...) None
+        +set_frost_protection(...) None
     }
 
     class MELCloudHomeAuth {
@@ -244,18 +260,24 @@ classDiagram
         +int ftc_model
     }
 
-    MELCloudHomeClient --> MELCloudHomeAuth
-    MELCloudHomeClient --> UserContext
-    UserContext --> Building
-    Building --> AirToAirUnit
-    Building --> AirToWaterUnit
-    AirToAirUnit --> DeviceCapabilities
-    AirToWaterUnit --> AirToWaterCapabilities
+    MELCloudHomeClient --> MELCloudHomeAuth : uses
+    MELCloudHomeClient --> ATAControlClient : composes
+    MELCloudHomeClient --> ATWControlClient : composes
+    ATAControlClient --> MELCloudHomeClient : delegates to
+    ATWControlClient --> MELCloudHomeClient : delegates to
+    MELCloudHomeClient --> UserContext : caches
+    UserContext --> Building : contains
+    Building --> AirToAirUnit : has many
+    Building --> AirToWaterUnit : has many
+    AirToAirUnit --> DeviceCapabilities : has one
+    AirToWaterUnit --> AirToWaterCapabilities : has one
 ```
 
 **Key Points:**
 
-- **Single client class** with device-specific methods
+- **Facade Pattern:** `MELCloudHomeClient` composes specialized `ata` and `atw` clients
+- **Unified Entry Point:** Single import, device-type-specific methods via facades
+- **Usage:** `await client.ata.set_temperature(id, temp)` and `await client.atw.set_power(id, True)`
 - **Separate model classes** for each device type
 - **Separate capability classes** (different fields)
 - **UserContext** as multi-type container
@@ -438,37 +460,56 @@ await client.atw.set_forced_hot_water(unit_id, enabled)
 
 ## Home Assistant Entity Mapping
 
+> **Entity ID Strategy:** All entities use UUID-based device names for stable IDs (e.g., `melcloudhome_bf8d_5119`). Friendly device names are set via `name_by_user` in device registry and displayed in UI.
+
 ### Air-to-Air Units
 
 **Entities created per A2A unit:**
 
-- `climate.melcloudhome_{name}` - Main climate control
-- `sensor.melcloudhome_{name}_room_temperature` - Current temp
-- `sensor.melcloudhome_{name}_wifi_signal` - RSSI
-- `sensor.melcloudhome_{name}_energy` - Energy consumption (if available)
+- `climate.melcloudhome_<uuid>` - Main climate control
+  - Example: `climate.melcloudhome_bf8d_5119`
+- `sensor.melcloudhome_<uuid>_room_temperature` - Current temp
+  - Example: `sensor.melcloudhome_bf8d_5119_room_temperature`
+- `sensor.melcloudhome_<uuid>_wifi_signal` - RSSI (diagnostic)
+- `sensor.melcloudhome_<uuid>_energy` - Energy consumption (if available)
+- `binary_sensor.melcloudhome_<uuid>_error_state` - Error status
+- `binary_sensor.melcloudhome_<uuid>_connection_state` - Connection status
 
 ### Air-to-Water Units
 
 **Entities created per A2W unit:**
 
 **Primary Control:**
-- `switch.melcloudhome_{name}_system_power` - System power (ON/OFF)
+- `switch.melcloudhome_<uuid>_system_power` - System power (ON/OFF)
+  - Example: `switch.melcloudhome_bf8d_5119_system_power`
+  - Note: Primary control point for system power
 
 **Climate & Water Heating:**
-- `climate.melcloudhome_{name}_zone_1` - Zone 1 heating control
-- `water_heater.melcloudhome_{name}_tank` - DHW tank control (no power control)
+- `climate.melcloudhome_<uuid>_zone_1` - Zone 1 heating control
+  - Example: `climate.melcloudhome_bf8d_5119_zone_1`
+  - HVAC Mode OFF delegates to system power switch
+- `water_heater.melcloudhome_<uuid>_tank` - DHW tank control
+  - Example: `water_heater.melcloudhome_bf8d_5119_tank`
+  - Note: Does NOT control system power (read-only power state)
 
 **Temperature Sensors:**
-- `sensor.melcloudhome_{name}_zone_1_temperature` - Zone 1 room temp
-- `sensor.melcloudhome_{name}_tank_temperature` - DHW tank temp
+- `sensor.melcloudhome_<uuid>_zone_1_temperature` - Zone 1 room temp
+  - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
+- `sensor.melcloudhome_<uuid>_tank_temperature` - DHW tank temp
+  - Example: `sensor.melcloudhome_bf8d_5119_tank_temperature`
 
 **Status Sensors:**
-- `sensor.melcloudhome_{name}_operation_status` - 3-way valve position
+- `sensor.melcloudhome_<uuid>_operation_status` - 3-way valve position
+  - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
+  - Values: "Stop", "HotWater", "HeatRoomTemperature", etc.
 
 **Binary Sensors:**
-- `binary_sensor.melcloudhome_{name}_error` - Error state
-- `binary_sensor.melcloudhome_{name}_connection` - Connection status
-- `binary_sensor.melcloudhome_{name}_forced_dhw_active` - Forced DHW mode active
+- `binary_sensor.melcloudhome_<uuid>_error_state` - Error state
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
+- `binary_sensor.melcloudhome_<uuid>_connection_state` - Connection status
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_connection_state`
+- `binary_sensor.melcloudhome_<uuid>_forced_dhw_active` - Forced DHW mode active
+  - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
 
 ---
 
@@ -496,25 +537,25 @@ sequenceDiagram
 
     Note over HA,API: A2A Control
     HA->>Coord: climate.set_temperature(a2a_id, 22°C)
-    Coord->>Client: set_temperature(a2a_id, 22)
+    Coord->>Client: client.ata.set_temperature(a2a_id, 22)
     Client->>API: PUT /api/ataunit/{id}<br/>{"setTemperature": 22, ...nulls...}
     API-->>Client: 200 OK (empty)
 
     Note over HA,API: A2W Zone Control
     HA->>Coord: climate.set_temperature(a2w_id, 21°C)
-    Coord->>Client: set_zone_temperature(a2w_id, 21)
+    Coord->>Client: client.atw.set_temperature_zone1(a2w_id, 21)
     Client->>API: PUT /api/atwunit/{id}<br/>{"setTemperatureZone1": 21, ...nulls...}
     API-->>Client: 200 OK (empty)
 
     Note over HA,API: A2W DHW Control
     HA->>Coord: water_heater.set_temperature(a2w_id, 50°C)
-    Coord->>Client: set_dhw_temperature(a2w_id, 50)
+    Coord->>Client: client.atw.set_temperature_dhw(a2w_id, 50)
     Client->>API: PUT /api/atwunit/{id}<br/>{"setTankWaterTemperature": 50, ...nulls...}
     API-->>Client: 200 OK (empty)
 
     Note over HA,API: A2W Priority Mode
     HA->>Coord: switch.turn_on(forced_hot_water)
-    Coord->>Client: set_forced_hot_water(a2w_id, True)
+    Coord->>Client: client.atw.set_forced_hot_water(a2w_id, True)
     Client->>API: PUT /api/atwunit/{id}<br/>{"forcedHotWaterMode": true, ...nulls...}
     API-->>Client: 200 OK (empty)
 
@@ -539,24 +580,34 @@ classDiagram
     class MELCloudHomeClient {
         -MELCloudHomeAuth auth
         -UserContext user_context
+        +ATAControlClient ata
+        +ATWControlClient atw
         +login(user, pass) bool
         +logout() None
         +close() None
         +is_authenticated bool
         +get_user_context() UserContext
-        +get_devices() List~AirToAirUnit~
-        +get_device(id) AirToAirUnit
-        +set_temperature(id, temp) [A2A]
-        +set_mode(id, mode) [A2A]
-        +set_fan_speed(id, speed) [A2A]
-        +set_vane_vertical(id, dir) [A2A]
-        +set_vane_horizontal(id, dir) [A2A]
-        +set_zone_temperature(id, temp) [A2W]
-        +set_dhw_temperature(id, temp) [A2W]
-        +set_zone_mode(id, mode) [A2W]
-        +set_forced_hot_water(id, enabled) [A2W]
-        +set_holiday_mode(ids, ...) [A2W]
-        +set_frost_protection(ids, ...) [A2W]
+    }
+
+    class ATAControlClient {
+        -MELCloudHomeClient client
+        +set_temperature(id, temp) None
+        +set_mode(id, mode) None
+        +set_fan_speed(id, speed) None
+        +set_vane_vertical(id, dir) None
+        +set_vane_horizontal(id, dir) None
+        +set_power(id, enabled) None
+    }
+
+    class ATWControlClient {
+        -MELCloudHomeClient client
+        +set_temperature_zone1(id, temp) None
+        +set_temperature_dhw(id, temp) None
+        +set_operation_mode_zone1(id, mode) None
+        +set_forced_hot_water(id, enabled) None
+        +set_power(id, enabled) None
+        +set_holiday_mode(...) None
+        +set_frost_protection(...) None
     }
 
     class MELCloudHomeAuth {
@@ -655,6 +706,10 @@ classDiagram
     }
 
     MELCloudHomeClient --> MELCloudHomeAuth : uses
+    MELCloudHomeClient --> ATAControlClient : composes
+    MELCloudHomeClient --> ATWControlClient : composes
+    ATAControlClient --> MELCloudHomeClient : delegates to
+    ATWControlClient --> MELCloudHomeClient : delegates to
     MELCloudHomeClient --> UserContext : caches
     UserContext --> Building : contains
     Building --> AirToAirUnit : has many

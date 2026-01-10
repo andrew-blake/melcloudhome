@@ -53,23 +53,27 @@ def _create_discovery_listener(
             if not coordinator.data:
                 return
 
-            # Find current device IDs from API
+            # Find current device IDs from API (both ATA and ATW)
             current_ids: set[str] = set()
             for building in coordinator.data.buildings:
                 for unit in building.air_to_air_units:
+                    current_ids.add(unit.id)
+                for unit in building.air_to_water_units:
                     current_ids.add(unit.id)
 
             # Detect new devices
             new_device_ids = current_ids - known_ids
 
             if new_device_ids:
-                # Get names of new devices
-                new_device_names = [
-                    unit.name
-                    for building in coordinator.data.buildings
-                    for unit in building.air_to_air_units
-                    if unit.id in new_device_ids
-                ]
+                # Get names of new devices (check both ATA and ATW)
+                new_device_names = []
+                for building in coordinator.data.buildings:
+                    for unit in building.air_to_air_units:
+                        if unit.id in new_device_ids:
+                            new_device_names.append(f"{unit.name} (ATA)")
+                    for unit in building.air_to_water_units:
+                        if unit.id in new_device_ids:
+                            new_device_names.append(f"{unit.name} (ATW)")
 
                 _LOGGER.info(
                     "Discovered %d new device(s): %s",
@@ -244,10 +248,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up energy polling
     await coordinator.async_setup()
 
-    # Initialize known device IDs from first fetch
+    # Initialize known device IDs from first fetch (both ATA and ATW)
     known_device_ids: set[str] = set()
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
+            known_device_ids.add(unit.id)
+        for unit in building.air_to_water_units:
             known_device_ids.add(unit.id)
 
     _LOGGER.info("Initial device discovery: %d device(s) found", len(known_device_ids))
