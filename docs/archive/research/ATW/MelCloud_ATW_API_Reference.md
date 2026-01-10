@@ -391,7 +391,6 @@ PUT /api/atwunit/{unitId}
 ## Device Information
 
 **Tested with:**
-- Model: FTC4 (FTC Model 3)
 - Configuration: Single zone (no Zone 2), DHW support
 - System type: Underfloor heating + domestic hot water
 

@@ -525,7 +525,6 @@ This API documentation is based on comprehensive testing:
 
 ### Hardware Tested
 - **Model:** EHSCVM2D Hydrokit
-- **FTC:** Model 3
 - **Configuration:** Single zone (Zone 2: no), DHW support
 - **Heating type:** Underfloor heating
 - **Location:** Spain (vacation home)
