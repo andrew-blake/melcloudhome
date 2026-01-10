@@ -126,14 +126,6 @@ class ATWWaterHeater(
         return mode
 
     @property
-    def is_on(self) -> bool | None:
-        """Return True if water heater (and system) is on."""
-        device = self.get_device()
-        if device is None:
-            return None
-        return device.power
-
-    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         device = self.get_device()

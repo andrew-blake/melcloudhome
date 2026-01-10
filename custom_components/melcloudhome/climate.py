@@ -38,7 +38,7 @@ async def async_setup_entry(
         for unit in building.air_to_air_units:
             entities.append(ATAClimate(coordinator, unit, building, entry))
 
-    # ATW (Air-to-Water) climate entities - Zone 1 only (Zone 2 deferred to Phase 4)
+    # ATW (Air-to-Water) climate entities - Zone 1 only (Zone 2 not currently implemented)
     for building in coordinator.data.buildings:
         for unit in building.air_to_water_units:
             # Zone 1 - always created

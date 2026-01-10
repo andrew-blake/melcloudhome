@@ -30,12 +30,13 @@ Home Assistant custom integration for **MELCloud Home** - Control Mitsubishi Ele
 ### ⚠️ Air-to-Water (ATW) Heat Pumps (EXPERIMENTAL)
 
 **Platforms Implemented:**
+
 - **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
 - **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Auto/Force DHW)
 - **Switch** (System Power): System on/off control (primary power control point)
 - **Sensors**: Zone 1 room temperature, tank temperature, operation status (3-way valve position)
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
-- **Note**: Energy monitoring not yet implemented for ATW devices (planned for future release)
+- **Note**: Energy monitoring is an ATA-only feature (not available for ATW devices)
 
 **⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
 
@@ -106,6 +107,7 @@ Your devices will be automatically discovered and added.
 This integration uses **stable UUID-based entity IDs** to ensure your automations never break when device names change.
 
 **Entity ID Format:** `{domain}.melcloudhome_{device_uuid}_{entity_name}`
+
 - ATA climate example: `climate.melcloudhome_bf8d_5119_climate`
 - ATW climate example: `climate.melcloudhome_bf8d_5119_zone_1`
 - ATW water heater example: `water_heater.melcloudhome_bf8d_5119_tank`
@@ -141,6 +143,43 @@ For each air conditioning unit, the following entities are created:
 - **Error State**: `binary_sensor.melcloudhome_<unit_id>_error_state`
 - **Connection**: `binary_sensor.melcloudhome_<unit_id>_connection_state`
 
+#### ATA Control Options
+
+**Supported HVAC Modes:**
+
+- **Off**: Unit powered off
+- **Heat**: Heating mode
+- **Cool**: Cooling mode
+- **Dry**: Dehumidification mode
+- **Fan Only**: Fan only (no heating/cooling)
+- **Auto**: Automatic mode
+
+**Fan Speeds:**
+
+- Auto
+- Level 1 (Quiet)
+- Level 2 (Low)
+- Level 3 (Medium)
+- Level 4 (High)
+- Level 5 (Very High)
+
+**Swing Modes (Vertical):**
+
+- Auto, Swing, One (Top), Two, Three (Middle), Four, Five (Bottom)
+
+**Swing Modes (Horizontal):**
+
+- Auto, Swing, Left, LeftCentre, Centre, RightCentre, Right
+
+#### ATA Energy Dashboard Integration
+
+Energy consumption sensors are compatible with Home Assistant's Energy Dashboard:
+
+1. Go to **Settings** → **Dashboards** → **Energy**
+2. Add your devices under "Individual devices"
+3. Select the energy sensor for each unit
+4. Energy data accumulates over time and persists across restarts
+
 ### ⚠️ Air-to-Water (ATW) Systems (EXPERIMENTAL)
 
 For each heat pump system, the following entities are created:
@@ -149,28 +188,21 @@ For each heat pump system, the following entities are created:
 
 - **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
   - Example: `climate.melcloudhome_bf8d_5119_zone_1`
-- **Features**: Zone 1 heating control, temperature setting, preset modes
-- **Preset Modes**:
-  - **Room** - Room Temperature mode (thermostat control)
-  - **Flow** - Flow Temperature mode (direct flow control)
-  - **Curve** - Weather Compensation Curve mode
+- **Features**: Zone 1 heating control, temperature setting (10-30°C), preset modes, HVAC modes
 
 #### Water Heater Entity (DHW Tank)
 
 - **Entity ID**: `water_heater.melcloudhome_<uuid>_tank`
   - Example: `water_heater.melcloudhome_bf8d_5119_tank`
-- **Features**: DHW tank temperature control, operation modes
-- **Operation Modes**:
-  - `Auto` - DHW heats when below target
-  - `Force DHW` - Force immediate DHW heating (priority mode)
-- **Note**: Water heater does NOT control system power (power state is read-only)
+- **Features**: DHW tank temperature control (40-60°C), operation modes
+- **Note**: Water heater reflects system power state but cannot control it (use switch for power)
 
 #### Switch Entity (System Power)
 
 - **Entity ID**: `switch.melcloudhome_<uuid>_system_power`
   - Example: `switch.melcloudhome_bf8d_5119_system_power`
 - **Features**: System power control (primary power control point)
-- **Note**: Climate OFF also controls system power (delegates to same control method as switch)
+- **Note**: Climate OFF also controls system power (both delegate to same control method)
 
 #### Sensors
 
@@ -185,54 +217,55 @@ For each heat pump system, the following entities are created:
 - **Connection**: `binary_sensor.melcloudhome_<uuid>_connection_state`
 - **Forced DHW Active**: `binary_sensor.melcloudhome_<uuid>_forced_dhw_active`
 
-## Supported HVAC Modes
+#### ATW Control Options
 
-- **Off**: Unit powered off
-- **Heat**: Heating mode
-- **Cool**: Cooling mode
-- **Dry**: Dehumidification mode
-- **Fan Only**: Fan only (no heating/cooling)
-- **Auto**: Automatic mode
+**Supported HVAC Modes:**
 
-## Fan Speeds
+- **OFF**: System powered off
+- **HEAT**: Zone 1 heating enabled (system on)
 
-- Auto
-- Level 1 (Quiet)
-- Level 2 (Low)
-- Level 3 (Medium)
-- Level 4 (High)
-- Level 5 (Very High)
+**Zone Preset Modes** (heating strategies):
 
-## Swing Modes
+- **Room** (Recommended) - Maintains room at target temperature (like a thermostat)
+- **Flow** (Advanced) - Directly controls heating water temperature
+- **Curve** (Advanced) - Auto-adjusts based on outdoor temperature
 
-### Vertical (Standard Swing)
+💡 **Most users should use Room mode** - it's the most intuitive
 
-- Auto
-- Swing
-- One (Top)
-- Two
-- Three (Middle)
-- Four
-- Five (Bottom)
+**Water Heater Operation Modes:**
 
-### Horizontal (Swing Horizontal Mode)
+- **Auto** - DHW heats automatically when below target temperature
+- **Force DHW** - Force immediate DHW heating (priority mode, suspends zone heating)
 
-- Auto
-- Swing
-- Left
-- LeftCentre
-- Centre
-- RightCentre
-- Right
+**Temperature Ranges:**
 
-## Energy Dashboard Integration
+- Zone 1: 10-30°C
+- DHW Tank: 40-60°C
 
-Energy consumption sensors are compatible with Home Assistant's Energy Dashboard:
+#### Understanding ATW Operation (3-Way Valve)
 
-1. Go to **Settings** → **Dashboards** → **Energy**
-2. Add your devices under "Individual devices"
-3. Select the energy sensor for each unit
-4. Energy data accumulates over time and persists across restarts
+**3-Way Valve Limitation:**
+Your heat pump can only heat ONE thing at a time:
+
+- Either Zone 1 (space heating)
+- OR DHW tank (hot water)
+- NOT both simultaneously
+
+**What You'll See:**
+
+- Climate entity shows "Heating" only when valve serves Zone 1
+- Climate shows "Idle" when valve serves DHW (even if zone below target)
+- Operation Status sensor shows current valve position
+- Force DHW mode temporarily suspends zone heating
+
+**Example:**
+
+1. Zone target: 21°C, DHW target: 50°C
+2. Zone at 19°C (needs heat), DHW at 48°C (needs heat)
+3. System heats Zone 1 → Climate shows "Heating"
+4. Zone reaches 21°C → System switches to DHW
+5. System heats DHW → Climate shows "Idle", Operation Status shows "HotWater"
+6. DHW reaches 50°C → System returns to monitoring both
 
 ## Troubleshooting
 

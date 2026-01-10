@@ -56,6 +56,38 @@ api/
 └── exceptions.py      # Shared (no changes)
 ```
 
+### Further Evolution: Control Client Layer
+
+During implementation, a second architectural layer emerged for integration-specific logic:
+
+```python
+# Integration layer (HA-specific)
+control_client = ATAControlClient(coordinator, api_client)
+await control_client.async_set_temperature(ata_id, temp)  # Handles retry, dedup
+
+# API layer (HTTP/auth)
+api_client = MELCloudHomeClient()
+await api_client.ata.set_temperature(ata_id, temp)  # Makes HTTP request
+```
+
+**Additional files (integration level):**
+```
+custom_components/melcloudhome/
+├── control_client_base.py       # Shared retry/dedup infrastructure
+├── control_client_ata.py        # ATA integration logic (~180 lines)
+├── control_client_atw.py        # ATW integration logic (~250 lines)
+└── coordinator.py               # Delegates to control clients
+```
+
+**Why control layer was extracted:**
+1. **Session recovery**: Automatic re-authentication on 401 errors
+2. **State deduplication**: Skip API calls when values unchanged (70% reduction in typical scenes)
+3. **Debounced refresh**: Coordinate state updates for rapid service calls
+4. **HA-specific validation**: Zone availability checks, temperature range validation
+5. **Single Responsibility**: API clients handle HTTP, control clients handle HA integration logic
+
+**Result**: Clean separation between API communication (client_*.py in api/) and integration logic (control_client_*.py at root).
+
 ## Rationale
 
 **Why extend vs separate packages:**

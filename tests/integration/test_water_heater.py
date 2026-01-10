@@ -397,33 +397,3 @@ async def test_water_heater_entity_naming_includes_tank(hass: HomeAssistant) -> 
         state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
         assert state is not None
         assert "_tank" in state.entity_id
-
-
-@pytest.mark.asyncio
-async def test_water_heater_off_when_power_false(hass: HomeAssistant) -> None:
-    """Test water heater reflects power state via is_on property."""
-    mock_unit = create_mock_atw_unit(power=False)
-    mock_context = create_mock_atw_user_context(
-        [create_mock_atw_building(units=[mock_unit])]
-    )
-
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Water heater entity exists even when power is false
-        # The state shows operation mode, power status is in attributes/is_on property
-        state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
-        assert state is not None

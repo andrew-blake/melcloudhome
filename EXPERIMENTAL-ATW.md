@@ -33,8 +33,8 @@
 | Operation status sensor | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
 | Binary sensors (error, connection, forced DHW) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
 | Preset modes (Room/Flow/Curve) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| Zone 2 support | ❌ Not implemented | Deferred to Phase 4 |
-| Energy monitoring | ❌ Not implemented | Planned for future release |
+| Zone 2 support | ❌ Not implemented | Single zone systems only |
+| Energy monitoring | ❌ Not available | ATA-only feature |
 
 ---
 
@@ -98,10 +98,10 @@ Based on HAR analysis from one user system:
 #### Climate Entity (Zone 1)
 - [ ] **Entity ID**: `climate.melcloudhome_<uuid>_zone_1`
 - [ ] Temperature setting (10-30°C range)
-- [ ] Preset mode changes:
-  - [ ] **Room** - Room Temperature mode (thermostat control)
-  - [ ] **Flow** - Flow Temperature mode (direct flow control)
-  - [ ] **Curve** - Weather Compensation Curve mode
+- [ ] Preset mode changes (heating strategies):
+  - [ ] **Room** (Recommended) - Maintains room at target temp (like a thermostat)
+  - [ ] **Flow** (Advanced) - Directly controls heating water temperature
+  - [ ] **Curve** (Advanced) - Auto-adjusts based on outdoor temperature
 - [ ] HVAC mode:
   - [ ] `HEAT` - Turn on system and enable Zone 1 heating
   - [ ] `OFF` - Turn off entire system (delegates to switch)

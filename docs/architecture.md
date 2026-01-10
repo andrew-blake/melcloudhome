@@ -112,59 +112,106 @@ All entities use UUID-based device names for stable entity IDs (format: `melclou
 
 ## Device Type Control Flow
 
-Sequence diagram showing complete flow from authentication through control operations.
+Sequence diagram showing complete flow from authentication through control operations, including the control client layer that handles retry logic and session recovery.
 
 ```mermaid
 sequenceDiagram
     participant HA as Home Assistant
     participant Coord as Coordinator
-    participant Client as MELCloudHomeClient
+    participant CtrlClient as ControlClient<br/>(ATA/ATW)
+    participant APIClient as MELCloudHomeClient
     participant API as MELCloud API
 
     Note over HA,API: Initial Setup
-    HA->>Client: login(user, pass)
-    Client->>API: OAuth flow (AWS Cognito)
-    API-->>Client: Session established
+    HA->>APIClient: login(user, pass)
+    APIClient->>API: OAuth flow (AWS Cognito)
+    API-->>APIClient: Session established
 
     Note over HA,API: Device Discovery
-    Coord->>Client: get_user_context()
-    Client->>API: GET /api/user/context
-    API-->>Client: { airToAirUnits[], airToWaterUnits[] }
-    Client-->>Coord: UserContext (both types)
+    Coord->>APIClient: get_user_context()
+    APIClient->>API: GET /api/user/context
+    API-->>APIClient: { airToAirUnits[], airToWaterUnits[] }
+    APIClient-->>Coord: UserContext (both types)
 
-    Note over HA,API: A2A Control
+    Note over HA,API: A2A Control (with retry)
     HA->>Coord: climate.set_temperature(a2a_id, 22°C)
-    Coord->>Client: client.ata.set_temperature(a2a_id, 22)
-    Client->>API: PUT /api/ataunit/{id}<br/>{"setTemperature": 22, ...nulls...}
-    API-->>Client: 200 OK (empty)
+    Coord->>CtrlClient: control_client.async_set_temperature(a2a_id, 22)
+    CtrlClient->>CtrlClient: Check if value changed<br/>(skip if duplicate)
+    CtrlClient->>APIClient: client.ata.set_temperature(a2a_id, 22)
+    APIClient->>API: PUT /api/ataunit/{id}<br/>{"setTemperature": 22, ...nulls...}
+    alt Session Expired
+        API-->>APIClient: 401 Unauthorized
+        APIClient-->>CtrlClient: SessionExpiredError
+        CtrlClient->>APIClient: Re-authenticate
+        CtrlClient->>APIClient: Retry set_temperature
+        APIClient->>API: PUT /api/ataunit/{id}
+    end
+    API-->>APIClient: 200 OK (empty)
+    APIClient-->>CtrlClient: Success
+    CtrlClient->>Coord: Debounced refresh (2s delay)
 
-    Note over HA,API: A2W Zone Control
+    Note over HA,API: A2W Zone Control (similar retry logic)
     HA->>Coord: climate.set_temperature(a2w_id, 21°C)
-    Coord->>Client: client.atw.set_temperature_zone1(a2w_id, 21)
-    Client->>API: PUT /api/atwunit/{id}<br/>{"setTemperatureZone1": 21, ...nulls...}
-    API-->>Client: 200 OK (empty)
-
-    Note over HA,API: A2W DHW Control
-    HA->>Coord: water_heater.set_temperature(a2w_id, 50°C)
-    Coord->>Client: client.atw.set_temperature_dhw(a2w_id, 50)
-    Client->>API: PUT /api/atwunit/{id}<br/>{"setTankWaterTemperature": 50, ...nulls...}
-    API-->>Client: 200 OK (empty)
-
-    Note over HA,API: A2W Priority Mode
-    HA->>Coord: switch.turn_on(forced_hot_water)
-    Coord->>Client: client.atw.set_forced_hot_water(a2w_id, True)
-    Client->>API: PUT /api/atwunit/{id}<br/>{"forcedHotWaterMode": true, ...nulls...}
-    API-->>Client: 200 OK (empty)
+    Coord->>CtrlClient: control_client.async_set_temperature_zone1(a2w_id, 21)
+    CtrlClient->>APIClient: client.atw.set_temperature_zone1(a2w_id, 21)
+    APIClient->>API: PUT /api/atwunit/{id}<br/>{"setTemperatureZone1": 21, ...nulls...}
+    API-->>APIClient: 200 OK (empty)
 
     Note over HA,API: Periodic State Update
     loop Every 60 seconds
-        Coord->>Client: get_user_context()
-        Client->>API: GET /api/user/context
-        API-->>Client: Current state (all devices)
-        Client-->>Coord: Updated state
+        Coord->>APIClient: get_user_context()
+        APIClient->>API: GET /api/user/context
+        API-->>APIClient: Current state (all devices)
+        APIClient-->>Coord: Updated state
         Coord->>HA: Update all entities
     end
 ```
+
+**Control Client Responsibilities:**
+- **Session recovery**: Automatically re-authenticates and retries on 401 errors
+- **Deduplication**: Skips API calls when value hasn't changed
+- **Debounced refresh**: Coordinates state refresh with 2-second delay for rapid calls
+- **HA-specific validation**: Checks zone availability, temperature ranges
+
+---
+
+## Integration Layer Architecture
+
+Shows the control client layer that sits between the coordinator and API client, providing session recovery and HA-specific logic.
+
+```mermaid
+graph TD
+    Coordinator[MELCloudHomeCoordinator]
+    ControlATA[ATAControlClient]
+    ControlATW[ATWControlClient]
+    APIClient[MELCloudHomeClient]
+    ATAAPI[ATAControlClient Facade]
+    ATWAPI[ATWControlClient Facade]
+
+    Coordinator -->|ATA controls| ControlATA
+    Coordinator -->|ATW controls| ControlATW
+    ControlATA -->|API calls| APIClient
+    ControlATW -->|API calls| APIClient
+    APIClient --> ATAAPI
+    APIClient --> ATWAPI
+
+    style ControlATA fill:#fff4e1,stroke:#f9a825
+    style ControlATW fill:#f0ffe1,stroke:#7cb342
+    style APIClient fill:#e1f5ff,stroke:#039be5
+
+    note1[Control Layer:<br/>- Session retry<br/>- Deduplication<br/>- Validation]
+    note2[API Layer:<br/>- HTTP/auth<br/>- Device facades]
+
+    ControlATA -.-> note1
+    ControlATW -.-> note1
+    APIClient -.-> note2
+```
+
+**Key Points:**
+- **Two separate control client files**: `control_client_ata.py` and `control_client_atw.py`
+- **Integration-level concerns**: Session recovery, retry logic, state deduplication
+- **API-level concerns**: HTTP communication, authentication, device-type facades
+- **Coordinator delegates**: All control operations go through control clients, never directly to API client
 
 ---
 
@@ -312,16 +359,6 @@ stateDiagram-v2
 
         3-way valve: → ZONE 1
     end note
-```
-
-### Physical System
-
-```
-Heat Pump → [3-Way Valve] → Zone 1 Heating
-                    ↓
-              DHW Tank Heating
-
-Only ONE output active at a time
 ```
 
 ### Control Implications

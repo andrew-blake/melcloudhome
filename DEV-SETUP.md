@@ -46,6 +46,10 @@ To see the "Connect to Mock Server" option during integration setup:
 2. Enable **Advanced Mode** toggle
 3. Click **Update** to save
 
+**Why required?** The "Connect to Mock Server" option is hidden from regular users to prevent accidental connection to mock API in production. Advanced Mode is the standard Home Assistant pattern for developer-only features.
+
+**Technical details:** See `config_flow.py` - checkbox only shown when `user_input.get("show_advanced_options")` is True.
+
 Without Advanced Mode enabled, the "Connect to Mock Server" checkbox will be hidden (production behavior).
 
 ### 3. Add the MELCloud Home integration

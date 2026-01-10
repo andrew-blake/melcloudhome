@@ -40,7 +40,8 @@ When diagnosing issues:
 1. **Check container status:** `ssh ha "sudo docker ps"`
 2. **View logs:** `ssh ha "sudo docker logs homeassistant --tail 500"`
 3. **Filter errors:** `ssh ha "sudo docker logs homeassistant --tail 500 2>&1 | grep -i error | tail -50"`
-4. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
+5. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
+6. **Check entity states:** `ssh ha "sudo docker exec homeassistant ha states list | grep melcloudhome.*"`
 
 See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic workflows and common issue patterns.
 
@@ -386,11 +387,25 @@ Include this in beta CHANGELOG entries:
 
 See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
 
-**Integration tests run in Docker:**
-- Uses `pytest-homeassistant-custom-component` (can't install locally due to aiohttp conflicts)
-- Docker container provides clean test environment with HA fixtures
-- Run with: `make test-ha` (builds image and runs tests automatically)
+**Testing Workflow:**
+
+**API tests** (run natively):
+```bash
+make test              # Run API tests (no Docker needed)
+pytest tests/api/ -v   # Run specific API tests
+```
+- Test API client in isolation with VCR cassettes
+- No Home Assistant dependencies required
+
+**Integration tests** (Docker - PRIMARY workflow):
+```bash
+make test-ha           # Run HA integration tests (recommended)
+```
+- Docker is the **primary and recommended** approach for integration tests
+- Provides clean environment matching CI with all Home Assistant dependencies
+- Uses `pytest-homeassistant-custom-component` (cannot install locally due to aiohttp conflicts)
 - Tests execute from `tests/integration/` directory to load pytest_plugins correctly
+- Automatically builds image and runs tests
 
 **Quick rules for integration tests:**
 - ✅ Test through `hass.states` and `hass.services` ONLY
@@ -496,7 +511,16 @@ The tool automatically:
 - Monitors logs for errors
 - Tests entities via API (with `--test`)
 
-**Configuration:** Set `HA_SSH_HOST`, `HA_CONTAINER`, `HA_URL`, and `HA_TOKEN` in `.env`
+**Configuration:** Create `.env` in project root:
+
+```bash
+HA_SSH_HOST=ha
+HA_CONTAINER=homeassistant
+HA_URL=http://homeassistant.local:8123
+HA_TOKEN=your_long_lived_access_token
+```
+
+**Where to get token:** Settings → Your Profile → Long-lived access tokens
 
 **Full documentation:** See [tools/README.md](tools/README.md)
 
