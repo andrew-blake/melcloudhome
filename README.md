@@ -280,7 +280,11 @@ These intervals balance update frequency with API rate limits.
 - API tests: Authentication, device control, data parsing
 - Quality gates: All PRs require passing tests and coverage checks
 
-For development setup and testing guidelines, see [docs/testing-best-practices.md](docs/testing-best-practices.md).
+**Documentation:**
+
+- [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
+- [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
+- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-013)
 
 ## Support
 

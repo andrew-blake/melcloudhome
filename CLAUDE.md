@@ -62,12 +62,17 @@ custom_components/melcloudhome/  # Custom component (bundled approach)
                                  # (config_flow, coordinator, diagnostics, helpers, etc.)
 
 docs/
+├── architecture.md              # High-level system architecture (visual diagrams)
+│                                # - Multi-device-type patterns, ATW entity design
+│                                # - 3-way valve behavior, API layer structure
 ├── api/                         # API documentation
 │   ├── ata-api-reference.md     # Air-to-Air API reference
 │   ├── atw-api-reference.md     # Air-to-Water API reference
 │   ├── device-type-comparison.md # ATA vs ATW comparison
 │   └── melcloudhome-telemetry-endpoints.md
 ├── decisions/                   # Architecture Decision Records (ADRs)
+│                                # - ADR-001 through ADR-013 (see docs/README.md)
+│                                # - Key: ADR-011 (multi-device arch), ADR-012 (ATW entities)
 ├── research/                    # Current research documents
 │   └── REVERSE_ENGINEERING.md   # Comprehensive reverse engineering guide
 ├── archive/research/            # Historical research and planning documents
