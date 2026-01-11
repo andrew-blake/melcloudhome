@@ -13,28 +13,86 @@
               "cards": [
                 {
                   "type": "heading",
-                  "heading": "ATW",
+                  "heading": "ATW - Heat Pump",
                   "heading_style": "title"
                 },
                 {
-                  "type": "thermostat",
-                  "entity": "water_heater.melcloudhome_bf2d_5666_tank",
-                  "features": [
+                  "type": "vertical-stack",
+                  "cards": [
                     {
-                      "type": "water-heater-operation-modes"
-                    }
-                  ]
-                },
-                {
-                  "type": "thermostat",
-                  "entity": "climate.melcloudhome_bf2d_5666_zone_1",
-                  "features": [
-                    {
-                      "type": "climate-hvac-modes"
+                      "type": "thermostat",
+                      "entity": "climate.melcloudhome_bf2d_5666_zone_1",
+                      "features": [
+                        {
+                          "type": "climate-hvac-modes"
+                        },
+                        {
+                          "style": "icons",
+                          "type": "climate-preset-modes"
+                        }
+                      ]
                     },
                     {
-                      "style": "icons",
-                      "type": "climate-preset-modes"
+                      "type": "tile",
+                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "ATW - Tank",
+                  "heading_style": "title"
+                },
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "water_heater.melcloudhome_bf2d_5666_tank",
+                      "features": [
+                        {
+                          "type": "water-heater-operation-modes"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "sensor.melcloudhome_bf2d_5666_operation_status",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "show_entity_picture": false,
+                      "hide_state": false,
+                      "vertical": false,
+                      "features_position": "bottom"
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "binary_sensor.melcloudhome_bf2d_5666_forced_dhw_active",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
                     }
                   ]
                 }
@@ -84,30 +142,88 @@
               "cards": [
                 {
                   "type": "heading",
-                  "heading": "ATW",
+                  "heading": "ATW - Heat Pump",
                   "heading_style": "title"
                 },
                 {
-                  "type": "thermostat",
-                  "entity": "water_heater.melcloudhome_bf2d_5666_tank",
-                  "features": [
+                  "type": "vertical-stack",
+                  "cards": [
                     {
-                      "style": "dropdown",
-                      "type": "water-heater-operation-modes"
-                    }
-                  ]
-                },
-                {
-                  "type": "thermostat",
-                  "entity": "climate.melcloudhome_bf2d_5666_zone_1",
-                  "features": [
-                    {
-                      "style": "dropdown",
-                      "type": "climate-hvac-modes"
+                      "type": "thermostat",
+                      "entity": "climate.melcloudhome_bf2d_5666_zone_1",
+                      "features": [
+                        {
+                          "style": "dropdown",
+                          "type": "climate-hvac-modes"
+                        },
+                        {
+                          "style": "dropdown",
+                          "type": "climate-preset-modes"
+                        }
+                      ]
                     },
                     {
-                      "style": "dropdown",
-                      "type": "climate-preset-modes"
+                      "type": "tile",
+                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "ATW - Tank",
+                  "heading_style": "title"
+                },
+                {
+                  "type": "vertical-stack",
+                  "cards": [
+                    {
+                      "type": "thermostat",
+                      "entity": "water_heater.melcloudhome_bf2d_5666_tank",
+                      "features": [
+                        {
+                          "style": "dropdown",
+                          "type": "water-heater-operation-modes"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "sensor.melcloudhome_bf2d_5666_operation_status",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "show_entity_picture": false,
+                      "hide_state": false,
+                      "vertical": false,
+                      "features_position": "bottom"
+                    },
+                    {
+                      "type": "tile",
+                      "entity": "binary_sensor.melcloudhome_bf2d_5666_forced_dhw_active",
+                      "name": {
+                        "type": "entity"
+                      },
+                      "vertical": false,
+                      "features_position": "bottom"
                     }
                   ]
                 }
