@@ -1,34 +1,47 @@
 {
   "entity": {
     "climate": {
-      "heatpump": {
-        "default": "mdi:heat-pump"
-      }
-    },
-    "sensor": {
-      "room_temperature": {
-        "default": "mdi:thermometer"
-      },
-      "wifi_signal": {
-        "default": "mdi:wifi"
-      },
-      "energy": {
-        "default": "mdi:lightning-bolt"
-      }
-    },
-    "binary_sensor": {
-      "error_state": {
-        "default": "mdi:alert-circle",
-        "state": {
-          "on": "mdi:alert-circle",
-          "off": "mdi:check-circle"
-        }
-      },
-      "connection_state": {
-        "default": "mdi:lan-connect",
-        "state": {
-          "on": "mdi:lan-connect",
-          "off": "mdi:lan-disconnect"
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "mdi:home-thermometer",
+              "flow": "mdi:thermometer-lines",
+              "curve": "mdi:chart-bell-curve"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "mdi:fan-auto",
+              "one": "mdi:numeric-1",
+              "two": "mdi:numeric-2",
+              "three": "mdi:numeric-3",
+              "four": "mdi:numeric-4",
+              "five": "mdi:numeric-5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "mdi:refresh-auto",
+              "swing": "mdi:swap-vertical",
+              "one": "mdi:numeric-1",
+              "two": "mdi:numeric-2",
+              "three": "mdi:numeric-3",
+              "four": "mdi:numeric-4",
+              "five": "mdi:numeric-5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "mdi:refresh-auto",
+              "swing": "mdi:swap-horizontal",
+              "left": "mdi:arrow-left-bold",
+              "leftcentre": "mdi:arrow-left",
+              "centre": "mdi:minus",
+              "rightcentre": "mdi:arrow-right",
+              "right": "mdi:arrow-right-bold"
+            }
+          }
         }
       }
     }

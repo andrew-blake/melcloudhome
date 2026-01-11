@@ -112,8 +112,8 @@ Based on HAR analysis from one user system:
   - Example: `water_heater.melcloudhome_bf8d_5119_tank`
 - [ ] Tank temperature setting (40-60°C range)
 - [ ] Operation mode changes:
-  - [ ] `Auto` - DHW heats automatically when below target
-  - [ ] `Force DHW` - Force immediate DHW heating (priority mode)
+  - [ ] `Eco` - Energy efficient balanced operation (auto DHW heating when needed)
+  - [ ] `High demand` - Priority mode for faster DHW heating
 - [ ] **Important**: Water heater does NOT have turn_on/turn_off methods (power state is read-only)
 - [ ] Verify operation_status attribute shows valve position
 
@@ -147,7 +147,7 @@ Based on HAR analysis from one user system:
 #### System Behavior
 - [ ] Multi-hour operation: Check for stability over time
 - [ ] 3-way valve switching: Verify system alternates between Zone 1 and DHW as needed
-- [ ] Force DHW mode: Verify Zone 1 heating suspends when DHW has priority
+- [ ] High demand mode: Verify Zone 1 heating suspends when DHW has priority
 - [ ] Error conditions: How system handles connection losses
 
 ---
