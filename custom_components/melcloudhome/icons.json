@@ -1,34 +1,47 @@
 {
   "entity": {
     "climate": {
-      "heatpump": {
-        "default": "mdi:heat-pump"
-      }
-    },
-    "sensor": {
-      "room_temperature": {
-        "default": "mdi:thermometer"
-      },
-      "wifi_signal": {
-        "default": "mdi:wifi"
-      },
-      "energy": {
-        "default": "mdi:lightning-bolt"
-      }
-    },
-    "binary_sensor": {
-      "error_state": {
-        "default": "mdi:alert-circle",
-        "state": {
-          "on": "mdi:alert-circle",
-          "off": "mdi:check-circle"
-        }
-      },
-      "connection_state": {
-        "default": "mdi:lan-connect",
-        "state": {
-          "on": "mdi:lan-connect",
-          "off": "mdi:lan-disconnect"
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "mdi:home-thermometer",
+              "flow": "mdi:thermometer-lines",
+              "curve": "mdi:chart-bell-curve"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "Auto": "mdi:fan-auto",
+              "One": "mdi:numeric-1",
+              "Two": "mdi:numeric-2",
+              "Three": "mdi:numeric-3",
+              "Four": "mdi:numeric-4",
+              "Five": "mdi:numeric-5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "Auto": "mdi:refresh-auto",
+              "Swing": "mdi:swap-vertical",
+              "One": "mdi:numeric-1",
+              "Two": "mdi:numeric-2",
+              "Three": "mdi:numeric-3",
+              "Four": "mdi:numeric-4",
+              "Five": "mdi:numeric-5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "Auto": "mdi:refresh-auto",
+              "Swing": "mdi:swap-horizontal",
+              "Left": "mdi:numeric-1",
+              "LeftCentre": "mdi:numeric-2",
+              "Centre": "mdi:numeric-3",
+              "RightCentre": "mdi:numeric-4",
+              "Right": "mdi:numeric-5"
+            }
+          }
         }
       }
     }

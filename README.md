@@ -32,7 +32,7 @@ Home Assistant custom integration for **MELCloud Home**.
 **Platforms Implemented:**
 
 - **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
-- **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Auto/Force DHW)
+- **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
 - **Switch** (System Power): System on/off control (primary power control point)
 - **Sensors**: Zone 1 room temperature, tank temperature, operation status (3-way valve position)
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
@@ -252,8 +252,10 @@ For each heat pump system, the following entities are created:
 
 **Water Heater Operation Modes:**
 
-- **Auto** - DHW heats automatically when below target temperature
-- **Force DHW** - Force immediate DHW heating (priority mode, suspends zone heating)
+- **Eco** - Energy efficient balanced operation (auto DHW heating when needed)
+- **High demand** - Priority mode for faster DHW heating (suspends zone heating)
+
+> **Note:** These use Home Assistant's standard water heater modes. The MELCloud app calls these "Auto" and "Force DHW" respectively.
 
 **Temperature Ranges:**
 

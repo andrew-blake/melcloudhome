@@ -34,6 +34,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     """Representation of a MELCloud Home climate device."""
 
     _attr_has_entity_name = True  # Use device name + entity name pattern
+    _attr_translation_key = "melcloudhome"  # For icon translations
     _attr_temperature_unit = "°C"
     _attr_target_temperature_step = TEMP_STEP
     _attr_max_temp = TEMP_MAX_HEAT

@@ -63,10 +63,12 @@ class ATWWaterHeater:
 
 ### Other Key Decisions
 
-**Forced DHW:** Water heater operation modes (Auto/Force DHW), not separate switch
+**Forced DHW:** Water heater operation modes (Eco/High demand), using HA standard states
 
-- `Auto` → `forcedHotWaterMode=False` - Normal automatic DHW heating
-- `Force DHW` → `forcedHotWaterMode=True` - Priority mode, immediate DHW heating
+- `Eco` (STATE_ECO) → `forcedHotWaterMode=False` - Energy efficient, balanced operation
+- `High demand` (STATE_HIGH_DEMAND) → `forcedHotWaterMode=True` - Priority mode, faster heating
+
+Note: These map to HA's standard water heater operation modes following industry patterns (Rheem: ENERGY_SAVING → STATE_ECO, AO Smith: HYBRID → STATE_ECO)
 
 **Zone modes:** Climate preset modes (room_temperature, flow_temperature, weather_compensation)
 

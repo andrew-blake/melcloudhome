@@ -198,9 +198,11 @@ user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36..
 {"forcedHotWaterMode": false, ...all others null...}
 ```
 
-**UI Label:** "Auto / Heat Now" toggle
-- **Auto** (`false`): DHW heats automatically when below target
-- **Heat Now** (`true`): Force DHW heating immediately (priority mode)
+**HA Operation Modes:** "Eco / High demand" (using HA standard water heater states)
+- **Eco** (`false`): Energy efficient, balanced operation (DHW heats automatically when needed)
+- **High demand** (`true`): Priority mode for faster DHW heating
+
+**MELCloud App Label:** "Auto / Heat Now" toggle
 
 **Effect:**
 - When enabled: Heat pump prioritizes DHW heating

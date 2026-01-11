@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from homeassistant.components.water_heater import STATE_ECO, STATE_HIGH_DEMAND
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -30,16 +31,17 @@ HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
 # ATW Preset modes list (lowercase - translated via translations/en.json)
 ATW_PRESET_MODES = ["room", "flow", "curve"]
 
-# Water Heater Operation Modes (match MELCloud Home app terminology)
-# Capitalized for display - HACS integrations don't support translations for operation modes
+# Water Heater Operation Modes → Home Assistant Standard Modes
+# Maps MELCloud forced_hot_water_mode to HA standard operation modes
+# See: https://developers.home-assistant.io/docs/core/entity/water-heater/
 WATER_HEATER_FORCED_DHW_TO_HA = {
-    False: "Auto",  # Normal operation, zone heating priority
-    True: "Force DHW",  # DHW priority mode, forces hot water heating
+    False: STATE_ECO,  # Normal balanced operation → Eco mode (energy efficient)
+    True: STATE_HIGH_DEMAND,  # DHW priority mode → High demand (meet high demands)
 }
 
 WATER_HEATER_HA_TO_FORCED_DHW = {
-    "Auto": False,
-    "Force DHW": True,
+    STATE_ECO: False,  # Eco → Auto (normal operation, zone heating priority)
+    STATE_HIGH_DEMAND: True,  # High demand → Force DHW (priority mode)
 }
 
 # Note: ATW_TEMP_* constants imported from api.const_atw (floats with 0.5° precision)

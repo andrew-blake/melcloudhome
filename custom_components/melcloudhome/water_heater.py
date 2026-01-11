@@ -6,6 +6,8 @@ import logging
 from typing import Any
 
 from homeassistant.components.water_heater import (
+    STATE_ECO,
+    STATE_HIGH_DEMAND,
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
@@ -92,9 +94,10 @@ class ATWWaterHeater(
             | WaterHeaterEntityFeature.OPERATION_MODE
         )
 
-        # Operation modes (match MELCloud Home app terminology)
-        # Capitalized directly - translations don't work for water_heater in custom integrations
-        self._attr_operation_list = ["Auto", "Force DHW"]
+        # Operation modes (HA standard modes with built-in translations)
+        # Eco: Normal balanced operation (energy efficient)
+        # High demand: DHW priority mode (meet high demands)
+        self._attr_operation_list = [STATE_ECO, STATE_HIGH_DEMAND]
 
     @property
     def current_temperature(self) -> float | None:
@@ -114,14 +117,14 @@ class ATWWaterHeater(
 
     @property
     def current_operation(self) -> str | None:
-        """Return current operation mode (auto or force_dhw)."""
+        """Return current operation mode (eco or high_demand)."""
         device = self.get_device()
         if device is None:
             return None
 
         # Map forced_hot_water_mode to operation mode
         mode: str = WATER_HEATER_FORCED_DHW_TO_HA.get(
-            device.forced_hot_water_mode, "Auto"
+            device.forced_hot_water_mode, STATE_ECO
         )
         return mode
 
@@ -151,10 +154,10 @@ class ATWWaterHeater(
 
     @with_debounced_refresh()
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Set new operation mode (Auto or Force DHW).
+        """Set new operation mode (Eco or High demand).
 
-        Auto: Normal balanced operation, zone heating priority
-        Force DHW: DHW priority mode, forces hot water heating
+        Eco: Normal balanced operation, zone heating priority (energy efficient)
+        High demand: DHW priority mode, forces hot water heating (meet high demands)
         """
         if operation_mode not in self.operation_list:
             _LOGGER.warning("Invalid operation mode: %s", operation_mode)

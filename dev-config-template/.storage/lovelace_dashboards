@@ -5,6 +5,15 @@
   "data": {
     "items": [
       {
+        "id": "melcloudhome_testing",
+        "icon": "mdi:home-thermometer",
+        "title": "MelCloudHome Testing",
+        "url_path": "melcloudhome-testing",
+        "mode": "storage",
+        "show_in_sidebar": true,
+        "require_admin": false
+      },
+      {
         "id": "map",
         "icon": "mdi:map",
         "title": "Map",
