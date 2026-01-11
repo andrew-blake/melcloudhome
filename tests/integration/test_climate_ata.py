@@ -135,8 +135,8 @@ async def test_climate_entity_state_reflects_device_data(
     assert state.state == HVACMode.HEAT
     assert state.attributes["current_temperature"] == 20.0
     assert state.attributes["temperature"] == 21.0
-    assert state.attributes["fan_mode"] == "Auto"
-    assert state.attributes["swing_mode"] == "Auto"
+    assert state.attributes["fan_mode"] == "auto"
+    assert state.attributes["swing_mode"] == "auto"
 
 
 @pytest.mark.asyncio
@@ -257,7 +257,7 @@ async def test_set_fan_mode(
     await hass.services.async_call(
         "climate",
         "set_fan_mode",
-        {"entity_id": "climate.melcloudhome_0efc_9abc_climate", "fan_mode": "Three"},
+        {"entity_id": "climate.melcloudhome_0efc_9abc_climate", "fan_mode": "three"},
         blocking=True,
     )
 
@@ -276,7 +276,7 @@ async def test_set_swing_mode_vertical_vanes(
     await hass.services.async_call(
         "climate",
         "set_swing_mode",
-        {"entity_id": "climate.melcloudhome_0efc_9abc_climate", "swing_mode": "Swing"},
+        {"entity_id": "climate.melcloudhome_0efc_9abc_climate", "swing_mode": "swing"},
         blocking=True,
     )
 
@@ -297,7 +297,7 @@ async def test_set_swing_horizontal_mode(
         "set_swing_horizontal_mode",
         {
             "entity_id": "climate.melcloudhome_0efc_9abc_climate",
-            "swing_horizontal_mode": "Centre",
+            "swing_horizontal_mode": "centre",
         },
         blocking=True,
     )
