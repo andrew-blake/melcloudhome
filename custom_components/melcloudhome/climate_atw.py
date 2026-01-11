@@ -93,27 +93,33 @@ class ATWClimateZone1(
         """Return current HVAC action (3-way valve aware).
 
         CRITICAL: Must check if valve is serving THIS specific zone.
-        operation_status shows what valve is ACTIVELY doing.
+        operation_status shows what valve is ACTIVELY doing RIGHT NOW.
         operation_mode_zone1 shows CONFIGURED mode for Zone 1.
 
-        Valve serves Zone 1 only when: operation_status == operation_mode_zone1
+        API operation_status values (atw-api-reference.md):
+        - "Stop" = Idle (target reached, no heating)
+        - "HotWater" = Heating DHW tank (not Zone 1)
+        - Zone mode string (e.g., "HeatRoomTemperature") = Actively heating that zone
+
+        When operation_status == operation_mode_zone1:
+        - Valve is positioned on Zone 1 AND actively heating
+        - No temperature check needed - API already indicates active heating
         """
         device = self.get_device()
         if device is None or not device.power:
             return HVACAction.OFF
 
-        # Check if 3-way valve is serving THIS zone (Zone 1)
-        # Don't just check "is it on a zone" - check if it's on ZONE 1 specifically
-        if device.operation_status == device.operation_mode_zone1:
-            # Valve is on Zone 1 - check if heating needed
-            current = device.room_temperature_zone1
-            target = device.set_temperature_zone1
-
-            if current is not None and target is not None and current < target - 0.5:
-                return HVACAction.HEATING
+        # Check what the 3-way valve is doing right now
+        # If operation_status is "Stop", system is idle
+        if device.operation_status == "Stop":
             return HVACAction.IDLE
 
-        # Valve is elsewhere (DHW or Zone 2) - zone shows IDLE even if below target
+        # If valve is on Zone 1 (operation_status == operation_mode_zone1),
+        # the system is ACTIVELY HEATING this zone
+        if device.operation_status == device.operation_mode_zone1:
+            return HVACAction.HEATING
+
+        # Valve is elsewhere (DHW or Zone 2) - this zone is idle
         return HVACAction.IDLE
 
     @property
