@@ -23,6 +23,7 @@ from .const_ata import (
     VANE_HORIZONTAL_POSITIONS,
     VANE_POSITIONS,
     ATAEntityBase,
+    normalize_to_api,
 )
 from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
@@ -116,15 +117,21 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
 
     @property
     def fan_mode(self) -> str | None:
-        """Return the current fan mode."""
+        """Return the current fan mode (normalized to lowercase)."""
         device = self.get_device()
-        return device.set_fan_speed if device else None
+        if device is None or device.set_fan_speed is None:
+            return None
+        # Normalize API capitalized value to lowercase for HA
+        return device.set_fan_speed.lower()
 
     @property
     def swing_mode(self) -> str | None:
-        """Return the current swing mode (vertical vane position)."""
+        """Return the current swing mode (normalized to lowercase)."""
         device = self.get_device()
-        return device.vane_vertical_direction if device else None
+        if device is None or device.vane_vertical_direction is None:
+            return None
+        # Normalize API capitalized value to lowercase for HA
+        return device.vane_vertical_direction.lower()
 
     @property
     def swing_horizontal_modes(self) -> list[str]:
@@ -133,9 +140,12 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
 
     @property
     def swing_horizontal_mode(self) -> str | None:
-        """Return the current horizontal swing mode (horizontal vane position)."""
+        """Return the current horizontal swing mode (normalized to lowercase)."""
         device = self.get_device()
-        return device.vane_horizontal_direction if device else None
+        if device is None or device.vane_horizontal_direction is None:
+            return None
+        # Normalize API capitalized value to lowercase for HA
+        return device.vane_horizontal_direction.lower()
 
     @property
     def min_temp(self) -> float:
@@ -200,7 +210,9 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             _LOGGER.warning("Invalid fan mode: %s", fan_mode)
             return
 
-        await self.coordinator.async_set_fan_speed(self._unit_id, fan_mode)
+        # Convert HA lowercase value back to API capitalized value
+        api_value = normalize_to_api(fan_mode)
+        await self.coordinator.async_set_fan_speed(self._unit_id, api_value)
 
     @with_debounced_refresh()
     async def async_set_swing_mode(self, swing_mode: str) -> None:
@@ -209,17 +221,24 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             _LOGGER.warning("Invalid swing mode: %s", swing_mode)
             return
 
-        # Get current horizontal vane position from device, default to "Auto"
-        # Handle legacy values (Left, Right, etc.) by defaulting to Auto
+        # Get current horizontal vane position from device
+        # Device returns capitalized values, normalize to lowercase for comparison
         device = self.get_device()
-        horizontal = device.vane_horizontal_direction if device else "Auto"
+        horizontal_raw = device.vane_horizontal_direction if device else "Auto"
+        horizontal = horizontal_raw.lower() if horizontal_raw else "auto"
+
+        # Handle legacy or unknown values by defaulting to auto
         if horizontal not in self.swing_horizontal_modes:
             _LOGGER.debug(
-                "Legacy horizontal position %s, defaulting to Auto", horizontal
+                "Legacy/unknown horizontal position %s, defaulting to auto",
+                horizontal_raw,
             )
-            horizontal = "Auto"
+            horizontal = "auto"
 
-        await self.coordinator.async_set_vanes(self._unit_id, swing_mode, horizontal)
+        # Convert both HA lowercase values back to API capitalized values
+        api_swing = normalize_to_api(swing_mode)
+        api_horizontal = normalize_to_api(horizontal)
+        await self.coordinator.async_set_vanes(self._unit_id, api_swing, api_horizontal)
 
     @with_debounced_refresh()
     async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
@@ -228,12 +247,17 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             _LOGGER.warning("Invalid horizontal swing mode: %s", swing_horizontal_mode)
             return
 
-        # Get current vertical vane position from device, default to "Auto"
+        # Get current vertical vane position from device
+        # Device returns capitalized values, normalize to lowercase
         device = self.get_device()
-        vertical = device.vane_vertical_direction if device else "Auto"
+        vertical_raw = device.vane_vertical_direction if device else "Auto"
+        vertical = vertical_raw.lower() if vertical_raw else "auto"
 
+        # Convert both HA lowercase values back to API capitalized values
+        api_vertical = normalize_to_api(vertical)
+        api_horizontal = normalize_to_api(swing_horizontal_mode)
         await self.coordinator.async_set_vanes(
-            self._unit_id, vertical, swing_horizontal_mode
+            self._unit_id, api_vertical, api_horizontal
         )
 
     @with_debounced_refresh()

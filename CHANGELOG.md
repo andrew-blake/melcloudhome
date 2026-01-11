@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.2] - 2026-01-11
+
+### Fixed
+
+- Zone 1 heating status display - now correctly shows HEATING when valve is actively heating the zone
+- Blank icon button labels in thermostat cards for ATA and ATW - icons now display correctly (beta.1 feedback #26)
+
+### Changed
+
+- **ATA Climate State Attributes Now Lowercase**
+
+  State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase for Home Assistant compliance:
+  - `"Auto"` → `"auto"`, `"One"` → `"one"`, `"LeftCentre"` → `"leftcentre"`, etc.
+
+  **Impact:** Automations/templates checking these attributes must use lowercase values.
+
+  **Migration:** Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
 
 ## [2.0.0-beta.1] - 2026-01-10
 
@@ -15,13 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is a **pre-release beta** for community testing. ATW heat pump support is based on HAR captures and has **NOT been tested on real hardware**.
 
 **How to test:**
+
 1. Enable beta releases in HACS:
    - Go to **Settings → Devices & Services → Integrations → HACS**
    - Find **MELCloud Home** in your repository list
    - Enable the **"Show beta versions"** switch entity (disabled by default)
 2. Install this beta version (will appear in available updates)
 3. Test with your Ecodan ATW system
-4. Report findings: https://github.com/andrew-blake/melcloudhome/issues
+4. Report findings: <https://github.com/andrew-blake/melcloudhome/issues>
 
 **⚠️ USE AT YOUR OWN RISK ⚠️**
 

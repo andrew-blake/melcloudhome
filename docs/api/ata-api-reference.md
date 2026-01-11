@@ -181,17 +181,28 @@ The actual API uses **string values**: `"Auto"`, `"One"`, `"Two"`, `"Three"`, `"
 }
 ```
 
-**HA Integration Mapping:**
+**HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
+
+The integration normalizes API capitalized values to lowercase for Home Assistant:
 ```python
-FAN_SPEED_MAP = {
-    "Auto": "auto",
-    "One": "1",
-    "Two": "2",
-    "Three": "3",
-    "Four": "4",
-    "Five": "5"
-}
+# API Layer (matches MELCloud API exactly)
+API values: "Auto", "One", "Two", "Three", "Four", "Five"
+
+# Integration Layer (normalized to lowercase per HA standards)
+HA values: "auto", "one", "two", "three", "four", "five"
+
+# Normalization mapping (const_ata.py::normalize_to_api)
+"auto" → "Auto"
+"one" → "One"
+"two" → "Two"
+"three" → "Three"
+"four" → "Four"
+"five" → "Five"
 ```
+
+**Architecture:** The climate entity returns lowercase values to Home Assistant. When sending control commands, values are converted back to capitalized form for the API.
+
+**Note:** Uses lowercase words (e.g., "one", "two") rather than numbers ("1", "2") for consistency with other climate attributes and Home Assistant conventions.
 
 ---
 
@@ -265,18 +276,27 @@ FAN_SPEED_MAP = {
 }
 ```
 
-**HA Integration:**
+**HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
+
+The integration normalizes API capitalized values to lowercase for Home Assistant:
 ```python
-VANE_VERTICAL_MAP = {
-    "Auto": "auto",
-    "Swing": "swing",
-    "One": "1",
-    "Two": "2",
-    "Three": "3",
-    "Four": "4",
-    "Five": "5"
-}
+# API Layer (matches MELCloud API exactly)
+API values: "Auto", "Swing", "One", "Two", "Three", "Four", "Five"
+
+# Integration Layer (normalized to lowercase per HA standards)
+HA values: "auto", "swing", "one", "two", "three", "four", "five"
+
+# Normalization mapping (const_ata.py::normalize_to_api)
+"auto" → "Auto"
+"swing" → "Swing"
+"one" → "One"
+"two" → "Two"
+"three" → "Three"
+"four" → "Four"
+"five" → "Five"
 ```
+
+**Architecture:** The climate entity returns lowercase values to Home Assistant. When sending control commands, values are converted back to capitalized form for the API.
 
 ---
 
@@ -311,18 +331,29 @@ VANE_VERTICAL_MAP = {
 }
 ```
 
-**HA Integration:**
+**HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
+
+The integration normalizes API capitalized values to lowercase for Home Assistant:
 ```python
-VANE_HORIZONTAL_MAP = {
-    "Auto": "auto",
-    "Swing": "swing",
-    "Left": "left",
-    "LeftCentre": "center_left",
-    "Centre": "center",
-    "RightCentre": "center_right",
-    "Right": "right"
-}
+# API Layer (matches MELCloud API exactly, British spelling)
+API values: "Auto", "Swing", "Left", "LeftCentre", "Centre", "RightCentre", "Right"
+
+# Integration Layer (normalized to lowercase per HA standards)
+HA values: "auto", "swing", "left", "leftcentre", "centre", "rightcentre", "right"
+
+# Normalization mapping (const_ata.py::normalize_to_api)
+"auto" → "Auto"
+"swing" → "Swing"
+"left" → "Left"
+"leftcentre" → "LeftCentre"
+"centre" → "Centre"
+"rightcentre" → "RightCentre"
+"right" → "Right"
 ```
+
+**Architecture:** The climate entity returns lowercase values to Home Assistant. When sending control commands, values are converted back to capitalized form for the API.
+
+**Note:** Uses lowercase words without underscores (e.g., "leftcentre" not "center_left") for consistency with other climate attributes.
 
 ---
 

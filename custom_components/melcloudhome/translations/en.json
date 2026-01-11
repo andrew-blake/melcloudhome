@@ -41,6 +41,38 @@
               "flow": "Flow",
               "curve": "Curve"
             }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "1",
+              "two": "2",
+              "three": "3",
+              "four": "4",
+              "five": "5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Swing",
+              "one": "1",
+              "two": "2",
+              "three": "3",
+              "four": "4",
+              "five": "5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Swing",
+              "left": "Left",
+              "leftcentre": "Left Center",
+              "centre": "Center",
+              "rightcentre": "Right Center",
+              "right": "Right"
+            }
           }
         }
       }

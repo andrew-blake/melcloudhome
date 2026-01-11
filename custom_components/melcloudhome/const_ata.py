@@ -26,22 +26,58 @@ HA_TO_MELCLOUD_MODE = {
     HVACMode.FAN_ONLY: "Fan",
 }
 
-# Fan speed mappings
-FAN_SPEEDS = ["Auto", "One", "Two", "Three", "Four", "Five"]
+# Fan speed mappings (lowercase for HA standard compliance)
+FAN_SPEEDS = ["auto", "one", "two", "three", "four", "five"]
 
-# Vane position mappings (vertical)
-VANE_POSITIONS = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
+# Vane position mappings (vertical, lowercase for HA standard compliance)
+VANE_POSITIONS = ["auto", "swing", "one", "two", "three", "four", "five"]
 
-# Horizontal vane position mappings (API uses British spelling)
+# Horizontal vane position mappings (lowercase for HA standard compliance)
 VANE_HORIZONTAL_POSITIONS = [
-    "Auto",
-    "Swing",
-    "Left",
-    "LeftCentre",
-    "Centre",
-    "RightCentre",
-    "Right",
+    "auto",
+    "swing",
+    "left",
+    "leftcentre",
+    "centre",
+    "rightcentre",
+    "right",
 ]
+
+# Mapping for lowercase HA values → capitalized API values
+# The MELCloud API uses capitalized values, but Home Assistant standards
+# require lowercase state attribute values for consistency and icon translation support.
+_LOWERCASE_TO_API = {
+    "auto": "Auto",
+    "swing": "Swing",
+    "one": "One",
+    "two": "Two",
+    "three": "Three",
+    "four": "Four",
+    "five": "Five",
+    "left": "Left",
+    "leftcentre": "LeftCentre",
+    "centre": "Centre",
+    "rightcentre": "RightCentre",
+    "right": "Right",
+}
+
+
+def normalize_to_api(value: str) -> str:
+    """Convert HA lowercase value to API capitalized value.
+
+    Args:
+        value: Lowercase value from Home Assistant (e.g., "auto", "one", "leftcentre")
+
+    Returns:
+        Capitalized value for MELCloud API (e.g., "Auto", "One", "LeftCentre")
+
+    Examples:
+        >>> normalize_to_api("auto")
+        "Auto"
+        >>> normalize_to_api("leftcentre")
+        "LeftCentre"
+    """
+    return _LOWERCASE_TO_API.get(value, value)
 
 
 # =================================================================
