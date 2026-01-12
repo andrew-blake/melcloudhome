@@ -569,10 +569,11 @@ class MockMELCloudServer:
         Logic:
         - If forced_hot_water_mode: "HotWater"
         - Else if DHW < target: "HotWater"
-        - Else if Zone < target: operation_mode_zone1 value
+        - Else if Zone < target: "Heating"
         - Else: "Stop"
 
         Critical: operation_mode is STATUS (read-only), not control parameter
+        Note: Real API returns "Heating" (not mode-specific strings)
         """
         state = self.atw_states[unit_id]
 
@@ -598,7 +599,7 @@ class MockMELCloudServer:
         if dhw_needs_heat:
             state["operation_mode"] = "HotWater"
         elif zone_needs_heat:
-            state["operation_mode"] = state["operation_mode_zone1"]
+            state["operation_mode"] = "Heating"  # Real API returns simplified status
         else:
             state["operation_mode"] = "Stop"
 
