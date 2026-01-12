@@ -250,6 +250,10 @@ class ATWControlClient(ControlClientBase):
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
         """Enable/disable standby mode.
 
+        Note: Real devices may ignore standby=True when system is powered on.
+        API accepts the command but device state remains in_standby_mode=False.
+        Validated with real ATW device (ftcModel: 3) via VCR testing.
+
         Args:
             unit_id: ATW unit ID
             standby: True=standby, False=normal
