@@ -52,15 +52,16 @@ def scrub_body_string(body_string: str | bytes) -> str | bytes:
     body_string = re.sub(
         r'"lastname":"[^"]+?"', '"lastname":"***REDACTED***"', body_string
     )
-    # Scrub building names
-    # Match building name within buildings array context
+    # Scrub building names (more robust pattern)
+    # Buildings have "id" followed by "name" at the same level
+    # This pattern matches all building names in both buildings and guestBuildings arrays
     body_string = re.sub(
-        r'(\\"buildings\\":\[{[^}]*?\\"name\\":\\")[^"]+?(\\")',
+        r'(\\"id\\":\\"[^"]+\\",\\"name\\":\\")[^"]+?(\\")',
         r"\1***REDACTED_BUILDING***\2",
         body_string,
     )
     body_string = re.sub(
-        r'("buildings":\[{[^}]*?"name":")([^"]+?)(")',
+        r'("id":"[^"]+","name":")([^"]+?)(")',
         r"\1***REDACTED_BUILDING***\3",
         body_string,
     )
