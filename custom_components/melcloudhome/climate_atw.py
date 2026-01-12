@@ -94,14 +94,10 @@ class ATWClimateZone1(
         operation_status shows what valve is ACTIVELY doing RIGHT NOW.
         operation_mode_zone1 shows CONFIGURED mode for Zone 1.
 
-        API operation_status values (atw-api-reference.md):
+        API operation_status values:
         - "Stop" = Idle (target reached, no heating)
         - "HotWater" = Heating DHW tank (not Zone 1)
-        - Zone mode string (e.g., "HeatRoomTemperature") = Actively heating that zone
-
-        When operation_status == operation_mode_zone1:
-        - Valve is positioned on Zone 1 AND actively heating
-        - No temperature check needed - API already indicates active heating
+        - "Heating" = Actively heating zone
         """
         device = self.get_device()
         if device is None or not device.power:
@@ -112,9 +108,8 @@ class ATWClimateZone1(
         if device.operation_status == "Stop":
             return HVACAction.IDLE
 
-        # If valve is on Zone 1 (operation_status == operation_mode_zone1),
-        # the system is ACTIVELY HEATING this zone
-        if device.operation_status == device.operation_mode_zone1:
+        # API returns "Heating" when actively heating zone
+        if device.operation_status == "Heating":
             return HVACAction.HEATING
 
         # Valve is elsewhere (DHW or Zone 2) - this zone is idle

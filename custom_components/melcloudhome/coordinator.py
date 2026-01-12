@@ -100,6 +100,36 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             "coordinator_update",
         )
 
+        # Debug logging: Log verbose device states (controlled by HA logger config)
+        for building in context.buildings:
+            # Log ATA (Air-to-Air) devices
+            for ata_unit in building.air_to_air_units:
+                _LOGGER.debug(
+                    "ATA Poll: %s | Power=%s | Mode=%s | Temp: %s°C→%s°C | Fan=%s",
+                    ata_unit.name,
+                    ata_unit.power,
+                    ata_unit.operation_mode,
+                    ata_unit.room_temperature,
+                    ata_unit.set_temperature,
+                    ata_unit.set_fan_speed,
+                )
+
+            # Log ATW (Air-to-Water) devices
+            for atw_unit in building.air_to_water_units:
+                _LOGGER.debug(
+                    "ATW Poll: %s | Power=%s | Standby=%s | OpStatus=%s | OpModeZ1=%s | ForcedDHW=%s | Z1: %s°C→%s°C | DHW: %s°C→%s°C",
+                    atw_unit.name,
+                    atw_unit.power,
+                    atw_unit.in_standby_mode,
+                    atw_unit.operation_status,
+                    atw_unit.operation_mode_zone1,
+                    atw_unit.forced_hot_water_mode,
+                    atw_unit.room_temperature_zone1,
+                    atw_unit.set_temperature_zone1,
+                    atw_unit.tank_water_temperature,
+                    atw_unit.set_tank_water_temperature,
+                )
+
         # Update caches for O(1) lookups
         self._rebuild_caches(context)
         return context

@@ -327,11 +327,9 @@ It indicates what the 3-way valve is currently doing:
 
 | Value | Meaning |
 |-------|---------|
-| `"Stop"` | Zone 1 not heating (target reached or disabled) |
+| `"Stop"` | Idle - not heating (target reached or disabled) |
 | `"HotWater"` | Currently heating DHW tank |
-| `"HeatRoomTemperature"` | Currently heating Zone 1 (room temp mode) |
-| `"HeatFlowTemperature"` | Currently heating Zone 1 (flow temp mode) |
-| `"HeatCurve"` | Currently heating Zone 1 (curve mode) |
+| `"Heating"` | Currently heating zone (any mode) |
 
 **Usage:**
 - **Read this field** to know what device is doing RIGHT NOW
