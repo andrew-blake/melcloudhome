@@ -674,7 +674,7 @@ Based on observed error logs:
 ## Device Information
 
 **Tested with:**
-- Model: FTC4 (FTC Model 3)
+- API reports: `ftcModel: 3` (physical controller model unknown)
 - Configuration: Single zone (no Zone 2), DHW support
 - System type: Underfloor heating + domestic hot water
 
