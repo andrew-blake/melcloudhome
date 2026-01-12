@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.4] - 2026-01-12
+
+### Fixed
+
+- ATW zones showing IDLE when actively heating - added support for undocumented `"Heating"` operation status
+- Water heater temperature control respects device capability (whole degree vs half degree steps)
+- Mock server now returns realistic `"Heating"` status matching real API behavior
+
+### Changed
+
+- API documentation updated to reflect real API behavior (removed unobserved status values)
+- Integration tests updated to use realistic operation status values
+
+### Acknowledgments
+
+Special thanks to [@pwa-2025](https://github.com/pwa-2025) for granting guest building access, enabling real hardware testing and discovery of the undocumented `"Heating"` operation status.
+
 ## [2.0.0-beta.2] - 2026-01-11
 
 ### Fixed
