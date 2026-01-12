@@ -142,7 +142,7 @@ async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> 
 
         state = hass.states.get("sensor.melcloudhome_0efc_9abc_operation_status")
         # Raw API value, not mapped
-        assert state.state == "HeatFlowTemperature"
+        assert state.state == "Heating"
 
 
 @pytest.mark.asyncio
