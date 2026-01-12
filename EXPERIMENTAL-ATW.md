@@ -1,22 +1,22 @@
 # ⚠️ Experimental: Air-to-Water (ATW) Heat Pump Support
 
-**Status:** EXPERIMENTAL - Not tested on real hardware
-**Based On:** HAR captures from user's MELCloud Home web interface
-**Version:** v2.0.0-beta.1 (beta pre-release)
-**Last Updated:** 2026-01-06
+**Status:** BETA - Tested on real hardware via guest building
+**Based On:** HAR captures + real device testing
+**Version:** v2.0.0-beta.3 (beta pre-release)
+**Last Updated:** 2026-01-12
 
 ---
 
 ## Important Warnings
 
-🚨 **ATW support is EXPERIMENTAL and has NOT been tested on real Ecodan hardware.**
+⚠️ **ATW support is in BETA - tested on real hardware but not extensively validated.**
 
-- Implementation based on reverse-engineered API from HAR (HTTP Archive) captures
-- No guarantees of correctness or safety
-- May cause unexpected behavior or errors
-- Not recommended for production use without thorough testing
+- Core features tested and working on real Ecodan hardware
+- Additional testing needed for different configurations and FTC models
+- May have undiscovered edge cases or device-specific behaviors
+- Recommended for beta testers willing to report issues
 
-**USE AT YOUR OWN RISK**
+**Beta testers: Please report any issues at https://github.com/andrew-blake/melcloudhome/issues**
 
 ---
 
@@ -26,27 +26,36 @@
 
 | Feature | Status | Testing |
 |---------|--------|---------|
-| Zone 1 climate control | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| DHW tank control (water heater) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| System power control (switch) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| Temperature sensors (Zone 1, tank) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| Operation status sensor | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| Binary sensors (error, connection, forced DHW) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
-| Preset modes (Room/Flow/Curve) | ✅ Implemented | ⚠️ HAR only (not tested on hardware) |
+| Zone 1 climate control | ✅ Implemented | ✅ Tested on real hardware |
+| DHW tank control (water heater) | ✅ Implemented | ✅ Tested on real hardware |
+| System power control (switch) | ✅ Implemented | ✅ Tested on real hardware |
+| Temperature sensors (Zone 1, tank) | ✅ Implemented | ✅ Tested on real hardware |
+| Operation status sensor | ✅ Implemented | ✅ Tested on real hardware |
+| Binary sensors (error, connection, forced DHW) | ✅ Implemented | ✅ Tested on real hardware |
+| Preset modes (Room/Flow/Curve) | ✅ Implemented | ⚠️ Room mode tested, Flow/Curve untested |
 | Zone 2 support | ❌ Not implemented | Single zone systems only |
 | Energy monitoring | ❌ Not available | ATA-only feature |
 
 ---
 
+## Acknowledgments
+
+**Beta Testing:** Special thanks to [@pwa-2025](https://github.com/pwa-2025) for:
+- Providing guest building access for real hardware testing
+- Enabling discovery of undocumented `"Heating"` operation status
+- Validating core ATW functionality on production Ecodan system
+
+---
+
 ## Implementation Target Hardware
 
-Based on HAR analysis from one user system:
+Based on HAR analysis and real device testing:
 
 - Mitsubishi Electric Ecodan heat pumps
-- EHSCVM2D Hydrokit (HAR data from Discussion #26)
+- EHSCVM2D Hydrokit (HAR data + real testing from @pwa-2025)
 - FTC controllers with `ftcModel: 3` in API (physical model unknown)
 
-**User's test system (Discussion #26):**
+**Tested system (@pwa-2025):**
 
 - Model: Ecodan EHSCVM2D Hydrokit
 - API reports: `ftcModel: 3` (physical FTC controller model not confirmed)

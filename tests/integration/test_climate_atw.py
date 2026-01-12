@@ -299,7 +299,7 @@ async def test_atw_hvac_action_heating_when_valve_on_zone1_and_below_target(
         room_temperature_zone1=18.0,  # Below target
         set_temperature_zone1=21.0,
         operation_mode_zone1="HeatRoomTemperature",
-        operation_status="HeatRoomTemperature",  # Valve on Zone 1
+        operation_status="Heating",  # Real API returns simplified status
     )
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]

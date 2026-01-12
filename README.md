@@ -38,7 +38,7 @@ Home Assistant custom integration for **MELCloud Home**.
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
 - **Note**: Energy monitoring is an ATA-only feature (not available for ATW devices)
 
-**⚠️ WARNING**: ATW support is EXPERIMENTAL - based on HAR captures, not yet tested on real hardware
+**⚠️ WARNING**: ATW support is BETA - core features tested on real hardware, additional validation needed
 
 **See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
 
