@@ -299,7 +299,7 @@ async def test_atw_hvac_action_heating_when_valve_on_zone1_and_below_target(
         room_temperature_zone1=18.0,  # Below target
         set_temperature_zone1=21.0,
         operation_mode_zone1="HeatRoomTemperature",
-        operation_status="HeatRoomTemperature",  # Valve on Zone 1
+        operation_status="Heating",  # Real API returns simplified status
     )
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]
@@ -332,7 +332,7 @@ async def test_atw_extra_state_attributes_include_valve_status(
 ) -> None:
     """Test extra state attributes include operation_status and valve info."""
     mock_unit = create_mock_atw_unit(
-        operation_status="HeatRoomTemperature",
+        operation_status="Heating",
         forced_hot_water_mode=False,
     )
     mock_context = create_mock_atw_user_context(
@@ -356,7 +356,7 @@ async def test_atw_extra_state_attributes_include_valve_status(
         await hass.async_block_till_done()
 
         state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
-        assert state.attributes["operation_status"] == "HeatRoomTemperature"
+        assert state.attributes["operation_status"] == "Heating"
         assert "forced_dhw_active" in state.attributes
         assert "zone_heating_available" in state.attributes
 

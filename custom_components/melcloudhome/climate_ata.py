@@ -13,7 +13,7 @@ from homeassistant.components.climate import (
 )
 from homeassistant.config_entries import ConfigEntry
 
-from .api.const_ata import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT, TEMP_STEP
+from .api.const_ata import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT
 from .api.models import AirToAirUnit, Building
 from .climate_helpers import HVACActionDeterminer
 from .const_ata import (
@@ -37,7 +37,6 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_translation_key = "melcloudhome"  # For icon translations
     _attr_temperature_unit = "°C"
-    _attr_target_temperature_step = TEMP_STEP
     _attr_max_temp = TEMP_MAX_HEAT
 
     def __init__(
@@ -108,6 +107,19 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         """Return the current temperature."""
         device = self.get_device()
         return device.room_temperature if device else None
+
+    @property
+    def target_temperature_step(self) -> float:
+        """Return temperature step based on device capability.
+
+        Respects hasHalfDegreeIncrements to avoid breaking MELCloud web UI.
+        Even though API accepts 0.5°C values, MELCloud UI cannot display them
+        properly when hasHalfDegreeIncrements=false.
+        """
+        device = self.get_device()
+        if device and device.capabilities:
+            return 0.5 if device.capabilities.has_half_degree_increments else 1.0
+        return 1.0  # Safe default
 
     @property
     def target_temperature(self) -> float | None:

@@ -45,22 +45,22 @@
           "fan_mode": {
             "state": {
               "auto": "Auto",
-              "one": "1",
-              "two": "2",
-              "three": "3",
-              "four": "4",
-              "five": "5"
+              "one": "Fan 1",
+              "two": "Fan 2",
+              "three": "Fan 3",
+              "four": "Fan 4",
+              "five": "Fan 5"
             }
           },
           "swing_mode": {
             "state": {
               "auto": "Auto",
               "swing": "Swing",
-              "one": "1",
-              "two": "2",
-              "three": "3",
-              "four": "4",
-              "five": "5"
+              "one": "Swing 1",
+              "two": "Swing 2",
+              "three": "Swing 3",
+              "four": "Swing 4",
+              "five": "Swing 5"
             }
           },
           "swing_horizontal_mode": {

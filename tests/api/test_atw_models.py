@@ -346,6 +346,56 @@ class TestUserContext:
         assert len(a2a_units) == 1
         assert len(a2w_units) == 1
 
+    def test_user_context_parses_guest_buildings(self) -> None:
+        """Test that UserContext includes guestBuildings with is_guest flag set."""
+        data = {
+            "buildings": [
+                {
+                    "id": "building-1",
+                    "name": "My Building",
+                    "airToAirUnits": [{"id": "unit-1", "givenDisplayName": "Unit 1"}],
+                    "airToWaterUnits": [],
+                }
+            ],
+            "guestBuildings": [
+                {
+                    "id": "building-2",
+                    "name": "Shared Building",
+                    "airToAirUnits": [],
+                    "airToWaterUnits": [
+                        {"id": "unit-2", "givenDisplayName": "Heat Pump"}
+                    ],
+                }
+            ],
+        }
+
+        context = UserContext.from_dict(data)
+
+        # Should have both buildings
+        assert len(context.buildings) == 2
+
+        # First building should be owned (is_guest=False)
+        owned_building = context.buildings[0]
+        assert owned_building.id == "building-1"
+        assert owned_building.name == "My Building"
+        assert owned_building.is_guest is False
+
+        # Second building should be guest (is_guest=True)
+        guest_building = context.buildings[1]
+        assert guest_building.id == "building-2"
+        assert guest_building.name == "Shared Building"
+        assert guest_building.is_guest is True
+
+        # Should have 1 ATA unit (from owned building)
+        a2a_units = context.get_all_air_to_air_units()
+        assert len(a2a_units) == 1
+        assert a2a_units[0].id == "unit-1"
+
+        # Should have 1 ATW unit (from guest building)
+        a2w_units = context.get_all_air_to_water_units()
+        assert len(a2w_units) == 1
+        assert a2w_units[0].id == "unit-2"
+
 
 # =============================================================================
 # Edge Cases

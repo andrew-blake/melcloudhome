@@ -1,0 +1,1431 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - melcloudhome.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://melcloudhome.com/bff/login?returnUrl=/dashboard
+  response:
+    body: {}
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:15 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      Location:
+      - https://auth.melcloudhome.com/connect/authorize?client_id=monitorandcontrolhome&request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA&x-client-SKU=ID_NET9_0&x-client-ver=8.0.1.0
+      Set-Cookie:
+      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8O_9gdsS9oNHkv2DwOqElXMAYfjJShgtvcDOwjV_Q1FsU8vTEOfRBMrPMeb5aJKOm9seSlqFAh7KIx_62CelkX7Iw9aNdyfDYtrhBuhGpsef5OzKwXILNJ1OV4H60aXHF39P3IsTGmciUjzt4Mlu8v1RcnrWJiXUvWNPC883hExj6Ch7W6xaheOqmsOeSfJ8rRdx3DmUyz8VMudIRqNfg4WH-tUlJcRE7EIyEZYNrh9SDzNEgeO-j0x0qbhZEofUtve0_rVTUqjL70r_NYj7cDM=N;
+        expires=Mon, 12 Jan 2026 19:51:15 GMT; path=/signin-oidc; secure; samesite=none;
+        httponly
+      - .AspNetCore.Correlation.3i4fw88ek8eL6v8nEsgWZDVUFykEentlT-0T9FV_k9g=N; expires=Mon,
+        12 Jan 2026 19:51:15 GMT; path=/signin-oidc; secure; samesite=none; httponly
+      apigw-requestid:
+      - XFj_ijGJDoEEPBw=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - auth.melcloudhome.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/connect/authorize?client_id=monitorandcontrolhome&request_uri=urn:ietf:params:oauth:request_uri:6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA&x-client-SKU=ID_NET9_0&x-client-ver=8.0.1.0
+  response:
+    body: {}
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Location:
+      - https://auth.melcloudhome.com/Account/Login?ReturnUrl=%2Fconnect%2Fauthorize%2Fcallback%3Frequest_uri%3Durn%253Aietf%253Aparams%253Aoauth%253Arequest_uri%253A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA%26client_id%3Dmonitorandcontrolhome
+      Server:
+      - Kestrel
+      apigw-requestid:
+      - XFj_khPrDoEEJKA=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - auth.melcloudhome.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/Account/Login?ReturnUrl=/connect/authorize/callback?request_uri%3Durn%253Aietf%253Aparams%253Aoauth%253Arequest_uri%253A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA%26client_id%3Dmonitorandcontrolhome
+  response:
+    body: {}
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Location:
+      - /ExternalLogin/Challenge?scheme=cognito-meu&returnUrl=%2Fconnect%2Fauthorize%2Fcallback%3Frequest_uri%3Durn%253Aietf%253Aparams%253Aoauth%253Arequest_uri%253A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA%26client_id%3Dmonitorandcontrolhome
+      Server:
+      - Kestrel
+      apigw-requestid:
+      - XFj_lhSDDoEEJMA=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - auth.melcloudhome.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/ExternalLogin/Challenge?scheme=cognito-meu&returnUrl=/connect/authorize/callback?request_uri%3Durn%253Aietf%253Aparams%253Aoauth%253Arequest_uri%253A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA%26client_id%3Dmonitorandcontrolhome
+  response:
+    body: {}
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Location:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/oauth2/authorize?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https%3A%2F%2Fauth.melcloudhome.com%2Fsignin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      Server:
+      - Kestrel
+      Set-Cookie:
+      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8FAIFP-BDlFJtsfcpj5ls0CutMdcCTwsWi4QF9MlbesmQWLecgNcdQyb_rngepxkiwMkPF4Uf1-Y2WB09pXOaEIC-cRmXxaBWS_hvYi1tt6mq-S-i3IeWy_58spF_FfPYE9pT7fM2bCai6mMWjVmiA77MNCT1G1vt0cLWq8m8OBd8D8pyONtnb-Co5tHpRdYUg41W9_bExrkOHwo-b349wkIN3m8iA-rWK1GblQht2XMDGC849BUQ9rEVYOCMfH43dd1gAVc51x1i3X-tspqocU=N;
+        expires=Mon, 12 Jan 2026 19:51:16 GMT; path=/signin-oidc-meu; secure; samesite=none;
+        httponly
+      - .AspNetCore.Correlation.EszKBGJR08dyKo-XHEeD_g5SRz1ESX7eGeIzkuaYz3c=N; expires=Mon,
+        12 Jan 2026 19:51:16 GMT; path=/signin-oidc-meu; secure; samesite=none; httponly
+      apigw-requestid:
+      - XFj_liNSDoEEJkw=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/oauth2/authorize?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Location:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      Pragma:
+      - no-cache
+      Server:
+      - Server
+      Set-Cookie:
+      - XSRF-TOKEN=a42bbdb5-0db8-45fe-bfd9-1c67a9428b96; Path=/; Secure; HttpOnly;
+        SameSite=Lax
+      - csrf-state=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm;
+        Expires=Mon, 12-Jan-2026 19:41:16 GMT; Path=/; Secure; HttpOnly; SameSite=None
+      - csrf-state-legacy=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm;
+        Expires=Mon, 12-Jan-2026 19:41:16 GMT; Path=/; Secure; HttpOnly
+      Strict-Transport-Security:
+      - max-age=31536000 ; includeSubDomains
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      X-XSS-Protection:
+      - 1; mode=block
+      x-amz-cognito-request-id:
+      - abb20dfc-b99f-4c61-8c0b-f70f2ab3be12
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Host:
+      - live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+  response:
+    body:
+      string: "<!DOCTYPE html>\n<html lang=\"en\">\n<head><head>\n    <link href=\"https://d2uqej7bo24sqa.cloudfront.net/20240614193835/css/bootstrap.min.css\"
+        rel=\"stylesheet\"\n        media=\"screen\" />\n    <link href=\"https://d2uqej7bo24sqa.cloudfront.net/20240614193835/css/cognito-login.css\"
+        rel=\"stylesheet\"\n        media=\"screen\" />\n    <link href=\"https://d2uqej7bo24sqa.cloudfront.net/eu-west-1_gFEQiVmPM/3g4d5l5kivuqi7oia68gib7uso/20250401160518/assets/CSS/custom-css.css\"
+        rel=\"stylesheet\" media=\"screen\" />\n    <title>Signin</title>\n\n    <script
+        src=\"https://d2uqej7bo24sqa.cloudfront.net/20240614193835/js/amazon-cognito-advanced-security-data.min.js\"
+        ></script>\n    <script>\n    function getAdvancedSecurityData(formReference)
+        {\n        if (typeof AmazonCognitoAdvancedSecurityData === \"undefined\")
+        {\n            return true;\n        }\n\n        // UserpoolId is not available
+        on frontend for springboard. We do not use userPoolId\n        // anyway other
+        than put in context data. \n        var userPoolId = \"\";\n        var clientId
+        = getUrlParameter(\"client_id\");\n\n        var username = \"\";\n        var
+        usernameInput = document.getElementsByName(\"username\")[0];\n        if (usernameInput
+        && usernameInput.value) {\n            username = usernameInput.value;\n        }\n\n
+        \       var asfData = AmazonCognitoAdvancedSecurityData.getData(username,
+        userPoolId, clientId);\n        if (typeof asfData === \"undefined\") {\n
+        \           return true;\n        }\n\n        if (formReference && formReference.cognitoAsfData)
+        {\n            formReference.cognitoAsfData.value = asfData\n        }\n\n
+        \       return true;\n    }\n\n    function getUrlParameter(name) {\n        name
+        = name.replace(/[\\[]/, '\\\\[').replace(/[\\]]/, '\\\\]');\n        var regex
+        = new RegExp('[\\\\?&]' + name + '=([^&#]*)');\n        var results = regex.exec(location.search);\n
+        \       return results === null ? '' : decodeURIComponent(results[1].replace(/\\+/g,
+        ' '));\n    }\n\n    function onSubmit(evt, formRef) {\n        formRef.querySelector('button[type=\"submit\"]').disabled
+        = true;\n        if (!!formRef.submitted) {\n            evt.preventDefault();\n
+        \           return false;\n        } else {\n            formRef.submitted
+        = true;\n            return getAdvancedSecurityData(formRef);\n        }\n
+        \   }\n\n    function onSubmitLoginForm (formRef) {\n        formRef.querySelector('input[name=\"signInSubmitButton\"]').disabled
+        = true;\n        getAdvancedSecurityData(formRef)\n    }\n</script>\n\n    <meta
+        name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n</head></head>\n<body
+        spellcheck=\"false\">\n    <div class=\"container\">\n        <div class=\"modal-dialog\">\n
+        \           <div class=\"modal-content background-customizable modal-content-mobile
+        visible-xs visible-sm\">\n                <div><div>\n                    <div
+        class=\"banner-customizable\">\n                        <center>\n                            <img
+        alt=\"logo\" class=\"logo-customizable\" src=\"https://d2uqej7bo24sqa.cloudfront.net/eu-west-1_gFEQiVmPM/3g4d5l5kivuqi7oia68gib7uso/20250401160518/assets/images/image.jpg\"
+        />\n                        </center>\n                    </div>\n                </div></div>\n
+        \               <div class=\"modal-body\">\n                    <div><div>\n
+        \   \n</div></div>\n                    <div>\n                        <div><div>\n
+        \   \n</div></div>\n                        <div><div>\n    \n</div></div>\n
+        \                       <div>\n                            \n                            <div><div>\n
+        \   \n        <Span class=\"textDescription-customizable \">Sign in with your
+        email and password</Span>\n        <form action=\"/login?client_id=3g4d5l5kivuqi7oia68gib7uso&amp;redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&amp;response_type=code&amp;scope=openid
+        profile&amp;code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&amp;code_challenge_method=S256&amp;nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&amp;state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg\"
+        method=\"POST\" name=\"cognitoSignInForm\"\n              class=\"cognito-asf\"
+        onsubmit=\"onSubmitLoginForm(this);\"><input type=\"hidden\" name=\"_csrf\"
+        value=\"a42bbdb5-0db8-45fe-bfd9-1c67a9428b96\"/>\n\n            \n\n            \n
+        \           <label for=\"signInFormUsername\" class=\"label-customizable\">Email</label>\n
+        \           <div>\n                <input id=\"signInFormUsername\" name=\"username\"
+        type=\"text\" class=\"form-control inputField-customizable\"\n                   placeholder=\"***REDACTED_EMAIL***\"
+        autocapitalize=\"none\" required value=\"\">\n                \n                \n
+        \           </div>\n\n            <label for=\"signInFormPassword\" class=\"label-customizable\">Password</label>\n
+        \           <div><input id=\"signInFormPassword\" name=\"password\" type=\"password\"
+        class=\"form-control inputField-customizable\"\n                   placeholder=\"Password\"\n
+        \                  required></div>\n            <input type=\"hidden\" class=\"form-control
+        inputField-customizable\" name=\"cognitoAsfData\"/>\n            <div>\n                <a
+        class=\"redirect-customizable\" href=\"/forgotPassword?client_id=3g4d5l5kivuqi7oia68gib7uso&amp;redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&amp;response_type=code&amp;scope=openid%20profile&amp;code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&amp;code_challenge_method=S256&amp;response_mode=form_post&amp;nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&amp;state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&amp;x-client-SKU=ID_NET8_0&amp;x-client-ver=7.1.2.0\">Forgot
+        your password?</a>\n            </div>\n            <input name=\"signInSubmitButton\"
+        type=\"Submit\" value=\"Sign in\"\n                   class=\"btn btn-primary
+        submitButton-customizable\" aria-label=\"submit\"/>\n            <br/>\n            \n
+        \       </form>\n    \n</div></div>\n                        </div>\n                    </div>\n
+        \               </div>\n            </div>\n\n            \n\n            <div
+        class=\"modal-content background-customizable modal-content-mobile visible-md
+        visible-lg\">\n                <div><div>\n                    <div class=\"banner-customizable\">\n
+        \                       <center>\n                            <img alt=\"logo\"
+        class=\"logo-customizable\" src=\"https://d2uqej7bo24sqa.cloudfront.net/eu-west-1_gFEQiVmPM/3g4d5l5kivuqi7oia68gib7uso/20250401160518/assets/images/image.jpg\"
+        />\n                        </center>\n                    </div>\n                </div></div>\n
+        \               <div class=\"modal-body\">\n                    <div><div>\n
+        \   \n</div></div>\n                    <div>\n                        <div>\n
+        \                           <div><div>\n    \n</div></div>\n                            <div><div>\n
+        \   \n</div></div>\n                        </div>\n                        <div>\n
+        \                           <div><div>\n    \n        <Span class=\"textDescription-customizable
+        \">Sign in with your email and password</Span>\n        <form action=\"/login?client_id=3g4d5l5kivuqi7oia68gib7uso&amp;redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&amp;response_type=code&amp;scope=openid
+        profile&amp;code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&amp;code_challenge_method=S256&amp;nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&amp;state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg\"
+        method=\"POST\" name=\"cognitoSignInForm\"\n              class=\"cognito-asf\"
+        onsubmit=\"onSubmitLoginForm(this);\"><input type=\"hidden\" name=\"_csrf\"
+        value=\"a42bbdb5-0db8-45fe-bfd9-1c67a9428b96\"/>\n\n            \n\n            \n
+        \           <label for=\"signInFormUsername\" class=\"label-customizable\">Email</label>\n
+        \           <div>\n                <input id=\"signInFormUsername\" name=\"username\"
+        type=\"text\" class=\"form-control inputField-customizable\"\n                   placeholder=\"***REDACTED_EMAIL***\"
+        autocapitalize=\"none\" required value=\"\">\n                \n                \n
+        \           </div>\n\n            <label for=\"signInFormPassword\" class=\"label-customizable\">Password</label>\n
+        \           <div><input id=\"signInFormPassword\" name=\"password\" type=\"password\"
+        class=\"form-control inputField-customizable\"\n                   placeholder=\"Password\"\n
+        \                  required></div>\n            <input type=\"hidden\" class=\"form-control
+        inputField-customizable\" name=\"cognitoAsfData\"/>\n            <div>\n                <a
+        class=\"redirect-customizable\" href=\"/forgotPassword?client_id=3g4d5l5kivuqi7oia68gib7uso&amp;redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&amp;response_type=code&amp;scope=openid%20profile&amp;code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&amp;code_challenge_method=S256&amp;response_mode=form_post&amp;nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&amp;state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&amp;x-client-SKU=ID_NET8_0&amp;x-client-ver=7.1.2.0\">Forgot
+        your password?</a>\n            </div>\n            <input name=\"signInSubmitButton\"
+        type=\"Submit\" value=\"Sign in\"\n                   class=\"btn btn-primary
+        submitButton-customizable\" aria-label=\"submit\"/>\n            <br/>\n            \n
+        \       </form>\n    \n</div></div>\n                        </div>\n                    </div>\n
+        \               </div>\n            </div>\n        </div>\n    </div>\n    <script>\n
+        \   document.addEventListener(\"DOMContentLoaded\", function () {\n        var
+        inputs = document.querySelectorAll(\"input\");\n\n        inputs.forEach((input)
+        => {\n            input.addEventListener(\"input\", function () {\n                var
+        name = this.name;\n                var value = this.value;\n                var
+        matchingInputs = document.querySelectorAll(`input[name=\"${name}\"]`);\n\n
+        \               matchingInputs.forEach((match) => {\n                    if
+        (match !== this) {\n                        match.value = value;\n                    }\n
+        \               });\n            });\n        });\n    });\n</script>\n</body>\n\n</html>\n"
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Language:
+      - en-US
+      Content-Type:
+      - text/html;charset=UTF-8
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Expires:
+      - '0'
+      Pragma:
+      - no-cache
+      Server:
+      - Server
+      Strict-Transport-Security:
+      - max-age=31536000 ; includeSubDomains
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      X-XSS-Protection:
+      - 1; mode=block
+      x-amz-cognito-request-id:
+      - 963d4b24-29da-461d-b4d2-52ed85a908fb
+    status:
+      code: 200
+      message: OK
+- request:
+    body:
+      _csrf: '***REDACTED***'
+      cognitoAsfData: ''
+      password: '***REDACTED***'
+      username: '***REDACTED_EMAIL***'
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Length:
+      - '131'
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: POST
+    uri: https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:16 GMT
+      Location:
+      - https://auth.melcloudhome.com/signin-oidc-meu?code=3a7ea77f-7ff1-468b-9909-7de7f5bcb717&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg
+      Pragma:
+      - no-cache
+      Server:
+      - Server
+      Set-Cookie:
+      - XSRF-TOKEN=""; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/; Secure; HttpOnly;
+        SameSite=Lax
+      - XSRF-TOKEN=04cca4a1-dd88-45da-90c7-472706ff2aaf; Path=/; Secure; HttpOnly;
+        SameSite=Lax
+      - cognito="H4sIAAAAAAAAAAHiAB3/s02D8Y5MVhppn0kD0SrobWZxySvATT+Zl0jOT9HWWI2L4RCUSV6NGQaVoXe0Q/gVDwsZ8ViRmYGMvxnj0TIozmkSBZVVlrOHuPklZh7bqmYXDSTn1o5Z9ySRYvafbh9h/7BisFeVnMKmVWv6SF4Wke+vQWJ1iz2mcbdox5d2eJtquVvXWj9xqLxSlFzII/cTY2mjjgMHfk3w/L3h5UBBCI0uIaNCL3S9u7yjoEugEaoNuHnMw9pdg1q2lbIcaQ/9bTHlLy43Fx4btv0amYzz3z7hlzULLQZAD9Q3hDscP7nnZwxwbY7iAAAA.H4sIAAAAAAAAAAEgAN//ln0enc4ZgeGxrbB/DBcgArN4Xfj4AI7vws4R73LEjLiA72EfIAAAAA==.3";
+        Version=1; Domain=live-melcloudhome.auth.eu-west-1.amazoncognito.com; Max-Age=3600;
+        Expires=Mon, 12-Jan-2026 20:36:16 GMT; Path=/; Secure; HttpOnly; SameSite=Lax
+      Strict-Transport-Security:
+      - max-age=31536000 ; includeSubDomains
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - DENY
+      X-XSS-Protection:
+      - 1; mode=block
+      x-amz-cognito-request-id:
+      - ded90651-3628-4f49-9ff5-53a5c49ae556
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - auth.melcloudhome.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/signin-oidc-meu?code=3a7ea77f-7ff1-468b-9909-7de7f5bcb717&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-cache,no-store
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:17 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Location:
+      - /ExternalLogin/Callback
+      Pragma:
+      - no-cache
+      Server:
+      - Kestrel
+      Set-Cookie:
+      - .AspNetCore.Correlation.EszKBGJR08dyKo-XHEeD_g5SRz1ESX7eGeIzkuaYz3c=; expires=Thu,
+        01 Jan 1970 00:00:00 GMT; path=/signin-oidc-meu; secure; samesite=none; httponly
+      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8FAIFP-BDlFJtsfcpj5ls0CutMdcCTwsWi4QF9MlbesmQWLecgNcdQyb_rngepxkiwMkPF4Uf1-Y2WB09pXOaEIC-cRmXxaBWS_hvYi1tt6mq-S-i3IeWy_58spF_FfPYE9pT7fM2bCai6mMWjVmiA77MNCT1G1vt0cLWq8m8OBd8D8pyONtnb-Co5tHpRdYUg41W9_bExrkOHwo-b349wkIN3m8iA-rWK1GblQht2XMDGC849BUQ9rEVYOCMfH43dd1gAVc51x1i3X-tspqocU=;
+        expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/signin-oidc-meu; secure; samesite=none;
+        httponly
+      - idsrv.external=CfDJ8FAIFP-BDlFJtsfcpj5ls0BnKMKLQH2D6vUFdPZ3W6p6hmwlK7heQ5H6Ozq6RD-dHBaF-wDwZMqttOfORVBvT5-9gwVkQICnvnWumQwBztiWgxmV4U1rRvpks8eaW51m7ntV97_14MumnjAr3HQR7CNgut24QVuG_HnXkUU-bMMx_KioFcg_bSdwk3FDphh4IbWW7A4gfWtblVY0p1hQU9shfR6-rCcGKMCHX5Sig9xXmylDz5nWpOcjpLLV-qrc1bkCuaU4LqM6BMNAim-pLwqlwrjU-q_4BoIpsRxJ8uPFedGzYK98GW4j-b3dZrF7lBzxtG0vliWilykBS1nS6lJBek500CNsYupzjyxhrb_yhl7yUSILnjfr2GlotqaFKpqiYpok5BZiHTIpK2-PNA_0zG92QwfFRxDKYxcllssoi8NJNEEgZaMvzsSCYC4ZWbDu_ABRfJtYr1844jqgRx9c83yd6yIBZYBmBOBx0veEmquUfYH6qEbW9hmxee9KhRVb0Tlc7KPa3PVldw4hCoJzMiMEMNhKMSt0zgfUH_qypJkaJoCN9cMa9X_R51AtdG6PdutlHkRSKnxACWRSv1PKFdpzoPjHK30vxqU_kJdRBxwYSV9Z6a252eGc4EookXefVV0jkR1-uXKMr-pS11y3BX46VojbCu0kNpY1ZI8MtF9bFXDVJmCrGTKZv_jWXA2u0-FTZ-7TDPASNQ4LvdOlab1KE8ujSxICOiTEEEnKC4mQwjfXlzNgK6gYb9W4bhW0-6lz7n47Pp7z1SLEH45ClxnOLdCEhQrgNttdilVhKTMKiEZMp2q_VnFxY7y-_qdMGhMNHuzlv3Uu1PVEvDRJaXul8LLIBTHw5VpcVkR5ILhUQOhrZ3yKSjqcVtmtpnJFCJN_x3z-GBv4uTUYsRNgtyoqsEnKhWI5Bw2-apSt92kbfu3FzQcpxipcP7QPKsMFd3NWGfoSIwc83dNUaZj8tfQawJKgCO44LQ4O9ZOrfftJdFOLkV9aMmkLuFL04eFb6glzHc2vAz5nJbDCjXbyHSYx6hvXI3Kgt7QfSpGGIzatSDR-mLK7eilYisx-dcaECoO7MM1v5S3QQnPv61CaLyM3aDCxsD3zCUeoKLOj80xz_rLihqnhdF9ifw3e9oSllB-G3CrUP2iP9Yt-NjSHM-m9UWsKULfV4I_MF0yVKDmZVc4CjIcHWtwsljybuLkQsfiiFZK-WEDTLTaRnudRSu4sKzR2BXU73MqgOrv14zKDogv9d-U_X1oacvYulwDBo47F1A1VE7RYHsAhFb9dlQagCSuiSe_H4DIEQf75KgIQWOqi5TqaPPx-Cgd44BaPE8qYPSAC3MujtUKLKQPT5j2hTbykaIJoRiX2d7UcU2kGNXqjlfi6Ae50GDS_6RvLVskXoXwEkoSjBYUKfZKOZTdjJtWHDGgJTJ4X_Kd2CX3f6qYNLLNVLQs4-pKg7_PKhCynlCfm3kY0MiWLvtSXcujMdHM7Ce3Cg9-ryXfW54yZ-Nn-Awy_d_hCaoWg4mXWB0U5rN_scl6m_VfOEdKicglkM0jeYcua_9nl3pHSAPgNULraaIhZiY8Qg8d7BI1IC3nOzAe-tN5AUxwIiY5wARpk9fNkIem3N2rzG0bqX4Clcqp84nQGbk_11AzmR0eDD6emAeRa3Xo_8cKO3FiSn9FbovPljyHt3vDoTq99slJJjuFcxBJCnQ60iWndpR7qz0lm-26rTkKSBHh0nvP_cF-Rx79C2QobyOFdm_SG7Vg3cEI87Y34kgY_mwec0lPNxjmJyRkMmL2OlKdLhcfFkjlyl4nWV3nZVajY865KvpFlM2dHv6wxzvtNDYgoHl9rJWwFr3_E6_Elu6XyqQW6AafM7SLny5_Xt48ziUrZZYg512NhIsPp71PpLth4LYZvlVUJdGxhEIYmg8SYoizhKrWR3mrE136XDTO4q_ht1IvHJ7HzKsS6py1j23yOlLlhYAzMjgoBi0tlRWhGlyiKyIFjFTOapEVVA7s1jxhfgcDorxvLVEa3pCp-zK3llADLGv6nYPurYxpiQ6fVDyDraMjhcETaZllEtaS3NK5gOQz0yFE5Rb5kN44JPx_oLklb9OKygdaO5m5aV1Gyscyhkr1IzyG8Yq6uRGItmw8zjHsS5AZWzsb_M8vXHmPsHv2boTyLnEDyan8bryxDYprTKhGXj4Yy4lL0aXNR54N5J9g2DmJZXYkG1XMBO6WCTn8AXK8rnq69e2fLQZL59FTPy9f1CpcUEWzA2yCfUAv0otrUKoVKKKxm1Uf6ZK_IUGzPswOnJsFVXPuaoam-Ubp3fJBAMDYcqcsHJYgAKhGzbpPmeM5j6Cd_83xbwiFnS_ZpIUQa595Hg_xLONxb7VKq5RF7Q6W23B3Q8fjq7hcny2z794ua6mHi3c1ilRPktdCeA_tEQZH6ooRW7jWKQBPaQdsGLItv7fqIJ7_8mrjUfwka_8PnTasS-6yLHm6lT5YeMs9fJw1pQfwFxvH9avU;
+        path=/; secure; samesite=none; httponly
+      apigw-requestid:
+      - XFj_uj0UDoEEJCw=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - auth.melcloudhome.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/ExternalLogin/Callback
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-cache,no-store
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:17 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Location:
+      - /connect/authorize/callback?request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3A6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA&client_id=monitorandcontrolhome
+      Pragma:
+      - no-cache
+      Server:
+      - Kestrel
+      Set-Cookie:
+      - idsrv.session=09F5199ADA900BC594D717D967C34592; path=/; secure; samesite=none
+      - .AspNetCore.Identity.Application=CfDJ8FAIFP-BDlFJtsfcpj5ls0CJNSIswms3hRquOAZgR9_l8ixtgfJOZKOFKJYSwGWQj1zRxv2Cvuy7WIEmcaWHJDDmhbtRqVfWOomvPwmFybXiidHXbu7nvkdDkTlqcoHbhxCjwV2mq4QLtnfBDRfPhySTKZdIqi344qnPUS9n7PffIj-1n6V5YBw7xo9YkMKuZQZsIoIjKoy6Lo-p-B8puNE4_6MsBCIdjY127tC9KPO0VNUnJ6Z2An5yjck-ASN7AuKZexxl4FzvoqJUotpv_xRUILn_XOqS-cxiHzMUR_HEx6PXZq7-tjK_c2sbmVEF35fVmKzPD7ZMGeVIB-qO4wMQAOT3SJIVk2WPh_oZEWRe363UotAbMZ-ClMWL4-A95mS1B5hcFlCoKt3LtV0uWw5C77UlkX7fR9LCICKHUI9-hvbrjB7lmPSksZk91sYJIrOHg2KsrkZqYTNRqAfTMdHg_Tt-jgQHL0n4CkLBQW-L_6nyfNmza03eRgoK9YvrJqI3qoRHKBEf8uu1nQKq2jV-kRDXTGg6eW57bn8a9sg5nWEmu2AXLYXvZvbgEHWpC4GztzhRDRR5bfXBdh2dQbNQ8Lp04bG-bYxGPZ99Hku_8KT4_Tx2kgAnScy8k6N6IPhTWds6xlElNFMPpj2MuRI;
+        path=/; secure; samesite=lax; httponly
+      - idsrv.external=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; secure; samesite=none;
+        httponly
+      apigw-requestid:
+      - XFj_wjqjDoEEJJg=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - auth.melcloudhome.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://auth.melcloudhome.com/connect/authorize/callback?request_uri=urn:ietf:params:oauth:request_uri:6695D7AAD7995677AA3D6F78F554B0A65A3E97D9C9D7E9992CEA19B7B0C389FA&client_id=monitorandcontrolhome
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-store, no-cache, max-age=0
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:17 GMT
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Location:
+      - https://melcloudhome.com/signin-oidc?code=0C2FD291E7B0BB81569152789A7D60694EB09559AF7FF8CD2A0B9519A45AF104-1&scope=openid%20profile%20email%20offline_access%20IdentityServerApi&state=CfDJ8O_9gdsS9oNHkv2DwOqElXOjH5AfIWCvz9FEBWojDPz7jNG23NE3a1ytcemq1ngtN8TLDTkj__XipV5qUCj1ld72TmJc8Tkl2Q-xXKvILAsrPz7KAfQeNhXBY4c2SsUltnmkrI2I0t4UVWNPn65cAN6nQmAEstsp-ETXZJ_nnfSWuhEwYoF-PWkvEjiaBt8j7x4fDRWi6-WrV7oubC9iBn7_Q0MfJsty9g-800jLMD7tM6gv3Ne7omSBhbMhqitOwlV-QI4DFoYq7gT05OBhAG0Xe_5pRk_uZ--DrxHlm7H_MagBhIp3fUDolKYnvpFcMyg9Rem434O6_FmdWCKvYdp4_yB13K2bGbjE-cTKXdJdVPF7sknpB2MkrzZlq5tN9A&session_state=K-E5oJEIJCXs2evZHXJ_gNl6xMt5UFWOp5gS6JJ5MZg.7CEB5528D7985034269440C22C531A9B&iss=https%3A%2F%2Fauth.melcloudhome.com
+      Pragma:
+      - no-cache
+      Server:
+      - Kestrel
+      Set-Cookie:
+      - ConsentResponse.O2UlnPSedrWvVrIx5NPpHekMmBFrtKDjI8ZHNdH-93U=.; expires=Sat,
+        01 Jan 2000 00:00:00 GMT; path=/; secure; httponly
+      - .AspNetCore.Identity.Application=CfDJ8FAIFP-BDlFJtsfcpj5ls0DmBx8gExS3o0RI8FxmUWVxs1PxaqHiTImuHaYQGYZZhwdIGthW4BZJA_fP5_ocCvuhvSEty2FZhzCxMDED8ZbwmnF07vd31-kTrGYixEYFv307hx_agWanv2E-ZKbMiM_B42b-QXLkt-UWOqr9ujs7gvHPK0HHTYxMnay1LwU05FW6PGlpsMQ39L4maFHwXkvUQyVCBlhJoK0HZGY33PN3FukKYXgNlKyTnhKq0iRZCMGaah5OQhk5MdAGRmFqlif7YgxQsM6BnEnbKhwK20Sj5AstHcKpLkUjlnDXZH2WAQlWdWDFnS51ewhQmBjobUKSBzXpNoXwb3_KZOWV_H_gqcr0FrtYVYWQkA6QO-IwFkhF2M6M4-gZyoiRq4_kGlW_zZJyQkvd3wt3SrzrO4QSFEtluaSmfJX8tUPj--PRkr-jOzXOQ47587eoHxPHLcp4EneR-823o2CKrTOHMIqN1-US4T-9rA9P7yRWTq_apIeSgHJXm0Ss9lLmx0FLv2_MXjRr3cZPKDAzEJLMjGbBhB2UKZoQT-g8vet70jh3eT9aPCEcKKB-1TdchMqccLe2euXFc3xG_QDUOBkE2v1GHJqxjTInb59fXxQNsoH2dkITlyC63CBMakipk5Xw_Alnp51KkG00e1hTy2tza9jFDRd5RH0j_lCj1O16xfkoRV9xa-nwcbkSlZv9HqdyFaA;
+        path=/; secure; samesite=lax; httponly
+      apigw-requestid:
+      - XFj_xiA-DoEEJ-w=
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - melcloudhome.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://melcloudhome.com/signin-oidc?code=0C2FD291E7B0BB81569152789A7D60694EB09559AF7FF8CD2A0B9519A45AF104-1&scope=openid%20profile%20email%20offline_access%20IdentityServerApi&state=CfDJ8O_9gdsS9oNHkv2DwOqElXOjH5AfIWCvz9FEBWojDPz7jNG23NE3a1ytcemq1ngtN8TLDTkj__XipV5qUCj1ld72TmJc8Tkl2Q-xXKvILAsrPz7KAfQeNhXBY4c2SsUltnmkrI2I0t4UVWNPn65cAN6nQmAEstsp-ETXZJ_nnfSWuhEwYoF-PWkvEjiaBt8j7x4fDRWi6-WrV7oubC9iBn7_Q0MfJsty9g-800jLMD7tM6gv3Ne7omSBhbMhqitOwlV-QI4DFoYq7gT05OBhAG0Xe_5pRk_uZ--DrxHlm7H_MagBhIp3fUDolKYnvpFcMyg9Rem434O6_FmdWCKvYdp4_yB13K2bGbjE-cTKXdJdVPF7sknpB2MkrzZlq5tN9A&session_state=K-E5oJEIJCXs2evZHXJ_gNl6xMt5UFWOp5gS6JJ5MZg.7CEB5528D7985034269440C22C531A9B&iss=https://auth.melcloudhome.com
+  response:
+    body: {}
+    headers:
+      Cache-Control:
+      - no-cache,no-store
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:17 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      Expires:
+      - Thu, 01 Jan 1970 00:00:00 GMT
+      Location:
+      - /dashboard
+      Pragma:
+      - no-cache
+      Set-Cookie:
+      - .AspNetCore.Correlation.3i4fw88ek8eL6v8nEsgWZDVUFykEentlT-0T9FV_k9g=; expires=Thu,
+        01 Jan 1970 00:00:00 GMT; path=/signin-oidc; secure; samesite=none; httponly
+      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8O_9gdsS9oNHkv2DwOqElXMAYfjJShgtvcDOwjV_Q1FsU8vTEOfRBMrPMeb5aJKOm9seSlqFAh7KIx_62CelkX7Iw9aNdyfDYtrhBuhGpsef5OzKwXILNJ1OV4H60aXHF39P3IsTGmciUjzt4Mlu8v1RcnrWJiXUvWNPC883hExj6Ch7W6xaheOqmsOeSfJ8rRdx3DmUyz8VMudIRqNfg4WH-tUlJcRE7EIyEZYNrh9SDzNEgeO-j0x0qbhZEofUtve0_rVTUqjL70r_NYj7cDM=;
+        expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/signin-oidc; secure; samesite=none;
+        httponly
+      - __Secure-monitorandcontrol=chunks-2; path=/; secure; samesite=strict; httponly
+      - __Secure-monitorandcontrolC1=CfDJ8O_9gdsS9oNHkv2DwOqElXPxgQE0VbuMZ2MBKVK0GolUFhWAr6Eq2rLt-GRrLJ2qSLknmZ7MKgoaW-RB6hxOoiCrfunVcLOR8nQvn76cGA3BKs0JkZo1yDq9i1sRsc-ktp8djDLgBk7rQb3mj-coH_74pob6ELSf1N9oh0FdzKs7WDUGdwX-KgGm6RvcxljSU-eGuoEHhIwJLqefQJ4hbi43uPsFywSskzX7fBVuxGUfTFQAM_NnwGY20q7sfelyPr5GfhFoSiBXJE-AohcL9hx1bsBmgmTBIhOrHhKj-SPD4ytjyy8N9AqjxWrAgAoP3ByLb1X9bq5wgLnYc5570ie8NAYPXOC9kx2O1ALpnRug2aFE6W5FU9s4xXroHS6yaA8rtWaLTWSTEeeut0pIRnG30RoBhISntcx-eLGIemIFXb4YP08_z9SZ2_L7bPHa4HxAuuk7rYWnhAQveTr8t5LP8gc7qjugziGqWjm2wDb83qKd-9saNMY5R4TDpCxGlShE6xtMIJJz1hodpKRGuHawoEcDmZRva8PWSIJ7fQpqsAifJZ52vPDmPlgNcAzsydkaP97qcBYmi1EvAGv0g-Zlubf_6yHZBq2dWylncurV7ejUnaljblw0JGKPJdN81MUbij91KpRNzzV445FswiR5ZWE2Cpt-UmjtmuhGJS7F8hrbQf4SZcp_to43_S1xhF-PnpPaPHtoqWxdpQStuSX71cFOxKUCNxUUjQPlJ3nuictOWs7StdT7w6AuTK_dS6KqAvosCYzHTKfK_iH9M7shy4tbjZunYeMyTHPuW0LKHhVKMy2HHP7j9jnKJRAkiTWI-73RAjuLpFSwYjoh8GWi9pe_5pMLAymI66mopaoG2MGTLVUbe39CJEX1SBq_cX39_M0tlw8q-g7mx9PoF2-H1MH7yjfYWC-Pbr4K6DIrfApSUwTkyih9LrNZpF639bI1aPxmYdzpmYRgCC-NQWAsFJ5Tw0Py9TzsT-zH4msSDOqWkUvoQKmIoY9tpCR-HhFZsX0co-N4_mUEPyF0RWpcOaRqKcP7pFOYog3Xv6igl7gR4_iuLId47_rm9m8tBNJ4b6lnikD3XX-FclUOGMAvzdwLBCGshAndGM6ALhep5wgwo5ue_0O6KLUtQAduiII6mG68-u8SEb-rkACNNbLhWq0J36zllPtC4f9jevPWh3d3RVfD-72Fw-zfE3NPJ5a6ijx2lGcXW-XaaaQrBd2r1t8kcXJy2I2v423XjGYu9J-9yMOTzXlu-P40Oh-o1iZf03kMvVzGQ6N_720IWSO6owha-x3s8mfbhP0gAy83Vrb1Cxag36cq6_UsmnBN-k6Lqi-U98bXF1Xn6PVPIj7MJVBD4MgKqz3qpBvsKR58QXyYn9Rsw_fkJ1RSY9MLqBgNS9Y0s9wHFDL_bQfHzFZBfXzJIq8ubHPWrBH1Tgw-LaR0BHMke_SGqsSVG8hiagP2XI9T6bik-_maKYUkPkDUpzYGKcz_MFKNatEotmIRwTZfoLK6_yemzLe4FkAJ5QrOZP1jptISqAX6txHx8SFNSpKNMzK7Cmoyb92NGoEq9reiBAgXHGPUW799Q_UCfkNHzBKWb09YuTIPPnM_gRf9ooMLPipeBO-kmU35KKJiFXwBajFximWOYww-zaHzcVXBt7JNni4CLZ8dERlLhn9Qs-jEsPBzJDsScu73CR50yMRd3nZyhYmIA1f--ZnZML4hwrCoUasnNHjzr6PbEzwo2cIwLy5gA9o5tmpEevQhhsl3WrqaWlqM8C61wzHG0OUYS2sAaGy99rWwC9sM1efx9EB1u96JVX1VDbFMjFhBCkYkfVoL7ojYjphQdwtyhuu0G2kIQKMqECGjPJVNYDG2gU_80C0t6bLROZuRsHLsgHhpFAUOOOQCwmOuCQkXp1iZHlpsF0IPJ1RD9r3k_tOpmtwzk3IQ5rQHXdaSVppTqz6aHdlMPYsQnU0g0xvES2Ez9xEfMnwKag2OX2gzCJN4iSQ5qBRYhhJlmtTCjNKInH8YCyIYSDhLdyoyKQn5Aoq_8b-YbTE3brslLN7HfhG1-dRq-1nbY97kYu_OU-9hfTxuP-zd2d-oASY7G9__lHPqDe9lSNhNUPrvN9zbQKS9W1-AJ_kQwgvNemLjq21KhjD5lkvjXYrLZc_mT4bHYwChS-38Mo1zMM_R4FUhNMWFMf7Y79IKsmIv4tiNkg9pJYk_i9gnuXyPgAnn4Q1qtxQl7Y7ZrcakHLH2vtq3DQrX9u1imeeX0dgAIysnLxPoJsbbhYxWzXd6d4zqShI2zZuIVXrLUqWpl35gIqUqnv6vO4za8FAbbqBngE8YRufhVsiEgPY0sEcCTaSprF5CfXGjjmmzstqNUPu_TN5slA4Rrxdhma-3RJAHycmr3Fwz8-dePEAqGmjTNawO6wVDbtxMvxuJGZmx_KOB9BtA8ONbcxNzrS37wTQhdjnRPB1zeHoQB7WYUf7K6MtPRjKKDrfo37gSWB5PWSIrD3PZdtCldWVfBw8Oq0ADWFjmJpYYVhQ5kaAc_f92dPSNRktdBg6DtceLoFGnBREU5MMi5M_kvfjbo4Ee7Rx1gqkbqRKJ_u5ZL5YJu0D2hjUFLcZOrGVl8fqE2UKyYNrpEe9UAfDaK3RGLaRziBfbN0U8pdphxASpKWBp-xusEag2xQygx1sv9ZbMgPUDiktMQvkHhsjwGYLWcJ1QpsrXVnjPcoWPG9ElALacgLOP1mNApOGR3J7xnE9p-Pit1KJMkglj0W4AWXmQOeNcjxxCvhzJhTEiwAIvCaOEpQ-UgcfY5H7hccq3tubO2TVcJNEsS3TSb6w1-3U78iuTlqR-1JHTzcRh2AW97Jiv6hIloSfpiDX1qtlooXl-G6LVUY0IP5xY7B-Wkqu3HR2kNgNc8Fa83faYetMQrWKleim6RTz4v5KPxzG6r17lSuWCgCiccDXU3dtKs2mnkUMlDPcEgakWorvJhsZvzWdmq__3Fe1ISAKScddBJCHNM91L7rkSvae82wdL6kv3DNC5DLAaE-fCbi0-kEayRw7DP--PaCtm0EU3nXiV0s2SB08JYmLNKD2ZdBTOkhqAg9ybhMl8p_jNGRA_nJe9wdTBtD-Sio9yPxzs3fKMacOQRSzF0eZ90ZhZTfvoYXbqlxk59h5Npal2xKzV23a23P5rxH-niZwKV5J_SjWL5qK4urMO8LnhC0OH6HJ7n-rJz5isHcZe5sso6pIPlMxc5b8GK0JJwnRu1Usb7_e5PVMCBdnkKmKpEQ2SfrclLvaju67IaxBFhO9gqtB-TGUJj2u_SykOZr4tnpkTs-j30oOMfob2lmCvQ4dr5x7LSBx_5LsLEr0mCqs3SkIvbKtGluszwcJP6rcc_dABtI7PtMJ51HrINUcKouYBYiIiDzERgj4L42vcPjrBeKbNOUVQhAz8Vjgp1yFWRAHfKNUiLGRgyaqZBO-JGKHig_XW68-vFIyeFrHAoaOQUxlknLQu4iqYBq4GiZfZnyBlLh2w2JQePz6QevEe25FSnzRmecjRIW7SDGb0xFObQYwbP_MqamnT_HNDLsGgx4ixFywb4fgm5cD8G7FwGuVGBytgIB-nhSOqO9r5SzUM0rcw69O8uNlfxAvyIlPF0s3srW9YDVQSLVmhrY1TA0AWoEpVnffQysf2Ap2XXG-fmFfwVJSkWPIUl4ZDOjawjOvz1qWhPd34hzVpDgtBRC0ckDImIVFo7ePfhVHTOdAPvrHslbtQlUbfNRBWn8u1ooLSvTPTNyoCx5-GIppHrFbVhOJPJVwiXJKSyLFnwy-oniNYVoY8jXQRtYXv1015pTPuomc0Eok1YL0lwzxyXmpr4jquFiLNgjv7QthNrOnFABMiy5xgQsfxWDzViAinoOqY-_xQ_mztQagDOygCOBsSE1G_YSDrXYkqUsRPTLgV1WrpLzeBN5bqNzeDhK4ZzvMFlwLR-;
+        path=/; secure; samesite=strict; httponly
+      - __Secure-monitorandcontrolC2=8KlF2iunMSxBaUpZW8qnqzuRsfBszwjeYZxIjgKddzUk3PT-f9qp15s1cARA_onGO3P3zMV81LKeuJAesPvKLbuOH9ZNB5j1IRfnPJXNXqGfdyCs7G04fPeCvdNy1g9-0gLA8zoAYEXAsIuZXwGNfMvd_SoR9JT1imhi2szdWei8OtbFdgoeolR0quQCjMe3SbzFGjJS8-0eNX_fXF8NuecJLOAauigAGEEdC2PGqtG92-7VKIW9tCYdOw5l-VyXuMqIodQA-EHJBa3vDTRL685x5jWAL0rRDZby9gItezVKu7ly5tbH6L4GYjfhEPhPwVzcxYsPyj6PaA7JUb02dKjH4RCSUIOZJ2bA9oFyH_ylffrfKse5zQiNeDm-T4_KHbaZ4W_FVog6_OOOoa_ixj4UmI7gyZ94Bvu-YN1;
+        path=/; secure; samesite=strict; httponly
+      apigw-requestid:
+      - XFj_ygkCDoEEPzA=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 302
+      message: Found
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      Content-Type:
+      - application/x-www-form-urlencoded
+      Host:
+      - melcloudhome.com
+      Origin:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com
+      Referer:
+      - https://live-melcloudhome.auth.eu-west-1.amazoncognito.com/login?client_id=3g4d5l5kivuqi7oia68gib7uso&redirect_uri=https://auth.melcloudhome.com/signin-oidc-meu&response_type=code&scope=openid%20profile&code_challenge=UCc-82HCg7l04U60ISXKAXEqLHqV_IFRSVD6iC27vkQ&code_challenge_method=S256&response_mode=form_post&nonce=639038433761718617.ODBmOTM1MGItNWU0Zi00NGRhLWE0OTQtNjcxYjQ0MDgwYmIzOTRiMzlkZDAtZWM0ZC00NmI3LWFmMGMtZWEwNGRiZGRiM2Rm&state=CfDJ8FAIFP-BDlFJtsfcpj5ls0AJrPotbdMpis_TCQ7L3MADCPf2wP1OEQTvcpCrElVCLTI2J2ydv2qHyNelRjEip-Mif9pzSGAKbcqgpzWjVk-u1HUjJZ5MQ5HBkIQJxahzSuNpKKh_jPhVvQaEnMcAxG9ZcjaY_6kDM8xd8r9ObAryypsQIIxdiycYAwnZkSVBoxZZSKy3qcPFsjCogCXomv1eIhp06glYjLwQhxtVR61amzlGJDeIdpi4SBkOgM6EczoMqzG67rZvjJLvU2cZS2ROD-CjFIk3e9LLNxp4pRE31JdiPFIuqoS1n-XzeTBrzIzaCrWmenn35r0kcscJETCSd2iOAqwNq38gJpSpeU3tOSPulaiMN61ZZDTcii1e9m37ncSf50MfsK4sUd3DmgWk2IkFNQaBkbi3qHXnlz7FpT_YM_EjZY5qPvJD7M3qR1rtw0yBrDPKXGExoDMIrohuD9b6Qvtl68EPN-UoEEt6AIitzf4iC9b2zJ622YUlYfnbYdthlx2ILjhxd6BdjEJyZqKEUobW2TZC35psEh9kt-vC4rH88rDpua4rQ-3mkmVOpekgV7COGtSV-Wh90ELaBm8OAbMCgFSxImIVsK_Sj5YnzuEuVla_OfE4Y5ng6xs-6zYnYO4AVLRGGDLYfwW-_C5JhtLVGJ67XJEU946uZaYafC8UE5EkVCcSnXhFrg&x-client-SKU=ID_NET8_0&x-client-ver=7.1.2.0
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://melcloudhome.com/dashboard
+  response:
+    body:
+      string: "<!DOCTYPE html>\n<html lang=\"en\">\n\n<head>\n    <meta charset=\"utf-8\"
+        />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no\" />\n    <title>Mitsubishi Electric -
+        MELCloud Home</title>\n    <meta name=\"description\" content=\"The best way
+        to control your Mitsubishi Electric products. Let's get started!\" />\n    <base
+        href=\"/\" />\n\n    <link href=\"_content/MonitorAndControl.App.Components/css/app.css\"
+        rel=\"stylesheet\" />\n    <link href=\"_content/MonitorAndControl.App.Components/css/app.blazor.css\"
+        rel=\"stylesheet\" />\n    <link href=\"Me.MelCloudHome.MonitorAndControl.App.Client.styles.css\"
+        rel=\"stylesheet\" />\n    <link href=\"_content/Gotho.BlazorPdf/blazorpdf.min.css\"
+        rel=\"stylesheet\" />\n\n    <!--icons-->\n    <link rel=\"icon\" type=\"image/png\"
+        href=\"/favicon-96x96.png\" sizes=\"96x96\" />\n    <link rel=\"icon\" type=\"image/svg+xml\"
+        href=\"/favicon.svg\" />\n    <link rel=\"shortcut icon\" href=\"/favicon.ico\"
+        />\n    <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"/apple-touch-icon.png\"
+        />\n    <meta name=\"apple-mobile-web-app-title\" content=\"MELCloud Home\"
+        />\n    <link rel=\"manifest\" href=\"/site.webmanifest\" />\n\n</head>\n\n<body>\n
+        \   <div id=\"app\">Loading MELCloud Home Application...</div>\n\n    <div
+        id=\"blazor-error-ui\">\n        An unhandled error has occurred.\n        <a
+        href=\"\" class=\"reload\">Reload</a>\n        <a class=\"dismiss\">\U0001F5D9</a>\n
+        \   </div>\n\n    <script src=\"_framework/blazor.webassembly.js\"></script>\n
+        \   <script src=\"https://cdn.jsdelivr.net/npm/chart.js@^3\"></script>\n    <script
+        src=\"https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@^2\"></script>\n
+        \   <script src=\"https://cdn.jsdelivr.net/npm/moment@^2\"></script>\n    <script
+        src=\"https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1\"></script>\n
+        \   <script src=\"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js\"></script>\n
+        \   <script src=\"js/app.js\"></script>\n    <script src=\"js/LegendGenerator.js\"></script>\n
+        \   <!--QR code scan-->\n    <script src=\"_content/BlazorBarcodeScanner.ZXing.JS/zxingjs.index.min.js\"></script>\n
+        \   <script src=\"_content/BlazorBarcodeScanner.ZXing.JS/BlazorBarcodeScanner.js\"></script>\n
+        \   <script src=\"js/smartBanner.js\"></script>\n    <link href=\"css/smartBanner.css\"
+        rel=\"stylesheet\" />\n</body>\n\n</html>\n"
+    headers:
+      Accept-Ranges:
+      - bytes
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2286'
+      Content-Type:
+      - text/html
+      Date:
+      - Mon, 12 Jan 2026 19:36:17 GMT
+      Etag:
+      - '"1dc6e7a83c40f6e"'
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      Last-Modified:
+      - Tue, 16 Dec 2025 10:55:39 GMT
+      apigw-requestid:
+      - XFj_zjCEjoEEPxQ=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: GET
+    uri: https://melcloudhome.com/api/user/context
+  response:
+    body:
+      string: '{"id":"2db7ded3-b49c-4507-8f79-ec3bcb1d3714","firstname":"***REDACTED***","lastname":"***REDACTED***","email":"***REDACTED_EMAIL***","language":"en","country":"GB","numberOfDevicesAllowed":10,"numberOfBuildingsAllowed":2,"numberOfGuestUsersAllowedPerUnit":5,"numberOfGuestDevicesAllowed":10,"buildings":[],"guestBuildings":[{"id":"1800cb6b-c2c1-4837-b873-d741ad45d860","name":"***REDACTED_BUILDING***","timezone":"Europe/London","airToAirUnits":[{"id":"0efce33f-5847-4042-88eb-aaf3ff6a76db","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"DiningRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"16.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE8656D305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-38,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bf8d1e84-95cc-44d8-ab9b-25b87a945119","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"LivingRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"17.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE86576C05FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-49,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"83eb7374-9ce1-453f-b28f-d4949eabbf1f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Library","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"18.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403B882F2FFFEAAF47305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-67,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"1ccea7c7-3062-4174-a8ce-4ab45a34ab37","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"GuestBedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e895a3ffc","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-40,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bc9b2292-5b25-40e3-9b81-de36fe24189f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"10"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"20"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e8936621d","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-66,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"b657cdc5-1218-4022-bb90-2f6a41c522c6","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e89366217","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-61,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null}],"airToWaterUnits":[]},{"id":"9e21803e-2181-4624-a2ca-74f9ed32bd27","name":"***REDACTED_BUILDING***","timezone":"Europe/Madrid","airToAirUnits":[],"airToWaterUnits":[{"id":"8e61d4cb-bc08-4424-bb5c-8bce84857637","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Lounge","settings":[{"name":"Power","value":"False"},{"name":"InStandbyMode","value":"False"},{"name":"OperationMode","value":"Stop"},{"name":"HasZone2","value":"0"},{"name":"OperationModeZone1","value":"HeatRoomTemperature"},{"name":"RoomTemperatureZone1","value":"22"},{"name":"SetTemperatureZone1","value":"21"},{"name":"ProhibitHotWater","value":"False"},{"name":"TankWaterTemperature","value":"42.5"},{"name":"SetTankWaterTemperature","value":"46"},{"name":"HasCoolingMode","value":"False"},{"name":"ForcedHotWaterMode","value":"False"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"macAddress":"282e898e8e3d","timeZone":"Europe/Madrid","rssi":0,"ftcModel":3,"schedule":[],"scheduleEnabled":false,"frostProtection":{"zone1Active":false,"zone2Active":false,"enabled":false,"min":9,"max":11},"overheatProtection":null,"holidayMode":{"enabled":false,"startDate":"2025-12-14T14:20:03.064","endDate":"2025-12-17T12:00:00","active":false},"isConnected":true,"isInError":false,"capabilities":{"maxImportPower":0,"maxHeatOutput":0,"temperatureUnit":"","hasHotWater":true,"immersionHeaterCapacity":0,"minSetTankTemperature":0,"maxSetTankTemperature":60,"minSetTemperature":10,"maxSetTemperature":30,"temperatureIncrement":0,"temperatureIncrementOverride":"","hasHalfDegrees":false,"hasZone2":false,"hasDualRoomTemperature":false,"hasThermostatZone1":true,"hasThermostatZone2":true,"hasHeatZone1":true,"hasHeatZone2":false,"hasMeasuredEnergyConsumption":false,"hasMeasuredEnergyProduction":false,"hasEstimatedEnergyConsumption":true,"hasEstimatedEnergyProduction":true,"ftcModel":3,"refridgerentAddress":0,"hasDemandSideControl":true}}]}],"scenes":[]}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '11125'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 12 Jan 2026 19:36:20 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkASjgFDoEEPsA=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body:
+      forcedHotWaterMode: null
+      inStandbyMode: null
+      operationModeZone1: null
+      operationModeZone2: null
+      power: true
+      setCoolFlowTemperatureZone1: null
+      setCoolFlowTemperatureZone2: null
+      setHeatFlowTemperatureZone1: null
+      setHeatFlowTemperatureZone2: null
+      setTankWaterTemperature: null
+      setTemperatureZone1: null
+      setTemperatureZone2: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: PUT
+    uri: https://melcloudhome.com/api/atwunit/8e61d4cb-bc08-4424-bb5c-8bce84857637
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:20 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkATg-3joEEPRA=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body:
+      forcedHotWaterMode: null
+      inStandbyMode: null
+      operationModeZone1: HeatFlowTemperature
+      operationModeZone2: null
+      power: null
+      setCoolFlowTemperatureZone1: null
+      setCoolFlowTemperatureZone2: null
+      setHeatFlowTemperatureZone1: null
+      setHeatFlowTemperatureZone2: null
+      setTankWaterTemperature: null
+      setTemperatureZone1: null
+      setTemperatureZone2: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: PUT
+    uri: https://melcloudhome.com/api/atwunit/8e61d4cb-bc08-4424-bb5c-8bce84857637
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:22 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkAoinAjoEEPXg=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: GET
+    uri: https://melcloudhome.com/api/user/context
+  response:
+    body:
+      string: '{"id":"2db7ded3-b49c-4507-8f79-ec3bcb1d3714","firstname":"***REDACTED***","lastname":"***REDACTED***","email":"***REDACTED_EMAIL***","language":"en","country":"GB","numberOfDevicesAllowed":10,"numberOfBuildingsAllowed":2,"numberOfGuestUsersAllowedPerUnit":5,"numberOfGuestDevicesAllowed":10,"buildings":[],"guestBuildings":[{"id":"1800cb6b-c2c1-4837-b873-d741ad45d860","name":"***REDACTED_BUILDING***","timezone":"Europe/London","airToAirUnits":[{"id":"0efce33f-5847-4042-88eb-aaf3ff6a76db","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"DiningRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"16.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE8656D305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-38,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bf8d1e84-95cc-44d8-ab9b-25b87a945119","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"LivingRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"17.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE86576C05FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-49,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"83eb7374-9ce1-453f-b28f-d4949eabbf1f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Library","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"18.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403B882F2FFFEAAF47305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-67,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"1ccea7c7-3062-4174-a8ce-4ab45a34ab37","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"GuestBedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e895a3ffc","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-40,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bc9b2292-5b25-40e3-9b81-de36fe24189f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"10"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"20"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e8936621d","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-66,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"b657cdc5-1218-4022-bb90-2f6a41c522c6","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e89366217","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-61,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null}],"airToWaterUnits":[]},{"id":"9e21803e-2181-4624-a2ca-74f9ed32bd27","name":"***REDACTED_BUILDING***","timezone":"Europe/Madrid","airToAirUnits":[],"airToWaterUnits":[{"id":"8e61d4cb-bc08-4424-bb5c-8bce84857637","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Lounge","settings":[{"name":"Power","value":"True"},{"name":"InStandbyMode","value":"False"},{"name":"OperationMode","value":"Stop"},{"name":"HasZone2","value":"0"},{"name":"OperationModeZone1","value":"HeatFlowTemperature"},{"name":"RoomTemperatureZone1","value":"22"},{"name":"SetTemperatureZone1","value":"21"},{"name":"ProhibitHotWater","value":"False"},{"name":"TankWaterTemperature","value":"42.5"},{"name":"SetTankWaterTemperature","value":"46"},{"name":"HasCoolingMode","value":"False"},{"name":"ForcedHotWaterMode","value":"False"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"macAddress":"282e898e8e3d","timeZone":"Europe/Madrid","rssi":0,"ftcModel":3,"schedule":[],"scheduleEnabled":false,"frostProtection":{"zone1Active":false,"zone2Active":false,"enabled":false,"min":9,"max":11},"overheatProtection":null,"holidayMode":{"enabled":false,"startDate":"2025-12-14T14:20:03.064","endDate":"2025-12-17T12:00:00","active":false},"isConnected":true,"isInError":false,"capabilities":{"maxImportPower":0,"maxHeatOutput":0,"temperatureUnit":"","hasHotWater":true,"immersionHeaterCapacity":0,"minSetTankTemperature":0,"maxSetTankTemperature":60,"minSetTemperature":10,"maxSetTemperature":30,"temperatureIncrement":0,"temperatureIncrementOverride":"","hasHalfDegrees":false,"hasZone2":false,"hasDualRoomTemperature":false,"hasThermostatZone1":true,"hasThermostatZone2":true,"hasHeatZone1":true,"hasHeatZone2":false,"hasMeasuredEnergyConsumption":false,"hasMeasuredEnergyProduction":false,"hasEstimatedEnergyConsumption":true,"hasEstimatedEnergyProduction":true,"ftcModel":3,"refridgerentAddress":0,"hasDemandSideControl":true}}]}],"scenes":[]}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '11124'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 12 Jan 2026 19:36:24 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkA9jR_DoEEPSQ=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body:
+      forcedHotWaterMode: null
+      inStandbyMode: null
+      operationModeZone1: HeatRoomTemperature
+      operationModeZone2: null
+      power: null
+      setCoolFlowTemperatureZone1: null
+      setCoolFlowTemperatureZone2: null
+      setHeatFlowTemperatureZone1: null
+      setHeatFlowTemperatureZone2: null
+      setTankWaterTemperature: null
+      setTemperatureZone1: null
+      setTemperatureZone2: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: PUT
+    uri: https://melcloudhome.com/api/atwunit/8e61d4cb-bc08-4424-bb5c-8bce84857637
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:25 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkA-jY9joEEPvg=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body:
+      forcedHotWaterMode: null
+      inStandbyMode: null
+      operationModeZone1: null
+      operationModeZone2: null
+      power: false
+      setCoolFlowTemperatureZone1: null
+      setCoolFlowTemperatureZone2: null
+      setHeatFlowTemperatureZone1: null
+      setHeatFlowTemperatureZone2: null
+      setTankWaterTemperature: null
+      setTemperatureZone1: null
+      setTemperatureZone2: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: PUT
+    uri: https://melcloudhome.com/api/atwunit/8e61d4cb-bc08-4424-bb5c-8bce84857637
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      Date:
+      - Mon, 12 Jan 2026 19:36:26 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkBJjdZDoEEQrg=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      referer:
+      - https://melcloudhome.com/dashboard
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+      x-csrf:
+      - '1'
+    method: GET
+    uri: https://melcloudhome.com/api/user/context
+  response:
+    body:
+      string: '{"id":"2db7ded3-b49c-4507-8f79-ec3bcb1d3714","firstname":"***REDACTED***","lastname":"***REDACTED***","email":"***REDACTED_EMAIL***","language":"en","country":"GB","numberOfDevicesAllowed":10,"numberOfBuildingsAllowed":2,"numberOfGuestUsersAllowedPerUnit":5,"numberOfGuestDevicesAllowed":10,"buildings":[],"guestBuildings":[{"id":"1800cb6b-c2c1-4837-b873-d741ad45d860","name":"***REDACTED_BUILDING***","timezone":"Europe/London","airToAirUnits":[{"id":"0efce33f-5847-4042-88eb-aaf3ff6a76db","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"DiningRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"16.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE8656D305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-38,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bf8d1e84-95cc-44d8-ab9b-25b87a945119","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"LivingRoom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"17.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403388D3DFFFE86576C05FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-49,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"83eb7374-9ce1-453f-b28f-d4949eabbf1f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Library","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"18.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"0"},{"name":"VaneHorizontalDirection","value":"Centre"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"FE0000060403B882F2FFFEAAF47305FF01","capabilities":{"isMultiSplitSystem":true,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":true,"hasSwing":true,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":5,"minTempCoolDry":16,"maxTempCoolDry":31,"minTempHeat":10,"maxTempHeat":31,"minTempAutomatic":16,"maxTempAutomatic":31,"hasDemandSideControl":true,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-67,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":2,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"1ccea7c7-3062-4174-a8ce-4ab45a34ab37","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"GuestBedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19.5"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e895a3ffc","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-40,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"bc9b2292-5b25-40e3-9b81-de36fe24189f","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"10"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"1"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"20"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e8936621d","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-66,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null},{"id":"b657cdc5-1218-4022-bb90-2f6a41c522c6","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Bedroom","unitSettings":null,"settings":[{"name":"RoomTemperature","value":"8.5"},{"name":"Power","value":"False"},{"name":"OperationMode","value":"Heat"},{"name":"ActualFanSpeed","value":"Auto"},{"name":"SetFanSpeed","value":"3"},{"name":"VaneHorizontalDirection","value":"Auto"},{"name":"VaneVerticalDirection","value":"Auto"},{"name":"InStandbyMode","value":"False"},{"name":"SetTemperature","value":"19"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"schedule":[],"isInError":false,"scheduleEnabled":true,"connectedInterfaceIdentifier":"282e89366217","capabilities":{"isMultiSplitSystem":false,"isLegacyDevice":false,"hasStandby":true,"hasCoolOperationMode":true,"hasHeatOperationMode":true,"hasAutoOperationMode":true,"hasDryOperationMode":true,"hasAutomaticFanSpeed":true,"hasAirDirection":false,"hasSwing":false,"hasExtendedTemperatureRange":true,"hasEnergyConsumedMeter":true,"numberOfFanSpeeds":3,"minTempCoolDry":19,"maxTempCoolDry":30,"minTempHeat":10,"maxTempHeat":28,"minTempAutomatic":19,"maxTempAutomatic":28,"hasDemandSideControl":false,"hasHalfDegreeIncrements":true,"supportsWideVane":false},"rssi":-61,"timeZone":"Europe/London","frostProtection":null,"overheatProtection":null,"holidayMode":null,"isConnected":true,"connectedInterfaceType":0,"systemId":null,"energyProducedOptIn":null,"isEnergyUsageCompatible":null}],"airToWaterUnits":[]},{"id":"9e21803e-2181-4624-a2ca-74f9ed32bd27","name":"***REDACTED_BUILDING***","timezone":"Europe/Madrid","airToAirUnits":[],"airToWaterUnits":[{"id":"8e61d4cb-bc08-4424-bb5c-8bce84857637","givenDisplayName":"***REDACTED_DEVICE***","displayIcon":"Lounge","settings":[{"name":"Power","value":"False"},{"name":"InStandbyMode","value":"False"},{"name":"OperationMode","value":"Stop"},{"name":"HasZone2","value":"0"},{"name":"OperationModeZone1","value":"HeatRoomTemperature"},{"name":"RoomTemperatureZone1","value":"22"},{"name":"SetTemperatureZone1","value":"21"},{"name":"ProhibitHotWater","value":"False"},{"name":"TankWaterTemperature","value":"42.5"},{"name":"SetTankWaterTemperature","value":"46"},{"name":"HasCoolingMode","value":"False"},{"name":"ForcedHotWaterMode","value":"False"},{"name":"IsInError","value":"False"},{"name":"ErrorCode","value":""}],"macAddress":"282e898e8e3d","timeZone":"Europe/Madrid","rssi":0,"ftcModel":3,"schedule":[],"scheduleEnabled":false,"frostProtection":{"zone1Active":false,"zone2Active":false,"enabled":false,"min":9,"max":11},"overheatProtection":null,"holidayMode":{"enabled":false,"startDate":"2025-12-14T14:20:03.064","endDate":"2025-12-17T12:00:00","active":false},"isConnected":true,"isInError":false,"capabilities":{"maxImportPower":0,"maxHeatOutput":0,"temperatureUnit":"","hasHotWater":true,"immersionHeaterCapacity":0,"minSetTankTemperature":0,"maxSetTankTemperature":60,"minSetTemperature":10,"maxSetTemperature":30,"temperatureIncrement":0,"temperatureIncrementOverride":"","hasHalfDegrees":false,"hasZone2":false,"hasDualRoomTemperature":false,"hasThermostatZone1":true,"hasThermostatZone2":true,"hasHeatZone1":true,"hasHeatZone2":false,"hasMeasuredEnergyConsumption":false,"hasMeasuredEnergyProduction":false,"hasEstimatedEnergyConsumption":true,"hasEstimatedEnergyProduction":true,"ftcModel":3,"refridgerentAddress":0,"hasDemandSideControl":true}}]}],"scenes":[]}'
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '11125'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Mon, 12 Jan 2026 19:36:27 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      apigw-requestid:
+      - XFkBUhlSDoEEPSA=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Encoding:
+      - gzip, deflate, br
+      Accept-Language:
+      - en-US,en;q=0.9
+      User-Agent:
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
+        like Gecko) Chrome/142.0.0.0 Safari/537.36
+      cookie:
+      - '***REDACTED***'
+      sec-ch-ua:
+      - '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"'
+      sec-ch-ua-mobile:
+      - ?0
+      sec-ch-ua-platform:
+      - '"macOS"'
+    method: GET
+    uri: https://melcloudhome.com/bff/logout
+  response:
+    body:
+      string: "\n<!DOCTYPE html>\n<html lang=\"en\">\n\n<head>\n    <meta charset=\"utf-8\"
+        />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no\" />\n    <title>Error</title>\n    <link
+        href=\"/css/bootstrap/bootstrap.min.css\" rel=\"stylesheet\" />\n    <link
+        href=\"/css/app.css\" rel=\"stylesheet\" asp-append-version=\"true\" />\n</head>\n\n<body>\n
+        \   <div class=\"main\">\n        <div class=\"content px-4\">\n            <h1
+        class=\"text-danger\">Error.</h1>\n            <h2 class=\"text-danger\">An
+        error occurred while processing your request.</h2>\n\n                <p>\n
+        \                   <strong>Request ID:</strong> <code>00-dfbbbb7026db2bb123740cfaf32c1d8d-b71f90e2ef9a1031-01</code>\n
+        \               </p>\n\n            <h3>Development Mode</h3>\n            <p>\n
+        \               Swapping to the <strong>Development</strong> environment displays
+        detailed information about the error that occurred.\n            </p>\n            <p>\n
+        \               <strong>The Development environment shouldn't be enabled for
+        deployed applications.</strong>\n                It can result in displaying
+        sensitive information from exceptions to end users.\n                For local
+        debugging, enable the <strong>Development</strong> environment by setting
+        the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>\n
+        \               and restarting the app.\n            </p>\n        </div>\n
+        \   </div>\n</body>\n\n</html>\n"
+    headers:
+      Cache-Control:
+      - no-cache,no-store
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '1452'
+      Content-Type:
+      - text/html; charset=utf-8
+      Date:
+      - Mon, 12 Jan 2026 19:36:27 GMT
+      Expect-CT:
+      - max-age=86400, enforce, report-uri=https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce
+      Expires:
+      - '-1'
+      Pragma:
+      - no-cache
+      apigw-requestid:
+      - XFkBVgdxDoEEP1A=
+      content-security-policy:
+      - 'block-all-mixed-content; report-uri https://mitsubishielectric.report-uri.comhttps://mitsubishielectric.report-uri.com/r/d/csp/enforce;
+        default-src ''self'' ''unsafe-inline'' blob:; frame-src ''self''; connect-src
+        ''self'' wss: https://mitsubishielectric.report-uri.com *.eu-west-1.amazonaws.com/
+        *.ingest.de.sentry.io; font-src ''self'' ''unsafe-inline'' https:; object-src
+        ''none''; form-action ''self''; img-src data: https: ''self''; script-src
+        ''self'' ''unsafe-inline'' ''unsafe-eval'' blob: ''report-sample'' https:
+        https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src ''self''
+        ''unsafe-inline'' https:; media-src https:; frame-ancestors ''self''; base-uri
+        ''self'' ''unsafe-inline'''
+      referrer-policy:
+      - strict-origin-when-cross-origin
+      strict-transport-security:
+      - max-age=31536000 ; includeSubDomains
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - DENY
+      x-xss-protection:
+      - 1; mode=block
+    status:
+      code: 500
+      message: Internal Server Error
+version: 1

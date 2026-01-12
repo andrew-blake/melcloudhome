@@ -19,7 +19,6 @@ from .const_atw import (
     ATW_PRESET_MODES,
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_ZONE,
-    ATW_TEMP_STEP,
     ATW_TO_HA_PRESET,
     HA_TO_ATW_PRESET,
     ATWEntityBase,
@@ -43,7 +42,6 @@ class ATWClimateZone1(
     _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_translation_key = "melcloudhome"  # For preset mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_target_temperature_step = ATW_TEMP_STEP
     _attr_min_temp = ATW_TEMP_MIN_ZONE
     _attr_max_temp = ATW_TEMP_MAX_ZONE
 
@@ -96,14 +94,10 @@ class ATWClimateZone1(
         operation_status shows what valve is ACTIVELY doing RIGHT NOW.
         operation_mode_zone1 shows CONFIGURED mode for Zone 1.
 
-        API operation_status values (atw-api-reference.md):
+        API operation_status values:
         - "Stop" = Idle (target reached, no heating)
         - "HotWater" = Heating DHW tank (not Zone 1)
-        - Zone mode string (e.g., "HeatRoomTemperature") = Actively heating that zone
-
-        When operation_status == operation_mode_zone1:
-        - Valve is positioned on Zone 1 AND actively heating
-        - No temperature check needed - API already indicates active heating
+        - "Heating" = Actively heating zone
         """
         device = self.get_device()
         if device is None or not device.power:
@@ -114,9 +108,8 @@ class ATWClimateZone1(
         if device.operation_status == "Stop":
             return HVACAction.IDLE
 
-        # If valve is on Zone 1 (operation_status == operation_mode_zone1),
-        # the system is ACTIVELY HEATING this zone
-        if device.operation_status == device.operation_mode_zone1:
+        # API returns "Heating" when actively heating zone
+        if device.operation_status == "Heating":
             return HVACAction.HEATING
 
         # Valve is elsewhere (DHW or Zone 2) - this zone is idle
@@ -129,6 +122,22 @@ class ATWClimateZone1(
         if device is None:
             return None
         return device.room_temperature_zone1
+
+    @property
+    def target_temperature_step(self) -> float:
+        """Return temperature step based on device capability.
+
+        Respects hasHalfDegrees to avoid breaking MELCloud web UI.
+        Even though API accepts 0.5°C values, MELCloud UI cannot display them
+        properly when hasHalfDegrees=false (UI goes off scale).
+
+        Validated: Real ATW device with hasHalfDegrees=false breaks MELCloud UI
+        when set to values like 21.5°C.
+        """
+        device = self.get_device()
+        if device and device.capabilities:
+            return 0.5 if device.capabilities.has_half_degrees else 1.0
+        return 1.0  # Safe default
 
     @property
     def target_temperature(self) -> float | None:

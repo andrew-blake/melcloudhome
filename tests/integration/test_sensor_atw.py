@@ -119,7 +119,7 @@ async def test_atw_operation_status_sensor_created(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> None:
     """Test operation status sensor shows raw API value (no mapping)."""
-    mock_unit = create_mock_atw_unit(operation_status="HeatFlowTemperature")
+    mock_unit = create_mock_atw_unit(operation_status="Heating")
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]
     )
@@ -142,7 +142,7 @@ async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> 
 
         state = hass.states.get("sensor.melcloudhome_0efc_9abc_operation_status")
         # Raw API value, not mapped
-        assert state.state == "HeatFlowTemperature"
+        assert state.state == "Heating"
 
 
 @pytest.mark.asyncio

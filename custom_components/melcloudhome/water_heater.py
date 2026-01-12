@@ -116,6 +116,19 @@ class ATWWaterHeater(
         return device.set_tank_water_temperature
 
     @property
+    def target_temperature_step(self) -> float:
+        """Return temperature step based on device capability.
+
+        Respects hasHalfDegrees to avoid breaking MELCloud web UI.
+        Even though API accepts 0.5°C values, MELCloud UI cannot display them
+        properly when hasHalfDegrees=false (UI goes off scale).
+        """
+        device = self.get_device()
+        if device and device.capabilities:
+            return 0.5 if device.capabilities.has_half_degrees else 1.0
+        return 1.0  # Safe default
+
+    @property
     def current_operation(self) -> str | None:
         """Return current operation mode (eco or high_demand)."""
         device = self.get_device()

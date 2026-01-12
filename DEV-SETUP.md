@@ -99,7 +99,7 @@ The mock server provides three pre-configured test devices:
      - `climate.melcloudhome_bf2d_5666_zone_1`
      - `water_heater.melcloudhome_bf2d_5666_tank`
      - `switch.melcloudhome_bf2d_5666_system_power`
-   - Controller: FTC6
+   - Mock device (ftcModel: 3)
    - Zone 1 (underfloor heating): Target 25°C, Current 23°C
    - Hot water tank: Target 50°C, Current 48°C
    - Outside temperature: 5°C

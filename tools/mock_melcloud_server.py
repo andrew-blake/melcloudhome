@@ -46,6 +46,7 @@ class MockMELCloudServer:
         self.ata_states = self._init_ata_devices()
         self.atw_states = self._init_atw_devices()
         self.buildings = self._init_buildings()
+        self.guest_buildings = self._init_guest_buildings()
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -121,6 +122,22 @@ class MockMELCloudServer:
                     "bf8d5678-90ab-cdef-0123-456789ab5119",
                 ],
                 "atw_unit_ids": ["bf2d256c-42ac-4799-a6d8-c6ab433e5666"],
+            },
+        }
+
+    def _init_guest_buildings(self) -> dict[str, dict[str, Any]]:
+        """Initialize guest buildings (shared device access).
+
+        Real-world use case: Users with guest access to other users' buildings.
+        Guest buildings have full control capabilities, identical to owned buildings.
+        """
+        return {
+            "building-guest": {
+                "id": "building-guest",
+                "name": "Shared Building",
+                "timezone": "Europe/Madrid",
+                "ata_unit_ids": [],
+                "atw_unit_ids": [],
             },
         }
 
@@ -231,12 +248,18 @@ class MockMELCloudServer:
         """GET /api/user/context - Returns all devices (both types).
 
         Architecture: Multi-type container
-        Format: {buildings: [{airToAirUnits: [...], airToWaterUnits: [...]}]}
+        Format: {buildings: [...], guestBuildings: [...]}
+
+        Supports:
+        - buildings: Owned buildings (full access)
+        - guestBuildings: Shared buildings (guest access, full control)
         """
         logger.info("📋 User Context Request")
 
         buildings_response = []
+        guest_buildings_response = []
 
+        # Build owned buildings
         for building_id, building in self.buildings.items():
             # Build ATA units array
             ata_units = []
@@ -280,11 +303,71 @@ class MockMELCloudServer:
                 }
             )
 
-        logger.info(
-            "   ✅ Returned %d ATA + %d ATW devices", len(ata_units), len(atw_units)
+        # Build guest buildings (shared device access)
+        for building_id, building in self.guest_buildings.items():
+            # Build ATA units array
+            guest_ata_units = []
+            for unit_id in building["ata_unit_ids"]:
+                state = self.ata_states[unit_id]
+                guest_ata_units.append(
+                    {
+                        "id": unit_id,
+                        "givenDisplayName": state.get("name", unit_id),
+                        "rssi": -45,
+                        "scheduleEnabled": False,
+                        "settings": self._build_ata_settings(unit_id),
+                        "capabilities": self._get_ata_capabilities(),
+                        "schedule": [],
+                    }
+                )
+
+            # Build ATW units array
+            guest_atw_units = []
+            for unit_id in building["atw_unit_ids"]:
+                state = self.atw_states[unit_id]
+                guest_atw_units.append(
+                    {
+                        "id": unit_id,
+                        "givenDisplayName": state.get("name", unit_id),
+                        "rssi": -42,
+                        "scheduleEnabled": False,
+                        "settings": self._build_atw_settings(unit_id),
+                        "capabilities": self._get_atw_capabilities(),
+                        "schedule": [],
+                    }
+                )
+
+            guest_buildings_response.append(
+                {
+                    "id": building_id,
+                    "name": building["name"],
+                    "timezone": building["timezone"],
+                    "airToAirUnits": guest_ata_units,
+                    "airToWaterUnits": guest_atw_units,
+                }
+            )
+
+        total_ata = sum(len(b["ata_unit_ids"]) for b in self.buildings.values()) + sum(
+            len(b["ata_unit_ids"]) for b in self.guest_buildings.values()
+        )
+        total_atw = sum(len(b["atw_unit_ids"]) for b in self.buildings.values()) + sum(
+            len(b["atw_unit_ids"]) for b in self.guest_buildings.values()
         )
 
-        return web.json_response({"buildings": buildings_response})
+        logger.info(
+            "   ✅ Returned %d ATA + %d ATW devices (%d owned buildings, %d guest buildings)",
+            total_ata,
+            total_atw,
+            len(buildings_response),
+            len(guest_buildings_response),
+        )
+
+        return web.json_response(
+            {
+                "buildings": buildings_response,
+                "guestBuildings": guest_buildings_response,
+            }
+        )
 
     async def handle_ata_control(self, request: web.Request) -> web.Response:
         """PUT /api/ataunit/{unit_id} - Control ATA device.
@@ -451,8 +534,16 @@ class MockMELCloudServer:
             logger.info("   ✅ Forced DHW: %s", body["forcedHotWaterMode"])
 
         if body.get("inStandbyMode") is not None:
-            state["in_standby_mode"] = body["inStandbyMode"]
-            logger.info("   ✅ Standby: %s", body["inStandbyMode"])
+            # Real device behavior: Cannot enter standby mode when powered on
+            # API accepts the command but device ignores it
+            if body["inStandbyMode"] and state["power"]:
+                logger.info(
+                    "   ⚠️  Standby mode ON ignored (device powered on - realistic behavior)"
+                )
+                # Don't change state - matches real ATW device behavior
+            else:
+                state["in_standby_mode"] = body["inStandbyMode"]
+                logger.info("   ✅ Standby: %s", body["inStandbyMode"])
 
         # Update operation_mode STATUS based on 3-way valve logic
         self._update_atw_operation_mode(unit_id)
@@ -478,10 +569,11 @@ class MockMELCloudServer:
         Logic:
         - If forced_hot_water_mode: "HotWater"
         - Else if DHW < target: "HotWater"
-        - Else if Zone < target: operation_mode_zone1 value
+        - Else if Zone < target: "Heating"
         - Else: "Stop"
 
         Critical: operation_mode is STATUS (read-only), not control parameter
+        Note: Real API returns "Heating" (not mode-specific strings)
         """
         state = self.atw_states[unit_id]
 
@@ -507,7 +599,7 @@ class MockMELCloudServer:
         if dhw_needs_heat:
             state["operation_mode"] = "HotWater"
         elif zone_needs_heat:
-            state["operation_mode"] = state["operation_mode_zone1"]
+            state["operation_mode"] = "Heating"  # Real API returns simplified status
         else:
             state["operation_mode"] = "Stop"
 
