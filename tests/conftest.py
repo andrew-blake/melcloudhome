@@ -233,3 +233,9 @@ def dining_room_unit_id() -> str:
 def living_room_unit_id() -> str:
     """ID of the Living Room unit for testing."""
     return "bf8d1e84-95cc-44d8-ab9b-25b87a945119"
+
+
+@pytest.fixture
+def atw_unit_id() -> str:
+    """ID of the ATW unit for VCR testing (real guest device)."""
+    return "8e61d4cb-bc08-4424-bb5c-8bce84857637"
