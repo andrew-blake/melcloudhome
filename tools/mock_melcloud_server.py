@@ -189,6 +189,11 @@ class MockMELCloudServer:
             "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_put
         )
 
+        # Telemetry endpoint (spike: sparse data pattern)
+        telemetry_route = app.router.add_get(
+            "/api/telemetry/actual/{unit_id}", self.handle_telemetry_actual
+        )
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -200,6 +205,7 @@ class MockMELCloudServer:
             schedule_post,
             schedule_enabled_get,
             schedule_enabled_put,
+            telemetry_route,
         ]:
             cors.add(route)
 
@@ -602,6 +608,68 @@ class MockMELCloudServer:
             state["operation_mode"] = "Heating"  # Real API returns simplified status
         else:
             state["operation_mode"] = "Stop"
+
+    async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
+        """GET /api/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
+
+        Returns sparse telemetry data matching real API behavior observed in HAR:
+        - 0-4 datapoints per hour
+        - Sometimes hours or days old
+        - 4-hour lookback window
+        """
+        import random
+        from datetime import UTC, datetime, timedelta
+
+        unit_id = request.match_info.get("unit_id")
+        measure = request.rel_url.query.get("measure", "flow_temperature")
+
+        logger.info("📊 Telemetry request: unit=%s, measure=%s", unit_id, measure)
+
+        # Generate 4 hours of sparse data (realistic pattern)
+        values = []
+        now = datetime.now(UTC)
+
+        # 0-4 datapoints per hour (sparse like real API)
+        for hour_ago in [4, 3, 2, 1]:
+            if random.random() < 0.7:  # 70% chance of data in this hour
+                timestamp = now - timedelta(
+                    hours=hour_ago, minutes=random.randint(0, 59)
+                )
+                # Base temps vary by measure
+                base_temps = {
+                    "flow_temperature": 45.0,
+                    "return_temperature": 42.0,
+                    "flow_temperature_zone1": 44.0,
+                    "return_temperature_zone1": 41.0,
+                    "flow_temperature_boiler": 46.0,
+                    "return_temperature_boiler": 43.0,
+                }
+                temp = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
+                values.append(
+                    {
+                        "time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f"),
+                        "value": f"{temp:.1f}",
+                    }
+                )
+
+        logger.info("📊 Returning %d datapoints for %s", len(values), measure)
+
+        return web.json_response(
+            {
+                "measureData": [
+                    {
+                        "deviceId": unit_id,
+                        "type": self._snake_to_camel(measure),
+                        "values": values,
+                    }
+                ]
+            }
+        )
+
+    def _snake_to_camel(self, snake_str: str) -> str:
+        """Convert snake_case to camelCase."""
+        components = snake_str.split("_")
+        return components[0] + "".join(x.title() for x in components[1:])
 
     async def handle_schedule(self, request: web.Request) -> web.Response:
         """GET/POST /api/atwcloudschedule/{unit_id} - Get or update schedule."""

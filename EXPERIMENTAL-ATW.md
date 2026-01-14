@@ -1,9 +1,8 @@
 # ⚠️ Experimental: Air-to-Water (ATW) Heat Pump Support
 
-**Status:** BETA - Tested on real hardware via guest building
-**Based On:** HAR captures + real device testing
-**Version:** v2.0.0-beta.3 (beta pre-release)
-**Last Updated:** 2026-01-12
+**Status:** BETA
+**Version:** v2.0.0-beta.5 (beta pre-release)
+**Last Updated:** 2026-01-14
 
 ---
 
@@ -16,7 +15,7 @@
 - May have undiscovered edge cases or device-specific behaviors
 - Recommended for beta testers willing to report issues
 
-**Beta testers: Please report any issues at https://github.com/andrew-blake/melcloudhome/issues**
+**Beta testers: Please report any issues at <https://github.com/andrew-blake/melcloudhome/issues>**
 
 ---
 
@@ -30,36 +29,44 @@
 | DHW tank control (water heater) | ✅ Implemented | ✅ Tested on real hardware |
 | System power control (switch) | ✅ Implemented | ✅ Tested on real hardware |
 | Temperature sensors (Zone 1, tank) | ✅ Implemented | ✅ Tested on real hardware |
+| Telemetry sensors (6 flow/return temps) | ✅ Implemented | ✅ Validated with real API data |
 | Operation status sensor | ✅ Implemented | ✅ Tested on real hardware |
 | Binary sensors (error, connection, forced DHW) | ✅ Implemented | ✅ Tested on real hardware |
 | Preset modes (Room/Flow/Curve) | ✅ Implemented | ⚠️ Room mode tested, Flow/Curve untested |
 | Zone 2 support | ❌ Not implemented | Single zone systems only |
-| Energy monitoring | ❌ Not available | ATA-only feature |
+| Energy monitoring | ❌ Not available | Insufficient API data (see ADR-015) |
+
+---
+
+## Telemetry Sensors (Flow/Return Temperatures)
+
+**NEW in v2.0.0-beta.5:** ATW devices now expose 6 additional temperature sensors for monitoring heating system performance.
+
+### Available Sensors
+
+1. **Flow Temperature** - System-level flow temperature
+2. **Return Temperature** - System-level return temperature
+3. **Flow Temperature Zone 1** - Zone 1 heating loop flow temp
+4. **Return Temperature Zone 1** - Zone 1 heating loop return temp
+5. **Flow Temperature Boiler** - External boiler flow temp (if present)
+6. **Return Temperature Boiler** - External boiler return temp (if present)
+
+### Update Frequency
+
+- **Polling interval:** Every 60 minutes
+- **Data source:** MELCloud telemetry API
+- **Lookback window:** 4 hours (handles outages gracefully)
 
 ---
 
 ## Acknowledgments
 
 **Beta Testing:** Special thanks to [@pwa-2025](https://github.com/pwa-2025) for:
+
 - Providing guest building access for real hardware testing
-- Enabling discovery of undocumented `"Heating"` operation status
-- Validating core ATW functionality on production Ecodan system
-
----
-
-## Implementation Target Hardware
-
-Based on HAR analysis and real device testing:
-
-- Mitsubishi Electric Ecodan heat pumps
-- EHSCVM2D Hydrokit (HAR data + real testing from @pwa-2025)
-- FTC controllers with `ftcModel: 3` in API (physical model unknown)
-
-**Tested system (@pwa-2025):**
-
-- Model: Ecodan EHSCVM2D Hydrokit
-- API reports: `ftcModel: 3` (physical FTC controller model not confirmed)
-- Zones: Single zone + DHW
+- Validating core ATW functionality on production system:
+  - Ecodan EHSCVM2D Hydrokit system
+  - Zones: Single zone + DHW
 
 ---
 
@@ -85,7 +92,7 @@ Based on HAR analysis and real device testing:
 
    ```bash
    # Via HACS or manual installation
-   # Version v2.0.0 or later
+   # Version v2.0.0-beta.X
    ```
 
 3. **Monitor Closely**
@@ -105,6 +112,7 @@ Based on HAR analysis and real device testing:
 > The short_id is derived from device UUID (first 4 + last 4 chars). Example: `melcloudhome_bf8d_5119`
 
 #### Climate Entity (Zone 1)
+
 - [ ] **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
   - Example: `climate.melcloudhome_bf8d_5119_zone_1`
 - [ ] Temperature setting (10-30°C range)
@@ -117,6 +125,7 @@ Based on HAR analysis and real device testing:
   - [ ] `OFF` - Turn off entire system (delegates to switch)
 
 #### Water Heater Entity (DHW Tank)
+
 - [ ] **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
   - Example: `water_heater.melcloudhome_bf8d_5119_tank`
 - [ ] Tank temperature setting (40-60°C range)
@@ -127,6 +136,7 @@ Based on HAR analysis and real device testing:
 - [ ] Verify operation_status attribute shows valve position
 
 #### Switch Entity (System Power)
+
 - [ ] **Entity ID**: `switch.melcloudhome_{short_id}_system_power`
   - Example: `switch.melcloudhome_bf8d_5119_system_power`
 - [ ] Turn on system power
@@ -134,6 +144,7 @@ Based on HAR analysis and real device testing:
 - [ ] **Note**: Both climate OFF and switch OFF control the same system power (by design)
 
 #### Sensors
+
 - [ ] **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
   - Example: `sensor.melcloudhome_bf8d_5119_zone_1_temperature`
   - Verify reading matches physical thermostat display
@@ -146,6 +157,7 @@ Based on HAR analysis and real device testing:
   - Shows current 3-way valve position
 
 #### Binary Sensors
+
 - [ ] **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
   - Example: `binary_sensor.melcloudhome_bf8d_5119_error_state`
 - [ ] **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
@@ -154,6 +166,7 @@ Based on HAR analysis and real device testing:
   - Example: `binary_sensor.melcloudhome_bf8d_5119_forced_dhw_active`
 
 #### System Behavior
+
 - [ ] Multi-hour operation: Check for stability over time
 - [ ] 3-way valve switching: Verify system alternates between Zone 1 and DHW as needed
 - [ ] High demand mode: Verify Zone 1 heating suspends when DHW has priority
@@ -183,33 +196,6 @@ Based on HAR analysis and real device testing:
 
 ---
 
-## Development Status
-
-### Completed (v2.0.0)
-
-- ✅ ATW API client implementation
-- ✅ Zone 1 climate platform
-- ✅ Water heater platform (DHW)
-- ✅ Switch platform (system power)
-- ✅ Sensor platform (temperatures, WiFi, errors)
-- ✅ Mock API server for development
-- ✅ Integration tests (mock-based)
-
-### Help Wanted
-
-**Have hardware?**
-- Test with real Ecodan systems
-- Capture HAR files from different FTC controllers
-- Report entity behavior and UX feedback
-
-**Want to help without hardware?**
-- Use our reverse engineering tools to understand API behavior
-- Analyze HAR captures from users
-- Contribute to API documentation
-- **See:** [tools/reverse-engineering/](tools/reverse-engineering/) for Chrome override and request proxying tools
-
----
-
 ## Disclaimer
 
 This integration is provided "AS IS" without warranty of any kind. The author(s) are not responsible for any damage to equipment or property resulting from use of this experimental feature.
@@ -218,19 +204,10 @@ Use of this integration with ATW systems is entirely at your own risk.
 
 ---
 
-## Contact & Support
+## Contact
 
 - **GitHub Issues:** <https://github.com/andrew-blake/melcloudhome/issues>
 - **Documentation:** See README.md for general integration info
 - **API Reference:** docs/api/atw-api-reference.md
 
 **Please clearly label all ATW-related issues as "experimental ATW"**
-
----
-
-## See Also
-
-- **[README.md](README.md)** - General integration overview and installation
-- **[SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md)** - Hardware compatibility and tested models
-- **[docs/api/atw-api-reference.md](docs/api/atw-api-reference.md)** - Complete ATW API specification
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to report findings and contribute

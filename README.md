@@ -34,7 +34,7 @@ Home Assistant custom integration for **MELCloud Home**.
 - **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
 - **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
 - **Switch** (System Power): System on/off control (primary power control point)
-- **Sensors**: Zone 1 room temperature, tank temperature, operation status (3-way valve position)
+- **Sensors**: Zone 1 temperature, tank temperature, operation status, 6 telemetry sensors (flow/return temps)
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
 - **Note**: Energy monitoring is an ATA-only feature (not available for ATW devices)
 
@@ -225,6 +225,28 @@ For each heat pump system, the following entities are created:
 - **Operation Status**: `sensor.melcloudhome_{short_id}_operation_status`
   - Example: `sensor.melcloudhome_bf8d_5119_operation_status`
   - Shows current 3-way valve position: "Stop", "HotWater", "HeatRoomTemperature", etc.
+
+**Telemetry Sensors (Flow/Return Temperatures):**
+
+- **Flow Temperature**: `sensor.melcloudhome_{short_id}_flow_temperature`
+- **Return Temperature**: `sensor.melcloudhome_{short_id}_return_temperature`
+- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone1`
+- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone1`
+- **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
+- **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
+
+**Purpose:** Monitor heating system efficiency and performance
+- Flow vs return delta indicates heat transfer efficiency
+- Zone-specific temps show heating loop performance
+- Boiler temps available if external boiler present
+
+**Update frequency:** Every 60 minutes (sensor state updated with latest API value)
+**Data density:** 10-15 datapoints per hour during active heating (sparse when idle)
+**Statistics:** HA auto-creates statistics and history graphs automatically
+
+**Note:** Boiler temps may show "unavailable" if no external boiler present (normal behavior)
+
+**Energy monitoring:** ⚠️ NOT available for ATW devices (API provides insufficient data - see ADR-015)
 
 #### Binary Sensors
 

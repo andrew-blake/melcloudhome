@@ -166,7 +166,6 @@ class MELCloudHomeClient:
             ApiError: If API request fails
         """
         data = await self._api_request("GET", API_USER_CONTEXT)
-        # UserContext never returns 304 (allow_304 defaults to False)
         assert data is not None, "UserContext should never return None"
         self._user_context = UserContext.from_dict(data)
         return self._user_context

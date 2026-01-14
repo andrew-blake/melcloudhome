@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToAirUnit, UserContext
+from .const import DATA_LOOKBACK_HOURS_ENERGY
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -230,8 +231,7 @@ class EnergyTracker:
 
         # Setup time range for energy data fetch
         to_time = datetime.now(UTC)
-        # Fetch last 48 hours to handle progressive updates and outages
-        from_time = to_time - timedelta(hours=48)
+        from_time = to_time - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)
 
         # Wrap with retry for automatic session recovery
         data = await self._execute_with_retry(
