@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
@@ -16,18 +15,21 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
-from .const import DOMAIN, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    UPDATE_INTERVAL,
+    UPDATE_INTERVAL_ENERGY,
+    UPDATE_INTERVAL_TELEMETRY,
+)
 from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
 from .energy_tracker import EnergyTracker
+from .telemetry_tracker import TelemetryTracker
 
 if TYPE_CHECKING:
     from homeassistant.helpers.event import CALLBACK_TYPE
 
 _LOGGER = logging.getLogger(__name__)
-
-# Energy update interval (30 minutes)
-ENERGY_UPDATE_INTERVAL = timedelta(minutes=30)
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -58,11 +60,21 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._atw_units: dict[str, AirToWaterUnit] = {}
         # Energy tracking cancellation callback
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
+        # SPIKE: Telemetry tracking cancellation callback
+        self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
         # Initialize energy tracker
         self.energy_tracker = EnergyTracker(
+            hass=hass,
+            client=client,
+            execute_with_retry=self._execute_with_retry,
+            get_coordinator_data=lambda: self.data,
+        )
+
+        # Initialize telemetry tracker
+        self.telemetry_tracker = TelemetryTracker(
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,
@@ -155,6 +167,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Update energy data for units using energy tracker
         self.energy_tracker.update_unit_energy_data(self._units)
 
+        # Update telemetry data for ATW units using telemetry tracker
+        self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
+
     async def async_setup(self) -> None:
         """Set up the coordinator with energy polling."""
         _LOGGER.info("Setting up energy polling for MELCloud Home")
@@ -185,9 +200,41 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates = async_track_time_interval(
             self.hass,
             _update_energy_with_listeners,
-            ENERGY_UPDATE_INTERVAL,
+            UPDATE_INTERVAL_ENERGY,
         )
         _LOGGER.info("Energy polling scheduled (every 30 minutes)")
+
+        # Setup telemetry tracker
+        await self.telemetry_tracker.async_setup()
+
+        # Perform initial telemetry fetch
+        try:
+            await self.telemetry_tracker.async_update_telemetry_data()
+            _LOGGER.info("Initial telemetry fetch completed")
+
+            # Update unit objects with new telemetry data
+            self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
+
+            # Notify listeners (sensors) of telemetry update
+            self.async_update_listeners()
+        except Exception as err:
+            _LOGGER.error(
+                "Error during initial telemetry fetch: %s", err, exc_info=True
+            )
+
+        # Schedule periodic telemetry updates (60 minutes)
+        async def _update_telemetry_with_listeners(now):
+            """Update telemetry and notify listeners."""
+            await self.telemetry_tracker.async_update_telemetry_data(now)
+            self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
+            self.async_update_listeners()
+
+        self._cancel_telemetry_updates = async_track_time_interval(
+            self.hass,
+            _update_telemetry_with_listeners,
+            UPDATE_INTERVAL_TELEMETRY,
+        )
+        _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).
@@ -204,6 +251,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Shutdown the coordinator."""
         if self._cancel_energy_updates:
             self._cancel_energy_updates()
+        if self._cancel_telemetry_updates:
+            self._cancel_telemetry_updates()
         await self.client.close()
 
     def get_ata_device(self, unit_id: str) -> AirToAirUnit | None:

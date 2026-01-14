@@ -14,6 +14,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToWaterUnit, Building
@@ -71,7 +73,88 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=None,  # Categorical (not numeric)
         value_fn=lambda unit: unit.operation_status,  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
     ),
+    # Telemetry sensors (flow/return temperatures from telemetry API)
+    # HA auto-creates statistics for MEASUREMENT sensors (validated via spike)
+    ATWSensorEntityDescription(
+        key="flow_temperature",
+        translation_key="flow_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("flow_temperature"),
+        available_fn=lambda unit: unit.telemetry.get("flow_temperature") is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="return_temperature",
+        translation_key="return_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("return_temperature"),
+        available_fn=lambda unit: unit.telemetry.get("return_temperature") is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="flow_temperature_zone1",
+        translation_key="flow_temperature_zone1",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
+        available_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1")
+        is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="return_temperature_zone1",
+        translation_key="return_temperature_zone1",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
+        available_fn=lambda unit: unit.telemetry.get("return_temperature_zone1")
+        is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="flow_temperature_boiler",
+        translation_key="flow_temperature_boiler",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
+        available_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler")
+        is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="return_temperature_boiler",
+        translation_key="return_temperature_boiler",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
+        available_fn=lambda unit: unit.telemetry.get("return_temperature_boiler")
+        is not None,
+    ),
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ATW sensor platform."""
+    coordinator: CoordinatorProtocol = hass.data[entry.domain][entry.entry_id]
+
+    entities = []
+    for building in coordinator.data.buildings:
+        for unit in building.air_to_water_units:
+            entities.extend(
+                _create_sensors_for_unit(
+                    coordinator, unit, building, entry, ATW_SENSOR_TYPES
+                )
+            )
+
+    async_add_entities(entities)
+    _LOGGER.info("Created %d ATW sensor(s)", len(entities))
 
 
 def _create_sensors_for_unit(

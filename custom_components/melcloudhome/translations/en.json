@@ -95,6 +95,24 @@
       },
       "operation_status": {
         "name": "Operation status"
+      },
+      "flow_temperature": {
+        "name": "Flow temperature"
+      },
+      "return_temperature": {
+        "name": "Return temperature"
+      },
+      "flow_temperature_zone1": {
+        "name": "Flow temperature zone 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Return temperature zone 1"
+      },
+      "flow_temperature_boiler": {
+        "name": "Flow temperature boiler"
+      },
+      "return_temperature_boiler": {
+        "name": "Return temperature boiler"
       }
     },
     "binary_sensor": {

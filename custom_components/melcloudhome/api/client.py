@@ -86,7 +86,7 @@ class MELCloudHomeClient:
         method: str,
         endpoint: str,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         Make an API request.
 
@@ -96,7 +96,7 @@ class MELCloudHomeClient:
             **kwargs: Additional arguments to pass to aiohttp request
 
         Returns:
-            JSON response as dict
+            JSON response as dict, or None if 304 Not Modified
 
         Raises:
             AuthenticationError: If not authenticated
@@ -109,6 +109,7 @@ class MELCloudHomeClient:
             session = await self._auth.get_session()
 
             # CRITICAL: All API requests require these headers
+            # User-Agent inherited from session (set in auth.py)
             headers = kwargs.pop("headers", {})
             headers.setdefault("Accept", "application/json")
             headers.setdefault("x-csrf", "1")
@@ -120,6 +121,11 @@ class MELCloudHomeClient:
 
             async with session.request(method, url, headers=headers, **kwargs) as resp:
                 _LOGGER.debug("API Response: %s %s [%d]", method, endpoint, resp.status)
+
+                # Handle 304 Not Modified (telemetry endpoints may return this)
+                if resp.status == 304:
+                    _LOGGER.debug("API Response: 304 Not Modified - no new data")
+                    return None
 
                 # Handle authentication errors
                 if resp.status == 401:
@@ -160,6 +166,7 @@ class MELCloudHomeClient:
             ApiError: If API request fails
         """
         data = await self._api_request("GET", API_USER_CONTEXT)
+        assert data is not None, "UserContext should never return None"
         self._user_context = UserContext.from_dict(data)
         return self._user_context
 
@@ -198,42 +205,58 @@ class MELCloudHomeClient:
             "measure": "cumulative_energy_consumed_since_last_upload",
         }
 
-        try:
-            # Use _api_request but need to handle 304 specially
-            session = await self._auth.get_session()
-            headers = {
-                "Accept": "application/json",
-                "x-csrf": "1",
-                "referer": f"{self._base_url}/dashboard",
+        return await self._api_request(
+            "GET",
+            endpoint,
+            params=params,
+        )
+
+    async def get_telemetry_actual(
+        self,
+        unit_id: str,
+        from_time: Any,  # datetime
+        to_time: Any,  # datetime
+        measure: str,
+    ) -> dict[str, Any] | None:
+        """
+        Get actual telemetry data for ATW device.
+
+        Args:
+            unit_id: ATW device UUID
+            from_time: Start time (UTC-aware datetime)
+            to_time: End time (UTC-aware datetime)
+            measure: Measure name (snake_case: "flow_temperature", etc.)
+
+        Returns:
+            Telemetry data with timestamped values, or None if 304 Not Modified
+
+        Example response:
+            {
+                "measureData": [{
+                    "deviceId": "unit-uuid",
+                    "type": "flowTemperature",
+                    "values": [
+                        {"time": "2026-01-14 10:00:00.000000000", "value": "45.2"},
+                        {"time": "2026-01-14 10:01:00.000000000", "value": "45.3"},
+                    ]
+                }]
             }
 
-            url = f"{self._base_url}{endpoint}"
-            _LOGGER.debug("Energy API Request: GET %s", endpoint)
+        Raises:
+            AuthenticationError: Session expired (401)
+            ApiError: API request failed
+        """
+        params = {
+            "from": from_time.strftime("%Y-%m-%d %H:%M"),
+            "to": to_time.strftime("%Y-%m-%d %H:%M"),
+            "measure": measure,
+        }
 
-            async with session.get(url, params=params, headers=headers) as resp:
-                _LOGGER.debug("Energy API Response: GET %s [%d]", endpoint, resp.status)
-
-                if resp.status == 304:
-                    # No new data available
-                    return None
-
-                if resp.status == 401:
-                    raise AuthenticationError("Session expired - please login again")
-
-                if resp.status >= 400:
-                    try:
-                        error_data = await resp.json()
-                        error_msg = error_data.get("message", f"HTTP {resp.status}")
-                    except Exception:
-                        error_msg = f"HTTP {resp.status}"
-
-                    raise ApiError(f"Energy API request failed: {error_msg}")
-
-                result: dict[str, Any] = await resp.json()
-                return result
-
-        except aiohttp.ClientError as err:
-            raise ApiError(f"Network error: {err}") from err
+        return await self._api_request(
+            "GET",
+            f"/api/telemetry/actual/{unit_id}",
+            params=params,
+        )
 
     def parse_energy_response(self, data: dict[str, Any] | None) -> float | None:
         """

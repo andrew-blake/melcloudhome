@@ -1,0 +1,170 @@
+"""Tests for MELCloud Home telemetry API (ATW flow/return temperatures).
+
+Tests cover telemetry data retrieval, parsing, and error handling.
+Uses VCR cassettes to test against real API responses.
+
+Recording VCR cassettes:
+1. Set credentials in .env: MELCLOUD_USER, MELCLOUD_PASSWORD
+2. Delete existing cassette: rm tests/api/cassettes/test_get_telemetry_*.yaml
+3. Run test: pytest tests/api/test_telemetry.py -v --record-mode=once
+4. Cassettes will be recorded automatically
+
+Note: Tests will be skipped if no ATW units found in account.
+
+Reference: docs/testing-best-practices.md
+"""
+
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from freezegun import freeze_time
+
+from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from custom_components.melcloudhome.api.exceptions import AuthenticationError
+
+# Test all 6 telemetry measures
+ALL_MEASURES = [
+    "flow_temperature",
+    "return_temperature",
+    "flow_temperature_zone1",
+    "return_temperature_zone1",
+    "flow_temperature_boiler",
+    "return_temperature_boiler",
+]
+
+
+class TestTelemetryDataRetrieval:
+    """Test telemetry endpoint for ATW temperature sensors."""
+
+    @freeze_time("2026-01-14 16:00:00", real_asyncio=True)
+    @pytest.mark.vcr()
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("measure", ALL_MEASURES)
+    async def test_get_telemetry_measure(
+        self, credentials: tuple[str, str], atw_unit_id: str, measure: str
+    ) -> None:
+        """Test fetching telemetry for each measure."""
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
+        to_time = datetime.now(UTC)
+        from_time = to_time - timedelta(hours=4)
+
+        result = await client.get_telemetry_actual(
+            unit_id=atw_unit_id,
+            from_time=from_time,
+            to_time=to_time,
+            measure=measure,
+        )
+
+        # Verify response structure
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "measureData" in result
+
+        # Verify data if present (may be empty for boiler temps)
+        if result["measureData"] and result["measureData"][0]["values"]:
+            value = result["measureData"][0]["values"][0]
+            assert "time" in value
+            assert "value" in value
+            temp = float(value["value"])
+            assert 0 <= temp <= 100  # Reasonable range
+
+        await client.close()
+
+
+class TestTelemetryEdgeCases:
+    """Test edge cases and error handling."""
+
+    @freeze_time("2026-01-14 16:00:00", real_asyncio=True)
+    @pytest.mark.vcr()
+    @pytest.mark.asyncio
+    async def test_get_telemetry_empty_response(
+        self, credentials: tuple[str, str], atw_unit_id: str
+    ) -> None:
+        """Test handling of empty telemetry response (old/inactive device)."""
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
+        # Request very old data (likely empty)
+        to_time = datetime.now(UTC) - timedelta(days=365)
+        from_time = to_time - timedelta(hours=4)
+
+        result = await client.get_telemetry_actual(
+            unit_id=atw_unit_id,
+            from_time=from_time,
+            to_time=to_time,
+            measure="flow_temperature",
+        )
+
+        # Should still return valid structure
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "measureData" in result
+
+        await client.close()
+
+    @pytest.mark.asyncio
+    async def test_get_telemetry_unauthenticated(self) -> None:
+        """Test telemetry request without authentication fails properly."""
+        client = MELCloudHomeClient(debug_mode=False)
+
+        to_time = datetime.now(UTC)
+        from_time = to_time - timedelta(hours=4)
+
+        with pytest.raises(AuthenticationError):
+            await client.get_telemetry_actual(
+                unit_id="fake-unit-id",
+                from_time=from_time,
+                to_time=to_time,
+                measure="flow_temperature",
+            )
+
+        await client.close()
+
+
+class TestTelemetryDataParsing:
+    """Test telemetry data parsing and validation."""
+
+    @freeze_time("2026-01-14 16:00:00", real_asyncio=True)
+    @pytest.mark.vcr()
+    @pytest.mark.asyncio
+    async def test_parse_telemetry_values(
+        self, credentials: tuple[str, str], atw_unit_id: str
+    ) -> None:
+        """Test parsing telemetry values into usable format."""
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
+        to_time = datetime.now(UTC)
+        from_time = to_time - timedelta(hours=4)
+
+        result = await client.get_telemetry_actual(
+            unit_id=atw_unit_id,
+            from_time=from_time,
+            to_time=to_time,
+            measure="flow_temperature",
+        )
+
+        # Parse values like TelemetryTracker does
+        if result and result.get("measureData"):
+            values = result["measureData"][0].get("values", [])
+
+            if values:
+                # Get latest value
+                latest = values[-1]
+                latest_temp = float(latest["value"])
+
+                # Verify temperature is reasonable
+                assert isinstance(latest_temp, float)
+                assert 0 <= latest_temp <= 100
+
+                # Verify timestamp format
+                time_str = latest["time"]
+                assert isinstance(time_str, str)
+                assert " " in time_str or "T" in time_str
+
+        await client.close()

@@ -1,7 +1,7 @@
 """Air-to-Water (Heat Pump) data models for MELCloud Home API."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .const_atw import ATW_MODE_HEAT_ROOM_TEMP, ATW_STATUS_STOP
@@ -176,6 +176,11 @@ class AirToWaterUnit:
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False
     frost_protection_enabled: bool = False
+
+    # Telemetry data (flow/return temperatures from telemetry API)
+    # Populated by TelemetryTracker, read by sensors
+    # Structure: {measure_name: temperature_celsius}
+    telemetry: dict[str, float | None] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToWaterUnit":
