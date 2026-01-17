@@ -53,6 +53,9 @@ class AirToWaterCapabilities:
     has_estimated_energy_consumption: bool = True
     has_estimated_energy_production: bool = True
 
+    # Cooling Support
+    has_cooling_mode: bool = False
+
     # FTC Model (controller type)
     ftc_model: int = 3
 
@@ -115,6 +118,7 @@ class AirToWaterCapabilities:
             has_estimated_energy_production=data.get(
                 "hasEstimatedEnergyProduction", True
             ),
+            has_cooling_mode=data.get("hasCoolingMode", False),
             ftc_model=data.get("ftcModel", 3),
             has_demand_side_control=data.get("hasDemandSideControl", True),
         )
@@ -181,6 +185,11 @@ class AirToWaterUnit:
     # Populated by TelemetryTracker, read by sensors
     # Structure: {measure_name: temperature_celsius}
     telemetry: dict[str, float | None] = field(default_factory=dict)
+
+    # Energy data (populated by EnergyTrackerATW)
+    energy_consumed: float | None = None  # kWh (cumulative)
+    energy_produced: float | None = None  # kWh (cumulative)
+    cop: float | None = None  # Coefficient of Performance (produced/consumed)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToWaterUnit":

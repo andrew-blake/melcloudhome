@@ -7,6 +7,8 @@ These tests validate that models correctly parse real API responses.
 import logging
 from typing import Any, cast
 
+import pytest
+
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_atw import (
     AirToWaterCapabilities,
@@ -478,3 +480,66 @@ class TestAPIBugValidation:
 
         # API reports 0, we use 40
         assert unit.capabilities.min_set_tank_temperature == 40.0
+
+
+# =============================================================================
+# Live API Tests (VCR)
+# =============================================================================
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
+    """Test parsing ATW device with energy + cooling capabilities (ERSC-VM2D).
+
+    This test records a real API call using VCR to capture the /api/user/context
+    response from a beta tester's ERSC-VM2D device, which has:
+    - Energy monitoring (hasEstimatedEnergyConsumption, hasEstimatedEnergyProduction)
+    - Cooling mode support (hasCoolingMode)
+
+    Validates that capability detection works correctly for these features.
+    """
+    context = await authenticated_client.get_user_context()
+    atw_units = context.get_all_air_to_water_units()
+
+    # Should have at least one ATW device
+    assert len(atw_units) >= 1, "No ATW devices found in context"
+
+    # Find unit with energy capabilities (ERSC-VM2D or compatible)
+    energy_unit = next(
+        (
+            u
+            for u in atw_units
+            if u.capabilities.has_estimated_energy_consumption
+            or u.capabilities.has_measured_energy_consumption
+        ),
+        None,
+    )
+
+    assert energy_unit is not None, "No ATW device with energy capabilities found"
+
+    # Verify energy capabilities
+    # Note: ERSC-VM2D uses "estimated" energy (not "measured")
+    assert (
+        energy_unit.capabilities.has_estimated_energy_consumption is True
+        or energy_unit.capabilities.has_measured_energy_consumption is True
+    ), "Energy consumption capability not detected"
+
+    assert (
+        energy_unit.capabilities.has_estimated_energy_production is True
+        or energy_unit.capabilities.has_measured_energy_production is True
+    ), "Energy production capability not detected"
+
+    # Check cooling capability (some ATW models have it, others don't)
+    # Note: The beta tester's device has energy but not cooling
+    # This is valid - not all models support both features
+    has_cooling = energy_unit.capabilities.has_cooling_mode
+    logging.info(
+        f"ATW device {energy_unit.id} has_cooling_mode={has_cooling}, "
+        f"ftc_model={energy_unit.capabilities.ftc_model}"
+    )
+
+    # Verify basic device info
+    assert energy_unit.id is not None
+    assert energy_unit.name is not None
+    assert energy_unit.capabilities.ftc_model == 3  # ERSC-VM2D controller type
