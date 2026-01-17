@@ -215,6 +215,13 @@ class AirToWaterUnit:
         else:
             has_zone2 = bool(has_zone2_value)
 
+        # Extract cooling mode flag from settings (some devices report it here)
+        # Check settings first, then fall back to capabilities
+        has_cooling_from_settings = _parse_bool(settings.get("HasCoolingMode"))
+        if has_cooling_from_settings:
+            # Override capabilities with settings value
+            capabilities.has_cooling_mode = True
+
         # Parse holiday mode and frost protection
         holiday_data = data.get("holidayMode", {})
         holiday_enabled = holiday_data.get("enabled", False) if holiday_data else False
