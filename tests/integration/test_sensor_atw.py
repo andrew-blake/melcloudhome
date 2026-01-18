@@ -21,6 +21,7 @@ from .conftest import (
     TEST_SENSOR_ENERGY_CONSUMED,
     TEST_SENSOR_ENERGY_PRODUCED,
     create_mock_atw_building,
+    create_mock_atw_energy_response,
     create_mock_atw_unit,
     create_mock_atw_user_context,
 )
@@ -28,26 +29,6 @@ from .conftest import (
 # Mock at API boundary (NOT coordinator or sensor classes)
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
-
-
-def create_mock_energy_response(wh_value: float, measure_type: str) -> dict:
-    """Create a mock ATW energy API response.
-
-    Args:
-        wh_value: Energy value in watt-hours
-        measure_type: Measure type (intervalEnergyConsumed or intervalEnergyProduced)
-
-    Returns:
-        Mock API response matching MELCloud ATW format
-    """
-    return {
-        "measureData": [
-            {
-                "type": measure_type,
-                "values": [{"time": "2026-01-18T10:00:00Z", "value": wh_value}],
-            }
-        ]
-    }
 
 
 @pytest.mark.asyncio
@@ -257,10 +238,10 @@ async def test_atw_energy_sensors_created_when_capability_present(
     )
 
     # Mock energy responses (in watt-hours)
-    mock_consumed = create_mock_energy_response(
+    mock_consumed = create_mock_atw_energy_response(
         10000.0, "intervalEnergyConsumed"
     )  # 10 kWh
-    mock_produced = create_mock_energy_response(
+    mock_produced = create_mock_atw_energy_response(
         40000.0, "intervalEnergyProduced"
     )  # 40 kWh
 
@@ -408,8 +389,8 @@ async def test_atw_cop_calculation_correct(hass: HomeAssistant) -> None:
     )
 
     # Mock energy responses (first init)
-    mock_consumed = create_mock_energy_response(1000.0, "intervalEnergyConsumed")
-    mock_produced = create_mock_energy_response(4000.0, "intervalEnergyProduced")
+    mock_consumed = create_mock_atw_energy_response(1000.0, "intervalEnergyConsumed")
+    mock_produced = create_mock_atw_energy_response(4000.0, "intervalEnergyProduced")
 
     with (
         patch(MOCK_CLIENT_PATH) as mock_client_class,
@@ -470,8 +451,8 @@ async def test_atw_energy_sensors_have_correct_device_class(
     )
 
     # Mock energy responses
-    mock_consumed = create_mock_energy_response(10000.0, "intervalEnergyConsumed")
-    mock_produced = create_mock_energy_response(40000.0, "intervalEnergyProduced")
+    mock_consumed = create_mock_atw_energy_response(10000.0, "intervalEnergyConsumed")
+    mock_produced = create_mock_atw_energy_response(40000.0, "intervalEnergyProduced")
 
     with (
         patch(MOCK_CLIENT_PATH) as mock_client_class,

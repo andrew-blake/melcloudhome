@@ -25,6 +25,22 @@ from .protocols import CoordinatorProtocol
 _LOGGER = logging.getLogger(__name__)
 
 
+def _has_energy_consumption_capability(unit: AirToWaterUnit) -> bool:
+    """Check if unit has energy consumption capability (measured or estimated)."""
+    return (
+        unit.capabilities.has_estimated_energy_consumption
+        or unit.capabilities.has_measured_energy_consumption
+    )
+
+
+def _has_energy_production_capability(unit: AirToWaterUnit) -> bool:
+    """Check if unit has energy production capability (measured or estimated)."""
+    return (
+        unit.capabilities.has_estimated_energy_production
+        or unit.capabilities.has_measured_energy_production
+    )
+
+
 @dataclass(frozen=True, kw_only=True)
 class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     """ATW sensor entity description with value extraction.
@@ -143,10 +159,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=lambda unit: unit.energy_consumed,
-        should_create_fn=lambda unit: (
-            unit.capabilities.has_estimated_energy_consumption
-            or unit.capabilities.has_measured_energy_consumption
-        ),
+        should_create_fn=_has_energy_consumption_capability,
         available_fn=lambda unit: unit.energy_consumed is not None,
     ),
     ATWSensorEntityDescription(
@@ -156,10 +169,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=lambda unit: unit.energy_produced,
-        should_create_fn=lambda unit: (
-            unit.capabilities.has_estimated_energy_production
-            or unit.capabilities.has_measured_energy_production
-        ),
+        should_create_fn=_has_energy_production_capability,
         available_fn=lambda unit: unit.energy_produced is not None,
     ),
     ATWSensorEntityDescription(
@@ -169,10 +179,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=None,
         value_fn=lambda unit: unit.cop,
-        should_create_fn=lambda unit: (
-            unit.capabilities.has_estimated_energy_consumption
-            or unit.capabilities.has_measured_energy_consumption
-        ),
+        should_create_fn=_has_energy_consumption_capability,  # COP requires consumption data
         available_fn=lambda unit: unit.cop is not None,
     ),
 )

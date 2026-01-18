@@ -156,6 +156,26 @@ def create_mock_atw_user_context(buildings: list | None = None) -> "UserContext"
     return UserContext(buildings=buildings)
 
 
+def create_mock_atw_energy_response(wh_value: float, measure_type: str) -> dict:
+    """Create a mock ATW energy API response.
+
+    Args:
+        wh_value: Energy value in watt-hours
+        measure_type: Measure type (intervalEnergyConsumed or intervalEnergyProduced)
+
+    Returns:
+        Mock API response matching MELCloud ATW format
+    """
+    return {
+        "measureData": [
+            {
+                "type": measure_type,
+                "values": [{"time": "2026-01-18T10:00:00Z", "value": wh_value}],
+            }
+        ]
+    }
+
+
 @pytest.fixture
 async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
     """Set up the integration with mocked ATW API client.

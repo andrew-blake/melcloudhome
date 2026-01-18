@@ -182,6 +182,22 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Update telemetry data for ATW units using telemetry tracker
         self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
 
+    async def _update_single_energy_tracker(
+        self,
+        tracker: Any,
+        units_dict: dict[str, Any],
+        now: Any = None,
+    ) -> None:
+        """Update a single energy tracker and its units.
+
+        Args:
+            tracker: Energy tracker instance (energy_tracker or energy_tracker_atw)
+            units_dict: Dictionary of units to update (self._units or self._atw_units)
+            now: Optional timestamp for scheduled updates
+        """
+        await tracker.async_update_energy_data(now)
+        tracker.update_unit_energy_data(units_dict)
+
     async def _fetch_and_update_tracker(
         self,
         tracker_name: str,
@@ -241,10 +257,16 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Schedule periodic energy updates (30 minutes)
         async def _update_energy_with_listeners(now):
             """Update energy and notify listeners."""
-            await self.energy_tracker.async_update_energy_data(now)
-            self.energy_tracker.update_unit_energy_data(self._units)
-            await self.energy_tracker_atw.async_update_energy_data(now)
-            self.energy_tracker_atw.update_unit_energy_data(self._atw_units)
+            # Update both trackers in parallel for efficiency
+            await asyncio.gather(
+                self._update_single_energy_tracker(
+                    self.energy_tracker, self._units, now
+                ),
+                self._update_single_energy_tracker(
+                    self.energy_tracker_atw, self._atw_units, now
+                ),
+                return_exceptions=True,
+            )
             self.async_update_listeners()
 
         self._cancel_energy_updates = async_track_time_interval(

@@ -236,11 +236,16 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
         assert float(state.state) == pytest.approx(1.8, rel=0.01)
 
         # Verify storage was updated with new cumulative total
+        # Note: Both ATA and ATW trackers call async_save, check first call (ATA tracker)
         mock_store.async_save.assert_called()
-        saved_data = mock_store.async_save.call_args[0][0]
-        assert saved_data["cumulative"][TEST_UNIT_ID] == pytest.approx(1.8, rel=0.01)
-        assert "hour_values" in saved_data
-        assert saved_data["hour_values"][TEST_UNIT_ID][
+        saved_data_ata = mock_store.async_save.call_args_list[0][0][0]  # First call
+        # New multi-measure format: cumulative[unit_id][measure] = value
+        assert saved_data_ata["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            1.8, rel=0.01
+        )
+        assert "hour_values" in saved_data_ata
+        # New format: hour_values[unit_id][measure][timestamp] = value
+        assert saved_data_ata["hour_values"][TEST_UNIT_ID]["consumed"][
             "2025-01-15T12:00:00Z"
         ] == pytest.approx(0.7, rel=0.01)
 
@@ -312,9 +317,11 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
         # Should still be 1.1 kWh (no new hours added)
         assert float(state.state) == pytest.approx(1.1, rel=0.01)
 
-        # Verify hour_values unchanged (no deltas)
-        saved_data = mock_store.async_save.call_args[0][0]
-        assert saved_data["hour_values"][TEST_UNIT_ID][
+        # Verify hour_values unchanged (no deltas) - new multi-measure format
+        saved_data = mock_store.async_save.call_args_list[0][0][
+            0
+        ]  # First call (ATA tracker)
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
             "2025-01-15T11:00:00Z"
         ] == pytest.approx(0.6, rel=0.01)
 
@@ -431,13 +438,18 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         assert float(state.state) == pytest.approx(10.5, rel=0.01)
         # ❌ WILL FAIL with current code: would be 10.2 (skips 09:00 delta, adds 10:00)
 
-        # Verify storage has hour values tracking
-        saved_data = mock_store.async_save.call_args[0][0]
+        # Verify storage has hour values tracking (new multi-measure format)
+        # Check the last ATA tracker save (after poll 3)
+        # Saves in this test: setup_ata (0), setup_atw (1), poll2_ata (2), poll3_ata (3)
+        # Manual coordinator calls don't trigger ATW saves, only ATA
+        # Last ATA save is index 3
+        saved_data = mock_store.async_save.call_args_list[3][0][0]
+
         assert "hour_values" in saved_data
-        assert saved_data["hour_values"][TEST_UNIT_ID][
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
             "2025-12-09 09:00:00.000000000"
         ] == pytest.approx(0.4, rel=0.001)
-        assert saved_data["hour_values"][TEST_UNIT_ID][
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
             "2025-12-09 10:00:00.000000000"
         ] == pytest.approx(0.1, rel=0.001)
 
@@ -509,9 +521,13 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
         # Expected: 25.7 (persisted) + 0.9 (new hour) = 26.6 kWh
         assert float(state.state) == pytest.approx(26.6, rel=0.01)
 
-        # Verify storage saved new total
-        saved_data = mock_store.async_save.call_args[0][0]
-        assert saved_data["cumulative"][TEST_UNIT_ID] == pytest.approx(26.6, rel=0.01)
+        # Verify storage saved new total (new multi-measure format)
+        saved_data = mock_store.async_save.call_args_list[0][0][
+            0
+        ]  # First call (ATA tracker)
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            26.6, rel=0.01
+        )
 
 
 @pytest.mark.asyncio
