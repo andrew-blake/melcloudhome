@@ -23,7 +23,7 @@ from .const import (
 )
 from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
-from .energy_tracker import EnergyTracker
+from .energy_tracker_ata import ATAEnergyTracker
 from .telemetry_tracker import TelemetryTracker
 
 if TYPE_CHECKING:
@@ -65,8 +65,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
-        # Initialize energy tracker
-        self.energy_tracker = EnergyTracker(
+        # Initialize ATA energy tracker
+        self.energy_tracker = ATAEnergyTracker(
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,

@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 STORAGE_KEY = "melcloudhome_energy_data"
 
 
-class EnergyTracker(EnergyTrackerBase):
+class ATAEnergyTracker(EnergyTrackerBase):
     """ATA energy tracker (tracks consumed energy only).
 
     Extends EnergyTrackerBase with ATA-specific API integration.
