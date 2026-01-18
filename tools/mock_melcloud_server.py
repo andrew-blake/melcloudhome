@@ -189,9 +189,12 @@ class MockMELCloudServer:
             "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_put
         )
 
-        # Telemetry endpoint (spike: sparse data pattern)
+        # Telemetry endpoints (spike: sparse data pattern)
         telemetry_route = app.router.add_get(
             "/api/telemetry/actual/{unit_id}", self.handle_telemetry_actual
+        )
+        energy_route = app.router.add_get(
+            "/api/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
 
         # Add CORS to all routes
@@ -206,6 +209,7 @@ class MockMELCloudServer:
             schedule_enabled_get,
             schedule_enabled_put,
             telemetry_route,
+            energy_route,
         ]:
             cors.add(route)
 
@@ -520,7 +524,13 @@ class MockMELCloudServer:
 
         if body.get("operationModeZone1") is not None:
             mode = body["operationModeZone1"]
-            valid_modes = ["HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"]
+            valid_modes = [
+                "HeatRoomTemperature",
+                "HeatFlowTemperature",
+                "HeatCurve",
+                "CoolRoomTemperature",
+                "CoolFlowTemperature",
+            ]
             if mode not in valid_modes:
                 logger.warning("   ⚠️  Unusual zone operation mode: %s", mode)
             state["operation_mode_zone1"] = mode
@@ -616,6 +626,8 @@ class MockMELCloudServer:
         - 0-4 datapoints per hour
         - Sometimes hours or days old
         - 4-hour lookback window
+
+        Supports: flow_temperature, return_temperature, rssi, etc.
         """
         import random
         from datetime import UTC, datetime, timedelta
@@ -635,20 +647,29 @@ class MockMELCloudServer:
                 timestamp = now - timedelta(
                     hours=hour_ago, minutes=random.randint(0, 59)
                 )
-                # Base temps vary by measure
-                base_temps = {
-                    "flow_temperature": 45.0,
-                    "return_temperature": 42.0,
-                    "flow_temperature_zone1": 44.0,
-                    "return_temperature_zone1": 41.0,
-                    "flow_temperature_boiler": 46.0,
-                    "return_temperature_boiler": 43.0,
-                }
-                temp = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
+
+                # Generate value based on measure type
+                if measure == "rssi":
+                    # WiFi signal strength: -40 to -70 dBm
+                    value = float(random.randint(-70, -40))
+                else:
+                    # Temperature measures
+                    base_temps = {
+                        "flow_temperature": 45.0,
+                        "return_temperature": 42.0,
+                        "flow_temperature_zone1": 44.0,
+                        "return_temperature_zone1": 41.0,
+                        "flow_temperature_boiler": 46.0,
+                        "return_temperature_boiler": 43.0,
+                    }
+                    value = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
+
                 values.append(
                     {
                         "time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                        "value": f"{temp:.1f}",
+                        "value": f"{value:.1f}"
+                        if isinstance(value, float)
+                        else str(value),
                     }
                 )
 
@@ -663,6 +684,53 @@ class MockMELCloudServer:
                         "values": values,
                     }
                 ]
+            }
+        )
+
+    async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
+        """GET /api/telemetry/energy/{unit_id} - Get energy telemetry data.
+
+        Returns hourly energy data for ATW devices.
+        Supports interval_energy_consumed and interval_energy_produced measures.
+        """
+        import random
+        from datetime import UTC, datetime, timedelta
+
+        unit_id = request.match_info.get("unit_id")
+        measure = request.rel_url.query.get("measure", "interval_energy_consumed")
+
+        logger.info(
+            "⚡ Energy telemetry request: unit=%s, measure=%s", unit_id, measure
+        )
+
+        # Generate 24 hours of hourly energy data
+        hour_values = {}
+        now = datetime.now(UTC)
+
+        # Generate realistic energy values (Wh per hour)
+        for hour_ago in range(24, 0, -1):
+            timestamp = (now - timedelta(hours=hour_ago)).replace(
+                minute=0, second=0, microsecond=0
+            )
+            hour_key = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+            if measure == "interval_energy_consumed":
+                # Consumed: 2000-4000 Wh per hour (2-4 kWh)
+                value = random.randint(2000, 4000)
+            elif measure == "interval_energy_produced":
+                # Produced: 6000-12000 Wh per hour (6-12 kWh, COP ~3)
+                value = random.randint(6000, 12000)
+            else:
+                value = 0
+
+            hour_values[hour_key] = value
+
+        logger.info("⚡ Returning 24 hours of data for %s", measure)
+
+        return web.json_response(
+            {
+                "cumulative": 0,  # Not used by integration
+                "hourValues": hour_values,
             }
         )
 
@@ -849,8 +917,11 @@ class MockMELCloudServer:
             "hasZone2": False,
             "hasThermostatZone1": True,
             "hasHeatZone1": True,
-            "hasMeasuredEnergyConsumption": True,
-            "hasEstimatedEnergyConsumption": False,
+            "hasCoolingMode": True,  # NEW: Cooling mode support
+            "hasMeasuredEnergyConsumption": False,
+            "hasEstimatedEnergyConsumption": True,  # NEW: Energy monitoring
+            "hasMeasuredEnergyProduction": False,
+            "hasEstimatedEnergyProduction": True,  # NEW: Energy production
             "ftcModel": 4,  # API internal value
         }
 
