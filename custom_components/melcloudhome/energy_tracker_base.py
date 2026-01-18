@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers.storage import Store
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,8 +19,11 @@ _LOGGER = logging.getLogger(__name__)
 # Storage version for energy data persistence
 STORAGE_VERSION = 1
 
+# Wh to kWh conversion factor
+WH_TO_KWH_FACTOR = 1000.0
 
-class EnergyTrackerBase:
+
+class EnergyTrackerBase(ABC):
     """Base class for energy tracking with delta accumulation and persistence.
 
     Provides shared infrastructure for both ATA and ATW energy tracking:
@@ -61,14 +68,31 @@ class EnergyTrackerBase:
 
         # Cumulative energy tracking (running totals in kWh)
         # Structure: {unit_id: {measure: cumulative_kwh}}
-        self._energy_cumulative: dict[str, dict[str, float]] = {}
+        # Using defaultdict for automatic nested dict creation with 0.0 defaults
+        self._energy_cumulative: defaultdict[str, defaultdict[str, float]] = (
+            defaultdict(lambda: defaultdict(float))
+        )
 
         # Per-hour value tracking for delta calculation
         # Structure: {unit_id: {measure: {hour_timestamp: kwh_value}}}
-        self._energy_hour_values: dict[str, dict[str, dict[str, float]]] = {}
+        # Using defaultdict for automatic nested dict creation
+        self._energy_hour_values: defaultdict[
+            str, defaultdict[str, defaultdict[str, float]]
+        ] = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
         # Persistent storage
         self._store: Store = Store(hass, STORAGE_VERSION, storage_key)
+
+    @abstractmethod
+    async def async_update_energy_data(self, now: datetime | None = None) -> None:
+        """Fetch and process energy data for all units.
+
+        Subclasses must implement device-type-specific logic (ATA vs ATW).
+
+        Args:
+            now: Optional current time (for testing)
+        """
+        ...
 
     async def async_setup(self) -> None:
         """Set up energy tracker and load persisted data."""
@@ -77,39 +101,39 @@ class EnergyTrackerBase:
         # Load persisted energy data from storage
         stored_data = await self._store.async_load()
         if stored_data:
-            self._energy_cumulative = stored_data.get("cumulative", {})
-            self._energy_hour_values = stored_data.get("hour_values", {})
+            cumulative_data = stored_data.get("cumulative", {})
+            hour_values_data = stored_data.get("hour_values", {})
 
             # Backward compatibility: migrate from legacy single-measure format
             # Legacy: {unit_id: cumulative_kwh} -> New: {unit_id: {measure: cumulative_kwh}}
-            if self._energy_cumulative:
+            if cumulative_data:
                 # Check if any value is NOT a dict (legacy format)
                 has_legacy_format = any(
-                    not isinstance(v, dict) for v in self._energy_cumulative.values()
+                    not isinstance(v, dict) for v in cumulative_data.values()
                 )
                 if has_legacy_format:
-                    # Legacy format detected, migrate
-                    legacy_cumulative: dict[str, Any] = self._energy_cumulative.copy()
-                    self._energy_cumulative = {
-                        unit_id: {"consumed": float(value)}
-                        for unit_id, value in legacy_cumulative.items()
-                    }
-                    # Initialize empty hour_values for migrated units
-                    for unit_id in self._energy_cumulative:
-                        self._energy_hour_values[unit_id] = {"consumed": {}}
+                    # Migrate legacy format
+                    for unit_id, value in cumulative_data.items():
+                        self._energy_cumulative[unit_id]["consumed"] = float(value)
                     _LOGGER.info(
                         "Migrated %d device(s) from legacy storage format",
-                        len(legacy_cumulative),
-                    )
-            else:
-                unit_count = len(self._energy_cumulative)
-                if unit_count > 0:
-                    _LOGGER.info(
-                        "Restored energy data for %d device(s) from storage",
-                        unit_count,
+                        len(cumulative_data),
                     )
                 else:
-                    _LOGGER.debug("No stored energy data found, starting fresh")
+                    # Restore from new format into defaultdicts
+                    for unit_id, measures in cumulative_data.items():
+                        self._energy_cumulative[unit_id].update(measures)
+
+                    for unit_id, measures in hour_values_data.items():
+                        for measure, hours in measures.items():
+                            self._energy_hour_values[unit_id][measure].update(hours)
+
+                    _LOGGER.info(
+                        "Restored energy data for %d device(s) from storage",
+                        len(cumulative_data),
+                    )
+            else:
+                _LOGGER.debug("No stored energy data found, starting fresh")
         else:
             _LOGGER.info("No stored energy data found, starting fresh")
 
@@ -147,17 +171,11 @@ class EnergyTrackerBase:
             measure: Measure name (e.g., "consumed", "produced")
             values: List of hourly energy values from API
         """
-        # Ensure nested dicts exist
-        if unit_id not in self._energy_hour_values:
-            self._energy_hour_values[unit_id] = {}
-        if measure not in self._energy_hour_values[unit_id]:
-            self._energy_hour_values[unit_id][measure] = {}
-
-        # Mark all hours as seen
+        # Mark all hours as seen (defaultdict auto-creates nested structure)
         for value_entry in values:
             hour_timestamp = value_entry["time"]
             wh_value = float(value_entry["value"])
-            kwh_value = wh_value / 1000.0
+            kwh_value = wh_value / WH_TO_KWH_FACTOR
             self._energy_hour_values[unit_id][measure][hour_timestamp] = kwh_value
 
         _LOGGER.info(
@@ -187,23 +205,13 @@ class EnergyTrackerBase:
             measure: Measure name (e.g., "consumed", "produced")
             values: List of hourly energy values from API
         """
-        # Ensure nested dicts exist
-        if unit_id not in self._energy_hour_values:
-            self._energy_hour_values[unit_id] = {}
-        if measure not in self._energy_hour_values[unit_id]:
-            self._energy_hour_values[unit_id][measure] = {}
-
-        if unit_id not in self._energy_cumulative:
-            self._energy_cumulative[unit_id] = {}
-        if measure not in self._energy_cumulative[unit_id]:
-            self._energy_cumulative[unit_id][measure] = 0.0
-
+        # defaultdict auto-creates nested structure, no manual initialization needed
         for value_entry in values:
             hour_timestamp = value_entry["time"]
             wh_value = float(value_entry["value"])
-            kwh_value = wh_value / 1000.0
+            kwh_value = wh_value / WH_TO_KWH_FACTOR
 
-            # Get previous value for this specific hour (default 0 if new)
+            # Get previous value for this specific hour (default 0.0 from defaultdict)
             previous_value = self._energy_hour_values[unit_id][measure].get(
                 hour_timestamp, 0.0
             )
@@ -243,9 +251,13 @@ class EnergyTrackerBase:
     async def _save_energy_data(self) -> None:
         """Save energy cumulative totals and per-hour values to storage."""
         try:
+            # Convert defaultdicts to regular dicts for JSON serialization
             data = {
-                "cumulative": self._energy_cumulative,
-                "hour_values": self._energy_hour_values,
+                "cumulative": {k: dict(v) for k, v in self._energy_cumulative.items()},
+                "hour_values": {
+                    k: {m: dict(h) for m, h in v.items()}
+                    for k, v in self._energy_hour_values.items()
+                },
             }
             await self._store.async_save(data)
             _LOGGER.debug("Saved energy data to storage")
