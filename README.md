@@ -6,7 +6,8 @@
 [![Test](https://github.com/andrew-blake/melcloudhome/workflows/Test/badge.svg)](https://github.com/andrew-blake/melcloudhome/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/andrew-blake/melcloudhome/graph/badge.svg?token=WW97CHORNS)](https://codecov.io/gh/andrew-blake/melcloudhome)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fandrew-blake%2Fmelcloudhome%2Fmain%2Fpyproject.toml)
+
 
 Home Assistant custom integration for **MELCloud Home**.
 
@@ -122,6 +123,7 @@ The `short_id` is derived from the MELCloud device UUID by taking the first 4 an
 **Example:** UUID `bf8d5119-abcd-1234-5678-9999abcd5119` → short ID `bf8d_5119`
 
 **Entity ID Examples:**
+
 - ATA climate: `climate.melcloudhome_bf8d_5119_climate`
 - ATW zone climate: `climate.melcloudhome_bf8d_5119_zone_1`
 - ATW water heater: `water_heater.melcloudhome_bf8d_5119_tank`
@@ -245,6 +247,7 @@ For each heat pump system, the following entities are created:
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 
 **Purpose:** Monitor heating system efficiency and performance
+
 - Flow vs return delta indicates heat transfer efficiency
 - Zone-specific temps show heating loop performance
 - Boiler temps available if external boiler present
