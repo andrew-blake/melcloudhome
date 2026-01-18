@@ -358,6 +358,130 @@ ATW_UNIT_HALF_DEGREES = {
 }
 
 # =============================================================================
+# Scenario 7: Cooling mode - Room temperature control
+# =============================================================================
+
+ATW_UNIT_COOLING_ROOM = {
+    "id": "unit-007",
+    "givenDisplayName": "Heat pump with cooling",
+    "displayIcon": "Lounge",
+    "macAddress": "AA:BB:CC:DD:EE:06",
+    "timeZone": "Europe/Belgrade",
+    "rssi": -43,
+    "ftcModel": 3,
+    "isConnected": True,
+    "isInError": False,
+    "settings": [
+        {"name": "Power", "value": "True"},
+        {"name": "InStandbyMode", "value": "False"},
+        {"name": "OperationMode", "value": "Cooling"},  # Currently cooling
+        {"name": "HasZone2", "value": "0"},
+        {"name": "OperationModeZone1", "value": "CoolRoomTemperature"},  # Cooling mode
+        {"name": "RoomTemperatureZone1", "value": "26"},
+        {"name": "SetTemperatureZone1", "value": "24"},  # Cool to 24°C
+        {"name": "ProhibitHotWater", "value": "False"},
+        {"name": "TankWaterTemperature", "value": "45"},
+        {"name": "SetTankWaterTemperature", "value": "45"},
+        {"name": "HasCoolingMode", "value": "True"},  # Cooling supported
+        {"name": "ForcedHotWaterMode", "value": "False"},
+        {"name": "IsInError", "value": "False"},
+        {"name": "ErrorCode", "value": ""},
+    ],
+    "schedule": [],
+    "scheduleEnabled": True,
+    "frostProtection": None,
+    "overheatProtection": None,
+    "holidayMode": {
+        "enabled": False,
+        "startDate": None,
+        "endDate": None,
+        "active": False,
+    },
+    "capabilities": {
+        "hasHotWater": True,
+        "minSetTankTemperature": 40,
+        "maxSetTankTemperature": 60,
+        "minSetTemperature": 10,
+        "maxSetTemperature": 30,
+        "hasHalfDegrees": False,  # Belgrade device has no half degrees
+        "hasZone2": False,
+        "hasThermostatZone1": True,
+        "hasThermostatZone2": True,
+        "hasHeatZone1": True,
+        "hasHeatZone2": False,
+        "hasMeasuredEnergyConsumption": False,
+        "hasMeasuredEnergyProduction": False,
+        "hasEstimatedEnergyConsumption": True,  # Energy monitoring
+        "hasEstimatedEnergyProduction": True,
+        "hasCoolingMode": True,  # Cooling capability (ERSC-VM2D)
+        "ftcModel": 3,
+        "hasDemandSideControl": False,
+    },
+}
+
+# =============================================================================
+# Scenario 8: Cooling mode - Flow temperature control
+# =============================================================================
+
+ATW_UNIT_COOLING_FLOW = {
+    "id": "unit-008",
+    "givenDisplayName": "Heat pump with cooling",
+    "displayIcon": "Lounge",
+    "macAddress": "AA:BB:CC:DD:EE:07",
+    "timeZone": "Europe/Belgrade",
+    "rssi": -41,
+    "ftcModel": 3,
+    "isConnected": True,
+    "isInError": False,
+    "settings": [
+        {"name": "Power", "value": "True"},
+        {"name": "InStandbyMode", "value": "False"},
+        {"name": "OperationMode", "value": "Cooling"},  # Currently cooling
+        {"name": "HasZone2", "value": "0"},
+        {"name": "OperationModeZone1", "value": "CoolFlowTemperature"},  # Flow control
+        {"name": "RoomTemperatureZone1", "value": "25"},
+        {"name": "SetTemperatureZone1", "value": "24"},
+        {"name": "ProhibitHotWater", "value": "False"},
+        {"name": "TankWaterTemperature", "value": "46"},
+        {"name": "SetTankWaterTemperature", "value": "45"},
+        {"name": "HasCoolingMode", "value": "True"},
+        {"name": "ForcedHotWaterMode", "value": "False"},
+        {"name": "IsInError", "value": "False"},
+        {"name": "ErrorCode", "value": ""},
+    ],
+    "schedule": [],
+    "scheduleEnabled": True,
+    "frostProtection": None,
+    "overheatProtection": None,
+    "holidayMode": {
+        "enabled": False,
+        "startDate": None,
+        "endDate": None,
+        "active": False,
+    },
+    "capabilities": {
+        "hasHotWater": True,
+        "minSetTankTemperature": 40,
+        "maxSetTankTemperature": 60,
+        "minSetTemperature": 10,
+        "maxSetTemperature": 30,
+        "hasHalfDegrees": False,
+        "hasZone2": False,
+        "hasThermostatZone1": True,
+        "hasThermostatZone2": True,
+        "hasHeatZone1": True,
+        "hasHeatZone2": False,
+        "hasMeasuredEnergyConsumption": False,
+        "hasMeasuredEnergyProduction": False,
+        "hasEstimatedEnergyConsumption": True,
+        "hasEstimatedEnergyProduction": True,
+        "hasCoolingMode": True,  # Cooling capability (ERSC-VM2D)
+        "ftcModel": 3,
+        "hasDemandSideControl": False,
+    },
+}
+
+# =============================================================================
 # Complete UserContext responses
 # =============================================================================
 

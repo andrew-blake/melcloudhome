@@ -10,7 +10,6 @@ from .const_atw import (
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
-    ATW_TEMP_STEP,
 )
 from .const_shared import API_TELEMETRY_ENERGY
 
@@ -104,9 +103,8 @@ class ATWControlClient:
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
 
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
+        # Note: Temperature step validation removed - climate entity handles this
+        # via target_temperature_step based on hasHalfDegrees capability and hvac_mode
 
         payload = {"setTemperatureZone1": temperature}
         await self._update_atw_unit(unit_id, payload)
@@ -133,10 +131,6 @@ class ATWControlClient:
                 f"Zone temperature must be between {ATW_TEMP_MIN_ZONE} and "
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
-
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
 
         payload = {"setTemperatureZone2": temperature}
         await self._update_atw_unit(unit_id, payload)
@@ -206,10 +200,6 @@ class ATWControlClient:
                 f"DHW temperature must be between {ATW_TEMP_MIN_DHW} and "
                 f"{ATW_TEMP_MAX_DHW}°C, got {temperature}"
             )
-
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
 
         payload = {"setTankWaterTemperature": temperature}
         await self._update_atw_unit(unit_id, payload)

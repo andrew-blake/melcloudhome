@@ -9,7 +9,6 @@ from .const_ata import (
     OPERATION_MODES,
     TEMP_MAX_HEAT,
     TEMP_MIN_HEAT,
-    TEMP_STEP,
     VANE_HORIZONTAL_DIRECTIONS,
     VANE_VERTICAL_DIRECTIONS,
     VANE_WORD_TO_NUMERIC,
@@ -87,21 +86,21 @@ class ATAControlClient:
 
         Args:
             unit_id: Device ID (UUID)
-            temperature: Target temperature in Celsius (10.0-31.0, 0.5° increments)
+            temperature: Target temperature in Celsius (10.0-31.0)
 
         Raises:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
             ValueError: If temperature is out of range
+
+        Note:
+            Temperature step validation removed - climate entity handles this
+            via target_temperature_step based on hasHalfDegreeIncrements capability.
         """
         if not TEMP_MIN_HEAT <= temperature <= TEMP_MAX_HEAT:
             raise ValueError(
                 f"Temperature must be between {TEMP_MIN_HEAT} and {TEMP_MAX_HEAT}°C"
             )
-
-        # Check if temperature is in correct increments
-        if (temperature / TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {TEMP_STEP}° increments")
 
         payload = self._build_ata_control_payload(setTemperature=temperature)
 
