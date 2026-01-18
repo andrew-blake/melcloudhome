@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-18
+
+**Major Release: Air-to-Water (ATW) Heat Pump Support - Production Ready**
+
+ATW support graduates from experimental beta to stable, production-ready status after extensive testing on real hardware with multiple controller types.
+
+### Added
+
+**Air-to-Water (ATW) Heat Pump Support:**
+- **Climate Platform** (Zone 1): Heating/cooling* control, temperature setting (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT/COOL*)
+- **Water Heater Platform** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
+- **Switch Platform** (System Power): Primary power control
+- **Sensors**: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temperatures)
+- **Energy Monitoring***: Energy consumed (kWh), energy produced (kWh), COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
+- **Binary Sensors**: Error state, connection state, forced DHW mode active
+- **3-Way Valve Logic**: Automatic priority management between space heating and DHW
+- **Capability-Based Features**: Energy monitoring and cooling mode auto-detected from device capabilities
+
+*Feature availability depends on device capabilities (`hasCoolingMode`, `hasEstimatedEnergyConsumption`/`hasEstimatedEnergyProduction`)
+
+**Controller Support:**
+- ERSC-VM2D: Full features (heating, cooling, energy monitoring, telemetry)
+- EHSCVM2D: Core features (heating-only, telemetry, no energy monitoring)
+
+**Development Tools:**
+- Local Docker Compose development environment with mock API server (2 ATA + 1 ATW test devices)
+- Mock server supports energy, RSSI, and cooling endpoints
+- Automated deployment tool for remote testing
+- Upgrade verification tooling
+
+### Changed
+
+- Entity naming pattern updated to use `has_entity_name=True` for Home Assistant compatibility
+  - Device names show friendly locations (e.g., "Living Room") instead of UUIDs
+  - Entity IDs include descriptive suffixes (e.g., `_climate`, `_zone_1`, `_tank`)
+  - Existing installations: Entity IDs preserved, device names automatically updated
+  - No action required for existing users
+
+- **ATA Climate State Attributes Now Lowercase**
+  - State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase per HA standards
+  - Migration: Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
+
+### Fixed
+
+- ATW zones showing IDLE when actively heating - added support for undocumented `"Heating"` operation status
+- Water heater temperature control respects device capability (whole degree vs half degree steps)
+- "Recreate entity ID" button now generates stable IDs instead of breaking automations
+- Zone 1 heating status display - correctly shows HEATING when valve serves zone
+- Blank icon button labels in thermostat cards for ATA and ATW
+
+### Documentation
+
+- [ADR-014: ATW Telemetry Sensors](docs/decisions/014-atw-telemetry-sensors.md) - Temperature sensor implementation
+- [ADR-015: Skip ATW Energy Monitoring](docs/decisions/015-skip-atw-energy-monitoring.md) - Initial decision (superseded by ADR-016)
+- [ADR-016: Implement ATW Energy Monitoring](docs/decisions/016-implement-atw-energy-monitoring.md) - Capability-based energy implementation
+- ATW API Reference updated with cooling modes, telemetry sensors, and energy reporting sections
+- README.md: ATW section updated, EXPERIMENTAL warnings removed
+- EXPERIMENTAL-ATW.md removed (content integrated into README)
+
+### Acknowledgments
+
+Special thanks to [@pwa-2025](https://github.com/pwa-2025) for providing guest building access, enabling real hardware testing and validation of ATW features.
+
+---
+
 ## [2.0.0-beta.5] - 2026-01-14
 
 ### Added
@@ -72,7 +137,7 @@ This is a **pre-release beta** for community testing. ATW heat pump support is b
 
 - Implementation is theoretical and may not work correctly with physical hardware
 - No guarantees of safety or correctness
-- See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
+- See README.md ATW section for full details and limitations
 
 ### Added
 
@@ -83,7 +148,7 @@ This is a **pre-release beta** for community testing. ATW heat pump support is b
   - Preset modes (Room Temperature, Flow Temperature, Curve Control)
   - ATW-specific sensors (Zone 1 room temperature, tank temperature, operation status)
   - Binary sensors (error state, connection state, forced DHW active)
-  - See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details and limitations
+  - See README.md ATW section for full details and limitations
 - Local development environment with Docker Compose and mock API server
 - Upgrade verification tooling (`tools/compare_upgrade_snapshots.py`)
 

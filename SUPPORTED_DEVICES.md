@@ -73,25 +73,28 @@ Air-to-Water systems are heat pumps for underfloor heating/radiators and domesti
 
 ### ⚠️ Status: Experimental
 
-ATW support is **EXPERIMENTAL** - Available in v2.0.0+ but **NOT tested on real hardware**. Implementation based on reverse-engineered API only.
+ATW support is **PRODUCTION-READY** - Available in v2.0.0+ and tested on real hardware.
 
-**Before testing:** Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for complete details, safety warnings, and testing checklist.
-
-**Current Implementation (v2.0.0-beta.1):**
-- Zone 1 heating control ✓
+**Current Implementation (v2.0.0):**
+- Zone 1 heating/cooling* control ✓
 - DHW tank control ✓
 - System power control ✓
-- Temperature sensors (Zone 1 room, DHW tank) ✓
+- Temperature sensors (Zone 1 room, DHW tank, WiFi RSSI) ✓
+- Telemetry sensors (6 flow/return temperatures) ✓
+- Energy monitoring* (consumed, produced, COP) ✓
 - Operation status monitoring ✓
 - Single zone systems only (no Zone 2)
 
-### Implementation Target Models
+*Feature availability depends on device capabilities - see README.md for details
 
-| Model | Notes |
-|-------|-------|
-| EHSCVM2D Hydrokit | Based on HAR analysis from Discussion #26. Zone 1 + DHW support. |
+### Tested Models
 
-> **⚠️ Use at your own risk.** See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and safety warnings.
+| Model | Controller | Features | Status |
+|-------|------------|----------|--------|
+| Ecodan | ERSC-VM2D | Full features (heating, cooling, energy) | ✅ Tested on real hardware |
+| Ecodan Hydrokit | EHSCVM2D | Heating only (no cooling, no energy) | ✅ Tested on real hardware |
+
+> **Note:** Feature availability auto-detected via device capabilities. See README.md ATW section for complete details.
 
 **Call for testers:** If you have an Ecodan heat pump (any model) and can help test, see [Discussion #26](https://github.com/andrew-blake/melcloudhome/discussions/26).
 

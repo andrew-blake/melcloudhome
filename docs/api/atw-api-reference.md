@@ -18,7 +18,7 @@ This is a **complete API reference** documenting all endpoints for Air-to-Water 
 
 **Implementation Status:** The control endpoints documented here are **fully implemented** in the Home Assistant integration. Schedule API endpoints are documented for reference but not yet integrated.
 
-For current integration features, see [README.md](../../README.md) and [EXPERIMENTAL-ATW.md](../../EXPERIMENTAL-ATW.md).
+For current integration features, see [README.md](../../README.md).
 
 ---
 
