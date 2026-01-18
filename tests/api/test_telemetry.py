@@ -22,8 +22,8 @@ from freezegun import freeze_time
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
 
-# Test all 6 telemetry measures
-ALL_MEASURES = [
+# Test all telemetry measures (6 temperature + 1 RSSI)
+TEMPERATURE_MEASURES = [
     "flow_temperature",
     "return_temperature",
     "flow_temperature_zone1",
@@ -39,11 +39,11 @@ class TestTelemetryDataRetrieval:
     @freeze_time("2026-01-14 16:00:00", real_asyncio=True)
     @pytest.mark.vcr()
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("measure", ALL_MEASURES)
+    @pytest.mark.parametrize("measure", TEMPERATURE_MEASURES)
     async def test_get_telemetry_measure(
         self, credentials: tuple[str, str], atw_unit_id: str, measure: str
     ) -> None:
-        """Test fetching telemetry for each measure."""
+        """Test fetching telemetry for each temperature measure."""
         email, password = credentials
         client = MELCloudHomeClient(debug_mode=False)
         await client.login(email, password)
@@ -70,6 +70,43 @@ class TestTelemetryDataRetrieval:
             assert "value" in value
             temp = float(value["value"])
             assert 0 <= temp <= 100  # Reasonable range
+
+        await client.close()
+
+    @freeze_time("2026-01-14 16:00:00", real_asyncio=True)
+    @pytest.mark.vcr()
+    @pytest.mark.asyncio
+    async def test_get_rssi_telemetry(
+        self, credentials: tuple[str, str], atw_unit_id: str
+    ) -> None:
+        """Test fetching RSSI (WiFi signal strength) telemetry."""
+        email, password = credentials
+        client = MELCloudHomeClient(debug_mode=False)
+        await client.login(email, password)
+
+        to_time = datetime.now(UTC)
+        from_time = to_time - timedelta(hours=4)
+
+        result = await client.get_telemetry_actual(
+            unit_id=atw_unit_id,
+            from_time=from_time,
+            to_time=to_time,
+            measure="rssi",
+        )
+
+        # Verify response structure
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "measureData" in result
+
+        # Verify data if present
+        if result["measureData"] and result["measureData"][0]["values"]:
+            value = result["measureData"][0]["values"][0]
+            assert "time" in value
+            assert "value" in value
+            rssi = float(value["value"])
+            # RSSI range: -30 (excellent) to -90 (poor)
+            assert -100 <= rssi <= 0
 
         await client.close()
 

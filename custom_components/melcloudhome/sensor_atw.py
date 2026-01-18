@@ -13,8 +13,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy, UnitOfTemperature
+from homeassistant.const import (
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    UnitOfEnergy,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -148,6 +153,20 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
         available_fn=lambda unit: unit.telemetry.get("return_temperature_boiler")
         is not None,
+    ),
+    # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
+    # Shows received signal strength indication (RSSI) in dBm
+    # Typical range: -30 (excellent) to -90 (poor)
+    ATWSensorEntityDescription(
+        key="wifi_signal",
+        translation_key="wifi_signal",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: unit.telemetry.get("rssi"),
+        should_create_fn=lambda unit: True,
+        available_fn=lambda unit: unit.telemetry.get("rssi") is not None,
     ),
     # Energy monitoring sensors
     # Created if device has energy capability (measured or estimated), even if no initial data

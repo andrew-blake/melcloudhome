@@ -505,3 +505,36 @@ async def test_atw_energy_sensors_have_correct_device_class(
         assert consumed.attributes.get("unit_of_measurement") == "kWh"
         assert produced.attributes.get("unit_of_measurement") == "kWh"
         assert cop.attributes.get("unit_of_measurement") is None
+
+
+@pytest.mark.asyncio
+async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
+    """Test ATW WiFi signal (RSSI) sensor is created (starts unavailable until telemetry fetched)."""
+    mock_unit = create_mock_atw_unit()
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Check WiFi signal sensor exists with correct attributes
+        wifi_state = hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal")
+        assert wifi_state is not None
+        # Sensor starts unavailable (no telemetry fetched yet - that happens on schedule)
+        assert wifi_state.state == "unavailable"
+        assert wifi_state.attributes["unit_of_measurement"] == "dBm"
+        assert wifi_state.attributes["device_class"] == "signal_strength"
