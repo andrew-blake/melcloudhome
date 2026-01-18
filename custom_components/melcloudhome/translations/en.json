@@ -113,6 +113,15 @@
       },
       "return_temperature_boiler": {
         "name": "Return temperature boiler"
+      },
+      "energy_consumed": {
+        "name": "Energy consumed"
+      },
+      "energy_produced": {
+        "name": "Energy produced"
+      },
+      "cop": {
+        "name": "Coefficient of performance"
       }
     },
     "binary_sensor": {

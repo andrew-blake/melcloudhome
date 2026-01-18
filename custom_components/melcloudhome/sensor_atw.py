@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import UnitOfEnergy, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -132,6 +132,48 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
         available_fn=lambda unit: unit.telemetry.get("return_temperature_boiler")
         is not None,
+    ),
+    # Energy monitoring sensors
+    # Created if device has energy capability (measured or estimated), even if no initial data
+    # Becomes available once energy data is fetched (polls every 30 minutes)
+    ATWSensorEntityDescription(
+        key="energy_consumed",
+        translation_key="energy_consumed",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda unit: unit.energy_consumed,
+        should_create_fn=lambda unit: (
+            unit.capabilities.has_estimated_energy_consumption
+            or unit.capabilities.has_measured_energy_consumption
+        ),
+        available_fn=lambda unit: unit.energy_consumed is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="energy_produced",
+        translation_key="energy_produced",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=lambda unit: unit.energy_produced,
+        should_create_fn=lambda unit: (
+            unit.capabilities.has_estimated_energy_production
+            or unit.capabilities.has_measured_energy_production
+        ),
+        available_fn=lambda unit: unit.energy_produced is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="cop",
+        translation_key="cop",
+        device_class=None,  # COP is dimensionless
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=None,
+        value_fn=lambda unit: unit.cop,
+        should_create_fn=lambda unit: (
+            unit.capabilities.has_estimated_energy_consumption
+            or unit.capabilities.has_measured_energy_consumption
+        ),
+        available_fn=lambda unit: unit.cop is not None,
     ),
 )
 

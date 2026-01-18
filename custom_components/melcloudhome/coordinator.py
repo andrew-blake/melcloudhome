@@ -24,6 +24,7 @@ from .const import (
 from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
 from .energy_tracker_ata import ATAEnergyTracker
+from .energy_tracker_atw import ATWEnergyTracker
 from .telemetry_tracker import TelemetryTracker
 
 if TYPE_CHECKING:
@@ -69,6 +70,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self.energy_tracker = ATAEnergyTracker(
             hass=hass,
             client=client,
+            execute_with_retry=self._execute_with_retry,
+            get_coordinator_data=lambda: self.data,
+        )
+
+        # Initialize ATW energy tracker
+        self.energy_tracker_atw = ATWEnergyTracker(
+            hass=hass,
+            client=client.atw,  # Pass ATW-specific client, not facade
             execute_with_retry=self._execute_with_retry,
             get_coordinator_data=lambda: self.data,
         )
@@ -164,37 +173,78 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 self._atw_units[atw_unit.id] = atw_unit
                 self._atw_unit_to_building[atw_unit.id] = building
 
-        # Update energy data for units using energy tracker
+        # Update energy data for ATA units using energy tracker
         self.energy_tracker.update_unit_energy_data(self._units)
+
+        # Update energy data for ATW units using ATW energy tracker
+        self.energy_tracker_atw.update_unit_energy_data(self._atw_units)
 
         # Update telemetry data for ATW units using telemetry tracker
         self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
+
+    async def _fetch_and_update_tracker(
+        self,
+        tracker_name: str,
+        fetch_method: Callable[[], Awaitable[None]],
+        update_method: Callable[[dict[str, Any]], None],
+        units_dict: dict[str, Any],
+    ) -> None:
+        """Fetch and update a tracker (energy or telemetry).
+
+        Args:
+            tracker_name: Human-readable tracker name for logging (e.g., "ATA energy")
+            fetch_method: Async method to fetch data (e.g., tracker.async_update_energy_data)
+            update_method: Method to update units (e.g., tracker.update_unit_energy_data)
+            units_dict: Dictionary of units to update (self._units or self._atw_units)
+        """
+        try:
+            await fetch_method()
+            _LOGGER.info("Initial %s fetch completed", tracker_name)
+            update_method(units_dict)
+        except Exception as err:
+            _LOGGER.error(
+                "Error during initial %s fetch: %s",
+                tracker_name,
+                err,
+                exc_info=True,
+            )
 
     async def async_setup(self) -> None:
         """Set up the coordinator with energy polling."""
         _LOGGER.info("Setting up energy polling for MELCloud Home")
 
-        # Set up energy tracker
+        # Set up both energy trackers
         await self.energy_tracker.async_setup()
+        await self.energy_tracker_atw.async_setup()
 
-        # Perform initial energy fetch
-        try:
-            await self.energy_tracker.async_update_energy_data()
-            _LOGGER.info("Initial energy fetch completed")
+        # Perform initial energy fetch for both ATA and ATW units in parallel
+        # Use return_exceptions=True to ensure one failure doesn't block the other
+        await asyncio.gather(
+            self._fetch_and_update_tracker(
+                "ATA energy",
+                self.energy_tracker.async_update_energy_data,
+                self.energy_tracker.update_unit_energy_data,
+                self._units,
+            ),
+            self._fetch_and_update_tracker(
+                "ATW energy",
+                self.energy_tracker_atw.async_update_energy_data,
+                self.energy_tracker_atw.update_unit_energy_data,
+                self._atw_units,
+            ),
+            return_exceptions=True,
+        )
 
-            # Update unit objects with new energy data
-            self.energy_tracker.update_unit_energy_data(self._units)
-
-            # Notify listeners (sensors) of energy update
-            self.async_update_listeners()
-        except Exception as err:
-            _LOGGER.error("Error during initial energy fetch: %s", err, exc_info=True)
+        # Notify listeners once after both energy fetches complete
+        self.async_update_listeners()
 
         # Schedule periodic energy updates (30 minutes)
         async def _update_energy_with_listeners(now):
             """Update energy and notify listeners."""
             await self.energy_tracker.async_update_energy_data(now)
             self.energy_tracker.update_unit_energy_data(self._units)
+            await self.energy_tracker_atw.async_update_energy_data(now)
+            self.energy_tracker_atw.update_unit_energy_data(self._atw_units)
             self.async_update_listeners()
 
         self._cancel_energy_updates = async_track_time_interval(
@@ -208,19 +258,15 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         await self.telemetry_tracker.async_setup()
 
         # Perform initial telemetry fetch
-        try:
-            await self.telemetry_tracker.async_update_telemetry_data()
-            _LOGGER.info("Initial telemetry fetch completed")
+        await self._fetch_and_update_tracker(
+            "telemetry",
+            self.telemetry_tracker.async_update_telemetry_data,
+            self.telemetry_tracker.update_unit_telemetry_data,
+            self._atw_units,
+        )
 
-            # Update unit objects with new telemetry data
-            self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
-
-            # Notify listeners (sensors) of telemetry update
-            self.async_update_listeners()
-        except Exception as err:
-            _LOGGER.error(
-                "Error during initial telemetry fetch: %s", err, exc_info=True
-            )
+        # Notify listeners after telemetry fetch
+        self.async_update_listeners()
 
         # Schedule periodic telemetry updates (60 minutes)
         async def _update_telemetry_with_listeners(now):
