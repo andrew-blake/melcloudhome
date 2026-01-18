@@ -585,11 +585,11 @@ class MockMELCloudServer:
         Logic:
         - If forced_hot_water_mode: "HotWater"
         - Else if DHW < target: "HotWater"
-        - Else if Zone < target: "Heating"
+        - Else if Zone needs heating/cooling: "Heating" or "Cooling"
         - Else: "Stop"
 
         Critical: operation_mode is STATUS (read-only), not control parameter
-        Note: Real API returns "Heating" (not mode-specific strings)
+        Note: Real API returns "Heating" or "Cooling" (not mode-specific strings)
         """
         state = self.atw_states[unit_id]
 
@@ -607,17 +607,31 @@ class MockMELCloudServer:
             state["tank_water_temperature"] < state["set_tank_water_temperature"]
         )
 
-        # Check if Zone 1 needs heating
-        zone_needs_heat = (
-            state["room_temperature_zone1"] < state["set_temperature_zone1"]
-        )
+        # Check zone mode to determine if heating or cooling
+        zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+        is_cooling_mode = zone_mode.startswith("Cool")
 
-        if dhw_needs_heat:
-            state["operation_mode"] = "HotWater"
-        elif zone_needs_heat:
-            state["operation_mode"] = "Heating"  # Real API returns simplified status
+        # Check if Zone 1 needs heating or cooling
+        if is_cooling_mode:
+            zone_needs_cooling = (
+                state["room_temperature_zone1"] > state["set_temperature_zone1"]
+            )
+            if dhw_needs_heat:
+                state["operation_mode"] = "HotWater"
+            elif zone_needs_cooling:
+                state["operation_mode"] = "Cooling"
+            else:
+                state["operation_mode"] = "Stop"
         else:
-            state["operation_mode"] = "Stop"
+            zone_needs_heat = (
+                state["room_temperature_zone1"] < state["set_temperature_zone1"]
+            )
+            if dhw_needs_heat:
+                state["operation_mode"] = "HotWater"
+            elif zone_needs_heat:
+                state["operation_mode"] = "Heating"
+            else:
+                state["operation_mode"] = "Stop"
 
     async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
         """GET /api/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
@@ -692,6 +706,8 @@ class MockMELCloudServer:
 
         Returns hourly energy data for ATW devices.
         Supports interval_energy_consumed and interval_energy_produced measures.
+
+        Format: ATW uses measureData array format (different from ATA)
         """
         import random
         from datetime import UTC, datetime, timedelta
@@ -704,7 +720,7 @@ class MockMELCloudServer:
         )
 
         # Generate 24 hours of hourly energy data
-        hour_values = {}
+        values = []
         now = datetime.now(UTC)
 
         # Generate realistic energy values (Wh per hour)
@@ -712,7 +728,6 @@ class MockMELCloudServer:
             timestamp = (now - timedelta(hours=hour_ago)).replace(
                 minute=0, second=0, microsecond=0
             )
-            hour_key = timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
             if measure == "interval_energy_consumed":
                 # Consumed: 2000-4000 Wh per hour (2-4 kWh)
@@ -723,14 +738,24 @@ class MockMELCloudServer:
             else:
                 value = 0
 
-            hour_values[hour_key] = value
+            values.append(
+                {
+                    "time": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "value": str(value),
+                }
+            )
 
         logger.info("⚡ Returning 24 hours of data for %s", measure)
 
         return web.json_response(
             {
-                "cumulative": 0,  # Not used by integration
-                "hourValues": hour_values,
+                "deviceId": unit_id,
+                "measureData": [
+                    {
+                        "type": self._snake_to_camel(measure),
+                        "values": values,
+                    }
+                ],
             }
         )
 
@@ -798,13 +823,21 @@ class MockMELCloudServer:
             else:
                 logger.info("   🔄 3-Way Valve: → DHW TANK (Priority heating)")
 
-            zone_needs_heat = (
+            zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+            zone_needs_action = (
                 state["room_temperature_zone1"] < state["set_temperature_zone1"]
+                if not zone_mode.startswith("Cool")
+                else state["room_temperature_zone1"] > state["set_temperature_zone1"]
             )
-            if zone_needs_heat:
-                logger.warning("   ⚠️  Zone 1 heating suspended")
-        elif mode in ["HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"]:
-            logger.info("   🔄 3-Way Valve: → ZONE 1 (%s)", mode)
+            if zone_needs_action:
+                action = "cooling" if zone_mode.startswith("Cool") else "heating"
+                logger.warning("   ⚠️  Zone 1 %s suspended", action)
+        elif mode == "Heating":
+            zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+            logger.info("   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", zone_mode)
+        elif mode == "Cooling":
+            zone_mode = state.get("operation_mode_zone1", "CoolRoomTemperature")
+            logger.info("   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", zone_mode)
         else:
             logger.info("   🔄 3-Way Valve: IDLE (%s)", mode)
 
