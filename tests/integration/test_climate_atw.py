@@ -118,7 +118,8 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         mock_client.atw = MagicMock()
-        mock_client.atw.set_power = AsyncMock()
+        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         entry = MockConfigEntry(
@@ -141,9 +142,12 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
             blocking=True,
         )
 
-        # Verify API was called correctly
+        # Verify API was called correctly (power on + set heat mode)
         await hass.async_block_till_done()
-        mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_mode_zone1.assert_called_once_with(
+            TEST_ATW_UNIT_ID, "HeatRoomTemperature"
+        )
 
 
 @pytest.mark.asyncio
