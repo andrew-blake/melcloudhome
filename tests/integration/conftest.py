@@ -67,6 +67,9 @@ TEST_WATER_HEATER_ENTITY_ID = "water_heater.melcloudhome_0efc_9abc_tank"
 TEST_SWITCH_SYSTEM_POWER = "switch.melcloudhome_0efc_9abc_system_power"
 TEST_SENSOR_ZONE1_TEMP = "sensor.melcloudhome_0efc_9abc_zone_1_temperature"
 TEST_SENSOR_TANK_TEMP = "sensor.melcloudhome_0efc_9abc_tank_temperature"
+TEST_SENSOR_ENERGY_CONSUMED = "sensor.melcloudhome_0efc_9abc_energy_consumed"
+TEST_SENSOR_ENERGY_PRODUCED = "sensor.melcloudhome_0efc_9abc_energy_produced"
+TEST_SENSOR_COP = "sensor.melcloudhome_0efc_9abc_cop"
 TEST_BINARY_SENSOR_ERROR = "binary_sensor.melcloudhome_0efc_9abc_error_state"
 TEST_BINARY_SENSOR_CONNECTION = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
 
@@ -88,11 +91,15 @@ def create_mock_atw_unit(
     rssi: int | None = -50,
     has_zone2: bool = False,
     in_standby_mode: bool = False,
+    has_energy_meter: bool = False,
+    energy_consumed: float | None = None,
+    energy_produced: float | None = None,
+    cop: float | None = None,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
 
     Uses real model class with realistic data. All parameters can be customized
-    to test different scenarios (error states, forced DHW, etc.).
+    to test different scenarios (error states, forced DHW, energy monitoring, etc.).
     """
     from custom_components.melcloudhome.api.models_atw import (
         AirToWaterCapabilities,
@@ -116,7 +123,14 @@ def create_mock_atw_unit(
         error_code=error_code,
         rssi=rssi,
         ftc_model=ftc_model,
-        capabilities=AirToWaterCapabilities(has_zone2=has_zone2),
+        energy_consumed=energy_consumed,
+        energy_produced=energy_produced,
+        cop=cop,
+        capabilities=AirToWaterCapabilities(
+            has_zone2=has_zone2,
+            has_estimated_energy_consumption=has_energy_meter,
+            has_estimated_energy_production=has_energy_meter,
+        ),
     )
 
 
