@@ -470,6 +470,17 @@ await hass.services.async_call(
 - `docs/api/device-type-comparison.md` - ATA vs ATW comparison (control patterns, capabilities)
 - `docs/api/melcloudhome-telemetry-endpoints.md` - Telemetry and energy reporting endpoints
 
+**ATW Device Capabilities:**
+- **Energy Monitoring:** Available on devices with `hasEstimatedEnergyConsumption=true` AND `hasEstimatedEnergyProduction=true`
+  - ERSC-VM2D controllers: ✅ Full energy data (consumed, produced, COP)
+  - EHSCVM2D controllers: ❌ No energy data
+  - See [ADR-016](docs/decisions/016-implement-atw-energy-monitoring.md) for technical details
+- **Cooling Mode:** Available on devices with `hasCoolingMode=true`
+  - 2 cooling modes: `CoolRoomTemperature`, `CoolFlowTemperature` (NO `CoolCurve`)
+  - ERSC-VM2D controllers: ✅ Cooling supported
+  - EHSCVM2D controllers: ❌ Heating-only
+- **Feature Detection:** All features auto-detected via capabilities API - no hardcoded controller checks
+
 ### Local Development Environment
 
 **⚠️ PRIMARY WORKFLOW:** Use the local Docker Compose environment for daily development:

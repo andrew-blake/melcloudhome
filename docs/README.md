@@ -17,6 +17,9 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-011: Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md) - ATA/ATW unified client (facade pattern)
 - [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md) - Power control and entity design for heat pumps
 - [ADR-013: Automatic Friendly Device Names](decisions/013-automatic-friendly-device-names.md) - UX improvement via name_by_user
+- [ADR-014: ATW Telemetry Sensors](decisions/014-atw-telemetry-sensors.md) - Flow/return temperature sensors implementation
+- [ADR-015: Skip ATW Energy Monitoring](decisions/015-skip-atw-energy-monitoring.md) - Initial decision to skip energy (SUPERSEDED by ADR-016)
+- [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
 
 ## Architecture
 

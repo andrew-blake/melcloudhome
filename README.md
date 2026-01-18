@@ -27,20 +27,27 @@ Home Assistant custom integration for **MELCloud Home**.
 - **Automatic Updates**: 60-second polling for climate/sensors, 30-minute polling for energy data
 - **Diagnostics Support**: Export integration diagnostics for troubleshooting
 
-### ⚠️ Air-to-Water (ATW) Heat Pumps (EXPERIMENTAL)
+### Air-to-Water (ATW) Heat Pumps
 
 **Platforms Implemented:**
 
-- **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT)
+- **Climate** (Zone 1): Temperature control (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT/COOL*)
 - **Water Heater** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
 - **Switch** (System Power): System on/off control (primary power control point)
-- **Sensors**: Zone 1 temperature, tank temperature, operation status, 6 telemetry sensors (flow/return temps)
+- **Sensors**: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temps), energy monitoring*
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
-- **Note**: Energy monitoring is an ATA-only feature (not available for ATW devices)
 
-**⚠️ WARNING**: ATW support is BETA - core features tested on real hardware, additional validation needed
+**Capability-Based Features:**
 
-**See [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) for full details, limitations, and testing instructions**
+- **Energy Monitoring**: Available on devices with `hasEstimatedEnergyConsumption` and `hasEstimatedEnergyProduction` capabilities
+  - Sensors: Energy consumed (kWh), energy produced (kWh), COP (efficiency ratio)
+  - Compatible with Home Assistant Energy Dashboard
+  - Example controllers: ERSC-VM2D ✅, EHSCVM2D ❌
+- **Cooling Mode**: Available on devices with `hasCoolingMode` capability
+  - 2 cooling preset modes: Cool Room, Cool Flow
+  - Example controllers: ERSC-VM2D ✅, EHSCVM2D ❌
+
+*Feature availability auto-detected from device capabilities - see [ADR-016](docs/decisions/016-implement-atw-energy-monitoring.md) for technical details
 
 ## Requirements
 
@@ -62,13 +69,15 @@ This integration supports Mitsubishi Electric air conditioning units connected v
 
 For the complete list of tested hardware, technical notes, and compatibility details, see [SUPPORTED_DEVICES.md](SUPPORTED_DEVICES.md).
 
-### ⚠️ Air-to-Water (ATW) - Heat Pumps (EXPERIMENTAL)
+### Air-to-Water (ATW) - Heat Pumps
 
-- **Status:** NOT yet tested on real hardware - based on HAR captures only
-- **Implementation targets:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
-- **Reference system:** Ecodan EHSCVM2D Hydrokit
-- **Supports:** Zone 1 heating, DHW control, 3-way valve systems (single zone only)
-- **⚠️ Read [EXPERIMENTAL-ATW.md](EXPERIMENTAL-ATW.md) before using ATW features**
+- **Status:** Production-ready (tested on real hardware)
+- **Supported systems:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
+- **Tested controllers:** ERSC-VM2D (full features), EHSCVM2D (heating-only)
+- **Core features:** Zone 1 heating, DHW control, 3-way valve systems, telemetry sensors
+- **Optional features:** Energy monitoring (capability-based), cooling mode (capability-based)
+
+*Feature availability auto-detected from device capabilities - see capability-based features above
 
 ## Installation
 
@@ -192,7 +201,7 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 3. Select the energy sensor for each unit
 4. Energy data accumulates over time and persists across restarts
 
-### ⚠️ Air-to-Water (ATW) Systems (EXPERIMENTAL)
+### Air-to-Water (ATW) Systems
 
 For each heat pump system, the following entities are created:
 
@@ -246,7 +255,29 @@ For each heat pump system, the following entities are created:
 
 **Note:** Boiler temps may show "unavailable" if no external boiler present (normal behavior)
 
-**Energy monitoring:** ⚠️ NOT available for ATW devices (API provides insufficient data - see ADR-015)
+**WiFi Signal Sensor:**
+
+- **WiFi Signal (RSSI)**: `sensor.melcloudhome_{short_id}_rssi` (diagnostic)
+  - Example: `sensor.melcloudhome_bf8d_5119_rssi`
+  - WiFi signal strength in dBm (values: -40 to -90, lower = weaker signal)
+  - Update frequency: Every 60 minutes
+
+**Energy Sensors (devices with energy capabilities):**
+
+- **Energy Consumed**: `sensor.melcloudhome_{short_id}_energy_consumed`
+  - Example: `sensor.melcloudhome_bf8d_5119_energy_consumed`
+  - Electrical energy consumed by heat pump (kWh)
+  - Compatible with Home Assistant Energy Dashboard
+- **Energy Produced**: `sensor.melcloudhome_{short_id}_energy_produced`
+  - Example: `sensor.melcloudhome_bf8d_5119_energy_produced`
+  - Thermal energy produced by heat pump (kWh)
+- **COP (Coefficient of Performance)**: `sensor.melcloudhome_{short_id}_cop`
+  - Example: `sensor.melcloudhome_bf8d_5119_cop`
+  - Heat pump efficiency ratio (produced/consumed)
+  - Typical values: 2.5-4.0 (higher is more efficient)
+  - Update frequency: Every 30 minutes
+
+**Availability:** Energy sensors only created when device reports `hasEstimatedEnergyConsumption=true` AND `hasEstimatedEnergyProduction=true`. See [ADR-016](docs/decisions/016-implement-atw-energy-monitoring.md) for technical details.
 
 #### Binary Sensors
 
@@ -263,14 +294,22 @@ For each heat pump system, the following entities are created:
 
 - **OFF**: System powered off
 - **HEAT**: Zone 1 heating enabled (system on)
+- **COOL**: Zone 1 cooling enabled (only on devices with cooling capability)
 
-**Zone Preset Modes** (heating strategies):
+**Heating Preset Modes:**
 
 - **Room** (Recommended) - Maintains room at target temperature (like a thermostat)
 - **Flow** (Advanced) - Directly controls heating water temperature
 - **Curve** (Advanced) - Auto-adjusts based on outdoor temperature
 
-💡 **Most users should use Room mode** - it's the most intuitive
+**Cooling Preset Modes** (devices with cooling capability):
+
+- **Cool Room** - Cools to target room temperature
+- **Cool Flow** - Direct flow temperature control for cooling
+
+💡 **Most users should use Room/Cool Room modes** - they're the most intuitive
+
+**Note:** Cooling availability depends on device capabilities (`hasCoolingMode=true`). When switching between heating and cooling, system automatically adjusts available presets. Curve mode not available for cooling (fallback to room temperature control).
 
 **Water Heater Operation Modes:**
 
@@ -359,7 +398,7 @@ These intervals balance update frequency with API rate limits.
 
 - [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
 - [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
-- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-013)
+- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-016)
 
 ## Support
 
