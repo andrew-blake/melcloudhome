@@ -449,3 +449,306 @@ async def test_atw_climate_off_when_power_false(hass: HomeAssistant) -> None:
 
         state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
         assert state.state == HVACMode.OFF
+
+
+# ==============================================================================
+# Cooling Mode Tests
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_atw_cooling_hvac_mode_available_when_capability_enabled(
+    hass: HomeAssistant,
+) -> None:
+    """Test COOL hvac_mode available when has_cooling_mode=True."""
+    mock_unit = create_mock_atw_unit(has_cooling_mode=True)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        assert HVACMode.COOL in state.attributes["hvac_modes"]
+        assert HVACMode.HEAT in state.attributes["hvac_modes"]
+        assert HVACMode.OFF in state.attributes["hvac_modes"]
+
+
+@pytest.mark.asyncio
+async def test_atw_cooling_hvac_mode_unavailable_without_capability(
+    hass: HomeAssistant,
+) -> None:
+    """Test COOL hvac_mode unavailable when has_cooling_mode=False."""
+    mock_unit = create_mock_atw_unit(has_cooling_mode=False)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        assert HVACMode.COOL not in state.attributes["hvac_modes"]
+        assert HVACMode.HEAT in state.attributes["hvac_modes"]
+
+
+@pytest.mark.asyncio
+async def test_atw_cooling_mode_detected_from_operation_mode(
+    hass: HomeAssistant,
+) -> None:
+    """Test cooling mode detected from CoolRoomTemperature operation mode."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="CoolRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        assert state.state == HVACMode.COOL
+        assert state.attributes["preset_mode"] == "room"
+
+
+@pytest.mark.asyncio
+async def test_atw_cooling_preset_modes_only_room_and_flow(
+    hass: HomeAssistant,
+) -> None:
+    """Test cooling mode shows only room and flow presets (no curve)."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="CoolRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        preset_modes = state.attributes["preset_modes"]
+        assert "room" in preset_modes
+        assert "flow" in preset_modes
+        assert "curve" not in preset_modes  # Curve not available in cooling
+        assert len(preset_modes) == 2
+
+
+@pytest.mark.asyncio
+async def test_atw_heating_preset_modes_all_three(hass: HomeAssistant) -> None:
+    """Test heating mode shows all three presets (room, flow, curve)."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="HeatRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        preset_modes = state.attributes["preset_modes"]
+        assert "room" in preset_modes
+        assert "flow" in preset_modes
+        assert "curve" in preset_modes
+        assert len(preset_modes) == 3
+
+
+@pytest.mark.asyncio
+async def test_atw_cooling_temperature_step_always_one_degree(
+    hass: HomeAssistant,
+) -> None:
+    """Test cooling mode always uses 1.0°C temperature step."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="CoolRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+        assert state.attributes["target_temp_step"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_atw_set_preset_mode_in_cooling(hass: HomeAssistant) -> None:
+    """Test setting preset mode from room to flow in cooling mode."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="CoolRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.atw = MagicMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Call set_preset_mode service
+        await hass.services.async_call(
+            "climate",
+            "set_preset_mode",
+            {
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+                "preset_mode": "flow",
+            },
+            blocking=True,
+        )
+
+        # Verify API called with cooling flow mode
+        await hass.async_block_till_done()
+        mock_client.atw.set_mode_zone1.assert_called_once_with(
+            TEST_ATW_UNIT_ID, "CoolFlowTemperature"
+        )
+
+
+@pytest.mark.asyncio
+async def test_atw_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
+    """Test setting HVAC mode to COOL."""
+    mock_unit = create_mock_atw_unit(
+        has_cooling_mode=True,
+        operation_mode_zone1="HeatRoomTemperature",
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.atw = MagicMock()
+        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw.set_mode_zone1 = AsyncMock()
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Call set_hvac_mode service
+        await hass.services.async_call(
+            "climate",
+            "set_hvac_mode",
+            {
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+                "hvac_mode": HVACMode.COOL,
+            },
+            blocking=True,
+        )
+
+        # Verify API calls (power on + set cool mode)
+        await hass.async_block_till_done()
+        mock_client.atw.set_power_atw.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+        mock_client.atw.set_mode_zone1.assert_called_once_with(
+            TEST_ATW_UNIT_ID, "CoolRoomTemperature"
+        )
