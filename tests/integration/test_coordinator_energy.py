@@ -531,6 +531,201 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
+async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> None:
+    """Test migration from v1.3.4 single-measure to v2.0 multi-measure format.
+
+    When upgrading from v1.3.4 stable to v2.0:
+    1. Storage contains v1.3.4 format: {unit_id: float}
+    2. Migration detects legacy format and converts to multi-measure
+    3. Data is preserved under "consumed" measure
+    4. Hour values are also migrated correctly
+    5. Proper log message indicates migration occurred
+
+    v1.3.4 format:
+        cumulative: {unit_id: cumulative_kwh}
+        hour_values: {unit_id: {timestamp: kwh}}
+
+    v2.0 format:
+        cumulative: {unit_id: {measure: cumulative_kwh}}
+        hour_values: {unit_id: {measure: {timestamp: kwh}}}
+
+    Validates: Backward compatibility migration works correctly
+    Tests through: Storage format conversion and functionality
+    """
+    mock_context = create_mock_user_context_with_energy()
+
+    # v1.3.4 storage format (single-measure)
+    v1_3_4_storage = {
+        "cumulative": {
+            TEST_UNIT_ID: 15.3  # Single float value (v1.3.4 format)
+        },
+        "hour_values": {
+            TEST_UNIT_ID: {
+                "2025-01-15T10:00:00Z": 0.5,  # Direct timestamp mapping (v1.3.4)
+                "2025-01-15T11:00:00Z": 0.6,
+            }
+        },
+    }
+
+    # New energy data after migration (1 new hour to verify accumulation still works)
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2025-01-15T10:00:00Z", 500.0),  # Already tracked - skip
+            ("2025-01-15T11:00:00Z", 600.0),  # Already tracked - skip
+            ("2025-01-15T12:00:00Z", 700.0),  # NEW - add 0.7 kWh
+        ]
+    )
+
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        # Set up mock client
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        # Mock storage with v1.3.4 format
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=v1_3_4_storage)
+        mock_store.async_save = AsyncMock()
+
+        # Set up integration (triggers migration)
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # ✅ Verify sensor exists and shows migrated value + new accumulation
+        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        assert state is not None
+        # Expected: 15.3 (migrated from v1.3.4) + 0.7 (new hour) = 16.0 kWh
+        assert float(state.state) == pytest.approx(16.0, rel=0.01)
+
+        # ✅ Verify saved data is in v2.0 multi-measure format
+        mock_store.async_save.assert_called()
+        saved_data = mock_store.async_save.call_args_list[0][0][0]  # First call (ATA)
+
+        # Check cumulative is now multi-measure format
+        assert isinstance(saved_data["cumulative"][TEST_UNIT_ID], dict)
+        assert "consumed" in saved_data["cumulative"][TEST_UNIT_ID]
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            16.0, rel=0.01
+        )
+
+        # Check hour_values is now multi-measure format
+        assert isinstance(saved_data["hour_values"][TEST_UNIT_ID], dict)
+        assert "consumed" in saved_data["hour_values"][TEST_UNIT_ID]
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
+            "2025-01-15T10:00:00Z"
+        ] == pytest.approx(0.5, rel=0.01)
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
+            "2025-01-15T12:00:00Z"
+        ] == pytest.approx(0.7, rel=0.01)
+
+
+@pytest.mark.asyncio
+async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None:
+    """Test that v2.0 format is loaded without migration.
+
+    When storage already contains v2.0 multi-measure format:
+    1. Migration logic detects v2.0 format
+    2. Data is restored as-is without conversion
+    3. Proper log message indicates restoration (not migration)
+
+    Validates: v2.0 → v2.0 upgrade path works correctly
+    Tests through: Storage format detection and loading
+    """
+    mock_context = create_mock_user_context_with_energy()
+
+    # v2.0 storage format (multi-measure)
+    v2_0_storage = {
+        "cumulative": {
+            TEST_UNIT_ID: {
+                "consumed": 20.5,  # Multi-measure format (v2.0)
+                "produced": 5.2,  # Multiple measures supported
+            }
+        },
+        "hour_values": {
+            TEST_UNIT_ID: {
+                "consumed": {
+                    "2025-01-15T10:00:00Z": 0.5,
+                    "2025-01-15T11:00:00Z": 0.6,
+                },
+                "produced": {
+                    "2025-01-15T10:00:00Z": 0.2,
+                    "2025-01-15T11:00:00Z": 0.3,
+                },
+            }
+        },
+    }
+
+    # New energy data (1 new hour)
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2025-01-15T11:00:00Z", 600.0),  # Already tracked - skip
+            ("2025-01-15T12:00:00Z", 700.0),  # NEW - add 0.7 kWh
+        ]
+    )
+
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        # Set up mock client
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        # Mock storage with v2.0 format
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=v2_0_storage)
+        mock_store.async_save = AsyncMock()
+
+        # Set up integration (no migration should occur)
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # ✅ Verify sensor exists and shows restored value + new accumulation
+        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        assert state is not None
+        # Expected: 20.5 (restored from v2.0) + 0.7 (new hour) = 21.2 kWh
+        assert float(state.state) == pytest.approx(21.2, rel=0.01)
+
+        # ✅ Verify saved data remains in v2.0 format
+        mock_store.async_save.assert_called()
+        saved_data = mock_store.async_save.call_args_list[0][0][0]  # First call (ATA)
+
+        # Check cumulative is still multi-measure format
+        assert isinstance(saved_data["cumulative"][TEST_UNIT_ID], dict)
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            21.2, rel=0.01
+        )
+
+        # Check hour_values structure preserved
+        assert isinstance(saved_data["hour_values"][TEST_UNIT_ID]["consumed"], dict)
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
+            "2025-01-15T12:00:00Z"
+        ] == pytest.approx(0.7, rel=0.01)
+
+
+@pytest.mark.asyncio
 async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
     """Test that energy update failures don't crash the integration.
 

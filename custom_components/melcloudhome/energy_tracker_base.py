@@ -104,45 +104,31 @@ class EnergyTrackerBase(ABC):
             cumulative_data = stored_data.get("cumulative", {})
             hour_values_data = stored_data.get("hour_values", {})
 
-            # Backward compatibility: migrate from v1.x single-measure format to v2.0 multi-measure format
-            # v1.x format (stable): {unit_id: cumulative_kwh} - single float value
-            # v2.0 format (beta): {unit_id: {measure: cumulative_kwh}} - dict of measures
-            # This migration ensures users upgrading from v1.x don't lose their energy data
+            # Backward compatibility: migrate from v1.3.4 single-measure to v2.0 multi-measure
+            # v1.3.4: {unit_id: cumulative_kwh} - single float value
+            # v2.0: {unit_id: {measure: cumulative_kwh}} - dict of measures
+            # This migration ensures users upgrading from v1.3.4 stable don't lose their energy data
             if cumulative_data:
-                # Check if any value is NOT a dict (legacy format)
-                has_legacy_format = any(
+                # Check if any value is NOT a dict (v1.3.4 format)
+                has_v1_format = any(
                     not isinstance(v, dict) for v in cumulative_data.values()
                 )
-                if has_legacy_format:
-                    # Migrate legacy cumulative format
+                if has_v1_format:
+                    # Migrate v1.3.4 cumulative format
                     for unit_id, value in cumulative_data.items():
                         self._energy_cumulative[unit_id]["consumed"] = float(value)
 
-                    # Migrate legacy hour_values format if present
-                    # Legacy: {unit_id: {timestamp: kwh}} -> New: {unit_id: {measure: {timestamp: kwh}}}
+                    # Migrate v1.3.4 hour_values format (always {unit_id: {timestamp: kwh}})
                     if hour_values_data:
                         for unit_id, hours in hour_values_data.items():
-                            # Check if this is legacy format (dict of timestamp: kwh)
-                            if hours and not any(
-                                isinstance(v, dict) for v in hours.values()
-                            ):
-                                # Legacy format - migrate to new format with "consumed" measure
-                                self._energy_hour_values[unit_id]["consumed"].update(
-                                    hours
-                                )
-                            else:
-                                # Already new format - restore as-is
-                                for measure, hour_dict in hours.items():
-                                    self._energy_hour_values[unit_id][measure].update(
-                                        hour_dict
-                                    )
+                            self._energy_hour_values[unit_id]["consumed"].update(hours)
 
                     _LOGGER.info(
-                        "Migrated %d device(s) from legacy storage format",
+                        "Migrated %d device(s) from v1.3.4 storage format",
                         len(cumulative_data),
                     )
                 else:
-                    # Restore from new format into defaultdicts
+                    # Restore from v2.0 format into defaultdicts
                     for unit_id, measures in cumulative_data.items():
                         self._energy_cumulative[unit_id].update(measures)
 
