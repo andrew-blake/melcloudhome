@@ -5,16 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-01-18
+## [2.0.0.beta-6] - 2026-01-18
 
-**Major Release: Air-to-Water (ATW) Heat Pump Support - Production Ready**
-
-ATW support graduates from experimental beta to stable, production-ready status after extensive testing on real hardware with multiple controller types.
+**Major Release: Air-to-Water (ATW) Heat Pump Support**
 
 ### Added
 
 **Air-to-Water (ATW) Heat Pump Support:**
-- **Climate Platform** (Zone 1): Heating/cooling* control, temperature setting (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT/COOL*)
+
+- **Climate Platform** (Zone 1): Heating/cooling*control, temperature setting (10-30°C), preset modes (Room/Flow/Curve), HVAC modes (OFF/HEAT/COOL*)
 - **Water Heater Platform** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
 - **Switch Platform** (System Power): Primary power control
 - **Sensors**: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temperatures)
@@ -23,13 +22,15 @@ ATW support graduates from experimental beta to stable, production-ready status 
 - **3-Way Valve Logic**: Automatic priority management between space heating and DHW
 - **Capability-Based Features**: Energy monitoring and cooling mode auto-detected from device capabilities
 
-*Feature availability depends on device capabilities (`hasCoolingMode`, `hasEstimatedEnergyConsumption`/`hasEstimatedEnergyProduction`)
+*Feature availability depends on device capabilities
 
-**Controller Support:**
-- ERSC-VM2D: Full features (heating, cooling, energy monitoring, telemetry)
+**Tested Devices:**
+
+- ERSCVM2D: Full features (heating, cooling, energy monitoring, telemetry)
 - EHSCVM2D: Core features (heating-only, telemetry, no energy monitoring)
 
 **Development Tools:**
+
 - Local Docker Compose development environment with mock API server (2 ATA + 1 ATW test devices)
 - Mock server supports energy, RSSI, and cooling endpoints
 - Automated deployment tool for remote testing
@@ -55,114 +56,10 @@ ATW support graduates from experimental beta to stable, production-ready status 
 - Zone 1 heating status display - correctly shows HEATING when valve serves zone
 - Blank icon button labels in thermostat cards for ATA and ATW
 
-### Documentation
-
-- [ADR-014: ATW Telemetry Sensors](docs/decisions/014-atw-telemetry-sensors.md) - Temperature sensor implementation
-- [ADR-015: Skip ATW Energy Monitoring](docs/decisions/015-skip-atw-energy-monitoring.md) - Initial decision (superseded by ADR-016)
-- [ADR-016: Implement ATW Energy Monitoring](docs/decisions/016-implement-atw-energy-monitoring.md) - Capability-based energy implementation
-- ATW API Reference updated with cooling modes, telemetry sensors, and energy reporting sections
-- README.md: ATW section updated, EXPERIMENTAL warnings removed
-- EXPERIMENTAL-ATW.md removed (content integrated into README)
 
 ### Acknowledgments
 
-Special thanks to [@pwa-2025](https://github.com/pwa-2025) for providing guest building access, enabling real hardware testing and validation of ATW features.
-
----
-
-## [2.0.0-beta.5] - 2026-01-14
-
-### Added
-
-- ATW: 6 new telemetry sensors for flow and return temperatures (system, zone 1, and boiler circuits)
-
-### Changed
-
-- API client refactored to be more DRY
-
-## [2.0.0-beta.4] - 2026-01-12
-
-### Fixed
-
-- ATW zones showing IDLE when actively heating - added support for undocumented `"Heating"` operation status
-- Water heater temperature control respects device capability (whole degree vs half degree steps)
-- Mock server now returns realistic `"Heating"` status matching real API behavior
-
-### Changed
-
-- API documentation updated to reflect real API behavior (removed unobserved status values)
-- Integration tests updated to use realistic operation status values
-
-### Acknowledgments
-
-Special thanks to [@pwa-2025](https://github.com/pwa-2025) for granting guest building access, enabling real hardware testing and discovery of the undocumented `"Heating"` operation status.
-
-## [2.0.0-beta.2] - 2026-01-11
-
-### Fixed
-
-- Zone 1 heating status display - now correctly shows HEATING when valve is actively heating the zone
-- Blank icon button labels in thermostat cards for ATA and ATW - icons now display correctly (beta.1 feedback #26)
-
-### Changed
-
-- **ATA Climate State Attributes Now Lowercase**
-
-  State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase for Home Assistant compliance:
-  - `"Auto"` → `"auto"`, `"One"` → `"one"`, `"LeftCentre"` → `"leftcentre"`, etc.
-
-  **Impact:** Automations/templates checking these attributes must use lowercase values.
-
-  **Migration:** Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
-
-## [2.0.0-beta.1] - 2026-01-10
-
-### ⚠️ Beta Release - Testers Wanted
-
-**Air-to-Water (ATW) Heat Pump Support - BETA TESTING**
-
-This is a **pre-release beta** for community testing. ATW heat pump support is based on HAR captures and has **NOT been tested on real hardware**.
-
-**How to test:**
-
-1. Enable beta releases in HACS:
-   - Go to **Settings → Devices & Services → Integrations → HACS**
-   - Find **MELCloud Home** in your repository list
-   - Enable the **"Show beta versions"** switch entity (disabled by default)
-2. Install this beta version (will appear in available updates)
-3. Test with your Ecodan ATW system
-4. Report findings: <https://github.com/andrew-blake/melcloudhome/issues>
-
-**⚠️ USE AT YOUR OWN RISK ⚠️**
-
-- Implementation is theoretical and may not work correctly with physical hardware
-- No guarantees of safety or correctness
-- See README.md ATW section for full details and limitations
-
-### Added
-
-- **⚠️ EXPERIMENTAL:** Air-to-Water (ATW) heat pump support (Ecodan)
-  - Water heater platform for DHW tank control
-  - Switch platform for system power control
-  - Climate platform for Zone 1 heating
-  - Preset modes (Room Temperature, Flow Temperature, Curve Control)
-  - ATW-specific sensors (Zone 1 room temperature, tank temperature, operation status)
-  - Binary sensors (error state, connection state, forced DHW active)
-  - See README.md ATW section for full details and limitations
-- Local development environment with Docker Compose and mock API server
-- Upgrade verification tooling (`tools/compare_upgrade_snapshots.py`)
-
-### Changed
-
-- Entity naming pattern updated to use `has_entity_name=True` for Home Assistant compatibility
-  - **Existing installations:** Entity IDs preserved, device names automatically set to friendly location names
-  - **New installations:** ATA Climate entity IDs include descriptive suffix (e.g., `_climate`)
-  - Device names show friendly locations (e.g., "Living Room") instead of UUIDs
-  - **No action required** for existing users
-
-### Fixed
-
-- "Recreate entity ID" button now generates stable IDs instead of breaking automations
+Special thanks to [@pwa-2025](https://github.com/pwa-2025) and [@Alexxx1986](https://github.com/Alexxx1986) for providing guest building access, enabling real hardware testing and validation of ATW features.
 
 ## [1.3.4] - 2025-12-09
 

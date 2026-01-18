@@ -17,7 +17,7 @@ info:
       - A2A Modes: "Heat", "Cool", "Automatic", "Dry", "Fan"
       - A2A Fan speeds: "Auto", "One", "Two", "Three", "Four", "Five"
       - A2A Vanes: "Auto", "Swing", "One"-"Five", "Left", "Centre*", "Right"
-      - A2W Modes: "HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"
+      - A2W Modes: "HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve", "CoolRoomTemperature", "CoolFlowTemperature"
     - **Schedule API** (POST /api/cloudschedule or /api/atwcloudschedule): Uses INTEGER enums
       - A2A Modes: 1=Heat, 2=Dry, 3=Cool, 4=Fan, 5=Automatic
       - A2A Fan speeds: 0=Auto, 1-5=speed levels
@@ -26,6 +26,7 @@ info:
 
     Based on reverse engineering and community contributions.
   version: 2.0.0
+  x-last-updated: "2026-01-18"
   contact:
     name: API Documentation
     url: https://melcloudhome.com
@@ -218,8 +219,8 @@ paths:
 
   /api/telemetry/actual:
     get:
-      summary: Get actual temperature telemetry
-      description: Returns historical room temperature and set temperature data
+      summary: Get actual telemetry data
+      description: Returns historical telemetry data for various measures (temperatures, RSSI)
       tags:
         - telemetry
       parameters:
@@ -241,6 +242,20 @@ paths:
           schema:
             type: string
             format: date-time
+        - name: measure
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - flow_temperature
+              - return_temperature
+              - flow_temperature_zone1
+              - return_temperature_zone1
+              - flow_temperature_boiler
+              - return_temperature_boiler
+              - rssi
+          description: Telemetry measure type (temperatures or WiFi signal strength)
       responses:
         '200':
           description: Temperature data retrieved
@@ -313,6 +328,13 @@ paths:
           schema:
             type: string
             enum: [hourly, daily, monthly]
+        - name: measure
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [interval_energy_consumed, interval_energy_produced]
+          description: Energy measure type (consumed or produced)
       responses:
         '200':
           description: Energy data retrieved
@@ -926,6 +948,8 @@ components:
             - HeatRoomTemperature
             - HeatFlowTemperature
             - HeatCurve
+            - CoolRoomTemperature
+            - CoolFlowTemperature
         setTemperatureZone1:
           type: number
           format: float
@@ -995,6 +1019,9 @@ components:
           type: boolean
         hasHeatZone2:
           type: boolean
+        hasCoolingMode:
+          type: boolean
+          description: Device supports cooling operation (CoolRoomTemperature, CoolFlowTemperature)
         hasMeasuredEnergyConsumption:
           type: boolean
         hasMeasuredEnergyProduction:
@@ -1033,6 +1060,8 @@ components:
             - HeatRoomTemperature
             - HeatFlowTemperature
             - HeatCurve
+            - CoolRoomTemperature
+            - CoolFlowTemperature
           nullable: true
         operationModeZone2:
           type: string
