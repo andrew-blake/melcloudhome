@@ -92,6 +92,7 @@ def create_mock_atw_unit(
     has_zone2: bool = False,
     in_standby_mode: bool = False,
     has_energy_meter: bool = False,
+    has_cooling_mode: bool = False,
     energy_consumed: float | None = None,
     energy_produced: float | None = None,
     cop: float | None = None,
@@ -130,6 +131,7 @@ def create_mock_atw_unit(
             has_zone2=has_zone2,
             has_estimated_energy_consumption=has_energy_meter,
             has_estimated_energy_production=has_energy_meter,
+            has_cooling_mode=has_cooling_mode,
         ),
     )
 
