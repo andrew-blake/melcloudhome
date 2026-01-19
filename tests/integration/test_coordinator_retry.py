@@ -188,8 +188,8 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
 async def test_deduplication_skips_same_value(coordinator):
     """Test smart deduplication skips API call when value unchanged."""
     from custom_components.melcloudhome.api.models_ata import (
+        AirToAirCapabilities,
         AirToAirUnit,
-        DeviceCapabilities,
     )
 
     # Setup coordinator with cached unit data
@@ -206,7 +206,7 @@ async def test_deduplication_skips_same_value(coordinator):
         in_standby_mode=False,
         is_in_error=False,
         rssi=-50,
-        capabilities=DeviceCapabilities(),
+        capabilities=AirToAirCapabilities(),
     )
     coordinator._units = {"unit123": unit}
 
@@ -223,8 +223,8 @@ async def test_deduplication_skips_same_value(coordinator):
 async def test_deduplication_sends_different_value(coordinator):
     """Test smart deduplication sends API call when value changed."""
     from custom_components.melcloudhome.api.models_ata import (
+        AirToAirCapabilities,
         AirToAirUnit,
-        DeviceCapabilities,
     )
 
     unit = AirToAirUnit(
@@ -240,7 +240,7 @@ async def test_deduplication_sends_different_value(coordinator):
         in_standby_mode=False,
         is_in_error=False,
         rssi=-50,
-        capabilities=DeviceCapabilities(),
+        capabilities=AirToAirCapabilities(),
     )
     coordinator._units = {"unit123": unit}
 

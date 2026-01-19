@@ -16,8 +16,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_ata import (
+    AirToAirCapabilities,
     AirToAirUnit,
-    DeviceCapabilities,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -51,7 +51,7 @@ def create_mock_unit(
     Returns:
         Mock AirToAirUnit with sensor-relevant data
     """
-    capabilities = DeviceCapabilities(has_energy_consumed_meter=has_energy_meter)
+    capabilities = AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter)
 
     return AirToAirUnit(
         id=unit_id,

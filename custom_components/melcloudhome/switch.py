@@ -14,7 +14,7 @@ from .api.models import AirToWaterUnit, Building
 from .const import DOMAIN
 from .const_atw import ATWEntityBase
 from .coordinator import MELCloudHomeCoordinator
-from .helpers import create_atw_device_info, with_debounced_refresh
+from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
         self._attr_name = "System Power"
 
         # Device info using shared helper (groups with climate/water_heater/sensors)
-        self._attr_device_info = create_atw_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit, building)
 
     @property
     def is_on(self) -> bool | None:

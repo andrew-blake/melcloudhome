@@ -25,7 +25,7 @@ from .const_atw import (
     HA_TO_ATW_PRESET_HEAT,
     ATWEntityBase,
 )
-from .helpers import create_atw_device_info, with_debounced_refresh
+from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class ATWClimateZone1(
         self._attr_name = "Zone 1"
 
         # Device info using shared helper (groups with water_heater/sensors)
-        self._attr_device_info = create_atw_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit, building)
 
         # Supported features
         self._attr_supported_features = (
