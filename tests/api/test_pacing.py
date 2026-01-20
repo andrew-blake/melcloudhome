@@ -1,18 +1,33 @@
 """Tests for request pacing."""
 
+import asyncio
+
 import pytest
+
+from custom_components.melcloudhome.api.pacing import RequestPacer
+
+# Test constants
+FLOAT_TOLERANCE = 0.01  # Tolerance for floating point comparisons
+
+
+@pytest.fixture
+def mock_sleep(mocker):
+    """Mock asyncio.sleep for testing."""
+    return mocker.patch("asyncio.sleep")
+
+
+@pytest.fixture
+def mock_time(mocker):
+    """Mock time.time for testing."""
+    return mocker.patch("custom_components.melcloudhome.api.pacing.time")
 
 
 class TestRequestPacer:
     """Test RequestPacer enforces minimum spacing between requests."""
 
     @pytest.mark.asyncio
-    async def test_first_request_proceeds_immediately(self, mocker):
+    async def test_first_request_proceeds_immediately(self, mock_sleep):
         """First request should not wait."""
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
-        mock_sleep = mocker.patch("asyncio.sleep")
-
         pacer = RequestPacer()
         async with pacer:
             pass  # Simulate request
@@ -21,13 +36,8 @@ class TestRequestPacer:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_second_request_waits_if_too_soon(self, mocker):
+    async def test_second_request_waits_if_too_soon(self, mock_sleep, mock_time):
         """Second request should wait if less than min_interval has passed."""
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
-        mock_sleep = mocker.patch("asyncio.sleep")
-        mock_time = mocker.patch("custom_components.melcloudhome.api.pacing.time")
-
         # Simulate time progression
         mock_time.side_effect = [
             1.0,
@@ -49,16 +59,11 @@ class TestRequestPacer:
         # Should have called sleep with 0.3 seconds
         mock_sleep.assert_called_once()
         call_args = mock_sleep.call_args[0][0]
-        assert abs(call_args - 0.3) < 0.01  # Allow small floating point error
+        assert abs(call_args - 0.3) < FLOAT_TOLERANCE
 
     @pytest.mark.asyncio
-    async def test_second_request_no_wait_if_time_passed(self, mocker):
+    async def test_second_request_no_wait_if_time_passed(self, mock_sleep, mock_time):
         """Second request should not wait if min_interval has passed."""
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
-        mock_sleep = mocker.patch("asyncio.sleep")
-        mock_time = mocker.patch("custom_components.melcloudhome.api.pacing.time")
-
         # Simulate time progression - enough time passed
         mock_time.side_effect = [
             1.0,
@@ -83,10 +88,6 @@ class TestRequestPacer:
     @pytest.mark.asyncio
     async def test_concurrent_requests_are_serialized(self):
         """Concurrent requests should be queued and executed sequentially."""
-        import asyncio
-
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
         execution_order = []
 
         pacer = RequestPacer(min_interval=0.01)  # Short interval for test speed
@@ -115,13 +116,8 @@ class TestRequestPacer:
         ]
 
     @pytest.mark.asyncio
-    async def test_failed_request_updates_timestamp(self, mocker):
+    async def test_failed_request_updates_timestamp(self, mock_sleep, mock_time):
         """Failed request should still update last_request_time."""
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
-        mock_sleep = mocker.patch("asyncio.sleep")
-        mock_time = mocker.patch("custom_components.melcloudhome.api.pacing.time")
-
         # Simulate time progression
         mock_time.side_effect = [
             1.0,
@@ -144,13 +140,11 @@ class TestRequestPacer:
         # Should wait because first request updated timestamp even though it failed
         mock_sleep.assert_called_once()
         call_args = mock_sleep.call_args[0][0]
-        assert abs(call_args - 0.3) < 0.01  # Need to wait 0.3s more
+        assert abs(call_args - 0.3) < FLOAT_TOLERANCE
 
     @pytest.mark.asyncio
     async def test_failed_request_releases_lock(self):
         """Failed request should release lock to prevent deadlock."""
-        from custom_components.melcloudhome.api.pacing import RequestPacer
-
         pacer = RequestPacer()
 
         # First request fails
