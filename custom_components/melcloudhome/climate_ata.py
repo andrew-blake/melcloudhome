@@ -69,8 +69,14 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             HVACMode.FAN_ONLY,
         ]
 
-        # Fan speeds
-        self._attr_fan_modes = ATA_FAN_SPEEDS
+        # Fan speeds - build dynamically based on device capability
+        if unit.capabilities:
+            num_speeds = unit.capabilities.number_of_fan_speeds
+            # Slice to include "auto" + first N speeds
+            self._attr_fan_modes = ATA_FAN_SPEEDS[: num_speeds + 1]
+        else:
+            # Fallback to all speeds if capabilities not available
+            self._attr_fan_modes = ATA_FAN_SPEEDS
 
         # Swing modes (vertical vane positions)
         self._attr_swing_modes = ATA_VANE_POSITIONS
