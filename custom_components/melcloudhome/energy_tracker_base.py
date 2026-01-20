@@ -167,6 +167,7 @@ class EnergyTrackerBase(ABC):
         unit_name: str,
         measure: str,
         values: list[dict[str, Any]],
+        values_in_kwh: bool = False,
     ) -> None:
         """Initialize energy tracking for a new unit + measure.
 
@@ -178,12 +179,14 @@ class EnergyTrackerBase(ABC):
             unit_name: Unit name (for logging)
             measure: Measure name (e.g., "consumed", "produced")
             values: List of hourly energy values from API
+            values_in_kwh: If True, values are already in kWh (ATW). If False, convert from Wh (ATA).
         """
         # Mark all hours as seen (defaultdict auto-creates nested structure)
         for value_entry in values:
             hour_timestamp = value_entry["time"]
-            wh_value = float(value_entry["value"])
-            kwh_value = wh_value / WH_TO_KWH_FACTOR
+            raw_value = float(value_entry["value"])
+            # ATW API returns kWh, ATA API returns Wh
+            kwh_value = raw_value if values_in_kwh else raw_value / WH_TO_KWH_FACTOR
             self._energy_hour_values[unit_id][measure][hour_timestamp] = kwh_value
 
         _LOGGER.info(
@@ -201,6 +204,7 @@ class EnergyTrackerBase(ABC):
         unit_name: str,
         measure: str,
         values: list[dict[str, Any]],
+        values_in_kwh: bool = False,
     ) -> None:
         """Update cumulative energy values with new hourly data.
 
@@ -212,12 +216,14 @@ class EnergyTrackerBase(ABC):
             unit_name: Unit name (for logging)
             measure: Measure name (e.g., "consumed", "produced")
             values: List of hourly energy values from API
+            values_in_kwh: If True, values are already in kWh (ATW). If False, convert from Wh (ATA).
         """
         # defaultdict auto-creates nested structure, no manual initialization needed
         for value_entry in values:
             hour_timestamp = value_entry["time"]
-            wh_value = float(value_entry["value"])
-            kwh_value = wh_value / WH_TO_KWH_FACTOR
+            raw_value = float(value_entry["value"])
+            # ATW API returns kWh, ATA API returns Wh
+            kwh_value = raw_value if values_in_kwh else raw_value / WH_TO_KWH_FACTOR
 
             # Get previous value for this specific hour (default 0.0 from defaultdict)
             previous_value = self._energy_hour_values[unit_id][measure].get(

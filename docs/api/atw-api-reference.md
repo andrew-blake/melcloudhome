@@ -597,10 +597,26 @@ GET /api/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&int
 ```
 
 **Data Characteristics:**
-- Values are in **Wh** (watt-hours), convert to kWh by dividing by 1000
+- Values are in **kWh** (kilowatt-hours) - **NO conversion needed**
+- ⚠️ **CRITICAL:** Unlike ATA energy API (which returns Wh), ATW returns kWh directly
+- Response structure uses `measureData` format (not `hourValues` as shown above)
 - `cumulative` field is unused (always 0)
-- `hourValues` keys are ISO timestamps
 - Data available up to ~48 hours historical
+
+**Actual Response Format** (from VCR cassette):
+```json
+{
+  "deviceId": "37de5a0f-4d42-4e9e-92f4-362aada35f18",
+  "measureData": [{
+    "type": "intervalEnergyConsumed",
+    "values": [
+      {"time": "2026-01-17 10:00:00.000000000", "value": "0.567"},  // 0.567 kWh
+      {"time": "2026-01-17 11:00:00.000000000", "value": "0.867"},  // 0.867 kWh
+      {"time": "2026-01-17 12:00:00.000000000", "value": "1.133"}   // 1.133 kWh
+    ]
+  }]
+}
+```
 
 **Capability Detection:**
 

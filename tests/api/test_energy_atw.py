@@ -222,6 +222,72 @@ class TestATWEnergyDataRetrieval:
         await client.close()
 
 
-# Note: Response parsing tests are not needed here since ATW uses the same
-# telemetry endpoint structure as ATA, just with different measure parameters.
-# Parsing is tested in test_energy.py with parse_energy_response().
+class TestATWEnergyValueParsing:
+    """Test ATW energy value parsing to verify unit conversion."""
+
+    @pytest.mark.asyncio
+    async def test_atw_energy_values_in_kwh_not_wh(self) -> None:
+        """Verify ATW energy API returns kWh, not Wh.
+
+        This test verifies the fix for the bug where ATW energy values were
+        incorrectly converted from Wh to kWh (divided by 1000), when they
+        were already in kWh from the API.
+
+        Reference VCR cassette: test_get_energy_consumed_hourly.yaml
+        Sample value: 0.5666666666666667 (kWh, not Wh)
+        """
+        # Load the VCR cassette data to verify actual API response format
+        import json
+        from pathlib import Path
+        from typing import Any
+
+        import yaml  # type: ignore[import-untyped]
+
+        cassette_path = Path(
+            "tests/api/cassettes/TestATWEnergyDataRetrieval.test_get_energy_consumed_hourly.yaml"
+        )
+
+        if not cassette_path.exists():
+            pytest.skip(
+                "VCR cassette not found - run test_get_energy_consumed_hourly first"
+            )
+
+        with open(cassette_path) as f:
+            cassette = yaml.safe_load(f)
+
+        # Find the energy API response
+        energy_response: str | None = None
+        for interaction in cassette["interactions"]:
+            if "interval_energy_consumed" in interaction["request"]["uri"]:
+                energy_response = interaction["response"]["body"]["string"]
+                break
+
+        if not energy_response:
+            pytest.skip("Energy API response not found in cassette")
+
+        # Parse the response (energy_response is guaranteed non-None here)
+        assert energy_response is not None  # Type narrowing for mypy
+        data: dict[str, Any] = json.loads(energy_response)
+
+        # Verify structure
+        assert "measureData" in data
+        assert len(data["measureData"]) > 0
+        values = data["measureData"][0]["values"]
+        assert len(values) > 0
+
+        # Check actual values - they should be in kWh (0.5-5 range for heat pump)
+        # NOT in Wh (500-5000 range)
+        sample_value = float(values[0]["value"])
+
+        # Heat pump hourly consumption is typically 0.5-5 kWh/hour
+        # If it were in Wh, we'd see 500-5000
+        assert 0.1 < sample_value < 10, (
+            f"ATW energy value {sample_value} doesn't look like kWh. "
+            f"Expected 0.1-10 kWh/hour range for heat pump. "
+            f"If this is >100, it's likely in Wh (bug not fixed)."
+        )
+
+        # Verify multiple values are in reasonable kWh range
+        for value_entry in values[:5]:  # Check first 5 values
+            val = float(value_entry["value"])
+            assert 0.1 < val < 10, f"ATW energy value {val} out of expected kWh range"

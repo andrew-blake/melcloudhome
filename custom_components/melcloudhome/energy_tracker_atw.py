@@ -171,10 +171,15 @@ class ATWEnergyTracker(EnergyTrackerBase):
             return
 
         # Use base class methods for delta tracking
+        # ATW energy API returns kWh, not Wh (unlike ATA)
         if self._is_first_initialization(unit.id, measure):
-            self._initialize_unit_tracking(unit.id, unit.name, measure, values)
+            self._initialize_unit_tracking(
+                unit.id, unit.name, measure, values, values_in_kwh=True
+            )
         else:
-            self._update_cumulative_values(unit.id, unit.name, measure, values)
+            self._update_cumulative_values(
+                unit.id, unit.name, measure, values, values_in_kwh=True
+            )
 
     def _calculate_cop(self, unit: AirToWaterUnit) -> None:
         """Calculate COP (Coefficient of Performance) for a unit.
