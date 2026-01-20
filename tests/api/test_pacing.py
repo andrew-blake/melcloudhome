@@ -211,3 +211,24 @@ class TestRequestPacer:
         mock_sleep.assert_called_once()
         call_args = mock_sleep.call_args[0][0]
         assert abs(call_args - 0.7) < FLOAT_TOLERANCE
+
+    @pytest.mark.asyncio
+    async def test_real_timing_sanity_check(self):
+        """Sanity check with real asyncio.sleep and timing."""
+        from time import time
+
+        pacer = RequestPacer(min_interval=0.01)  # 10ms for fast test
+
+        start = time()
+
+        # Make 3 requests
+        for _ in range(3):
+            async with pacer:
+                await asyncio.sleep(0.001)  # Simulate tiny bit of work
+
+        elapsed = time() - start
+
+        # Should take at least 20ms (2 waits of 10ms each, plus tiny work time)
+        # Allow some tolerance for timing variance
+        assert elapsed >= 0.018, f"Expected >= 0.018s, got {elapsed}s"
+        assert elapsed < 0.1, f"Expected < 0.1s, got {elapsed}s"  # Sanity upper bound
