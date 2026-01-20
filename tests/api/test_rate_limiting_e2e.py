@@ -64,3 +64,60 @@ class TestRateLimitingE2E:
 
         finally:
             await client.close()
+
+    @pytest.mark.requires_mock
+    @pytest.mark.asyncio
+    async def test_ten_concurrent_requests_succeeds(self):
+        """
+        E2E test: Stress test with 10 rapid control requests.
+
+        Verifies RequestPacer queue handles heavy concurrent load.
+
+        Requires: make dev-up (mock server with rate limiting enabled)
+        """
+        from time import time
+
+        client = MELCloudHomeClient(debug_mode=True)
+
+        try:
+            # Login to mock server
+            await client.login("test@example.com", "password")
+
+            # Get device IDs
+            context = await client.get_user_context()
+            ata_devices = context.buildings[0].air_to_air_units
+            atw_devices = context.buildings[0].air_to_water_units
+
+            ata1_id = ata_devices[0].id
+            ata2_id = ata_devices[1].id
+            atw1_id = atw_devices[0].id
+
+            # Create 10 mixed operations
+            start = time()
+            results = await asyncio.gather(
+                # ATA 1 operations
+                client.ata.set_temperature(ata1_id, 22.0),
+                client.ata.set_fan_speed(ata1_id, "Auto"),
+                client.ata.set_mode(ata1_id, "Heat"),
+                # ATA 2 operations
+                client.ata.set_temperature(ata2_id, 21.0),
+                client.ata.set_fan_speed(ata2_id, "Two"),
+                client.ata.set_mode(ata2_id, "Cool"),
+                # ATW 1 operations
+                client.atw.set_temperature_zone1(atw1_id, 23.0),
+                client.atw.set_mode_zone1(atw1_id, "HeatRoomTemperature"),
+                client.atw.set_dhw_temperature(atw1_id, 50.0),
+                client.atw.set_forced_hot_water(atw1_id, False),
+            )
+            elapsed = time() - start
+
+            # All 10 requests should succeed
+            assert len(results) == 10
+
+            # Should take approximately 4.5 seconds (9 waits of 500ms each)
+            # Allow some tolerance for timing variance and request execution
+            assert elapsed >= 4.0, f"Expected >= 4.0s, got {elapsed:.2f}s"
+            assert elapsed < 6.0, f"Expected < 6.0s, got {elapsed:.2f}s"
+
+        finally:
+            await client.close()
