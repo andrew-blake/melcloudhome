@@ -37,6 +37,8 @@ class RequestPacer:
         await self._lock.acquire()
 
         try:
+            # Calculate elapsed time and wait if needed
+            # (inside try block to ensure lock release on any exception)
             elapsed = time() - self._last_request_time
             if elapsed < self._min_interval:
                 wait_time = self._min_interval - elapsed
