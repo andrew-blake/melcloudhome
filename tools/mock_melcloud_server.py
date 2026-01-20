@@ -29,6 +29,7 @@ import asyncio
 import json
 import logging
 import signal
+from time import time
 from typing import Any
 
 import aiohttp_cors
@@ -36,6 +37,41 @@ from aiohttp import web
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+# Rate limiting configuration
+ENABLE_RATE_LIMITING = True  # Set to False to disable for testing
+RATE_LIMIT_INTERVAL = 0.5  # seconds
+
+# Global rate limiting state
+rate_limit_lock = asyncio.Lock()
+last_request_time = 0.0
+
+
+@web.middleware
+async def rate_limit_middleware(request, handler):
+    """Enforce rate limiting on all requests."""
+    if not ENABLE_RATE_LIMITING:
+        return await handler(request)
+
+    global last_request_time
+
+    async with rate_limit_lock:
+        elapsed = time() - last_request_time
+        if elapsed < RATE_LIMIT_INTERVAL:
+            # Return 429 Too Many Requests
+            logger.debug(
+                "Rate limit exceeded: %.3fs since last request (min %.3fs)",
+                elapsed,
+                RATE_LIMIT_INTERVAL,
+            )
+            return web.Response(
+                status=429,
+                text=json.dumps({"error": "Rate limit exceeded"}),
+                content_type="application/json",
+            )
+        last_request_time = time()
+
+    return await handler(request)
 
 
 class MockMELCloudServer:
@@ -143,7 +179,7 @@ class MockMELCloudServer:
 
     def create_app(self) -> web.Application:
         """Create aiohttp application with routes."""
-        app = web.Application()
+        app = web.Application(middlewares=[rate_limit_middleware])
 
         # Configure CORS to allow web client access from melcloudhome.com
         cors = aiohttp_cors.setup(
