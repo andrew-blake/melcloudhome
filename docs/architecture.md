@@ -208,7 +208,7 @@ All entities use UUID-based device names for stable entity IDs (format: `melclou
 - `sensor.melcloudhome_{short_id}_flow_temperature` - Flow temperature
 - `sensor.melcloudhome_{short_id}_return_temperature` - Return temperature
 - `sensor.melcloudhome_{short_id}_energy_*` - Energy sensors (if supported)
-- `sensor.melcloudhome_{short_id}_rssi` - WiFi signal strength
+- `sensor.melcloudhome_{short_id}_wifi_signal` - WiFi signal strength (RSSI)
 - `sensor.melcloudhome_{short_id}_operation_status` - Current operation mode
 - `binary_sensor.melcloudhome_{short_id}_error` - Error state
 - `binary_sensor.melcloudhome_{short_id}_connection` - Connection status

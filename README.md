@@ -260,8 +260,8 @@ For each heat pump system, the following entities are created:
 
 **WiFi Signal Sensor:**
 
-- **WiFi Signal (RSSI)**: `sensor.melcloudhome_{short_id}_rssi` (diagnostic)
-  - Example: `sensor.melcloudhome_bf8d_5119_rssi`
+- **WiFi Signal (RSSI)**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
+  - Example: `sensor.melcloudhome_bf8d_5119_wifi_signal`
   - WiFi signal strength in dBm (values: -40 to -90, lower = weaker signal)
   - Update frequency: Every 60 minutes
 
