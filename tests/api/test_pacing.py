@@ -79,3 +79,37 @@ class TestRequestPacer:
 
         # Should not have called sleep
         mock_sleep.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_are_serialized(self):
+        """Concurrent requests should be queued and executed sequentially."""
+        import asyncio
+
+        from custom_components.melcloudhome.api.pacing import RequestPacer
+
+        execution_order = []
+
+        pacer = RequestPacer(min_interval=0.01)  # Short interval for test speed
+
+        async def mock_request(request_id: int) -> None:
+            async with pacer:
+                execution_order.append(f"start_{request_id}")
+                await asyncio.sleep(0.001)  # Simulate work
+                execution_order.append(f"end_{request_id}")
+
+        # Launch 3 concurrent requests
+        await asyncio.gather(
+            mock_request(1),
+            mock_request(2),
+            mock_request(3),
+        )
+
+        # Verify serialization - each request should fully complete before next starts
+        assert execution_order == [
+            "start_1",
+            "end_1",
+            "start_2",
+            "end_2",
+            "start_3",
+            "end_3",
+        ]
