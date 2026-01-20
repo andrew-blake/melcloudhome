@@ -25,6 +25,13 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# Jitter configuration for telemetry polling (all values in seconds)
+# Reduced from original values since RequestPacer handles base rate limiting
+TELEMETRY_INTER_DEVICE_JITTER_MIN = 0.1
+TELEMETRY_INTER_DEVICE_JITTER_MAX = 1.0
+TELEMETRY_INTER_MEASURE_JITTER_MIN = 0.1
+TELEMETRY_INTER_MEASURE_JITTER_MAX = 0.5
+
 
 class TelemetryTracker:
     """Manages telemetry data polling for ATW devices.
@@ -86,7 +93,10 @@ class TelemetryTracker:
 
                         # Inter-device jitter (except last device)
                         if i < len(building.air_to_water_units) - 1:
-                            jitter = random.uniform(1, 3)
+                            jitter = random.uniform(
+                                TELEMETRY_INTER_DEVICE_JITTER_MIN,
+                                TELEMETRY_INTER_DEVICE_JITTER_MAX,
+                            )
                             _LOGGER.debug(
                                 "Inter-device jitter: %.1fs before next device", jitter
                             )
@@ -121,7 +131,10 @@ class TelemetryTracker:
 
                 # Jitter between measures (except last one)
                 if i < len(ATW_TELEMETRY_MEASURES) - 1:
-                    jitter = random.uniform(2, 5)
+                    jitter = random.uniform(
+                        TELEMETRY_INTER_MEASURE_JITTER_MIN,
+                        TELEMETRY_INTER_MEASURE_JITTER_MAX,
+                    )
                     _LOGGER.debug("Measure jitter: %.1fs before next measure", jitter)
                     await asyncio.sleep(jitter)
 
