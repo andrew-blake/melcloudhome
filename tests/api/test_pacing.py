@@ -192,3 +192,22 @@ class TestRequestPacer:
 
         # If we get here, lock was properly released even after cancellation
         assert True
+
+    @pytest.mark.asyncio
+    async def test_custom_interval_works(self, mock_sleep, mock_time):
+        """RequestPacer should respect custom min_interval."""
+        # Test with 1.0 second interval
+        mock_time.side_effect = [1.0, 1.0, 1.3, 1.3]
+
+        pacer = RequestPacer(min_interval=1.0)
+
+        async with pacer:
+            pass
+
+        async with pacer:
+            pass
+
+        # Should wait 0.7s (1.0 - 0.3 elapsed)
+        mock_sleep.assert_called_once()
+        call_args = mock_sleep.call_args[0][0]
+        assert abs(call_args - 0.7) < FLOAT_TOLERANCE
