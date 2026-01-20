@@ -113,3 +113,35 @@ class TestRequestPacer:
             "start_3",
             "end_3",
         ]
+
+    @pytest.mark.asyncio
+    async def test_failed_request_updates_timestamp(self, mocker):
+        """Failed request should still update last_request_time."""
+        from custom_components.melcloudhome.api.pacing import RequestPacer
+
+        mock_sleep = mocker.patch("asyncio.sleep")
+        mock_time = mocker.patch("custom_components.melcloudhome.api.pacing.time")
+
+        # Simulate time progression
+        mock_time.side_effect = [
+            1.0,
+            1.5,
+            1.7,
+            1.7,
+        ]  # First enter, first exit, second enter, second exit
+
+        pacer = RequestPacer(min_interval=0.5)
+
+        # First request fails
+        with pytest.raises(ValueError):
+            async with pacer:
+                raise ValueError("Test error")
+
+        # Second request (0.2s after first ended at 1.5, now at 1.7)
+        async with pacer:
+            pass
+
+        # Should wait because first request updated timestamp even though it failed
+        mock_sleep.assert_called_once()
+        call_args = mock_sleep.call_args[0][0]
+        assert abs(call_args - 0.3) < 0.01  # Need to wait 0.3s more
