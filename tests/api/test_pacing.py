@@ -158,3 +158,37 @@ class TestRequestPacer:
 
         # If we get here, lock was properly released
         assert True
+
+    @pytest.mark.asyncio
+    async def test_cancelled_during_pacing_releases_lock(self, mock_time):
+        """Cancellation during pacing sleep should release lock to prevent deadlock."""
+        # Simulate time progression that requires waiting
+        # First request: enter (1.0), exit (1.0)
+        # Second request (cancelled): enter (1.2) - needs to wait but gets cancelled
+        # Third request: enter (1.6), exit (1.6) - no wait needed
+        mock_time.side_effect = [1.0, 1.0, 1.2, 1.6, 1.6]
+
+        pacer = RequestPacer(min_interval=0.5)
+
+        # First request succeeds
+        async with pacer:
+            pass
+
+        # Second request gets cancelled during pacing sleep
+        async def cancelled_request() -> None:
+            async with pacer:
+                pass
+
+        task = asyncio.create_task(cancelled_request())
+        await asyncio.sleep(0.01)  # Let task start and acquire lock
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # Third request should proceed (lock was released despite cancellation)
+        async with pacer:
+            pass  # Should not hang
+
+        # If we get here, lock was properly released even after cancellation
+        assert True

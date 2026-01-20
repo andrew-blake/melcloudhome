@@ -36,11 +36,17 @@ class RequestPacer:
         """Acquire lock and enforce minimum interval."""
         await self._lock.acquire()
 
-        elapsed = time() - self._last_request_time
-        if elapsed < self._min_interval:
-            wait_time = self._min_interval - elapsed
-            _LOGGER.debug("Request pacing: waiting %.2fs", wait_time)
-            await asyncio.sleep(wait_time)
+        try:
+            elapsed = time() - self._last_request_time
+            if elapsed < self._min_interval:
+                wait_time = self._min_interval - elapsed
+                _LOGGER.debug("Request pacing: waiting %.2fs", wait_time)
+                await asyncio.sleep(wait_time)
+        except BaseException:
+            # If exception occurs during pacing (including cancellation),
+            # release lock before re-raising to prevent deadlock
+            self._lock.release()
+            raise
 
         return self
 
