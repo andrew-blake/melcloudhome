@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Rate limiting:** Add request pacing to prevent 429 errors when scenes/automations control multiple devices simultaneously. The integration now enforces a minimum 500ms spacing between API requests, preventing MELCloud from rejecting rapid-fire requests. This is especially important for ATW heat pump devices which have multiple entities (zones + DHW + power) that may be controlled together.
+
+### Changed
+
+- **Telemetry:** Reduced inter-device jitter from 1-3s to 0.1-1.0s and inter-measure jitter from 2-5s to 0.1-0.5s. Request pacing now handles base rate limiting, making aggressive manual jitter redundant.
+
 ## [2.0.0.beta-6] - 2026-01-18
 
 **Major Release: Air-to-Water (ATW) Heat Pump Support**
