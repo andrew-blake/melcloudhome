@@ -145,3 +145,22 @@ class TestRequestPacer:
         mock_sleep.assert_called_once()
         call_args = mock_sleep.call_args[0][0]
         assert abs(call_args - 0.3) < 0.01  # Need to wait 0.3s more
+
+    @pytest.mark.asyncio
+    async def test_failed_request_releases_lock(self):
+        """Failed request should release lock to prevent deadlock."""
+        from custom_components.melcloudhome.api.pacing import RequestPacer
+
+        pacer = RequestPacer()
+
+        # First request fails
+        with pytest.raises(ValueError):
+            async with pacer:
+                raise ValueError("Test error")
+
+        # Second request should proceed (lock was released)
+        async with pacer:
+            pass  # Should not hang
+
+        # If we get here, lock was properly released
+        assert True
