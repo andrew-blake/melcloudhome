@@ -40,8 +40,8 @@ When diagnosing issues:
 1. **Check container status:** `ssh ha "sudo docker ps"`
 2. **View logs:** `ssh ha "sudo docker logs homeassistant --tail 500"`
 3. **Filter errors:** `ssh ha "sudo docker logs homeassistant --tail 500 2>&1 | grep -i error | tail -50"`
-5. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
-6. **Check entity states:** `ssh ha "sudo docker exec homeassistant ha states list | grep melcloudhome.*"`
+4. **Check integration files:** `ssh ha "sudo docker exec homeassistant ls -la /config/"`
+5. **Check entity states:** `ssh ha "sudo docker exec homeassistant ha states list | grep melcloudhome.*"`
 
 See `.claude/skills/home-assistant-diagnostics/SKILL.md` for detailed diagnostic workflows and common issue patterns.
 
@@ -125,12 +125,14 @@ _claude/                         # Session notes (local only, not in git)
 **Format:** `{domain}.melcloudhome_{short_id}_{entity_name}`
 
 **short_id derivation:**
+
 - Take device UUID from API (e.g., `bf8d5119-abcd-1234-5678-9999abcd5119`)
 - Remove hyphens: `bf8d5119abcd12345678999abcd5119`
 - Extract: first 4 chars + `_` + last 4 chars
 - Result: `bf8d_5119`
 
 **Examples:**
+
 - ATA climate: `climate.melcloudhome_bf8d_5119_climate`
 - ATW Zone 1: `climate.melcloudhome_bf8d_5119_zone_1`
 - ATW DHW tank: `water_heater.melcloudhome_bf8d_5119_tank`
@@ -206,6 +208,7 @@ make deploy-watch    # Deploy + watch logs
 **Purpose:** Understand MELCloud API behavior by observing the official web application without needing real hardware.
 
 **When to use:**
+
 - User reports unsupported device (e.g., different controller type)
 - Need to verify undocumented API behavior
 - Want to contribute device support without owning hardware
@@ -232,6 +235,7 @@ make deploy-watch    # Deploy + watch logs
 ```
 
 **Full guides:**
+
 - Quick start: `tools/reverse-engineering/README.md`
 - Comprehensive: `docs/research/REVERSE_ENGINEERING.md`
 
@@ -297,15 +301,17 @@ git push --tags      # Triggers automated GitHub release workflow
 **What happens during automated release:**
 
 When you push a tag (e.g., `v1.3.3`), GitHub Actions automatically:
+
 1. **Validates** - Checks manifest.json version matches tag, verifies CHANGELOG entry exists
 2. **Tests** - Runs full test suite (format, lint, type-check, API tests, HA integration tests)
 3. **Extracts release notes** - Parses CHANGELOG.md to extract notes for this version
 4. **Creates GitHub release** - Publishes release with extracted notes
 5. **Fails if** - Version mismatch, missing CHANGELOG entry, or any test failures
 
-The release appears at: https://github.com/andrew-blake/melcloudhome/releases
+The release appears at: <https://github.com/andrew-blake/melcloudhome/releases>
 
 **CHANGELOG format rules:**
+
 - Use only standard sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`
 - Do NOT use custom sections like "Documentation" or "Technical Details"
 - Keep entries concise and factual (no marketing language)
@@ -376,12 +382,14 @@ git push --tags
 #### When to Use Beta Releases
 
 **✅ Use beta releases for:**
+
 - Experimental features (e.g., ATW heat pump support)
 - Hardware-specific features requiring real-world testing
 - Breaking changes requiring user validation
 - Major refactoring with regression risk
 
 **❌ Don't use beta releases for:**
+
 - Bug fixes (use patch: `make version-patch`)
 - Documentation updates
 - Internal refactoring (no user impact)
@@ -410,17 +418,21 @@ See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for com
 **Testing Workflow:**
 
 **API tests** (run natively):
+
 ```bash
 make test              # Run API tests (no Docker needed)
 pytest tests/api/ -v   # Run specific API tests
 ```
+
 - Test API client in isolation with VCR cassettes
 - No Home Assistant dependencies required
 
 **Integration tests** (Docker - PRIMARY workflow):
+
 ```bash
 make test-ha           # Run HA integration tests (recommended)
 ```
+
 - Docker is the **primary and recommended** approach for integration tests
 - Provides clean environment matching CI with all Home Assistant dependencies
 - Uses `pytest-homeassistant-custom-component` (cannot install locally due to aiohttp conflicts)
@@ -428,6 +440,7 @@ make test-ha           # Run HA integration tests (recommended)
 - Automatically builds image and runs tests
 
 **Quick rules for integration tests:**
+
 - ✅ Test through `hass.states` and `hass.services` ONLY
 - ✅ Mock `MELCloudHomeClient` at API boundary
 - ✅ Use `hass.config_entries.async_setup()` for setup
@@ -436,6 +449,7 @@ make test-ha           # Run HA integration tests (recommended)
 - ❌ Never manipulate `coordinator.data` directly
 
 **Example:**
+
 ```python
 # ✅ CORRECT: Test through core interfaces
 state = hass.states.get("climate.entity_id")
@@ -452,6 +466,7 @@ await hass.services.async_call(
 ```
 
 **Reference examples:**
+
 - ✅ `tests/integration/test_init.py` - Excellent patterns
 - ✅ `tests/integration/test_config_flow.py` - Config flow testing
 - ✅ `tests/api/test_auth.py` - API testing with VCR
@@ -465,12 +480,14 @@ await hass.services.async_call(
 - **Rate Limiting:** Minimum 60-second polling interval
 
 **API Documentation:**
+
 - `docs/api/ata-api-reference.md` - Air-to-Air (A/C units) complete API specification
 - `docs/api/atw-api-reference.md` - Air-to-Water (heat pumps) complete API specification
 - `docs/api/device-type-comparison.md` - ATA vs ATW comparison (control patterns, capabilities)
 - `docs/api/melcloudhome-telemetry-endpoints.md` - Telemetry and energy reporting endpoints
 
 **ATW Device Capabilities:**
+
 - **Energy Monitoring:** Available on devices with `hasEstimatedEnergyConsumption=true` AND `hasEstimatedEnergyProduction=true`
   - ERSC-VM2D controllers: ✅ Full energy data (consumed, produced, COP)
   - EHSCVM2D controllers: ❌ No energy data
@@ -501,17 +518,19 @@ make dev-reset
 ```
 
 **Features:**
+
 - Mock MELCloud API with 2 ATA + 1 ATW test devices
 - Auto-setup with skip onboarding
 - Debug logging enabled
 - Changes reload with simple restart
 
 **Development Mode Setup:**
+
 1. Start dev environment: `make dev-up`
-2. Login to HA: http://localhost:8123 (dev/dev)
+2. Login to HA: <http://localhost:8123> (dev/dev)
 3. Enable Advanced Mode in profile settings
 4. Add integration → Enable "Connect to Mock Server" checkbox
-5. Integration connects to mock server at http://melcloud-mock:8080
+5. Integration connects to mock server at <http://melcloud-mock:8080>
 
 **See [DEV-SETUP.md](DEV-SETUP.md) for complete guide.**
 
