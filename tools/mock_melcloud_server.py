@@ -1071,8 +1071,19 @@ Examples:
         action="store_true",
         help="Enable debug logging (shows full request payloads)",
     )
+    parser.add_argument(
+        "--no-rate-limit",
+        action="store_true",
+        help="Disable rate limiting (useful for CI testing)",
+    )
 
     args = parser.parse_args()
+
+    # Configure rate limiting based on command-line argument
+    global ENABLE_RATE_LIMITING
+    if args.no_rate_limit:
+        ENABLE_RATE_LIMITING = False
+        logger.info("⚠️  Rate limiting DISABLED")
 
     # Configure logging
     log_level = logging.DEBUG if args.debug else logging.INFO

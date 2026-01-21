@@ -41,7 +41,7 @@ jobs:
         run: uv sync
       - name: Start mock MELCloud server
         run: |
-          uv run python tools/mock_melcloud_server.py --host 127.0.0.1 --port 8080 &
+          uv run python tools/mock_melcloud_server.py --host 127.0.0.1 --port 8080 --no-rate-limit &
           MOCK_PID=$!
           echo "MOCK_PID=$MOCK_PID" >> $GITHUB_ENV
           echo "Mock server started with PID $MOCK_PID"
