@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.conftest import VCR_OPERATION_DELAY, VCR_RESTORE_DELAY
+
 if TYPE_CHECKING:
     from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
@@ -28,7 +30,7 @@ async def test_set_power_on(
     await authenticated_client.ata.set_power(dining_room_unit_id, True)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -47,7 +49,7 @@ async def test_set_power_off(
     await authenticated_client.ata.set_power(dining_room_unit_id, False)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -67,7 +69,7 @@ async def test_set_temperature(
     await authenticated_client.ata.set_temperature(dining_room_unit_id, target_temp)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -87,7 +89,7 @@ async def test_set_temperature_half_degree(
     await authenticated_client.ata.set_temperature(dining_room_unit_id, target_temp)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -105,7 +107,7 @@ async def test_set_mode_heat(
     await authenticated_client.ata.set_mode(dining_room_unit_id, "Heat")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -123,7 +125,7 @@ async def test_set_mode_cool(
     await authenticated_client.ata.set_mode(dining_room_unit_id, "Cool")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -141,7 +143,7 @@ async def test_set_mode_automatic(
     await authenticated_client.ata.set_mode(dining_room_unit_id, "Automatic")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -159,7 +161,7 @@ async def test_set_fan_speed_auto(
     await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Auto")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -177,7 +179,7 @@ async def test_set_fan_speed_three(
     await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Three")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -195,7 +197,7 @@ async def test_set_vanes_auto(
     await authenticated_client.ata.set_vanes(dining_room_unit_id, "Auto", "Auto")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -214,7 +216,7 @@ async def test_set_vanes_swing(
     await authenticated_client.ata.set_vanes(dining_room_unit_id, "Swing", "Swing")
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -236,16 +238,16 @@ async def test_multiple_controls_together(
     """
     # Set power on, mode to Heat, temp to 20°C, fan to Auto
     await authenticated_client.ata.set_power(dining_room_unit_id, True)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     await authenticated_client.ata.set_mode(dining_room_unit_id, "Heat")
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     await authenticated_client.ata.set_temperature(dining_room_unit_id, 20.0)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     await authenticated_client.ata.set_fan_speed(dining_room_unit_id, "Auto")
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify all state changes
     context = await authenticated_client.get_user_context()

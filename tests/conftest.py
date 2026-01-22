@@ -17,6 +17,30 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
+# Test timing constants
+# These delays were originally added with the assumption that API state changes
+# need time to propagate. However, the MELCloud API returns synchronously -
+# state updates are immediate. VCR cassettes record requests sequentially
+# without timing, so delays are unnecessary during both recording and playback.
+#
+# Set to 0 for maximum test performance. Can be increased for debugging or
+# testing against real hardware if eventual consistency issues are suspected.
+
+# VCR cassette tests - main control operations
+# Original: 2 seconds (assumed state propagation delay)
+# Actual: Unnecessary - API is synchronous, VCR responses are instant
+VCR_OPERATION_DELAY = 0
+
+# VCR cassette tests - cleanup/restore operations
+# Original: 1 second (less critical operations)
+# Actual: Unnecessary - same reasoning as above
+VCR_RESTORE_DELAY = 0
+
+# Mock server tests - localhost HTTP calls
+# Original: 0.5 seconds (assumed localhost latency)
+# Actual: Unnecessary - mock server responds in ~1-5ms
+MOCK_SERVER_DELAY = 0
+
 
 class NoOpRequestPacer:
     """No-op request pacer for VCR tests.

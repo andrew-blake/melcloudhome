@@ -12,13 +12,14 @@ IMPORTANT: These tests make write operations to a real ATW heat pump.
 - Always reads current state before modifying
 - Makes small, safe changes (±0.5°C)
 - Restores original state after each test
-- Uses 1-2 second sleeps for API propagation
 """
 
 import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
+
+from tests.conftest import VCR_OPERATION_DELAY, VCR_RESTORE_DELAY
 
 if TYPE_CHECKING:
     from custom_components.melcloudhome.api.client import MELCloudHomeClient
@@ -39,7 +40,7 @@ async def test_atw_set_power_on(
     await authenticated_client.atw.set_power(atw_unit_id, True)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -58,7 +59,7 @@ async def test_atw_set_power_off(
     await authenticated_client.atw.set_power(atw_unit_id, False)
 
     # Wait for state to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # Verify state changed
     context = await authenticated_client.get_user_context()
@@ -92,14 +93,14 @@ async def test_atw_set_temperature_zone1(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Make small, safe change (+0.5°C)
     new_temp = original_temp + 0.5
     await authenticated_client.atw.set_temperature_zone1(atw_unit_id, new_temp)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -110,11 +111,11 @@ async def test_atw_set_temperature_zone1(
 
     # 6. RESTORE: Temperature first, then power
     await authenticated_client.atw.set_temperature_zone1(atw_unit_id, original_temp)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -150,14 +151,14 @@ async def test_atw_set_dhw_temperature(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Make small, safe change (+0.5°C)
     new_temp = original_temp + 0.5
     await authenticated_client.atw.set_dhw_temperature(atw_unit_id, new_temp)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -168,11 +169,11 @@ async def test_atw_set_dhw_temperature(
 
     # 6. RESTORE: Temperature first, then power
     await authenticated_client.atw.set_dhw_temperature(atw_unit_id, original_temp)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -205,13 +206,13 @@ async def test_atw_set_forced_hot_water_on(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Enable forced DHW mode
     await authenticated_client.atw.set_forced_hot_water(atw_unit_id, True)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -221,11 +222,11 @@ async def test_atw_set_forced_hot_water_on(
 
     # 6. RESTORE: Forced DHW first, then power
     await authenticated_client.atw.set_forced_hot_water(atw_unit_id, original_forced)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -252,13 +253,13 @@ async def test_atw_set_forced_hot_water_off(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Disable forced DHW mode
     await authenticated_client.atw.set_forced_hot_water(atw_unit_id, False)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -268,11 +269,11 @@ async def test_atw_set_forced_hot_water_off(
 
     # 6. RESTORE: Forced DHW first, then power
     await authenticated_client.atw.set_forced_hot_water(atw_unit_id, original_forced)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -304,13 +305,13 @@ async def test_atw_set_mode_zone1_heat_room_temperature(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Set mode to HeatRoomTemperature
     await authenticated_client.atw.set_mode_zone1(atw_unit_id, "HeatRoomTemperature")
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -320,11 +321,11 @@ async def test_atw_set_mode_zone1_heat_room_temperature(
 
     # 6. RESTORE: Mode first, then power
     await authenticated_client.atw.set_mode_zone1(atw_unit_id, original_mode)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -351,13 +352,13 @@ async def test_atw_set_mode_zone1_heat_flow_temperature(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Set mode to HeatFlowTemperature
     await authenticated_client.atw.set_mode_zone1(atw_unit_id, "HeatFlowTemperature")
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -367,11 +368,11 @@ async def test_atw_set_mode_zone1_heat_flow_temperature(
 
     # 6. RESTORE: Mode first, then power
     await authenticated_client.atw.set_mode_zone1(atw_unit_id, original_mode)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -404,13 +405,13 @@ async def test_atw_set_standby_mode_on(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Enable standby mode
     await authenticated_client.atw.set_standby_mode(atw_unit_id, True)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -420,11 +421,11 @@ async def test_atw_set_standby_mode_on(
 
     # 6. RESTORE: Standby mode first, then power
     await authenticated_client.atw.set_standby_mode(atw_unit_id, original_standby)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
@@ -451,13 +452,13 @@ async def test_atw_set_standby_mode_off(
     # 2. CRITICAL: Turn system ON first (controls may not work when off)
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, True)
-        await asyncio.sleep(2)
+        await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 3. Disable standby mode
     await authenticated_client.atw.set_standby_mode(atw_unit_id, False)
 
     # 4. Wait for API to propagate
-    await asyncio.sleep(2)
+    await asyncio.sleep(VCR_OPERATION_DELAY)
 
     # 5. Verify change applied
     context = await authenticated_client.get_user_context()
@@ -467,11 +468,11 @@ async def test_atw_set_standby_mode_off(
 
     # 6. RESTORE: Standby mode first, then power
     await authenticated_client.atw.set_standby_mode(atw_unit_id, original_standby)
-    await asyncio.sleep(1)
+    await asyncio.sleep(VCR_RESTORE_DELAY)
 
     if not original_power:
         await authenticated_client.atw.set_power(atw_unit_id, False)
-        await asyncio.sleep(1)
+        await asyncio.sleep(VCR_RESTORE_DELAY)
 
     # 7. Verify restoration
     context = await authenticated_client.get_user_context()
