@@ -11,7 +11,7 @@ services:
       test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 8080)); s.close()"]
       interval: 1s
       timeout: 5s
-      retries: 30
+      retries: 10
       start_period: 2s
 
   # Integration tests with pytest-homeassistant (socket blocking enabled)
