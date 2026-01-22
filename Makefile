@@ -63,7 +63,7 @@ test:  ## Run ALL tests with combined coverage (~344 tests)
 		--cov-report=
 	@cp .coverage coverage-output/.coverage
 	@echo "🐳 Integration + E2E..."
-	@docker compose -f docker-compose.test.yml up --build \
+	@docker compose -f docker-compose.test.yml up \
 		--abort-on-container-exit --exit-code-from e2e-tests; \
 	EXIT_CODE=$$?; \
 	docker compose -f docker-compose.test.yml down -v; \
