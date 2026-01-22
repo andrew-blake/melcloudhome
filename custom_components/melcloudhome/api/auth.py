@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -20,6 +21,15 @@ from .const_shared import (
 from .exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
+
+# Authentication session initialization delay
+# After OAuth completes, Blazor WASM needs time to initialize the session
+# before API endpoints will work. In production this is ~3 seconds.
+# In tests (pytest), we disable this delay because:
+# - VCR cassettes have pre-recorded sessions
+# - Mock server doesn't need Blazor initialization
+# - Reduces test time by ~84 seconds (28 tests x 3s)
+AUTH_SESSION_INIT_DELAY = 0 if os.getenv("PYTEST_CURRENT_TEST") else 3
 
 
 class MELCloudHomeAuth:
@@ -310,8 +320,12 @@ class MELCloudHomeAuth:
                         # CRITICAL: Wait for session to fully initialize
                         # The OAuth flow completes but Blazor WASM needs time to initialize
                         # the session before API endpoints will work
-                        _LOGGER.debug("Waiting for session initialization (3 seconds)")
-                        await asyncio.sleep(3)
+                        if AUTH_SESSION_INIT_DELAY > 0:
+                            _LOGGER.debug(
+                                "Waiting for session initialization (%s seconds)",
+                                AUTH_SESSION_INIT_DELAY,
+                            )
+                        await asyncio.sleep(AUTH_SESSION_INIT_DELAY)
 
                         return True
 
