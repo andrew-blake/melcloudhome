@@ -9,9 +9,10 @@ services:
       - test-network
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 8080)); s.close()"]
-      interval: 2s
+      interval: 1s
       timeout: 5s
-      retries: 10
+      retries: 30
+      start_period: 2s
 
   # Integration tests with pytest-homeassistant (socket blocking enabled)
   integration-tests:
@@ -20,6 +21,9 @@ services:
       dockerfile: Dockerfile.test
     volumes:
       - ./coverage-output:/app/coverage-output
+      - ./custom_components:/app/custom_components:ro
+      - ./tests:/app/tests:ro
+      - ./tools:/app/tools:ro
     working_dir: /app
     networks:
       - test-network
@@ -38,6 +42,9 @@ services:
       dockerfile: Dockerfile.test
     volumes:
       - ./coverage-output:/app/coverage-output
+      - ./custom_components:/app/custom_components:ro
+      - ./tests:/app/tests:ro
+      - ./tools:/app/tools:ro
     working_dir: /app
     networks:
       - test-network
@@ -49,7 +56,8 @@ services:
     environment:
       - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
       - COVERAGE_FILE=/app/coverage-output/.coverage
-    command: sh -c "uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml:/app/coverage-output/coverage.xml --cov-report=html:/app/coverage-output/htmlcov --cov-report=term-missing"
+      - PYTEST_DISABLE_SOCKET_ALLOW_HOSTS=melcloud-mock,localhost,127.0.0.1
+    command: sh -c "uv pip uninstall pytest-socket pytest-homeassistant-custom-component && uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml:/app/coverage-output/coverage.xml --cov-report=html:/app/coverage-output/htmlcov --cov-report=term-missing"
 
 networks:
   test-network:

@@ -33,11 +33,15 @@ class TestRateLimitingE2E:
         - ATA 2: bf8d5678-90ab-cdef-0123-456789ab5119 (Bedroom AC)
         - ATW 1: bf2d256c-42ac-4799-a6d8-c6ab433e5666 (House Heat Pump)
         """
+        from tests.conftest import retry_on_connection_error
+
         client = MELCloudHomeClient(debug_mode=True)
 
         try:
-            # Login to mock server
-            await client.login("test@example.com", "password")
+            # Login to mock server (with retry for Docker DNS propagation)
+            await retry_on_connection_error(
+                lambda: client.login("test@example.com", "password")
+            )
 
             # Get device IDs
             context = await client.get_user_context()
@@ -77,11 +81,15 @@ class TestRateLimitingE2E:
         """
         from time import time
 
+        from tests.conftest import retry_on_connection_error
+
         client = MELCloudHomeClient(debug_mode=True)
 
         try:
-            # Login to mock server
-            await client.login("test@example.com", "password")
+            # Login to mock server (with retry for Docker DNS propagation)
+            await retry_on_connection_error(
+                lambda: client.login("test@example.com", "password")
+            )
 
             # Get device IDs
             context = await client.get_user_context()

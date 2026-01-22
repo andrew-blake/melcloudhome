@@ -96,8 +96,16 @@ async def test_set_mode_zone2_invalid() -> None:
 @pytest_asyncio.fixture
 async def mock_client() -> AsyncIterator[MELCloudHomeClient]:
     """Client connected to mock server (debug mode)."""
+    from tests.conftest import retry_on_connection_error
+
     client = MELCloudHomeClient(debug_mode=True)
-    await client.login("test@example.com", "password")
+
+    # Retry login to handle Docker Compose DNS propagation delays
+    async def login_with_retry():
+        await client.login("test@example.com", "password")
+
+    await retry_on_connection_error(login_with_retry)
+
     yield client
     await client.close()
 

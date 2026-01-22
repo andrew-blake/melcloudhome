@@ -15,7 +15,12 @@ COPY pyproject.toml uv.lock ./
 # This layer is cached unless pyproject.toml or uv.lock changes
 RUN uv sync --frozen
 
+# NOTE: pytest-homeassistant-custom-component NOT installed here
+# It's only needed for integration tests and includes pytest-socket which blocks E2E tests
+# Integration tests install it at runtime via docker-compose command
+
 # Copy source code LAST (changes most frequently)
+# Volume mounts will override these at runtime, but they're needed for uv sync to work
 COPY custom_components ./custom_components
 COPY tests ./tests
 COPY tools ./tools

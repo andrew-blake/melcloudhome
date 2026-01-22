@@ -62,15 +62,27 @@ test:  ## Run ALL tests with combined coverage (~344 tests)
 		--cov=custom_components/melcloudhome \
 		--cov-report=
 	@cp .coverage coverage-output/.coverage
-	@echo "🐳 Integration + E2E..."
-	@docker compose -f docker-compose.test.yml up \
-		--abort-on-container-exit --exit-code-from e2e-tests; \
+	@echo "🐳 Integration + E2E (sequential startup to avoid DNS race)..."
+	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@docker compose -f docker-compose.test.yml run --rm integration-tests
+	@docker compose -f docker-compose.test.yml run --rm e2e-tests; \
 	EXIT_CODE=$$?; \
 	docker compose -f docker-compose.test.yml down -v; \
 	if [ -f coverage-output/.coverage ]; then cp coverage-output/.coverage .coverage; fi; \
 	if [ -f coverage-output/coverage.xml ]; then cp coverage-output/coverage.xml coverage.xml; fi; \
 	if [ -d coverage-output/htmlcov ]; then cp -r coverage-output/htmlcov htmlcov; fi; \
 	echo "📊 Coverage: open htmlcov/index.html"; \
+	exit $$EXIT_CODE
+
+test-quick:  ## Quick test - E2E only (skip API unit tests for fast iteration)
+	@echo "🐳 Integration + E2E tests only (API tests skipped)..."
+	@echo "Starting mock server..."
+	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@echo "Waiting for mock server health check..."
+	@docker compose -f docker-compose.test.yml run --rm integration-tests
+	@docker compose -f docker-compose.test.yml run --rm e2e-tests; \
+	EXIT_CODE=$$?; \
+	docker compose -f docker-compose.test.yml down -v; \
 	exit $$EXIT_CODE
 
 test-ha:  ## Deprecated - use 'make test' instead

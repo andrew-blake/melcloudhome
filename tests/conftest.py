@@ -63,11 +63,18 @@ class NoOpRequestPacer:
 
 
 # Configure pytest-socket to allow network for E2E tests
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def socket_allow_hosts():
-    """Allow Docker network IPs for E2E tests."""
-    # Allow localhost and Docker bridge network (172.x.x.x)
-    return ["localhost", "127.0.0.1", "172.17.0.0/16", "172.18.0.0/16", "172.19.0.0/16"]
+    """Allow Docker network IPs and hostnames for E2E tests."""
+    # Allow localhost, Docker bridge networks, and melcloud-mock hostname
+    return [
+        "localhost",
+        "127.0.0.1",
+        "melcloud-mock",  # Docker Compose service name
+        "172.17.0.0/16",
+        "172.18.0.0/16",
+        "172.19.0.0/16",
+    ]
 
 
 # Configure VCR to filter sensitive data
@@ -305,3 +312,56 @@ def living_room_unit_id() -> str:
 def atw_unit_id() -> str:
     """ID of the ATW unit for VCR testing (real guest device)."""
     return "8e61d4cb-bc08-4424-bb5c-8bce84857637"
+
+
+async def retry_on_connection_error(
+    coro_func, max_retries: int = 5, delay: float = 1.0
+):
+    """Retry an async function on connection/DNS errors.
+
+    Docker Compose DNS propagation can be delayed when containers start concurrently.
+    This retries connection attempts with a fixed delay between attempts.
+
+    Args:
+        coro_func: Async function to retry
+        max_retries: Maximum number of retry attempts (default: 5)
+        delay: Fixed delay in seconds between retries (default: 1.0)
+
+    Raises:
+        Last exception if all retries exhausted
+    """
+    import asyncio
+    import socket
+
+    import aiohttp
+
+    from custom_components.melcloudhome.api.exceptions import AuthenticationError
+
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            return await coro_func()
+        except Exception as e:
+            # Check if it's pytest-socket blocking (shouldn't happen - we uninstall it for E2E)
+            if "SocketBlockedError" in type(e).__name__:
+                raise  # Don't retry - config issue, not transient failure
+
+            # Only retry connection/DNS errors
+            if not isinstance(
+                e,
+                socket.gaierror  # DNS resolution failure
+                | aiohttp.ClientConnectorError  # Connection refused
+                | ConnectionRefusedError
+                | OSError
+                | AuthenticationError,  # Wrapped connection errors from our auth code
+            ):
+                raise  # Unknown exception, don't retry
+
+            last_error = e
+            if attempt < max_retries - 1:
+                await asyncio.sleep(delay)
+            else:
+                raise ConnectionError(
+                    f"Failed after {max_retries} retries: {last_error}"
+                ) from last_error
