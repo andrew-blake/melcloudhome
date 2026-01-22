@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, dev_*]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -28,8 +28,8 @@ jobs:
       - name: Type check
         run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-  test-api:
-    name: API Tests
+  test:
+    name: Run All Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -39,46 +39,5 @@ jobs:
         run: uv python install 3.12
       - name: Install dependencies
         run: uv sync
-      - name: Start mock MELCloud server
-        run: |
-          uv run python tools/mock_melcloud_server.py --host 127.0.0.1 --port 8080 --no-rate-limit &
-          MOCK_PID=$!
-          echo "MOCK_PID=$MOCK_PID" >> $GITHUB_ENV
-          echo "Mock server started with PID $MOCK_PID"
-          # Wait for server to be ready (check if port is listening)
-          for i in {1..30}; do
-            if nc -z 127.0.0.1 8080 2>/dev/null; then
-              echo "Mock server is ready on port 8080"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "Mock server failed to start within 30 seconds"
-              exit 1
-            fi
-            echo "Waiting for mock server... ($i/30)"
-            sleep 1
-          done
-      - name: Run API tests
-        run: uv run pytest tests/api/ -v
-      - name: Stop mock server
-        if: always()
-        run: |
-          if [ ! -z "$MOCK_PID" ]; then
-            kill $MOCK_PID 2>/dev/null || true
-            echo "Mock server stopped"
-          fi
-
-  test-ha:
-    name: Home Assistant Integration Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install test dependencies
-        run: |
-          pip install pytest pytest-asyncio pytest-homeassistant-custom-component
-      - name: Run HA integration tests
-        run: pytest tests/integration/ -v
+      - name: Run all tests (identical to local)
+        run: make test-ci

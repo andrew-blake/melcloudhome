@@ -25,29 +25,11 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run API tests with coverage
-        run: |
-          uv run pytest tests/api/ \
-            --cov=custom_components/melcloudhome \
-            --cov-report=xml \
-            --cov-report=term-missing \
-            -v
-
-      - name: Install HA test dependencies
-        run: pip install pytest pytest-asyncio pytest-homeassistant-custom-component
-
-      - name: Run integration tests with coverage (append)
-        run: |
-          pytest tests/integration/ \
-            --cov=custom_components/melcloudhome \
-            --cov-append \
-            --cov-report=xml \
-            --cov-report=term-missing \
-            -v
+      - name: Run all tests with coverage (identical to local)
+        run: make test-ci
 
       - name: Upload combined coverage to Codecov
         uses: codecov/codecov-action@v5
-        # Don't fail on Dependabot PRs where secrets aren't available
         if: github.actor != 'dependabot[bot]'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

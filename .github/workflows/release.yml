@@ -85,20 +85,8 @@ jobs:
       - name: Type check
         run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-      - name: Run API tests
-        run: uv run pytest tests/api/ -v
-
-      - name: Set up Python for HA tests
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install HA test dependencies
-        run: |
-          pip install pytest pytest-asyncio pytest-homeassistant-custom-component
-
-      - name: Run HA integration tests
-        run: pytest tests/integration/ -v
+      - name: Run all tests (identical to local)
+        run: make test-ci
 
   release:
     name: Create GitHub Release

@@ -64,8 +64,9 @@ All code changes require tests. See [docs/testing-best-practices.md](docs/testin
 **Test your changes:**
 
 ```bash
-make test              # Run API tests (no Docker required)
-make test-ha           # Run HA integration tests (uses Docker)
+make test-api          # API unit tests (native, fast)
+make test              # Integration + E2E tests (Docker Compose)
+make test-ci           # Complete test suite with coverage (for PRs)
 ```
 
 **Integration tests:**

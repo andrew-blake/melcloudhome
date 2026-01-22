@@ -101,6 +101,7 @@ async def mock_client() -> AsyncIterator[MELCloudHomeClient]:
     await client.close()
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
@@ -125,6 +126,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is True
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
@@ -143,6 +145,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is False
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> None:
@@ -162,6 +165,7 @@ async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> No
     assert unit.set_temperature_zone1 == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1_half_degree(
@@ -183,6 +187,7 @@ async def test_mock_set_temperature_zone1_half_degree(
     assert unit.set_temperature_zone1 == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_room_temperature(
@@ -204,6 +209,7 @@ async def test_mock_set_mode_zone1_room_temperature(
     assert unit.operation_mode_zone1 == mode
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_heat_curve(
@@ -225,6 +231,7 @@ async def test_mock_set_mode_zone1_heat_curve(
     assert unit.operation_mode_zone1 == mode
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None:
@@ -244,6 +251,7 @@ async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None
     assert unit.set_tank_water_temperature == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_enable(
@@ -264,6 +272,7 @@ async def test_mock_set_forced_hot_water_enable(
     assert unit.forced_hot_water_mode is True
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_disable(
@@ -284,6 +293,7 @@ async def test_mock_set_forced_hot_water_disable(
     assert unit.forced_hot_water_mode is False
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:

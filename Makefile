@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
+.PHONY: help install lint format type-check test test-api test-integration test-ha test-ci pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -19,15 +19,40 @@ format:  ## Format code with ruff
 type-check:  ## Run mypy type checker
 	uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-test:  ## Run API tests (no HA dependency)
-	uv run pytest tests/api/ -v
+test:  ## Run ALL tests via Docker Compose (Integration + E2E)
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+	docker compose -f docker-compose.test.yml down -v
 
-test-ha:  ## Run HA integration tests in Docker (fast with caching)
-	@docker build -q -t melcloudhome-test:latest -f tests/integration/Dockerfile . 2>/dev/null || true
-	docker run --rm -v $(PWD):/app melcloudhome-test:latest
+test-api:  ## Run API unit tests (native, fast, with coverage)
+	uv run pytest tests/api/ -v -m "not e2e" \
+		--cov=custom_components/melcloudhome \
+		--cov-report=html \
+		--cov-report=term-missing
 
-test-cov:  ## Run tests with coverage report
-	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing
+test-integration:  ## Alias for 'make test'
+	@$(MAKE) test
+
+test-ha:  ## Deprecated - use 'make test' instead
+	@echo "⚠️  Deprecated: 'make test-ha' is now 'make test'"
+	@echo "    Integration + E2E tests run via Docker Compose"
+	@echo "    Update your documentation and scripts"
+	@$(MAKE) test
+
+test-ci:  ## Run ALL tests with complete coverage (IDENTICAL to CI)
+	@echo "🧪 Running API unit tests with coverage..."
+	uv run pytest tests/api/ -v -m "not e2e" \
+		--cov=custom_components/melcloudhome \
+		--cov-report=xml \
+		--cov-report=html \
+		--cov-report=term-missing
+	@echo ""
+	@echo "🐳 Running integration + E2E tests via Docker Compose..."
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+	docker compose -f docker-compose.test.yml down -v
+	@echo ""
+	@echo "📊 Complete coverage report generated!"
+	@echo "   - XML: coverage.xml (for CI/Codecov)"
+	@echo "   - HTML: open htmlcov/index.html"
 
 pre-commit:  ## Run all pre-commit hooks
 	uv run pre-commit run --all-files

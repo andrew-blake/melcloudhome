@@ -187,10 +187,10 @@ make dev-down        # Stop dev environment
 # 3. Add integration with "Connect to Mock Server" enabled
 
 # Testing
-make test                        # Run API tests (no Docker needed)
-make test-ha                     # Run HA integration tests in Docker
-pytest tests/api/ -v             # Run API tests only (local)
-pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing -vv  # With coverage
+make test-api                    # API unit tests (native, fast, with coverage)
+make test                        # Integration + E2E tests (Docker Compose)
+make test-ci                     # Complete coverage (identical to CI)
+make test-ha                     # Deprecated alias for 'make test'
 
 # Integration tests require Docker (uses pytest-homeassistant-custom-component)
 # Docker runs tests from tests/integration directory to avoid pytest_plugins error
@@ -415,29 +415,36 @@ Include this in beta CHANGELOG entries:
 
 See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
 
-**Testing Workflow:**
-
-**API tests** (run natively):
+**API unit tests** (fast iteration):
 
 ```bash
-make test              # Run API tests (no Docker needed)
-pytest tests/api/ -v   # Run specific API tests
+make test-api          # Run API unit tests (native, ~2s)
+pytest tests/api/ -v   # Same as above
 ```
 
-- Test API client in isolation with VCR cassettes
-- No Home Assistant dependencies required
+- Fast (~2 seconds)
+- Hermetic (VCR cassettes)
+- No Docker required
+- Excludes E2E tests (those need mock server)
 
-**Integration tests** (Docker - PRIMARY workflow):
+**Integration + E2E tests** (Docker Compose):
 
 ```bash
-make test-ha           # Run HA integration tests (recommended)
+make test              # Run integration + E2E tests (Docker Compose, ~30s)
 ```
 
-- Docker is the **primary and recommended** approach for integration tests
-- Provides clean environment matching CI with all Home Assistant dependencies
-- Uses `pytest-homeassistant-custom-component` (cannot install locally due to aiohttp conflicts)
-- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
-- Automatically builds image and runs tests
+- Uses Docker Compose with mock server
+- Tests full HTTP stack
+- Includes Home Assistant integration tests
+- Includes E2E rate limiting tests
+
+**Pre-commit hooks** run API unit tests:
+
+```bash
+make pre-commit        # Runs lint, format, type-check, API unit tests
+```
+
+**Before committing:** Run `make test-api` for quick feedback, `make test` for full validation.
 
 **Quick rules for integration tests:**
 

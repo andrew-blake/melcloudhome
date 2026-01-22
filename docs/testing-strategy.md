@@ -60,7 +60,7 @@ async def test_set_temperature(authenticated_client):
     assert device.set_temperature == 22.0
 ```
 
-**Run with:** `make test` or `pytest tests/api/`
+**Run with:** `make test-api` or `pytest tests/api/ -v -m "not e2e"`
 
 **Coverage:** 82% of API client code
 
@@ -107,7 +107,7 @@ async def test_set_temperature(hass, setup_integration):
     assert state.attributes["temperature"] == 22
 ```
 
-**Run with:** `make test-ha` (builds Docker image and runs tests automatically)
+**Run with:** `make test` (Docker Compose with mock server and HA integration tests)
 
 **Test structure:**
 - `tests/integration/` - HA integration tests
@@ -153,14 +153,14 @@ make deploy-watch # Deploy + live log monitoring
 - **What:** API client operations, models, error handling
 - **Coverage:** 82% of API client code
 - **Speed:** ~12 seconds
-- **Command:** `make test`
+- **Command:** `make test-api`
 
 ### 2. Integration Tests (Docker) ✅
 - **Tool:** pytest-homeassistant-custom-component
 - **What:** HA integration, config flow, entities, services
 - **Coverage:** Config flow, coordinator, entity platforms
 - **Speed:** ~30 seconds (includes Docker build cache)
-- **Command:** `make test-ha`
+- **Command:** `make test`
 
 ### 3. Code Quality ✅
 - **Tools:** ruff, mypy, pre-commit
@@ -184,10 +184,10 @@ make deploy-watch # Deploy + live log monitoring
 vim custom_components/melcloudhome/climate.py
 
 # 2. Run API tests (fast)
-make test
+make test-api
 
 # 3. Run integration tests (if touching HA integration code)
-make test-ha
+make test
 
 # 4. Run quality checks
 make lint
@@ -211,8 +211,9 @@ make pre-commit
 ### Before Release:
 ```bash
 # 1. Full test suite
-make test      # API tests
-make test-ha   # Integration tests
+make test-api  # API unit tests (fast)
+make test      # Integration + E2E tests (Docker)
+make test-ci   # Complete coverage (identical to CI)
 
 # 2. All quality checks
 make all       # format, lint, type-check

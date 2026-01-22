@@ -17,7 +17,7 @@ from custom_components.melcloudhome.api.client import MELCloudHomeClient
 class TestRateLimitingE2E:
     """E2E tests verifying RequestPacer prevents rate limit errors."""
 
-    @pytest.mark.requires_mock
+    @pytest.mark.e2e
     @pytest.mark.asyncio
     async def test_scene_with_three_devices_succeeds(self):
         """
@@ -65,7 +65,7 @@ class TestRateLimitingE2E:
         finally:
             await client.close()
 
-    @pytest.mark.requires_mock
+    @pytest.mark.e2e
     @pytest.mark.asyncio
     async def test_ten_concurrent_requests_succeeds(self):
         """

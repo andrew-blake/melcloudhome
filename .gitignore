@@ -35,6 +35,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov/
+coverage-reports/
 *.cover
 .tox/
 

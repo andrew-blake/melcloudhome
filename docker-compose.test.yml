@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Mock MELCloud API Server (with rate limiting for E2E tests)
+  melcloud-mock:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    command: python tools/mock_melcloud_server.py --host 0.0.0.0 --port 8080
+    # Note: Rate limiting ENABLED for E2E tests
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 8080)); s.close()"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  # Test runner with pytest + Home Assistant dependencies
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks:
+      - test-network
+    depends_on:
+      melcloud-mock:
+        condition: service_healthy
+    environment:
+      - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
+    command: >
+      sh -c "
+        pytest tests/integration/ -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing &&
+        pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing
+      "
+
+networks:
+  test-network:
+    name: melcloud-test-network

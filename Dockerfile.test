@@ -1,0 +1,22 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install ALL test dependencies (API + integration)
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-asyncio \
+    pytest-mock \
+    pytest-cov \
+    pytest-recording \
+    pytest-homeassistant-custom-component \
+    vcrpy \
+    aiohttp \
+    voluptuous \
+    freezegun
+
+# Copy source code
+COPY . .
+
+# Default command
+CMD ["pytest", "tests/", "-v"]

@@ -334,29 +334,33 @@ await set_temperature(20.0)  # Duplicate
 ### Run All Tests
 
 ```bash
-# API tests (fast, no Docker needed)
-make test                        # or: pytest tests/api/ -v
+# API unit tests (fast, native, with coverage)
+make test-api                    # or: pytest tests/api/ -v -m "not e2e"
 
-# Integration tests (in Docker - requires pytest-homeassistant-custom-component)
-make test-ha
+# Integration + E2E tests (Docker Compose with mock server)
+make test                        # Docker Compose: integration tests + E2E API tests
 
-# Note: Integration tests run in Docker because pytest-homeassistant-custom-component
-# has dependency conflicts with local dev environment (aiohttp version incompatibility).
-# See tests/integration/Dockerfile for test environment setup.
+# Complete test suite with coverage (identical to CI)
+make test-ci                     # API unit tests + Docker Compose tests
+
+# Note: Integration tests run via Docker Compose with mock MELCloud server.
+# See docker-compose.test.yml for test environment setup.
 ```
 
-### Docker Integration Test Details
+### Docker Compose Test Details
 
-**Why Docker?**
+**Why Docker Compose?**
 - `pytest-homeassistant-custom-component` requires Home Assistant
 - HA requires aiohttp 3.8-3.11 (incompatible with our aiohttp >=3.13.2)
-- Docker provides isolated environment with correct dependencies
+- E2E tests need mock MELCloud server with rate limiting
+- Docker Compose provides isolated environment with both services
 
-**What happens when you run `make test-ha`:**
-1. Builds Docker image from `tests/integration/Dockerfile` (Python 3.12 + HA test fixtures)
-2. Mounts repository as `/app` in container
-3. Runs pytest from `tests/integration/` directory (treats it as root for pytest_plugins)
-4. Outputs results to terminal
+**What happens when you run `make test`:**
+1. Starts mock MELCloud server (with rate limiting enabled)
+2. Builds test runner container with HA test fixtures
+3. Runs integration tests (tests/integration/) + E2E tests (tests/api/ -m e2e)
+4. Generates coverage report with --cov-append
+5. Tears down containers
 
 **Manual Docker commands:**
 ```bash
@@ -457,7 +461,7 @@ Before submitting a PR with new tests:
 - [ ] API tests use VCR cassettes or appropriate mocks
 - [ ] Tests follow naming convention: `test_<feature>_<scenario>`
 - [ ] Tests include docstrings explaining what's being tested
-- [ ] All tests pass: `make test`
+- [ ] All tests pass: `make test-ci` (complete coverage)
 - [ ] Coverage improved: `pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing`
 - [ ] No new pylint/mypy errors: `make all`
 
