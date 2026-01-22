@@ -33,18 +33,23 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeClient:
     """Client for MELCloud Home API."""
 
-    def __init__(self, debug_mode: bool = False) -> None:
+    def __init__(
+        self,
+        debug_mode: bool = False,
+        request_pacer: RequestPacer | None = None,
+    ) -> None:
         """Initialize the client.
 
         Args:
             debug_mode: If True, use mock server at http://melcloud-mock:8080
+            request_pacer: Optional RequestPacer instance (for testing)
         """
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
         self._user_context: UserContext | None = None
 
         # Request pacing to prevent rate limiting (shared across all requests)
-        self._request_pacer = RequestPacer()
+        self._request_pacer = request_pacer or RequestPacer()
 
         # Auth needs RequestPacer to prevent rate limiting during login
         self._auth = MELCloudHomeAuth(

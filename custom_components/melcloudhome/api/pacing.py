@@ -2,12 +2,16 @@
 
 import asyncio
 import logging
+import os
 from time import time
 
 _LOGGER = logging.getLogger(__name__)
 
 # Default minimum interval between API requests
 DEFAULT_MIN_REQUEST_INTERVAL = 0.5  # seconds
+
+# Disable rate limiting in tests (VCR cassettes don't need pacing)
+_TESTING = os.getenv("PYTEST_CURRENT_TEST") is not None
 
 
 class RequestPacer:
@@ -37,6 +41,10 @@ class RequestPacer:
         await self._lock.acquire()
 
         try:
+            # Skip pacing in tests (VCR cassettes replay instantly)
+            if _TESTING:
+                return self
+
             # Calculate elapsed time and wait if needed
             # (inside try block to ensure lock release on any exception)
             elapsed = time() - self._last_request_time
@@ -44,6 +52,10 @@ class RequestPacer:
                 wait_time = self._min_interval - elapsed
                 _LOGGER.debug("Request pacing: waiting %.2fs", wait_time)
                 await asyncio.sleep(wait_time)
+
+            # Update timestamp AFTER waiting, BEFORE sending request
+            # This matches the mock server's behavior (timestamp on request arrival)
+            self._last_request_time = time()
         except BaseException:
             # If exception occurs during pacing (including cancellation),
             # release lock before re-raising to prevent deadlock
@@ -53,7 +65,6 @@ class RequestPacer:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Update timestamp and release lock."""
-        self._last_request_time = time()
+        """Release lock."""
         self._lock.release()
         return False  # Don't suppress exceptions

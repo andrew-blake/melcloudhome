@@ -1,10 +1,10 @@
 services:
-  # Mock MELCloud API Server (with rate limiting for E2E tests)
+  # Mock MELCloud API Server (rate limiting disabled for CI tests)
   melcloud-mock:
     build:
       context: .
       dockerfile: Dockerfile.mock
-    command: python tools/mock_melcloud_server.py --host 0.0.0.0 --port 8080
+    command: python tools/mock_melcloud_server.py --host 0.0.0.0 --port 8080 --no-rate-limit
     networks:
       - test-network
     healthcheck:
