@@ -13,8 +13,18 @@ import pytest_asyncio
 # Add custom_components to path to allow direct API imports without loading HA integration
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from custom_components.melcloudhome.api.pacing import RequestPacer
+
+
+# Configure pytest-socket to allow network for E2E tests
+@pytest.fixture(scope="session")
+def socket_allow_hosts():
+    """Allow Docker network IPs for E2E tests."""
+    # Allow localhost and Docker bridge network (172.x.x.x)
+    return ["localhost", "127.0.0.1", "172.17.0.0/16", "172.18.0.0/16", "172.19.0.0/16"]
 
 
 # Configure VCR to filter sensitive data
@@ -213,7 +223,8 @@ async def authenticated_auth() -> AsyncIterator[MELCloudHomeAuth]:
     if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
         pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required for recording")
 
-    auth = MELCloudHomeAuth()
+    request_pacer = RequestPacer()
+    auth = MELCloudHomeAuth(request_pacer=request_pacer)
     await auth.login(username, password)
 
     yield auth

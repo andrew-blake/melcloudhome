@@ -1,22 +1,24 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 WORKDIR /app
 
-# Install ALL test dependencies (API + integration)
-RUN pip install --no-cache-dir \
-    pytest \
-    pytest-asyncio \
-    pytest-mock \
-    pytest-cov \
-    pytest-recording \
-    pytest-homeassistant-custom-component \
-    vcrpy \
-    aiohttp \
-    voluptuous \
-    freezegun
+# Install build tools for C extensions (needed for lru-dict in homeassistant)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-COPY . .
+# Copy project files
+COPY pyproject.toml uv.lock ./
+COPY custom_components ./custom_components
+COPY tests ./tests
+COPY tools ./tools
 
-# Default command
-CMD ["pytest", "tests/", "-v"]
+# Install dependencies using uv (includes test dependencies)
+RUN uv sync --frozen
+
+# Note: pytest-homeassistant-custom-component installed at runtime via docker-compose
+# (not in build due to volume mount overwriting /app/.venv)
+
+# Default command (run via uv)
+CMD ["uv", "run", "pytest", "tests/", "-v"]

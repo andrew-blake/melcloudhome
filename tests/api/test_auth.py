@@ -12,12 +12,14 @@ import pytest_asyncio
 
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
+from custom_components.melcloudhome.api.pacing import RequestPacer
 
 
 @pytest_asyncio.fixture
 async def auth() -> AsyncIterator[MELCloudHomeAuth]:
     """Provide a fresh (unauthenticated) auth instance."""
-    auth_instance = MELCloudHomeAuth()
+    request_pacer = RequestPacer()
+    auth_instance = MELCloudHomeAuth(request_pacer=request_pacer)
     yield auth_instance
     # Cleanup
     with contextlib.suppress(Exception):
@@ -248,8 +250,8 @@ class TestMultipleAuthInstances:
     @pytest.mark.asyncio
     async def test_multiple_instances_independent(self) -> None:
         """Multiple auth instances should be independent."""
-        auth1 = MELCloudHomeAuth()
-        auth2 = MELCloudHomeAuth()
+        auth1 = MELCloudHomeAuth(request_pacer=RequestPacer())
+        auth2 = MELCloudHomeAuth(request_pacer=RequestPacer())
 
         try:
             assert not auth1.is_authenticated

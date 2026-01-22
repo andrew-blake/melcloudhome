@@ -41,15 +41,19 @@ class MELCloudHomeClient:
         """
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
-        self._auth = MELCloudHomeAuth(debug_mode=debug_mode)
         self._user_context: UserContext | None = None
+
+        # Request pacing to prevent rate limiting (shared across all requests)
+        self._request_pacer = RequestPacer()
+
+        # Auth needs RequestPacer to prevent rate limiting during login
+        self._auth = MELCloudHomeAuth(
+            debug_mode=debug_mode, request_pacer=self._request_pacer
+        )
 
         # Composition: Delegate ATA and ATW control to specialized clients
         self.ata = ATAControlClient(self)
         self.atw = ATWControlClient(self)
-
-        # Request pacing to prevent rate limiting
-        self._request_pacer = RequestPacer()
 
         if debug_mode:
             _LOGGER.info(

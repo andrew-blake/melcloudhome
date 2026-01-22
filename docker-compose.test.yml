@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile.mock
     command: python tools/mock_melcloud_server.py --host 0.0.0.0 --port 8080
-    # Note: Rate limiting ENABLED for E2E tests
+    # Note: Rate limiting ENABLED to test RequestPacer
     networks:
       - test-network
     healthcheck:
@@ -33,8 +33,9 @@ services:
       - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
     command: >
       sh -c "
-        pytest tests/integration/ -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing &&
-        pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing
+        uv pip install pytest-homeassistant-custom-component &&
+        uv run pytest tests/integration/ -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing &&
+        uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml --cov-report=html --cov-report=term-missing
       "
 
 networks:
