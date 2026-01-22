@@ -32,7 +32,7 @@ Open an issue to discuss new features before starting work. This helps ensure th
 
 **Branch naming:**
 
-- `feature/description` - New features
+- `feat/description` - New features
 - `fix/description` - Bug fixes
 - `docs/description` - Documentation
 
@@ -40,7 +40,7 @@ Open an issue to discuss new features before starting work. This helps ensure th
 
 **Prerequisites:**
 
-- Python 3.12+
+- Python 3.13+
 - [uv](https://github.com/astral-sh/uv) package manager
 - Docker (for Home Assistant integration tests)
 

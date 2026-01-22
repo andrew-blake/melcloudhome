@@ -22,11 +22,11 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Format check
-        run: uv run ruff format --check custom_components/
+        run: make format-check
       - name: Lint
-        run: uv run ruff check custom_components/
+        run: make lint
       - name: Type check
-        run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
+        run: make type-check
 
   test:
     name: Run All Tests
@@ -39,5 +39,14 @@ jobs:
         run: uv python install 3.13
       - name: Install dependencies
         run: uv sync
-      - name: Run all tests (identical to local)
-        run: make test-ci
+      - name: Run all tests
+        run: make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: github.actor != 'dependabot[bot]'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

@@ -8,17 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project files
+# Copy dependency files first (change less frequently)
 COPY pyproject.toml uv.lock ./
+
+# Install dependencies using uv (includes test dependencies)
+# This layer is cached unless pyproject.toml or uv.lock changes
+RUN uv sync --frozen
+
+# Copy source code LAST (changes most frequently)
 COPY custom_components ./custom_components
 COPY tests ./tests
 COPY tools ./tools
-
-# Install dependencies using uv (includes test dependencies)
-RUN uv sync --frozen
-
-# Note: pytest-homeassistant-custom-component installed at runtime via docker-compose
-# (not in build due to volume mount overwriting /app/.venv)
 
 # Default command (run via uv)
 CMD ["uv", "run", "pytest", "tests/", "-v"]

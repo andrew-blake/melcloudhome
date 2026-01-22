@@ -92,6 +92,26 @@ This document outlines testing standards for the MELCloud Home integration, base
 
 ---
 
+## Test Architecture
+
+### Separation of Concerns
+
+Integration and E2E tests run in separate Docker services due to conflicting infrastructure needs:
+
+- **Integration tests** run WITH pytest-homeassistant-custom-component
+  - Includes pytest-socket (blocks network access for safety)
+  - Tests Home Assistant integration logic
+  - Validates entity behavior through `hass.states` and `hass.services`
+
+- **E2E tests** run WITHOUT pytest-homeassistant
+  - Real network access to mock server
+  - Tests full HTTP stack (DNS, TCP, HTTP request/response)
+  - Validates rate limiting enforcement with RequestPacer
+
+See `docker-compose.test.yml` for implementation details.
+
+---
+
 ## Integration Testing Standards
 
 ### ✅ CORRECT Approach
@@ -334,16 +354,19 @@ await set_temperature(20.0)  # Duplicate
 ### Run All Tests
 
 ```bash
-# API unit tests (fast, native, with coverage)
-make test-api                    # or: pytest tests/api/ -v -m "not e2e"
+# API unit tests (native, ~208 tests, ~2s)
+make test-api
 
-# Integration + E2E tests (Docker Compose with mock server)
-make test                        # Docker Compose: integration tests + E2E API tests
+# Integration tests only (~123 tests, ~15s)
+make test-integration
 
-# Complete test suite with coverage (identical to CI)
-make test-ci                     # API unit tests + Docker Compose tests
+# E2E tests only (~13 tests, ~10s)
+make test-e2e
 
-# Note: Integration tests run via Docker Compose with mock MELCloud server.
+# All tests with combined coverage (~344 tests, ~30s)
+make test
+
+# Note: Integration and E2E tests run in separate Docker services.
 # See docker-compose.test.yml for test environment setup.
 ```
 
@@ -356,16 +379,16 @@ make test-ci                     # API unit tests + Docker Compose tests
 - Docker Compose provides isolated environment with both services
 
 **What happens when you run `make test`:**
-1. Starts mock MELCloud server (with rate limiting enabled)
-2. Builds test runner container with HA test fixtures
-3. Runs integration tests (tests/integration/) + E2E tests (tests/api/ -m e2e)
-4. Generates coverage report with --cov-append
+1. Runs API unit tests natively (creates `.coverage` file)
+2. Starts mock MELCloud server (with rate limiting enabled)
+3. Runs integration-tests service (WITH pytest-homeassistant, appends to `.coverage`)
+4. Runs e2e-tests service (WITHOUT pytest-homeassistant, appends to `.coverage`, generates final reports)
 5. Tears down containers
 
 **Manual Docker commands:**
 ```bash
 # Build test image
-docker build -t melcloudhome-test:latest -f tests/integration/Dockerfile .
+docker build -t melcloudhome-test:latest -f Dockerfile.test .
 
 # Run integration tests
 docker run --rm -v $(PWD):/app melcloudhome-test:latest

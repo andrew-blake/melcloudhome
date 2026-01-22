@@ -187,14 +187,22 @@ make dev-down        # Stop dev environment
 # 3. Add integration with "Connect to Mock Server" enabled
 
 # Testing
-make test-api                    # API unit tests (native, fast, with coverage)
-make test                        # Integration + E2E tests (Docker Compose)
-make test-ci                     # Complete coverage (identical to CI)
+make test-api                    # API unit tests (native, ~208 tests, ~2s)
+make test-integration            # Integration tests only (~123 tests, ~15s)
+make test-e2e                    # E2E tests only (~13 tests, ~10s)
+make test                        # All tests with combined coverage (~344 tests, ~30s)
 make test-ha                     # Deprecated alias for 'make test'
 
-# Integration tests require Docker (uses pytest-homeassistant-custom-component)
-# Docker runs tests from tests/integration directory to avoid pytest_plugins error
-# See tests/integration/Dockerfile for test environment configuration
+# Test architecture:
+# - API unit tests: VCR cassettes, no network, no Docker
+# - Integration tests: pytest-homeassistant, mocked API, socket blocking enabled
+# - E2E tests: Real HTTP stack, mock server, rate limiting validation
+#
+# Why separate E2E tests?
+# Integration tests run WITH pytest-homeassistant-custom-component (includes
+# pytest-socket for safety). E2E tests run WITHOUT it (need real network access
+# to validate HTTP stack and rate limiting). See docker-compose.test.yml for
+# implementation.
 
 # Production Deployment (Pre-Release Testing ONLY)
 # Use this ONLY for final integration testing before releases

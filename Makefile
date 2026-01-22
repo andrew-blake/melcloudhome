@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-api test-integration test-ha test-ci pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
+.PHONY: help install lint format format-check type-check test test-api test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -16,43 +16,68 @@ format:  ## Format code with ruff
 	uv run ruff format custom_components/
 	uv run ruff check --fix custom_components/
 
+format-check:  ## Check code formatting (CI mode)
+	uv run ruff format --check custom_components/
+
 type-check:  ## Run mypy type checker
 	uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-test:  ## Run ALL tests via Docker Compose (Integration + E2E)
-	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
-	docker compose -f docker-compose.test.yml down -v
-
-test-api:  ## Run API unit tests (native, fast, with coverage)
+test-api:  ## API unit tests only (~208 tests)
+	@rm -f .coverage coverage.xml
 	uv run pytest tests/api/ -v -m "not e2e" \
 		--cov=custom_components/melcloudhome \
+		--cov-report=xml \
 		--cov-report=html \
 		--cov-report=term-missing
 
-test-integration:  ## Alias for 'make test'
-	@$(MAKE) test
+test-integration:  ## Integration tests only (~123 tests)
+	@rm -f .coverage coverage.xml
+	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml run --rm integration-tests \
+		sh -c "uv pip install pytest-homeassistant-custom-component && \
+		       uv run pytest tests/integration/ -v \
+		         --cov=custom_components/melcloudhome \
+		         --cov-report=xml \
+		         --cov-report=html \
+		         --cov-report=term-missing"
+	docker compose -f docker-compose.test.yml down -v
+
+test-e2e:  ## E2E tests only (~13 tests)
+	@rm -f .coverage coverage.xml
+	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml run --rm e2e-tests \
+		sh -c "uv run pytest tests/api/ -m e2e -v \
+		         --cov=custom_components/melcloudhome \
+		         --cov-report=xml \
+		         --cov-report=html \
+		         --cov-report=term-missing"
+	docker compose -f docker-compose.test.yml down -v
+
+test:  ## Run ALL tests with combined coverage (~344 tests)
+	@rm -f .coverage coverage.xml
+	@rm -rf htmlcov coverage-output
+	@mkdir -p coverage-output
+	@echo "🧪 API unit tests..."
+	@uv run pytest tests/api/ -v -m "not e2e" \
+		--cov=custom_components/melcloudhome \
+		--cov-report=
+	@cp .coverage coverage-output/.coverage
+	@echo "🐳 Integration + E2E..."
+	@docker compose -f docker-compose.test.yml up --build \
+		--abort-on-container-exit --exit-code-from e2e-tests; \
+	EXIT_CODE=$$?; \
+	docker compose -f docker-compose.test.yml down -v; \
+	if [ -f coverage-output/.coverage ]; then cp coverage-output/.coverage .coverage; fi; \
+	if [ -f coverage-output/coverage.xml ]; then cp coverage-output/coverage.xml coverage.xml; fi; \
+	if [ -d coverage-output/htmlcov ]; then cp -r coverage-output/htmlcov htmlcov; fi; \
+	echo "📊 Coverage: open htmlcov/index.html"; \
+	exit $$EXIT_CODE
 
 test-ha:  ## Deprecated - use 'make test' instead
 	@echo "⚠️  Deprecated: 'make test-ha' is now 'make test'"
 	@echo "    Integration + E2E tests run via Docker Compose"
 	@echo "    Update your documentation and scripts"
 	@$(MAKE) test
-
-test-ci:  ## Run ALL tests with complete coverage (IDENTICAL to CI)
-	@echo "🧪 Running API unit tests with coverage..."
-	uv run pytest tests/api/ -v -m "not e2e" \
-		--cov=custom_components/melcloudhome \
-		--cov-report=xml \
-		--cov-report=html \
-		--cov-report=term-missing
-	@echo ""
-	@echo "🐳 Running integration + E2E tests via Docker Compose..."
-	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
-	docker compose -f docker-compose.test.yml down -v
-	@echo ""
-	@echo "📊 Complete coverage report generated!"
-	@echo "   - XML: coverage.xml (for CI/Codecov)"
-	@echo "   - HTML: open htmlcov/index.html"
 
 pre-commit:  ## Run all pre-commit hooks
 	uv run pre-commit run --all-files
