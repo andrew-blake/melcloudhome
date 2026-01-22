@@ -74,6 +74,8 @@ test:  ## Run ALL tests with combined coverage (~344 tests)
 	echo "📊 Coverage: open htmlcov/index.html"; \
 	exit $$EXIT_CODE
 
+# TODO: Remove test-quick after Docker test infrastructure stabilizes
+# Temporary target for fast iteration during debugging (skips 4m VCR tests)
 test-quick:  ## Quick test - E2E only (skip API unit tests for fast iteration)
 	@echo "🐳 Integration + E2E tests only (API tests skipped)..."
 	@echo "Starting mock server..."
