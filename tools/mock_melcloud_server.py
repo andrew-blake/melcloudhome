@@ -270,17 +270,28 @@ class MockMELCloudServer:
         email = body.get("email")
         password = body.get("password")
 
-        # Accept any credentials for testing (permissive approach)
+        # Validate password (for reauth testing)
+        # Accept anything EXCEPT "WRONG_PASSWORD"
         if email and password:
-            logger.info("🔐 Login: %s (mock - always succeeds)", email)
-            return web.json_response(
-                {
-                    "access_token": "mock-access-token-abc123",
-                    "refresh_token": "mock-refresh-token-xyz789",
-                    "expires_in": 3600,
-                    "token_type": "Bearer",
-                }
-            )
+            if password == "WRONG_PASSWORD":
+                logger.warning("🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", email)
+                return web.json_response(
+                    {
+                        "error": "invalid_credentials",
+                        "error_description": "Invalid email or password",
+                    },
+                    status=401,
+                )
+            else:
+                logger.info("🔐 Login: %s (mock - success)", email)
+                return web.json_response(
+                    {
+                        "access_token": "mock-access-token-abc123",
+                        "refresh_token": "mock-refresh-token-xyz789",
+                        "expires_in": 3600,
+                        "token_type": "Bearer",
+                    }
+                )
 
         return web.json_response(
             {

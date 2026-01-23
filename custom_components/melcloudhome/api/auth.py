@@ -257,6 +257,24 @@ class MELCloudHomeAuth:
                     _LOGGER.debug("Redirected to: %s", final_url)
 
                     parsed = urlparse(final_url)
+
+                    # Check if already authenticated (redirected to dashboard)
+                    # This happens when auth cookies are still valid
+                    if (
+                        parsed.hostname
+                        and (
+                            parsed.hostname == "melcloudhome.com"
+                            or parsed.hostname.endswith(".melcloudhome.com")
+                        )
+                        and "/dashboard" in parsed.path
+                    ):
+                        _LOGGER.info(
+                            "Already authenticated - session cookies still valid"
+                        )
+                        self._authenticated = True
+                        return True
+
+                    # Expect redirect to Cognito login page
                     if not (
                         parsed.hostname
                         and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
