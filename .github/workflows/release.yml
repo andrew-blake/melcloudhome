@@ -77,16 +77,16 @@ jobs:
         run: uv sync
 
       - name: Format check
-        run: uv run ruff format --check custom_components/
+        run: make format-check
 
       - name: Lint
-        run: uv run ruff check custom_components/
+        run: make lint
 
       - name: Type check
-        run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
+        run: make type-check
 
       - name: Run all tests (identical to local)
-        run: make test-ci
+        run: make test
 
   release:
     name: Create GitHub Release
