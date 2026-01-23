@@ -2,7 +2,7 @@
 
 This document outlines testing standards for the MELCloud Home integration, based on official Home Assistant and HACS guidelines.
 
-**Last Updated:** 2025-11-27
+**Last Updated:** 2026-01-23
 
 ---
 
@@ -114,82 +114,36 @@ See `docker-compose.test.yml` for implementation details.
 
 ## Integration Testing Standards
 
-### ✅ CORRECT Approach
+### Working Examples
 
-```python
-"""Test climate entity behavior through Home Assistant core interfaces."""
-from unittest.mock import AsyncMock, PropertyMock, patch
+**Study these test files for correct patterns:**
 
-import pytest
-from homeassistant.components.climate import HVACMode
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+- **ATA (Air-to-Air) devices:** `tests/integration/test_climate_ata.py`
+  - Complete fixture setup with shared helpers
+  - ATA-specific device mocking (`mock_client.ata.*`)
+  - Entity state validation through `hass.states`
+  - Service call testing through `hass.services`
 
-from custom_components.melcloudhome.const import DOMAIN
+- **ATW (Air-to-Water) devices:** `tests/integration/test_climate_atw.py`
+  - ATW-specific device mocking (`mock_client.atw.*`)
+  - Multi-zone climate entity patterns
+  - Water heater entity integration
 
-# Mock path for API client (at boundary)
-MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
+- **Shared fixtures:** `tests/integration/conftest.py`
+  - Helper functions: `create_mock_atw_unit()`, `create_mock_user_context()`
+  - Reusable test constants
+  - Common mocking patterns
 
+### Key Pattern Summary
 
-def create_mock_user_context():
-    """Create mock API response data."""
-    # Create mock Building/Unit objects matching API models
-    # ... (use real model classes, mock data)
-    pass
+The tests follow this consistent pattern:
 
+1. **Mock at API boundary** - `MELCloudHomeClient`, not coordinator
+2. **Setup through core** - `hass.config_entries.async_setup()`
+3. **Assert through interfaces** - `hass.states.get()` and `hass.services.async_call()`
+4. **Never test internals** - No coordinator/entity imports or method assertions
 
-@pytest.mark.asyncio
-async def test_climate_entity_reflects_device_state(hass: HomeAssistant) -> None:
-    """Test that climate entity state matches device data."""
-    # 1. Mock at API client level
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        client = mock_client.return_value
-        client.login = AsyncMock()
-        client.close = AsyncMock()
-        client.get_user_context = AsyncMock(return_value=create_mock_user_context())
-        type(client).is_authenticated = PropertyMock(return_value=True)
-
-        # 2. Setup through core interface
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # 3. Assert state through hass.states ONLY
-        state = hass.states.get("climate.melcloudhome_device_id")
-        assert state is not None
-        assert state.state == HVACMode.HEAT
-        assert state.attributes["current_temperature"] == 20.0
-        assert state.attributes["temperature"] == 21.0
-
-
-@pytest.mark.asyncio
-async def test_service_call_changes_state(hass: HomeAssistant) -> None:
-    """Test that service calls update entity state."""
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        # ... setup as above ...
-
-        # 4. Call service through hass.services
-        await hass.services.async_call(
-            "climate",
-            "set_temperature",
-            {"entity_id": "climate.melcloudhome_device_id", "temperature": 22.0},
-            blocking=True,
-        )
-
-        # 5. Verify state changed (through hass.states)
-        state = hass.states.get("climate.melcloudhome_device_id")
-        assert state.attributes["temperature"] == 22.0
-
-        # ✅ GOOD: Test observable behavior
-        # ❌ BAD: Don't assert internal calls
-        # coordinator.async_set_temperature.assert_called_once()  # DON'T DO THIS
-```
+See the actual test files for complete, working implementations.
 
 ### ❌ WRONG Approach (DO NOT DO THIS)
 
@@ -224,78 +178,35 @@ async def test_climate_calls_coordinator(hass: HomeAssistant) -> None:
 - Violates HA's core testing principle
 - Creates maintenance burden
 
-### Fixture Patterns
-
-**Shared setup fixture:**
-```python
-@pytest.fixture
-async def setup_integration(hass: HomeAssistant) -> MockConfigEntry:
-    """Set up the integration with mocked data."""
-    mock_context = create_mock_user_context()
-
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        return entry
-
-
-@pytest.mark.asyncio
-async def test_with_shared_fixture(hass: HomeAssistant, setup_integration) -> None:
-    """Test using shared setup fixture."""
-    state = hass.states.get("climate.entity_id")
-    assert state.state == HVACMode.HEAT
-```
-
 ---
 
 ## API Testing Standards
 
-### Using VCR Cassettes
+### Working Examples
 
-```python
-import pytest
-from custom_components.melcloudhome.api.client import MELCloudHomeClient
+**Study these test files for API testing patterns:**
 
-@pytest.mark.vcr()  # Automatically records/replays API responses
-@pytest.mark.asyncio
-async def test_login_success() -> None:
-    """Test successful login with real API response."""
-    client = MELCloudHomeClient()
-    await client.login("test@example.com", "password")
+- **Authentication:** `tests/api/test_auth.py`
+  - VCR cassette usage with `@pytest.mark.vcr()`
+  - Login flows, token refresh, session expiry
+  - Error handling (401, 500, timeouts)
 
-    assert client.is_authenticated
-    assert client.auth.access_token is not None
+- **Device control:** `tests/api/test_client_ata.py`, `tests/api/test_client_atw.py`
+  - ATA/ATW device-specific API calls
+  - Request/response validation
+  - Data normalization tests
 
+- **Cassette configuration:** `tests/conftest.py`
+  - VCR settings (cassette storage, scrubbing)
+  - Sensitive data filtering
+  - Recording modes
 
-@pytest.mark.vcr()
-@pytest.mark.asyncio
-async def test_401_unauthorized() -> None:
-    """Test handling of 401 Unauthorized error."""
-    client = MELCloudHomeClient()
+### Key Patterns
 
-    # Cassette contains 401 response
-    with pytest.raises(AuthenticationError, match="Unauthorized"):
-        await client.get_user_context()
-```
-
-**Cassette management:**
-- Store in `tests/fixtures/vcr_cassettes/`
-- Scrub sensitive data (see `tests/conftest.py`)
-- Keep cassettes minimal (one request/response per test)
-- Manually create cassettes for error scenarios if needed
+- Use `@pytest.mark.vcr()` to record/replay real API responses
+- Store cassettes in `tests/fixtures/vcr_cassettes/`
+- Scrub credentials and tokens (see conftest.py)
+- Test client methods directly (no Home Assistant mocking needed)
 
 ---
 
@@ -354,16 +265,16 @@ await set_temperature(20.0)  # Duplicate
 ### Run All Tests
 
 ```bash
-# API unit tests (native, ~208 tests, ~2s)
+# API unit tests (native, fast)
 make test-api
 
-# Integration tests only (~123 tests, ~15s)
+# Integration tests only
 make test-integration
 
-# E2E tests only (~13 tests, ~10s)
+# E2E tests only
 make test-e2e
 
-# All tests with combined coverage (~344 tests, ~30s)
+# All tests with combined coverage
 make test
 
 # Note: Integration and E2E tests run in separate Docker services.
@@ -462,14 +373,25 @@ When publishing to HACS, ensure:
 - [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component)
 - [HA Community: Best practices for custom components](https://community.home-assistant.io/t/best-practices-to-develop-and-maintain-a-custom-component/339295)
 
-### Example Tests (Study These)
+### Working Examples in This Project
 
-- **HA Core climate tests:** `homeassistant/tests/components/demo/test_climate.py`
+**Primary references** - these are the source of truth:
+
+**Integration Tests:**
+- `tests/integration/test_climate_ata.py` - ATA device testing patterns
+- `tests/integration/test_climate_atw.py` - ATW device testing patterns
+- `tests/integration/test_config_flow.py` - Config flow validation
+- `tests/integration/test_init.py` - Integration setup/teardown
+- `tests/integration/conftest.py` - Shared fixtures and helpers
+
+**API Tests:**
+- `tests/api/test_auth.py` - Authentication with VCR cassettes
+- `tests/api/test_client_ata.py` - ATA device control
+- `tests/api/test_client_atw.py` - ATW device control
+
+**External References:**
+- **HA Core:** `homeassistant/tests/components/demo/test_climate.py`
 - **Platinum integrations:** Philips Hue, deCONZ, National Weather Service
-- **This project:**
-  - ✅ `tests/integration/test_init.py` - Excellent integration test patterns
-  - ✅ `tests/integration/test_config_flow.py` - Config flow testing
-  - ✅ `tests/api/test_auth.py` - API testing with VCR
 
 ---
 
@@ -494,9 +416,11 @@ Before submitting a PR with new tests:
 
 If unsure about testing approach:
 
-1. Check this document first
-2. Study examples in `tests/integration/test_init.py`
-3. Review HA core tests for similar features
-4. Ask: "Am I testing observable user behavior, or internal implementation?"
+1. **Study working tests first** - See files listed in References section above
+2. **Check principles** - Review this document for patterns and anti-patterns
+3. **Review HA core** - Look at similar features in `homeassistant/tests/`
+4. **Ask yourself** - "Am I testing observable user behavior, or internal implementation?"
 
 **Rule of thumb:** If your test would break when refactoring the coordinator but the integration still works for users, you're testing the wrong thing.
+
+**Don't duplicate** - Tests are the single source of truth for implementation patterns. This document explains the "why", tests show the "how".
