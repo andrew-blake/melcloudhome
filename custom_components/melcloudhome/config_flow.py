@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
@@ -83,6 +84,75 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(schema_dict),
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle reauth flow when credentials expire.
+
+        This is called automatically by Home Assistant when the coordinator
+        raises ConfigEntryAuthFailed (e.g., after power outage causes session expiry).
+
+        Args:
+            entry_data: Current config entry data (email, password, debug_mode)
+
+        Returns:
+            Flow result that shows reauth confirmation form
+        """
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle reauth confirmation and collect new password.
+
+        Args:
+            user_input: User-provided password (or None to show form)
+
+        Returns:
+            Flow result (form with errors, or successful entry update)
+        """
+        errors: dict[str, str] = {}
+
+        # Get current config entry using reauth helper
+        entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            email = entry.data[CONF_EMAIL]  # Keep existing email
+            password = user_input[CONF_PASSWORD]
+
+            # Validate new credentials
+            try:
+                client = MELCloudHomeClient()
+                await client.login(email, password)
+                await client.close()
+            except AuthenticationError:
+                errors["base"] = "invalid_auth"
+            except ApiError:
+                errors["base"] = "cannot_connect"
+            except (TimeoutError, aiohttp.ClientError) as err:
+                _LOGGER.debug("Connection error during reauth: %s", err)
+                errors["base"] = "cannot_connect"
+            else:
+                # Update config entry with new password (partial update)
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={CONF_PASSWORD: password},
+                )
+
+        # Show form with current email (read-only display)
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PASSWORD): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            ),
+            description_placeholders={"email": entry.data[CONF_EMAIL]},
             errors=errors,
         )
 
