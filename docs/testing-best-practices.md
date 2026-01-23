@@ -43,6 +43,7 @@ This document outlines testing standards for the MELCloud Home integration, base
 **Purpose:** Test user-facing behavior of the integration within Home Assistant
 
 **What to test:**
+
 - Entity state reflects device data correctly
 - Service calls change entity state as expected
 - Config flow accepts valid/invalid credentials
@@ -50,6 +51,7 @@ This document outlines testing standards for the MELCloud Home integration, base
 - Device discovery and dynamic updates
 
 **Rules:**
+
 - ✅ Test through `hass.states` and `hass.services` ONLY
 - ✅ Mock `MELCloudHomeClient` at API boundary
 - ✅ Use `hass.config_entries.async_setup()` for setup
@@ -62,6 +64,7 @@ This document outlines testing standards for the MELCloud Home integration, base
 **Purpose:** Test the MELCloud Home API client in isolation
 
 **What to test:**
+
 - Authentication flows (login, token refresh, session expiry)
 - API request/response handling
 - Error handling (401, 500, timeouts, malformed responses)
@@ -69,6 +72,7 @@ This document outlines testing standards for the MELCloud Home integration, base
 - Edge cases (empty responses, missing fields)
 
 **Rules:**
+
 - ✅ Use VCR cassettes for real API responses (`@pytest.mark.vcr()`)
 - ✅ Test client methods directly
 - ✅ Create cassettes for error scenarios
@@ -79,12 +83,14 @@ This document outlines testing standards for the MELCloud Home integration, base
 **Purpose:** Test internal component logic in isolation
 
 **What to test:**
+
 - Coordinator retry logic
 - Session expiry recovery
 - Debouncing algorithms
 - Deduplication logic
 
 **Rules:**
+
 - ✅ Can test private methods and internal state
 - ✅ Can assert on method calls and implementation details
 - ✅ Create component instances directly
@@ -173,6 +179,7 @@ async def test_climate_calls_coordinator(hass: HomeAssistant) -> None:
 ```
 
 **Why this is wrong:**
+
 - Tests break when coordinator is refactored (even if behavior unchanged)
 - Tests pass but integration could still be broken for users
 - Violates HA's core testing principle
@@ -284,42 +291,68 @@ make test
 ### Docker Compose Test Details
 
 **Why Docker Compose?**
+
 - `pytest-homeassistant-custom-component` requires Home Assistant
 - HA requires aiohttp 3.8-3.11 (incompatible with our aiohttp >=3.13.2)
 - E2E tests need mock MELCloud server with rate limiting
 - Docker Compose provides isolated environment with both services
 
 **What happens when you run `make test`:**
+
 1. Runs API unit tests natively (creates `.coverage` file)
 2. Starts mock MELCloud server (with rate limiting enabled)
 3. Runs integration-tests service (WITH pytest-homeassistant, appends to `.coverage`)
 4. Runs e2e-tests service (WITHOUT pytest-homeassistant, appends to `.coverage`, generates final reports)
 5. Tears down containers
 
-**Manual Docker commands:**
+### Running Targeted Tests (Debugging)
+
+When debugging a specific failing test, use docker-compose directly:
+
 ```bash
-# Build test image
-docker build -t melcloudhome-test:latest -f Dockerfile.test .
+# 1. Start mock server first (required for integration/E2E tests)
+docker-compose -f docker-compose.test.yml up -d melcloud-mock
 
-# Run integration tests
-docker run --rm -v $(PWD):/app melcloudhome-test:latest
+# 2. Run specific integration test file
+docker-compose -f docker-compose.test.yml run --rm integration-tests \
+  sh -c "uv pip install pytest-homeassistant-custom-component && \
+         uv run pytest tests/integration/test_climate_ata.py -vv"
 
-# Run specific test file
-docker run --rm -v $(PWD):/app melcloudhome-test:latest pytest test_climate.py -v
+# 3. Run specific test function
+docker-compose -f docker-compose.test.yml run --rm integration-tests \
+  sh -c "uv pip install pytest-homeassistant-custom-component && \
+         uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
 
-# Run specific test
-docker run --rm -v $(PWD):/app melcloudhome-test:latest pytest test_climate.py::test_name -vv
+# 4. Run specific E2E test
+docker-compose -f docker-compose.test.yml run --rm e2e-tests \
+  sh -c "uv run pytest tests/api/test_e2e_rate_limiting.py::test_rate_limit -vv -s"
+
+# 5. Interactive shell for manual testing
+docker-compose -f docker-compose.test.yml run --rm integration-tests bash
+# Then inside container:
+# uv pip install pytest-homeassistant-custom-component
+# uv run pytest tests/integration/test_climate_ata.py -vv
+
+# 6. Cleanup when done
+docker-compose -f docker-compose.test.yml down
 ```
+
+**Useful pytest flags:**
+- `-vv` - Very verbose (show full diffs, test names)
+- `-s` - Show print statements (disable output capture)
+- `--pdb` - Drop into debugger on failure
+- `-k "pattern"` - Run tests matching pattern (e.g., `-k "temperature"`)
+- `--lf` - Run last failed tests only
+- `--tb=short` - Shorter traceback format
 
 ### Run with Coverage
 
 ```bash
-# API coverage only (local)
+# API coverage only (local, native)
 pytest tests/api/ --cov=custom_components.melcloudhome.api --cov-report term-missing -vv
 
-# Integration coverage (in Docker)
-docker run --rm -v $(PWD):/app melcloudhome-test:latest \
-  pytest . --cov=custom_components.melcloudhome --cov-report term-missing -vv
+# Full test suite with coverage (use Makefile)
+make test
 ```
 
 ### Update VCR Cassettes
@@ -378,6 +411,7 @@ When publishing to HACS, ensure:
 **Primary references** - these are the source of truth:
 
 **Integration Tests:**
+
 - `tests/integration/test_climate_ata.py` - ATA device testing patterns
 - `tests/integration/test_climate_atw.py` - ATW device testing patterns
 - `tests/integration/test_config_flow.py` - Config flow validation
@@ -385,11 +419,13 @@ When publishing to HACS, ensure:
 - `tests/integration/conftest.py` - Shared fixtures and helpers
 
 **API Tests:**
+
 - `tests/api/test_auth.py` - Authentication with VCR cassettes
 - `tests/api/test_client_ata.py` - ATA device control
 - `tests/api/test_client_atw.py` - ATW device control
 
 **External References:**
+
 - **HA Core:** `homeassistant/tests/components/demo/test_climate.py`
 - **Platinum integrations:** Philips Hue, deCONZ, National Weather Service
 

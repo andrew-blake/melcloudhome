@@ -486,6 +486,32 @@ await hass.services.async_call(
 - ✅ `tests/integration/test_config_flow.py` - Config flow testing
 - ✅ `tests/api/test_auth.py` - API testing with VCR
 
+### Debugging Failing Tests
+
+When a specific test fails, use docker-compose to run it in isolation:
+
+```bash
+# Start mock server
+docker-compose -f docker-compose.test.yml up -d melcloud-mock
+
+# Run specific integration test with verbose output
+docker-compose -f docker-compose.test.yml run --rm integration-tests \
+  sh -c "uv pip install pytest-homeassistant-custom-component && \
+         uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
+
+# Run specific E2E test
+docker-compose -f docker-compose.test.yml run --rm e2e-tests \
+  sh -c "uv run pytest tests/api/test_e2e_rate_limiting.py -vv -s"
+
+# Interactive shell for debugging
+docker-compose -f docker-compose.test.yml run --rm integration-tests bash
+
+# Cleanup
+docker-compose -f docker-compose.test.yml down
+```
+
+**Useful flags:** `-vv` (verbose), `-s` (show prints), `-k "pattern"` (filter tests), `--pdb` (debugger)
+
 ### Critical API Details
 
 - **User-Agent Required:** Must use Chrome User-Agent or requests blocked
