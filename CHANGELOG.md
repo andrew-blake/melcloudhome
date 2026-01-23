@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc.2] - 2026-01-23
+
+**Beta Release: Authentication and Performance Fixes**
+
+### Fixed
+
+- **Reauth flow after power outages** - Integration now automatically recovers when credentials expire instead of getting stuck in broken state (Fixes #39)
+  - Added Home Assistant reauth flow support (`async_step_reauth`, `async_step_reauth_confirm`)
+  - Handles "already authenticated" edge case when auth cookies outlive API session
+  - Prompts user to re-enter password when authentication fails
+  - No more manual reconfiguration or HA restart required after power outages
+
+- **Memory leak in config flow** - Client sessions are now properly closed when login fails during setup, reauth, or reconfigure
+  - Previously leaked aiohttp ClientSession, TCP connections, memory buffers, and SSL contexts with each failed login attempt
+  - Added `try-finally` pattern to ensure `client.close()` always called
+  - Affects user setup, reauth, and reconfigure flows
+
+- **Login performance** - Removed unnecessary 3-second delay after OAuth login
+  - Chrome DevTools testing confirmed session is ready immediately after OAuth redirect
+  - Login now completes as soon as OAuth finishes (3 seconds faster)
+  - Affects initial setup, reauth after credential expiration, and reconfiguration
+
+### Changed
+
+- Mock server now validates passwords for authentication testing (accepts any password except 'WRONG_PASSWORD')
+
 ## [2.0.0-rc.1] - 2026-01-23
 
 **Major Release: Air-to-Water (ATW) Heat Pump Support**
