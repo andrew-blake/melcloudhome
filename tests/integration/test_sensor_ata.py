@@ -4,7 +4,7 @@ Tests cover sensor entity creation, state updates, and conditional creation.
 Follows HA best practices: test observable behavior through hass.states, not internals.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, PropertyMock, patch

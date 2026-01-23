@@ -4,7 +4,7 @@ Tests cover diagnostics data structure, credential redaction, and data collectio
 Follows HA best practices: test observable behavior through diagnostics API.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, PropertyMock, patch

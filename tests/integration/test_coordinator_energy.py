@@ -4,7 +4,7 @@ Tests cover energy data management, accumulation, persistence, and polling.
 Follows HA best practices: test observable behavior through hass.states, not internals.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, PropertyMock, patch
