@@ -46,10 +46,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             self._abort_if_unique_id_configured()
 
             # Validate credentials by attempting login
+            client = None
             try:
                 client = MELCloudHomeClient(debug_mode=debug_mode)
                 await client.login(email, password)
-                await client.close()
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
             except ApiError:
@@ -67,6 +67,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                         CONF_DEBUG_MODE: debug_mode,
                     },
                 )
+            finally:
+                # CRITICAL: Always close the client session to prevent memory leak
+                if client is not None:
+                    await client.close()
 
         # Show form
         # Build schema conditionally based on advanced mode
@@ -124,10 +128,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             password = user_input[CONF_PASSWORD]
 
             # Validate new credentials
+            client = None
             try:
                 client = MELCloudHomeClient()
                 await client.login(email, password)
-                await client.close()
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
             except ApiError:
@@ -141,6 +145,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                     entry,
                     data_updates={CONF_PASSWORD: password},
                 )
+            finally:
+                # CRITICAL: Always close the client session to prevent memory leak
+                if client is not None:
+                    await client.close()
 
         # Show form with current email (read-only display)
         return self.async_show_form(
@@ -170,10 +178,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             password = user_input[CONF_PASSWORD]
 
             # Validate new credentials
+            client = None
             try:
                 client = MELCloudHomeClient()
                 await client.login(email, password)
-                await client.close()
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
             except ApiError:
@@ -187,6 +195,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                     entry,
                     data_updates={CONF_PASSWORD: password},
                 )
+            finally:
+                # CRITICAL: Always close the client session to prevent memory leak
+                if client is not None:
+                    await client.close()
 
         # Show form with current email (read-only display)
         return self.async_show_form(

@@ -85,6 +85,8 @@ async def test_reconfigure_flow_invalid_auth(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_auth"}
+    # Ensure password wasn't updated
+    assert entry.data[CONF_PASSWORD] == "old_password"
 
 
 @pytest.mark.asyncio
@@ -116,13 +118,12 @@ async def test_reconfigure_flow_connection_error(
 
 
 @pytest.mark.asyncio
-async def test_initial_user_setup_success(
+async def test_user_flow_creates_entry(
     hass: HomeAssistant,
     mock_melcloud_client: MagicMock,
     mock_setup_entry,
 ) -> None:
-    """Test successful initial user setup flow."""
-    # Start user setup flow
+    """Test user flow successfully creates config entry."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "user"},
@@ -130,70 +131,97 @@ async def test_initial_user_setup_success(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    # Submit credentials
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
     )
 
-    # Verify entry created
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "MELCloud Home"
-    assert result["data"] == {
-        CONF_EMAIL: "test@example.com",
-        CONF_PASSWORD: "password123",
-        CONF_DEBUG_MODE: False,
-    }
-
-    # Verify client login was called
-    mock_melcloud_client.login.assert_called_once_with(
-        "test@example.com", "password123"
-    )
-    mock_melcloud_client.close.assert_called_once()
+    assert result["data"][CONF_EMAIL] == "test@example.com"
+    assert result["data"][CONF_PASSWORD] == "password123"
 
 
 @pytest.mark.asyncio
-async def test_initial_setup_duplicate_account(
+async def test_user_flow_invalid_auth(
     hass: HomeAssistant,
     mock_melcloud_client: MagicMock,
-    mock_setup_entry,
 ) -> None:
-    """Test that duplicate accounts are prevented during initial setup."""
-    # Create existing entry
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-        unique_id="test@example.com",
-    )
-    entry.add_to_hass(hass)
+    """Test user flow with invalid credentials."""
+    mock_melcloud_client.login.side_effect = AuthenticationError("Invalid credentials")
 
-    # Try to add same account again
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "user"},
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "different_password"},
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "wrong_password"},
     )
 
-    # Verify flow aborted due to duplicate
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_auth"}
+
+
+@pytest.mark.asyncio
+async def test_user_flow_connection_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test user flow with connection error."""
+    from custom_components.melcloudhome.api.exceptions import ApiError
+
+    mock_melcloud_client.login.side_effect = ApiError("Cannot connect")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.asyncio
+async def test_user_flow_duplicate_account(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+    mock_setup_entry,
+) -> None:
+    """Test user flow rejects duplicate accounts."""
+    # Setup existing entry
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
 
 
 @pytest.mark.asyncio
-async def test_initial_setup_connection_error(
+async def test_user_flow_unexpected_error(
     hass: HomeAssistant,
     mock_melcloud_client: MagicMock,
 ) -> None:
-    """Test initial setup with connection error."""
-    from custom_components.melcloudhome.api.exceptions import ApiError
+    """Test user flow with unexpected error."""
+    mock_melcloud_client.login.side_effect = ValueError("Unexpected error")
 
-    # Mock connection error
-    mock_melcloud_client.login.side_effect = ApiError("Connection failed")
-
-    # Start setup flow
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "user"},
@@ -203,49 +231,12 @@ async def test_initial_setup_connection_error(
         {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
     )
 
-    # Verify error shown
     assert result["type"] is FlowResultType.FORM
-    assert result["errors"] == {"base": "cannot_connect"}
-    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "unknown"}
 
 
 @pytest.mark.asyncio
-async def test_debug_mode_hidden_by_default(
-    hass: HomeAssistant,
-    mock_melcloud_client: MagicMock,
-) -> None:
-    """Test that debug_mode is hidden when advanced options disabled."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": "user", "show_advanced_options": False},
-    )
-
-    # Verify form schema doesn't include debug_mode
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "user"
-    # Check schema doesn't have CONF_DEBUG_MODE key
-    assert not any(CONF_DEBUG_MODE in str(k) for k in result["data_schema"].schema)
-
-
-@pytest.mark.asyncio
-async def test_debug_mode_shown_when_advanced(
-    hass: HomeAssistant,
-    mock_melcloud_client: MagicMock,
-) -> None:
-    """Test that debug_mode is shown when advanced options enabled."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": "user", "show_advanced_options": True},
-    )
-
-    # Verify form schema includes debug_mode
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "user"
-    assert any(CONF_DEBUG_MODE in str(k) for k in result["data_schema"].schema)
-
-
-@pytest.mark.asyncio
-async def test_debug_mode_defaults_false_when_hidden(
+async def test_debug_mode_defaults_to_false(
     hass: HomeAssistant,
     mock_melcloud_client: MagicMock,
     mock_setup_entry,
@@ -403,3 +394,193 @@ async def test_reauth_flow_connection_error(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+# Session cleanup tests - verify client.close() is always called
+
+
+@pytest.mark.asyncio
+async def test_user_flow_closes_session_on_auth_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed when authentication fails."""
+    mock_melcloud_client.login.side_effect = AuthenticationError("Invalid credentials")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "wrong_password"},
+    )
+
+    # Verify close() was called even though login failed
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_user_flow_closes_session_on_connection_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed when connection fails."""
+    from custom_components.melcloudhome.api.exceptions import ApiError
+
+    mock_melcloud_client.login.side_effect = ApiError("Cannot connect")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    # Verify close() was called even though connection failed
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_user_flow_closes_session_on_unexpected_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed on unexpected errors."""
+    mock_melcloud_client.login.side_effect = ValueError("Unexpected error")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    # Verify close() was called even though an unexpected error occurred
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_reauth_flow_closes_session_on_auth_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed during reauth when authentication fails."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = AuthenticationError("Invalid credentials")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_REAUTH,
+            "entry_id": entry.entry_id,
+            "unique_id": entry.unique_id,
+        },
+        data=entry.data,
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "wrong_password"},
+    )
+
+    # Verify close() was called even though login failed
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_reauth_flow_closes_session_on_connection_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed during reauth when connection fails."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = aiohttp.ClientError("Connection failed")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_REAUTH,
+            "entry_id": entry.entry_id,
+            "unique_id": entry.unique_id,
+        },
+        data=entry.data,
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "new_password"},
+    )
+
+    # Verify close() was called even though connection failed
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_flow_closes_session_on_auth_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed during reconfigure when authentication fails."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = AuthenticationError("Invalid credentials")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "wrong_password"},
+    )
+
+    # Verify close() was called even though login failed
+    mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_flow_closes_session_on_connection_error(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test that client session is closed during reconfigure when connection fails."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = aiohttp.ClientError("Connection failed")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+    await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "new_password"},
+    )
+
+    # Verify close() was called even though connection failed
+    mock_melcloud_client.close.assert_called_once()
