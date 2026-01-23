@@ -212,8 +212,7 @@ make pre-commit
 ```bash
 # 1. Full test suite
 make test-api  # API unit tests (fast)
-make test      # Integration + E2E tests (Docker)
-make test-ci   # Complete coverage (identical to CI)
+make test      # All tests with combined coverage
 
 # 2. All quality checks
 make all       # format, lint, type-check

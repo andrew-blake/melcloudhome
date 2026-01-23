@@ -65,8 +65,7 @@ All code changes require tests. See [docs/testing-best-practices.md](docs/testin
 
 ```bash
 make test-api          # API unit tests (native, fast)
-make test              # Integration + E2E tests (Docker Compose)
-make test-ci           # Complete test suite with coverage (for PRs)
+make test              # All tests with combined coverage
 ```
 
 **Integration tests:**

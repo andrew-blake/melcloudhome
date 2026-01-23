@@ -187,10 +187,10 @@ make dev-down        # Stop dev environment
 # 3. Add integration with "Connect to Mock Server" enabled
 
 # Testing
-make test-api                    # API unit tests (native, ~208 tests, ~2s)
-make test-integration            # Integration tests only (~123 tests, ~15s)
-make test-e2e                    # E2E tests only (~13 tests, ~10s)
-make test                        # All tests with combined coverage (~344 tests, ~30s)
+make test-api                    # API unit tests (native, fast)
+make test-integration            # Integration tests only
+make test-e2e                    # E2E tests only
+make test                        # All tests with combined coverage
 make test-ha                     # Deprecated alias for 'make test'
 
 # Test architecture:
@@ -426,11 +426,11 @@ See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for com
 **API unit tests** (fast iteration):
 
 ```bash
-make test-api          # Run API unit tests (native, ~2s)
+make test-api          # Run API unit tests (native)
 pytest tests/api/ -v   # Same as above
 ```
 
-- Fast (~2 seconds)
+- Fast
 - Hermetic (VCR cassettes)
 - No Docker required
 - Excludes E2E tests (those need mock server)
@@ -438,7 +438,7 @@ pytest tests/api/ -v   # Same as above
 **Integration + E2E tests** (Docker Compose):
 
 ```bash
-make test              # Run integration + E2E tests (Docker Compose, ~30s)
+make test              # Run integration + E2E tests (Docker Compose)
 ```
 
 - Uses Docker Compose with mock server

@@ -484,7 +484,7 @@ Before submitting a PR with new tests:
 - [ ] API tests use VCR cassettes or appropriate mocks
 - [ ] Tests follow naming convention: `test_<feature>_<scenario>`
 - [ ] Tests include docstrings explaining what's being tested
-- [ ] All tests pass: `make test-ci` (complete coverage)
+- [ ] All tests pass: `make test`
 - [ ] Coverage improved: `pytest tests/ --cov=custom_components.melcloudhome --cov-report term-missing`
 - [ ] No new pylint/mypy errors: `make all`
 
