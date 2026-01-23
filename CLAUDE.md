@@ -419,106 +419,37 @@ Include this in beta CHANGELOG entries:
 
 ### Testing Standards
 
-**⚠️ CRITICAL: Follow Home Assistant testing best practices**
+⚠️ **CRITICAL:** Follow Home Assistant testing best practices. See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guide.
 
-See **[docs/testing-best-practices.md](docs/testing-best-practices.md)** for comprehensive guidelines.
-
-**API unit tests** (fast iteration):
+**Running tests:**
 
 ```bash
-make test-api          # Run API unit tests (native)
-pytest tests/api/ -v   # Same as above
+make test-api          # API unit tests (native, VCR cassettes, fast)
+make test-integration  # Integration tests (Docker, mocked client)
+make test-e2e          # E2E tests (Docker, mock server required)
+make test              # All tests with combined coverage
+make pre-commit        # Pre-commit hooks (format, lint, type-check, API tests)
 ```
 
-- Fast
-- Hermetic (VCR cassettes)
-- No Docker required
-- Excludes E2E tests (those need mock server)
+**Test type decision:**
 
-**Integration + E2E tests** (Docker Compose):
+| Need to test | Use | Mock Server? | Docs |
+|--------------|-----|--------------|------|
+| API client behavior | API unit tests | ❌ No (VCR) | `tests/api/test_*.py` |
+| Entity state/services | Integration tests | ❌ No (mocked) | `tests/integration/test_*.py` |
+| Rate limiting/HTTP | E2E tests | ✅ Yes | `tests/api/test_*_e2e.py` |
 
-```bash
-make test              # Run integration + E2E tests (Docker Compose)
-```
-
-- Uses Docker Compose with mock server
-- Tests full HTTP stack
-- Includes Home Assistant integration tests
-- Includes E2E rate limiting tests
-
-**Pre-commit hooks** run API unit tests:
-
-```bash
-make pre-commit        # Runs lint, format, type-check, API unit tests
-```
-
-**Before committing:** Run `make test-api` for quick feedback, `make test` for full validation.
-
-**Quick rules for integration tests:**
+**Integration test anti-patterns (Claude commonly violates these):**
 
 - ✅ Test through `hass.states` and `hass.services` ONLY
 - ✅ Mock `MELCloudHomeClient` at API boundary
-- ✅ Use `hass.config_entries.async_setup()` for setup
-- ❌ Never import or test coordinator/entity classes directly
-- ❌ Never assert coordinator methods were called
+- ❌ Never import/test coordinator or entity classes
+- ❌ Never assert internal method calls (e.g., `coordinator.async_set_temperature.assert_called_once()`)
 - ❌ Never manipulate `coordinator.data` directly
 
-**Example:**
+**Study working examples:** `tests/integration/test_climate_ata.py`, `tests/integration/test_climate_atw.py`
 
-```python
-# ✅ CORRECT: Test through core interfaces
-state = hass.states.get("climate.entity_id")
-assert state.state == HVACMode.HEAT
-
-await hass.services.async_call(
-    "climate", "set_temperature",
-    {"entity_id": "climate.entity_id", "temperature": 22},
-    blocking=True
-)
-
-# ❌ WRONG: Don't test internal implementation
-# coordinator.async_set_temperature.assert_called_once()  # DON'T DO THIS
-```
-
-**Reference examples:**
-
-- ✅ `tests/integration/test_init.py` - Excellent patterns
-- ✅ `tests/integration/test_config_flow.py` - Config flow testing
-- ✅ `tests/api/test_auth.py` - API testing with VCR
-
-### Debugging Failing Tests
-
-**API unit tests** (VCR cassettes - no mock server needed):
-```bash
-# Run natively, very fast
-pytest tests/api/test_auth.py::test_login_success -vv -s
-```
-
-**Integration tests** (mocked client - no mock server needed):
-```bash
-# Run in Docker (needs pytest-homeassistant-custom-component)
-docker-compose -f docker-compose.test.yml run --rm integration-tests \
-  sh -c "uv pip install pytest-homeassistant-custom-component && \
-         uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
-
-# Interactive shell
-docker-compose -f docker-compose.test.yml run --rm integration-tests bash
-```
-
-**E2E tests** (real HTTP - REQUIRES mock server):
-```bash
-# Start mock server first
-docker-compose -f docker-compose.test.yml up -d melcloud-mock
-
-# Run E2E test
-docker-compose -f docker-compose.test.yml run --rm e2e-tests \
-  sh -c "uv run pytest tests/api/test_rate_limiting_e2e.py::test_scene_with_three_devices -vv -s"
-
-# Cleanup
-docker-compose -f docker-compose.test.yml down
-```
-
-**Useful flags:** `-vv` (verbose), `-s` (show prints), `-k "pattern"` (filter tests), `--pdb` (debugger)
+**Debugging failing tests:** See [testing-best-practices.md § Running Targeted Tests](docs/testing-best-practices.md#running-targeted-tests-debugging)
 
 ### Critical API Details
 
