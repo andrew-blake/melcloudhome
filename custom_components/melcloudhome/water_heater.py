@@ -26,7 +26,7 @@ from .const_atw import (
     ATWEntityBase,
 )
 from .coordinator import MELCloudHomeCoordinator
-from .helpers import create_atw_device_info, with_debounced_refresh
+from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class ATWWaterHeater(
         self._attr_name = "Tank"
 
         # Device info using shared helper (groups with climate/sensors)
-        self._attr_device_info = create_atw_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit, building)
 
         # Supported features (use switch for power control)
         self._attr_supported_features = (

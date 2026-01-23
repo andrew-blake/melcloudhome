@@ -25,8 +25,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class DeviceCapabilities:
-    """Device capability flags and limits."""
+class AirToAirCapabilities:
+    """Air-to-Air device capability flags and limits."""
 
     number_of_fan_speeds: int = 5
     min_temp_heat: float = 10.0
@@ -50,7 +50,7 @@ class DeviceCapabilities:
     has_energy_consumed_meter: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "DeviceCapabilities":
+    def from_dict(cls, data: dict[str, Any]) -> "AirToAirCapabilities":
         """Create from API response dict."""
         if not data:
             return cls()
@@ -98,7 +98,7 @@ class AirToAirUnit:
     in_standby_mode: bool
     is_in_error: bool
     rssi: int | None
-    capabilities: DeviceCapabilities
+    capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
     energy_consumed: float | None = None  # kWh
 
@@ -110,7 +110,7 @@ class AirToAirUnit:
         Example: [{"name": "Power", "value": "False"}, {"name": "SetTemperature", "value": "20"}, ...]
         """
         capabilities_data = data.get("capabilities", {})
-        capabilities = DeviceCapabilities.from_dict(capabilities_data)
+        capabilities = AirToAirCapabilities.from_dict(capabilities_data)
 
         # Parse settings array into dict for easy access
         settings_list = data.get("settings", [])

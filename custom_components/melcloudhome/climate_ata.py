@@ -17,11 +17,11 @@ from .api.const_ata import TEMP_MAX_HEAT, TEMP_MIN_COOL_DRY, TEMP_MIN_HEAT
 from .api.models import AirToAirUnit, Building
 from .climate_helpers import HVACActionDeterminer
 from .const_ata import (
-    FAN_SPEEDS,
-    HA_TO_MELCLOUD_MODE,
-    MELCLOUD_TO_HA_MODE,
-    VANE_HORIZONTAL_POSITIONS,
-    VANE_POSITIONS,
+    ATA_FAN_SPEEDS,
+    ATA_TO_HA_HVAC_MODE,
+    ATA_VANE_HORIZONTAL_POSITIONS,
+    ATA_VANE_POSITIONS,
+    HA_HVAC_MODE_TO_ATA,
     ATAEntityBase,
     normalize_to_api,
 )
@@ -69,11 +69,17 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             HVACMode.FAN_ONLY,
         ]
 
-        # Fan speeds
-        self._attr_fan_modes = FAN_SPEEDS
+        # Fan speeds - build dynamically based on device capability
+        if unit.capabilities:
+            num_speeds = unit.capabilities.number_of_fan_speeds
+            # Slice to include "auto" + first N speeds
+            self._attr_fan_modes = ATA_FAN_SPEEDS[: num_speeds + 1]
+        else:
+            # Fallback to all speeds if capabilities not available
+            self._attr_fan_modes = ATA_FAN_SPEEDS
 
         # Swing modes (vertical vane positions)
-        self._attr_swing_modes = VANE_POSITIONS
+        self._attr_swing_modes = ATA_VANE_POSITIONS
 
         # HVAC action determiner (extracted for testability)
         self._action_determiner = HVACActionDeterminer()
@@ -85,7 +91,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         if device is None or not device.power:
             return HVACMode.OFF
 
-        return MELCLOUD_TO_HA_MODE.get(device.operation_mode, HVACMode.AUTO)
+        return ATA_TO_HA_HVAC_MODE.get(device.operation_mode, HVACMode.AUTO)
 
     @property
     def hvac_action(self) -> HVACAction | None:
@@ -148,7 +154,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     @property
     def swing_horizontal_modes(self) -> list[str]:
         """Return the list of available horizontal swing modes."""
-        return VANE_HORIZONTAL_POSITIONS
+        return ATA_VANE_HORIZONTAL_POSITIONS
 
     @property
     def swing_horizontal_mode(self) -> str | None:
@@ -202,7 +208,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         else:
             # Turn on and set mode
             await self.coordinator.async_set_power(self._unit_id, True)
-            melcloud_mode = HA_TO_MELCLOUD_MODE[hvac_mode]
+            melcloud_mode = HA_HVAC_MODE_TO_ATA[hvac_mode]
             await self.coordinator.async_set_mode(self._unit_id, melcloud_mode)
 
     @with_debounced_refresh()

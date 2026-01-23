@@ -4,7 +4,7 @@ Tests cover switch entity behavior through Home Assistant core interfaces only.
 Follows HA best practices: test observable behavior, not implementation details.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch

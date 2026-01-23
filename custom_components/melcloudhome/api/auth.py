@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -21,20 +22,34 @@ from .exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
 
+# Authentication session initialization delay
+# After OAuth completes, Blazor WASM needs time to initialize the session
+# before API endpoints will work. In production this is ~3 seconds.
+# In tests (pytest), we disable this delay because:
+# - VCR cassettes have pre-recorded sessions
+# - Mock server doesn't need Blazor initialization
+# - Reduces test time by ~84 seconds (28 tests x 3s)
+AUTH_SESSION_INIT_DELAY = 0 if os.getenv("PYTEST_CURRENT_TEST") else 3
+
 
 class MELCloudHomeAuth:
     """Handle MELCloud Home authentication via AWS Cognito OAuth."""
 
-    def __init__(self, debug_mode: bool = False) -> None:
+    def __init__(self, debug_mode: bool = False, request_pacer: Any = None) -> None:
         """Initialize authenticator.
 
         Args:
             debug_mode: If True, use simple mock auth instead of Cognito OAuth
+            request_pacer: RequestPacer to prevent rate limiting (required)
         """
+        if request_pacer is None:
+            raise ValueError("request_pacer is required")
+
         self._session: aiohttp.ClientSession | None = None
         self._authenticated = False
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
+        self._request_pacer = request_pacer
 
         # AWS Cognito OAuth configuration (from discovery docs)
         # Not used in debug mode
@@ -175,30 +190,31 @@ class MELCloudHomeAuth:
         try:
             session = await self._ensure_session()
 
-            # Simple POST to /api/login (no Cognito)
-            async with session.post(
-                f"{self._base_url}/api/login",
-                json={"email": username, "password": password},
-                headers={"Content-Type": "application/json"},
-            ) as resp:
-                _LOGGER.debug("Mock auth response: %d", resp.status)
+            # Simple POST to /api/login (no Cognito) - use RequestPacer to prevent 429
+            async with self._request_pacer:  # noqa: SIM117
+                async with session.post(
+                    f"{self._base_url}/api/login",
+                    json={"email": username, "password": password},
+                    headers={"Content-Type": "application/json"},
+                ) as resp:
+                    _LOGGER.debug("Mock auth response: %d", resp.status)
 
-                if resp.status == 401:
-                    raise AuthenticationError("Invalid credentials (mock server)")
+                    if resp.status == 401:
+                        raise AuthenticationError("Invalid credentials (mock server)")
 
-                if resp.status != 200:
-                    raise AuthenticationError(
-                        f"Mock server returned unexpected status: {resp.status}"
+                    if resp.status != 200:
+                        raise AuthenticationError(
+                            f"Mock server returned unexpected status: {resp.status}"
+                        )
+
+                    # Mock server returns OAuth-like tokens (but we don't validate them)
+                    data = await resp.json()
+                    _LOGGER.debug(
+                        "Mock auth successful: %s", data.get("token_type", "Bearer")
                     )
 
-                # Mock server returns OAuth-like tokens (but we don't validate them)
-                data = await resp.json()
-                _LOGGER.debug(
-                    "Mock auth successful: %s", data.get("token_type", "Bearer")
-                )
-
-                self._authenticated = True
-                return True
+                    self._authenticated = True
+                    return True
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Mock auth connection error: %s", err)
@@ -230,32 +246,35 @@ class MELCloudHomeAuth:
 
             # Step 1: Initiate login flow
             _LOGGER.debug("Step 1: Initiating login flow")
-            async with session.get(
-                f"{self._base_url}/bff/login",
-                params={"returnUrl": "/dashboard"},
-                allow_redirects=True,
-            ) as resp:
-                # Follow redirects to Cognito login page
-                final_url = str(resp.url)
-                _LOGGER.debug("Redirected to: %s", final_url)
+            async with self._request_pacer:  # noqa: SIM117
+                async with session.get(
+                    f"{self._base_url}/bff/login",
+                    params={"returnUrl": "/dashboard"},
+                    allow_redirects=True,
+                ) as resp:
+                    # Follow redirects to Cognito login page
+                    final_url = str(resp.url)
+                    _LOGGER.debug("Redirected to: %s", final_url)
 
-                parsed = urlparse(final_url)
-                if not (
-                    parsed.hostname
-                    and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
-                    and "/login" in parsed.path
-                ):
-                    raise AuthenticationError(f"Unexpected redirect URL: {final_url}")
+                    parsed = urlparse(final_url)
+                    if not (
+                        parsed.hostname
+                        and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
+                        and "/login" in parsed.path
+                    ):
+                        raise AuthenticationError(
+                            f"Unexpected redirect URL: {final_url}"
+                        )
 
-                # Extract CSRF token from login page HTML
-                html = await resp.text()
-                csrf_token = self._extract_csrf_token(html)
-                if not csrf_token:
-                    raise AuthenticationError(
-                        "Failed to extract CSRF token from login page"
-                    )
+                    # Extract CSRF token from login page HTML
+                    html = await resp.text()
+                    csrf_token = self._extract_csrf_token(html)
+                    if not csrf_token:
+                        raise AuthenticationError(
+                            "Failed to extract CSRF token from login page"
+                        )
 
-                _LOGGER.debug("Extracted CSRF token: %s...", csrf_token[:10])
+                    _LOGGER.debug("Extracted CSRF token: %s...", csrf_token[:10])
 
             # Step 2: Submit credentials to Cognito
             _LOGGER.debug("Step 2: Submitting credentials")
@@ -268,60 +287,69 @@ class MELCloudHomeAuth:
             }
 
             # POST to Cognito login endpoint
-            async with session.post(
-                final_url,  # Use the full URL with query params from step 1
-                data=login_data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Origin": self._cognito_base,
-                    "Referer": final_url,
-                },
-                allow_redirects=True,
-            ) as resp:
-                # Successful login should redirect back to melcloudhome.com/dashboard
-                final_url = str(resp.url)
-                _LOGGER.debug("After login redirect: %s", final_url)
+            async with self._request_pacer:  # noqa: SIM117
+                async with session.post(
+                    final_url,  # Use the full URL with query params from step 1
+                    data=login_data,
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Origin": self._cognito_base,
+                        "Referer": final_url,
+                    },
+                    allow_redirects=True,
+                ) as resp:
+                    # Successful login should redirect back to melcloudhome.com/dashboard
+                    final_url = str(resp.url)
+                    _LOGGER.debug("After login redirect: %s", final_url)
 
-                # Check if we ended up on the dashboard (success)
-                parsed = urlparse(final_url)
-                if (
-                    parsed.hostname
-                    and (
-                        parsed.hostname == "melcloudhome.com"
-                        or parsed.hostname.endswith(".melcloudhome.com")
-                    )
-                    and "/error" not in final_url.lower()
-                ):
-                    _LOGGER.info("Authentication successful - reached %s", final_url)
-                    self._authenticated = True
+                    # Check if we ended up on the dashboard (success)
+                    parsed = urlparse(final_url)
+                    if (
+                        parsed.hostname
+                        and (
+                            parsed.hostname == "melcloudhome.com"
+                            or parsed.hostname.endswith(".melcloudhome.com")
+                        )
+                        and "/error" not in final_url.lower()
+                    ):
+                        _LOGGER.info(
+                            "Authentication successful - reached %s", final_url
+                        )
+                        self._authenticated = True
 
-                    # CRITICAL: Wait for session to fully initialize
-                    # The OAuth flow completes but Blazor WASM needs time to initialize
-                    # the session before API endpoints will work
-                    _LOGGER.debug("Waiting for session initialization (3 seconds)")
-                    await asyncio.sleep(3)
+                        # CRITICAL: Wait for session to fully initialize
+                        # The OAuth flow completes but Blazor WASM needs time to initialize
+                        # the session before API endpoints will work
+                        if AUTH_SESSION_INIT_DELAY > 0:
+                            _LOGGER.debug(
+                                "Waiting for session initialization (%s seconds)",
+                                AUTH_SESSION_INIT_DELAY,
+                            )
+                        await asyncio.sleep(AUTH_SESSION_INIT_DELAY)
 
-                    return True
+                        return True
 
-                # Check for error in URL or response
-                if "/error" in final_url.lower() or resp.status >= 400:
-                    error_html = await resp.text()
-                    error_msg = self._extract_error_message(error_html)
+                    # Check for error in URL or response
+                    if "/error" in final_url.lower() or resp.status >= 400:
+                        error_html = await resp.text()
+                        error_msg = self._extract_error_message(error_html)
+                        raise AuthenticationError(
+                            f"Authentication failed: {error_msg or 'Invalid credentials'}"
+                        )
+
+                    # If we're still on Cognito, credentials were wrong
+                    parsed = urlparse(final_url)
+                    if parsed.hostname and parsed.hostname.endswith(
+                        COGNITO_DOMAIN_SUFFIX
+                    ):
+                        raise AuthenticationError(
+                            "Authentication failed: Invalid username or password"
+                        )
+
+                    # Unexpected state
                     raise AuthenticationError(
-                        f"Authentication failed: {error_msg or 'Invalid credentials'}"
+                        f"Authentication failed: Unexpected redirect to {final_url}"
                     )
-
-                # If we're still on Cognito, credentials were wrong
-                parsed = urlparse(final_url)
-                if parsed.hostname and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX):
-                    raise AuthenticationError(
-                        "Authentication failed: Invalid username or password"
-                    )
-
-                # Unexpected state
-                raise AuthenticationError(
-                    f"Authentication failed: Unexpected redirect to {final_url}"
-                )
 
         except aiohttp.ClientError as err:
             raise AuthenticationError(
@@ -349,27 +377,30 @@ class MELCloudHomeAuth:
 
             # Check session by calling main API endpoint
             # MUST include x-csrf: 1 and referer headers for API calls to work
-            async with session.get(
-                f"{self._base_url}/api/user/context",
-                headers={
-                    "Accept": "application/json",
-                    "x-csrf": "1",
-                    "referer": f"{self._base_url}/dashboard",
-                },
-            ) as resp:
-                if resp.status == 200:
-                    _LOGGER.debug("Session is valid (API returned 200)")
-                    return True
+            async with self._request_pacer:  # noqa: SIM117
+                async with session.get(
+                    f"{self._base_url}/api/user/context",
+                    headers={
+                        "Accept": "application/json",
+                        "x-csrf": "1",
+                        "referer": f"{self._base_url}/dashboard",
+                    },
+                ) as resp:
+                    if resp.status == 200:
+                        _LOGGER.debug("Session is valid (API returned 200)")
+                        return True
 
-                # 401 = session expired
-                if resp.status == 401:
-                    _LOGGER.debug("Session expired (401)")
-                    self._authenticated = False
+                    # 401 = session expired
+                    if resp.status == 401:
+                        _LOGGER.debug("Session expired (401)")
+                        self._authenticated = False
+                        return False
+
+                    # Other errors - assume invalid
+                    _LOGGER.warning(
+                        "Unexpected status checking session: %d", resp.status
+                    )
                     return False
-
-                # Other errors - assume invalid
-                _LOGGER.warning("Unexpected status checking session: %d", resp.status)
-                return False
 
         except Exception as err:
             _LOGGER.error("Error checking session: %s", err)
@@ -396,7 +427,8 @@ class MELCloudHomeAuth:
             try:
                 # Call logout endpoint (skip in debug mode - mock server doesn't have this)
                 if not self._debug_mode:
-                    await self._session.get(f"{self._base_url}/bff/logout")
+                    async with self._request_pacer:
+                        await self._session.get(f"{self._base_url}/bff/logout")
             except Exception as err:
                 _LOGGER.debug("Error during logout: %s", err)
             finally:

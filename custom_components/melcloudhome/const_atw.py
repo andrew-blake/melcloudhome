@@ -8,11 +8,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 # Import temperature constants from API (single source of truth)
 from .api.const_atw import (  # noqa: F401
+    ATW_OPERATION_MODES_COOLING,
     ATW_TEMP_MAX_DHW,
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
-    ATW_TEMP_STEP,
 )
 
 if TYPE_CHECKING:
@@ -20,15 +20,39 @@ if TYPE_CHECKING:
 
 # ATW (Air-to-Water) Zone Modes → Climate Preset Modes (lowercase for i18n)
 # Display names in translations/en.json: "Room", "Flow", "Curve"
+# API mode → HA preset (mode-agnostic mapping for both heating and cooling)
 ATW_TO_HA_PRESET = {
-    "HeatRoomTemperature": "room",  # Display: "Room" (via translation)
-    "HeatFlowTemperature": "flow",  # Display: "Flow" (via translation)
-    "HeatCurve": "curve",  # Display: "Curve" (via translation)
+    # Heating
+    "HeatRoomTemperature": "room",
+    "HeatFlowTemperature": "flow",
+    "HeatCurve": "curve",
+    # Cooling
+    "CoolRoomTemperature": "room",
+    "CoolFlowTemperature": "flow",
+    # NOTE: CoolCurve does NOT exist
 }
 
-HA_TO_ATW_PRESET = {v: k for k, v in ATW_TO_HA_PRESET.items()}
+# HA preset → API mode (mode-specific mappings)
+# Use these for setting presets based on current hvac_mode
+HA_TO_ATW_PRESET_HEAT = {
+    "room": "HeatRoomTemperature",
+    "flow": "HeatFlowTemperature",
+    "curve": "HeatCurve",
+}
+
+HA_TO_ATW_PRESET_COOL = {
+    "room": "CoolRoomTemperature",
+    "flow": "CoolFlowTemperature",
+    # NO curve preset in cooling mode
+}
+
+# Backward compatibility - defaults to heating modes
+HA_TO_ATW_PRESET = HA_TO_ATW_PRESET_HEAT
 
 # ATW Preset modes list (lowercase - translated via translations/en.json)
+# NOTE: This is the MAXIMUM set - actual available presets are dynamic based on hvac_mode
+# - Heat mode: ["room", "flow", "curve"] (all 3)
+# - Cool mode: ["room", "flow"] (only 2)
 ATW_PRESET_MODES = ["room", "flow", "curve"]
 
 # Water Heater Operation Modes → Home Assistant Standard Modes

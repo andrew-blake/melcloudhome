@@ -105,6 +105,12 @@ disallow_untyped_calls = false
 skip = '*.json,*.yaml,.git'
 ignore-words-list = 'hass'
 
+[tool.pytest.ini_options]
+markers = [
+    "e2e: marks tests as end-to-end (requires mock server via Docker Compose)",
+]
+asyncio_mode = "auto"
+
 [dependency-groups]
 dev = [
     # NOTE: homeassistant-stubs NOT included as dev dependency due to unsolvable

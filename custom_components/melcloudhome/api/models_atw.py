@@ -53,6 +53,9 @@ class AirToWaterCapabilities:
     has_estimated_energy_consumption: bool = True
     has_estimated_energy_production: bool = True
 
+    # Cooling Support
+    has_cooling_mode: bool = False
+
     # FTC Model (controller type)
     ftc_model: int = 3
 
@@ -115,6 +118,7 @@ class AirToWaterCapabilities:
             has_estimated_energy_production=data.get(
                 "hasEstimatedEnergyProduction", True
             ),
+            has_cooling_mode=data.get("hasCoolingMode", False),
             ftc_model=data.get("ftcModel", 3),
             has_demand_side_control=data.get("hasDemandSideControl", True),
         )
@@ -182,6 +186,11 @@ class AirToWaterUnit:
     # Structure: {measure_name: temperature_celsius}
     telemetry: dict[str, float | None] = field(default_factory=dict)
 
+    # Energy data (populated by EnergyTrackerATW)
+    energy_consumed: float | None = None  # kWh (cumulative)
+    energy_produced: float | None = None  # kWh (cumulative)
+    cop: float | None = None  # Coefficient of Performance (produced/consumed)
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToWaterUnit":
         """Create from API response dict.
@@ -205,6 +214,13 @@ class AirToWaterUnit:
             has_zone2 = has_zone2_value != "0" and has_zone2_value.lower() != "false"
         else:
             has_zone2 = bool(has_zone2_value)
+
+        # Extract cooling mode flag from settings (some devices report it here)
+        # Check settings first, then fall back to capabilities
+        has_cooling_from_settings = _parse_bool(settings.get("HasCoolingMode"))
+        if has_cooling_from_settings:
+            # Override capabilities with settings value
+            capabilities.has_cooling_mode = True
 
         # Parse holiday mode and frost protection
         holiday_data = data.get("holidayMode", {})

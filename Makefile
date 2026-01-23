@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format type-check test test-ha test-cov pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
+.PHONY: help install lint format format-check type-check test test-api test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -16,18 +16,88 @@ format:  ## Format code with ruff
 	uv run ruff format custom_components/
 	uv run ruff check --fix custom_components/
 
+format-check:  ## Check code formatting (CI mode)
+	uv run ruff format --check custom_components/
+
 type-check:  ## Run mypy type checker
 	uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
 
-test:  ## Run API tests (no HA dependency)
-	uv run pytest tests/api/ -v
+test-api:  ## API unit tests only
+	@rm -f .coverage coverage.xml
+	uv run pytest tests/api/ -v -m "not e2e" \
+		--cov=custom_components/melcloudhome \
+		--cov-report=xml \
+		--cov-report=html \
+		--cov-report=term-missing
 
-test-ha:  ## Run HA integration tests in Docker (fast with caching)
-	@docker build -q -t melcloudhome-test:latest -f tests/integration/Dockerfile . 2>/dev/null || true
-	docker run --rm -v $(PWD):/app melcloudhome-test:latest
+test-integration:  ## Integration tests only
+	@rm -f .coverage coverage.xml
+	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml run --rm integration-tests \
+		sh -c "uv pip install pytest-homeassistant-custom-component && \
+		       uv run pytest tests/integration/ -v \
+		         --cov=custom_components/melcloudhome \
+		         --cov-report=xml \
+		         --cov-report=html \
+		         --cov-report=term-missing"
+	docker compose -f docker-compose.test.yml down -v
 
-test-cov:  ## Run tests with coverage report
-	uv run pytest tests/ --cov=custom_components/melcloudhome/api --cov-report=term-missing
+test-e2e:  ## E2E tests only
+	@rm -f .coverage coverage.xml
+	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml run --rm e2e-tests \
+		sh -c "uv run pytest tests/api/ -m e2e -v \
+		         --cov=custom_components/melcloudhome \
+		         --cov-report=xml \
+		         --cov-report=html \
+		         --cov-report=term-missing"
+	docker compose -f docker-compose.test.yml down -v
+
+test:  ## Run ALL tests with combined coverage
+	@rm -f .coverage coverage.xml
+	@rm -rf htmlcov coverage-output
+	@mkdir -p coverage-output
+	@echo "🧪 API unit tests..."
+	@uv run pytest tests/api/ -v -m "not e2e" \
+		--cov=custom_components/melcloudhome \
+		--cov-report=
+	@cp .coverage coverage-output/.coverage
+	@echo "🐳 Integration + E2E (sequential startup to avoid DNS race)..."
+	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@echo "Waiting for mock server health check..."
+	@docker compose -f docker-compose.test.yml run --rm integration-tests; \
+		INTEGRATION_EXIT=$$?; \
+		docker compose -f docker-compose.test.yml run --rm e2e-tests; \
+		E2E_EXIT=$$?; \
+		docker compose -f docker-compose.test.yml down -v; \
+		echo "📤 Uploading coverage results..."; \
+		if [ -f coverage-output/.coverage ]; then cp coverage-output/.coverage .coverage; fi; \
+		if [ -f coverage-output/coverage.xml ]; then cp coverage-output/coverage.xml coverage.xml; fi; \
+		if [ -d coverage-output/htmlcov ]; then cp -r coverage-output/htmlcov htmlcov; fi; \
+		echo "📊 Coverage: open htmlcov/index.html"; \
+		if [ $$INTEGRATION_EXIT -ne 0 ]; then exit $$INTEGRATION_EXIT; fi; \
+		exit $$E2E_EXIT
+
+# TODO: Remove test-quick after Docker test infrastructure stabilizes
+# Temporary target for fast iteration during debugging (skips 4m VCR tests)
+test-quick:  ## Quick test - E2E only (skip API unit tests for fast iteration)
+	@echo "🐳 Integration + E2E tests only (API tests skipped)..."
+	@echo "Starting mock server..."
+	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@echo "Waiting for mock server health check..."
+	@docker compose -f docker-compose.test.yml run --rm integration-tests; \
+		INTEGRATION_EXIT=$$?; \
+		docker compose -f docker-compose.test.yml run --rm e2e-tests; \
+		E2E_EXIT=$$?; \
+		docker compose -f docker-compose.test.yml down -v; \
+		if [ $$INTEGRATION_EXIT -ne 0 ]; then exit $$INTEGRATION_EXIT; fi; \
+		exit $$E2E_EXIT
+
+test-ha:  ## Deprecated - use 'make test' instead
+	@echo "⚠️  Deprecated: 'make test-ha' is now 'make test'"
+	@echo "    Integration + E2E tests run via Docker Compose"
+	@echo "    Update your documentation and scripts"
+	@$(MAKE) test
 
 pre-commit:  ## Run all pre-commit hooks
 	uv run pre-commit run --all-files
@@ -132,52 +202,52 @@ deploy-watch:  ## Deploy to production HA and watch logs
 # Version management commands
 version-patch:  ## Bump patch version (x.y.Z)
 	@CURRENT=$$(jq -r '.version' custom_components/melcloudhome/manifest.json); \
-	NEW=$$(echo $$CURRENT | awk -F. '{$$3+=1; print $$1"."$$2"."$$3}'); \
-	echo "Bumping version $$CURRENT -> $$NEW"; \
-	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
-	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
-	mv CHANGELOG.tmp CHANGELOG.md; \
-	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
-	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
+		NEW=$$(echo $$CURRENT | awk -F. '{$$3+=1; print $$1"."$$2"."$$3}'); \
+		echo "Bumping version $$CURRENT -> $$NEW"; \
+		jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
+		mv manifest.tmp custom_components/melcloudhome/manifest.json; \
+		{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
+		mv CHANGELOG.tmp CHANGELOG.md; \
+		echo "✅ Version bumped to $$NEW"; \
+		echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
+		echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 version-minor:  ## Bump minor version (x.Y.0)
 	@CURRENT=$$(jq -r '.version' custom_components/melcloudhome/manifest.json); \
-	NEW=$$(echo $$CURRENT | awk -F. '{$$2+=1; $$3=0; print $$1"."$$2"."$$3}'); \
-	echo "Bumping version $$CURRENT -> $$NEW"; \
-	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
-	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
-	mv CHANGELOG.tmp CHANGELOG.md; \
-	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
-	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
+		NEW=$$(echo $$CURRENT | awk -F. '{$$2+=1; $$3=0; print $$1"."$$2"."$$3}'); \
+		echo "Bumping version $$CURRENT -> $$NEW"; \
+		jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
+		mv manifest.tmp custom_components/melcloudhome/manifest.json; \
+		{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
+		mv CHANGELOG.tmp CHANGELOG.md; \
+		echo "✅ Version bumped to $$NEW"; \
+		echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
+		echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 version-major:  ## Bump major version (X.0.0)
 	@CURRENT=$$(jq -r '.version' custom_components/melcloudhome/manifest.json); \
-	NEW=$$(echo $$CURRENT | awk -F. '{$$1+=1; $$2=0; $$3=0; print $$1"."$$2"."$$3}'); \
-	echo "Bumping version $$CURRENT -> $$NEW"; \
-	jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
-	mv manifest.tmp custom_components/melcloudhome/manifest.json; \
-	{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
-	mv CHANGELOG.tmp CHANGELOG.md; \
-	echo "✅ Version bumped to $$NEW"; \
-	echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
-	echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
+		NEW=$$(echo $$CURRENT | awk -F. '{$$1+=1; $$2=0; $$3=0; print $$1"."$$2"."$$3}'); \
+		echo "Bumping version $$CURRENT -> $$NEW"; \
+		jq --arg version "$$NEW" '.version = $$version' custom_components/melcloudhome/manifest.json > manifest.tmp && \
+		mv manifest.tmp custom_components/melcloudhome/manifest.json; \
+		{ head -7 CHANGELOG.md; echo ""; echo "## [$$NEW] - $$(date +%Y-%m-%d)"; echo ""; echo "### Added"; echo ""; echo "- "; echo ""; echo "### Changed"; echo ""; echo "- "; echo ""; echo "### Fixed"; echo ""; echo "- "; echo ""; echo "### Security"; echo ""; echo "- "; echo ""; tail -n +8 CHANGELOG.md; } > CHANGELOG.tmp && \
+		mv CHANGELOG.tmp CHANGELOG.md; \
+		echo "✅ Version bumped to $$NEW"; \
+		echo "📝 Edit CHANGELOG.md to add release notes (delete unused sections)"; \
+		echo "💾 Then run: git add . && git commit -m 'chore: Bump version to $$NEW'";
 
 release:  ## Create and push release tag (run after committing version bump)
 	@VERSION=$$(jq -r '.version' custom_components/melcloudhome/manifest.json); \
-	echo "Creating release tag v$$VERSION"; \
-	if git tag | grep -q "^v$$VERSION$$"; then \
-		echo "❌ Tag v$$VERSION already exists"; \
-		exit 1; \
-	fi; \
-	if ! grep -q "\[$$VERSION\]" CHANGELOG.md; then \
-		echo "❌ No CHANGELOG entry found for version $$VERSION"; \
-		exit 1; \
-	fi; \
-	git tag -a "v$$VERSION" -m "Release v$$VERSION"; \
-	echo "✅ Tag v$$VERSION created"; \
-	echo "🚀 Push with: git push && git push --tags"; \
-	echo "   This will trigger the release workflow"
+		echo "Creating release tag v$$VERSION"; \
+		if git tag | grep -q "^v$$VERSION$$"; then \
+			echo "❌ Tag v$$VERSION already exists"; \
+			exit 1; \
+		fi; \
+		if ! grep -q "\[$$VERSION\]" CHANGELOG.md; then \
+			echo "❌ No CHANGELOG entry found for version $$VERSION"; \
+			exit 1; \
+		fi; \
+		git tag -a "v$$VERSION" -m "Release v$$VERSION"; \
+		echo "✅ Tag v$$VERSION created"; \
+		echo "🚀 Push with: git push && git push --tags"; \
+		echo "   This will trigger the release workflow"

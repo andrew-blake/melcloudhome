@@ -32,7 +32,7 @@ Open an issue to discuss new features before starting work. This helps ensure th
 
 **Branch naming:**
 
-- `feature/description` - New features
+- `feat/description` - New features
 - `fix/description` - Bug fixes
 - `docs/description` - Documentation
 
@@ -40,7 +40,7 @@ Open an issue to discuss new features before starting work. This helps ensure th
 
 **Prerequisites:**
 
-- Python 3.12+
+- Python 3.13+
 - [uv](https://github.com/astral-sh/uv) package manager
 - Docker (for Home Assistant integration tests)
 
@@ -64,8 +64,8 @@ All code changes require tests. See [docs/testing-best-practices.md](docs/testin
 **Test your changes:**
 
 ```bash
-make test              # Run API tests (no Docker required)
-make test-ha           # Run HA integration tests (uses Docker)
+make test-api          # API unit tests (native, fast)
+make test              # All tests with combined coverage
 ```
 
 **Integration tests:**

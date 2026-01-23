@@ -1,0 +1,64 @@
+services:
+  # Mock MELCloud API Server (rate limiting disabled for CI tests)
+  melcloud-mock:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    command: python tools/mock_melcloud_server.py --host 0.0.0.0 --port 8080 --no-rate-limit
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 8080)); s.close()"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+
+  # Integration tests with pytest-homeassistant (socket blocking enabled)
+  integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./coverage-output:/app/coverage-output
+      - ./custom_components:/app/custom_components:ro
+      - ./tests:/app/tests:ro
+      - ./tools:/app/tools:ro
+    working_dir: /app
+    networks:
+      - test-network
+    depends_on:
+      melcloud-mock:
+        condition: service_healthy
+    environment:
+      - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
+      - COVERAGE_FILE=/app/coverage-output/.coverage
+    command: sh -c "uv pip install pytest-homeassistant-custom-component && uv run pytest tests/integration/ -v --cov=custom_components/melcloudhome --cov-append --cov-report="
+
+  # E2E tests without pytest-homeassistant (real network access)
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./coverage-output:/app/coverage-output
+      - ./custom_components:/app/custom_components:ro
+      - ./tests:/app/tests:ro
+      - ./tools:/app/tools:ro
+    working_dir: /app
+    networks:
+      - test-network
+    depends_on:
+      melcloud-mock:
+        condition: service_healthy
+      integration-tests:
+        condition: service_completed_successfully
+    environment:
+      - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
+      - COVERAGE_FILE=/app/coverage-output/.coverage
+      - PYTEST_DISABLE_SOCKET_ALLOW_HOSTS=melcloud-mock,localhost,127.0.0.1
+    command: sh -c "uv pip uninstall pytest-socket pytest-homeassistant-custom-component && uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml:/app/coverage-output/coverage.xml --cov-report=html:/app/coverage-output/htmlcov --cov-report=term-missing"
+
+networks:
+  test-network:
+    name: melcloud-test-network

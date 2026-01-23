@@ -1,6 +1,6 @@
 """Tests for MELCloud Home device discovery.
 
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch

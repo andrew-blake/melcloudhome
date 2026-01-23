@@ -29,6 +29,7 @@ import asyncio
 import json
 import logging
 import signal
+from time import time
 from typing import Any
 
 import aiohttp_cors
@@ -36,6 +37,41 @@ from aiohttp import web
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+# Rate limiting configuration
+ENABLE_RATE_LIMITING = True  # Set to False to disable for testing
+RATE_LIMIT_INTERVAL = 0.5  # seconds
+
+# Global rate limiting state
+rate_limit_lock = asyncio.Lock()
+last_request_time = 0.0
+
+
+@web.middleware
+async def rate_limit_middleware(request, handler):
+    """Enforce rate limiting on all requests."""
+    if not ENABLE_RATE_LIMITING:
+        return await handler(request)
+
+    global last_request_time
+
+    async with rate_limit_lock:
+        elapsed = time() - last_request_time
+        if elapsed < RATE_LIMIT_INTERVAL:
+            # Return 429 Too Many Requests
+            logger.debug(
+                "Rate limit exceeded: %.3fs since last request (min %.3fs)",
+                elapsed,
+                RATE_LIMIT_INTERVAL,
+            )
+            return web.Response(
+                status=429,
+                text=json.dumps({"error": "Rate limit exceeded"}),
+                content_type="application/json",
+            )
+        last_request_time = time()
+
+    return await handler(request)
 
 
 class MockMELCloudServer:
@@ -143,7 +179,7 @@ class MockMELCloudServer:
 
     def create_app(self) -> web.Application:
         """Create aiohttp application with routes."""
-        app = web.Application()
+        app = web.Application(middlewares=[rate_limit_middleware])
 
         # Configure CORS to allow web client access from melcloudhome.com
         cors = aiohttp_cors.setup(
@@ -189,9 +225,12 @@ class MockMELCloudServer:
             "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_put
         )
 
-        # Telemetry endpoint (spike: sparse data pattern)
+        # Telemetry endpoints (spike: sparse data pattern)
         telemetry_route = app.router.add_get(
             "/api/telemetry/actual/{unit_id}", self.handle_telemetry_actual
+        )
+        energy_route = app.router.add_get(
+            "/api/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
 
         # Add CORS to all routes
@@ -206,6 +245,7 @@ class MockMELCloudServer:
             schedule_enabled_get,
             schedule_enabled_put,
             telemetry_route,
+            energy_route,
         ]:
             cors.add(route)
 
@@ -520,7 +560,13 @@ class MockMELCloudServer:
 
         if body.get("operationModeZone1") is not None:
             mode = body["operationModeZone1"]
-            valid_modes = ["HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"]
+            valid_modes = [
+                "HeatRoomTemperature",
+                "HeatFlowTemperature",
+                "HeatCurve",
+                "CoolRoomTemperature",
+                "CoolFlowTemperature",
+            ]
             if mode not in valid_modes:
                 logger.warning("   ⚠️  Unusual zone operation mode: %s", mode)
             state["operation_mode_zone1"] = mode
@@ -575,11 +621,11 @@ class MockMELCloudServer:
         Logic:
         - If forced_hot_water_mode: "HotWater"
         - Else if DHW < target: "HotWater"
-        - Else if Zone < target: "Heating"
+        - Else if Zone needs heating/cooling: "Heating" or "Cooling"
         - Else: "Stop"
 
         Critical: operation_mode is STATUS (read-only), not control parameter
-        Note: Real API returns "Heating" (not mode-specific strings)
+        Note: Real API returns "Heating" or "Cooling" (not mode-specific strings)
         """
         state = self.atw_states[unit_id]
 
@@ -597,17 +643,31 @@ class MockMELCloudServer:
             state["tank_water_temperature"] < state["set_tank_water_temperature"]
         )
 
-        # Check if Zone 1 needs heating
-        zone_needs_heat = (
-            state["room_temperature_zone1"] < state["set_temperature_zone1"]
-        )
+        # Check zone mode to determine if heating or cooling
+        zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+        is_cooling_mode = zone_mode.startswith("Cool")
 
-        if dhw_needs_heat:
-            state["operation_mode"] = "HotWater"
-        elif zone_needs_heat:
-            state["operation_mode"] = "Heating"  # Real API returns simplified status
+        # Check if Zone 1 needs heating or cooling
+        if is_cooling_mode:
+            zone_needs_cooling = (
+                state["room_temperature_zone1"] > state["set_temperature_zone1"]
+            )
+            if dhw_needs_heat:
+                state["operation_mode"] = "HotWater"
+            elif zone_needs_cooling:
+                state["operation_mode"] = "Cooling"
+            else:
+                state["operation_mode"] = "Stop"
         else:
-            state["operation_mode"] = "Stop"
+            zone_needs_heat = (
+                state["room_temperature_zone1"] < state["set_temperature_zone1"]
+            )
+            if dhw_needs_heat:
+                state["operation_mode"] = "HotWater"
+            elif zone_needs_heat:
+                state["operation_mode"] = "Heating"
+            else:
+                state["operation_mode"] = "Stop"
 
     async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
         """GET /api/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
@@ -616,6 +676,8 @@ class MockMELCloudServer:
         - 0-4 datapoints per hour
         - Sometimes hours or days old
         - 4-hour lookback window
+
+        Supports: flow_temperature, return_temperature, rssi, etc.
         """
         import random
         from datetime import UTC, datetime, timedelta
@@ -635,20 +697,29 @@ class MockMELCloudServer:
                 timestamp = now - timedelta(
                     hours=hour_ago, minutes=random.randint(0, 59)
                 )
-                # Base temps vary by measure
-                base_temps = {
-                    "flow_temperature": 45.0,
-                    "return_temperature": 42.0,
-                    "flow_temperature_zone1": 44.0,
-                    "return_temperature_zone1": 41.0,
-                    "flow_temperature_boiler": 46.0,
-                    "return_temperature_boiler": 43.0,
-                }
-                temp = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
+
+                # Generate value based on measure type
+                if measure == "rssi":
+                    # WiFi signal strength: -40 to -70 dBm
+                    value = float(random.randint(-70, -40))
+                else:
+                    # Temperature measures
+                    base_temps = {
+                        "flow_temperature": 45.0,
+                        "return_temperature": 42.0,
+                        "flow_temperature_zone1": 44.0,
+                        "return_temperature_zone1": 41.0,
+                        "flow_temperature_boiler": 46.0,
+                        "return_temperature_boiler": 43.0,
+                    }
+                    value = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
+
                 values.append(
                     {
                         "time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                        "value": f"{temp:.1f}",
+                        "value": f"{value:.1f}"
+                        if isinstance(value, float)
+                        else str(value),
                     }
                 )
 
@@ -663,6 +734,64 @@ class MockMELCloudServer:
                         "values": values,
                     }
                 ]
+            }
+        )
+
+    async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
+        """GET /api/telemetry/energy/{unit_id} - Get energy telemetry data.
+
+        Returns hourly energy data for ATW devices.
+        Supports interval_energy_consumed and interval_energy_produced measures.
+
+        Format: ATW uses measureData array format (different from ATA)
+        """
+        import random
+        from datetime import UTC, datetime, timedelta
+
+        unit_id = request.match_info.get("unit_id")
+        measure = request.rel_url.query.get("measure", "interval_energy_consumed")
+
+        logger.info(
+            "⚡ Energy telemetry request: unit=%s, measure=%s", unit_id, measure
+        )
+
+        # Generate 24 hours of hourly energy data
+        values = []
+        now = datetime.now(UTC)
+
+        # Generate realistic energy values (Wh per hour)
+        for hour_ago in range(24, 0, -1):
+            timestamp = (now - timedelta(hours=hour_ago)).replace(
+                minute=0, second=0, microsecond=0
+            )
+
+            if measure == "interval_energy_consumed":
+                # Consumed: 2000-4000 Wh per hour (2-4 kWh)
+                value = random.randint(2000, 4000)
+            elif measure == "interval_energy_produced":
+                # Produced: 6000-12000 Wh per hour (6-12 kWh, COP ~3)
+                value = random.randint(6000, 12000)
+            else:
+                value = 0
+
+            values.append(
+                {
+                    "time": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "value": str(value),
+                }
+            )
+
+        logger.info("⚡ Returning 24 hours of data for %s", measure)
+
+        return web.json_response(
+            {
+                "deviceId": unit_id,
+                "measureData": [
+                    {
+                        "type": self._snake_to_camel(measure),
+                        "values": values,
+                    }
+                ],
             }
         )
 
@@ -730,13 +859,21 @@ class MockMELCloudServer:
             else:
                 logger.info("   🔄 3-Way Valve: → DHW TANK (Priority heating)")
 
-            zone_needs_heat = (
+            zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+            zone_needs_action = (
                 state["room_temperature_zone1"] < state["set_temperature_zone1"]
+                if not zone_mode.startswith("Cool")
+                else state["room_temperature_zone1"] > state["set_temperature_zone1"]
             )
-            if zone_needs_heat:
-                logger.warning("   ⚠️  Zone 1 heating suspended")
-        elif mode in ["HeatRoomTemperature", "HeatFlowTemperature", "HeatCurve"]:
-            logger.info("   🔄 3-Way Valve: → ZONE 1 (%s)", mode)
+            if zone_needs_action:
+                action = "cooling" if zone_mode.startswith("Cool") else "heating"
+                logger.warning("   ⚠️  Zone 1 %s suspended", action)
+        elif mode == "Heating":
+            zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
+            logger.info("   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", zone_mode)
+        elif mode == "Cooling":
+            zone_mode = state.get("operation_mode_zone1", "CoolRoomTemperature")
+            logger.info("   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", zone_mode)
         else:
             logger.info("   🔄 3-Way Valve: IDLE (%s)", mode)
 
@@ -849,8 +986,11 @@ class MockMELCloudServer:
             "hasZone2": False,
             "hasThermostatZone1": True,
             "hasHeatZone1": True,
-            "hasMeasuredEnergyConsumption": True,
-            "hasEstimatedEnergyConsumption": False,
+            "hasCoolingMode": True,  # NEW: Cooling mode support
+            "hasMeasuredEnergyConsumption": False,
+            "hasEstimatedEnergyConsumption": True,  # NEW: Energy monitoring
+            "hasMeasuredEnergyProduction": False,
+            "hasEstimatedEnergyProduction": True,  # NEW: Energy production
             "ftcModel": 4,  # API internal value
         }
 
@@ -931,8 +1071,19 @@ Examples:
         action="store_true",
         help="Enable debug logging (shows full request payloads)",
     )
+    parser.add_argument(
+        "--no-rate-limit",
+        action="store_true",
+        help="Disable rate limiting (useful for CI testing)",
+    )
 
     args = parser.parse_args()
+
+    # Configure rate limiting based on command-line argument
+    global ENABLE_RATE_LIMITING
+    if args.no_rate_limit:
+        ENABLE_RATE_LIMITING = False
+        logger.info("⚠️  Rate limiting DISABLED")
 
     # Configure logging
     log_level = logging.DEBUG if args.debug else logging.INFO

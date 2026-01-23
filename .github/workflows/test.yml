@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [main, dev_*]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -18,41 +18,35 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install 3.13
       - name: Install dependencies
         run: uv sync
       - name: Format check
-        run: uv run ruff format --check custom_components/
+        run: make format-check
       - name: Lint
-        run: uv run ruff check custom_components/
+        run: make lint
       - name: Type check
-        run: uv run mypy --ignore-missing-imports --explicit-package-bases custom_components/melcloudhome/
+        run: make type-check
 
-  test-api:
-    name: API Tests
+  test:
+    name: Run All Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install 3.13
       - name: Install dependencies
         run: uv sync
-      - name: Run API tests
-        run: uv run pytest tests/api/ -v
-
-  test-ha:
-    name: Home Assistant Integration Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Run all tests
+        run: make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: github.actor != 'dependabot[bot]'
         with:
-          python-version: "3.12"
-      - name: Install test dependencies
-        run: |
-          pip install pytest pytest-asyncio pytest-homeassistant-custom-component
-      - name: Run HA integration tests
-        run: pytest tests/integration/ -v
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

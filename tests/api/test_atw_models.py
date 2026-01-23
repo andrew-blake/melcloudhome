@@ -7,6 +7,8 @@ These tests validate that models correctly parse real API responses.
 import logging
 from typing import Any, cast
 
+import pytest
+
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_atw import (
     AirToWaterCapabilities,
@@ -478,3 +480,73 @@ class TestAPIBugValidation:
 
         # API reports 0, we use 40
         assert unit.capabilities.min_set_tank_temperature == 40.0
+
+
+# =============================================================================
+# Live API Tests (VCR)
+# =============================================================================
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
+    """Test parsing ATW devices with energy + cooling capabilities.
+
+    This test records a real API call using VCR to capture the /api/user/context
+    response from beta tester's ATW devices:
+    - Device 1 (Madrid): Energy monitoring, NO cooling
+    - Device 2 (Belgrade): Energy monitoring AND cooling
+
+    Validates that capability detection works correctly for these features.
+    """
+    context = await authenticated_client.get_user_context()
+    atw_units = context.get_all_air_to_water_units()
+
+    # Should have at least 2 ATW devices
+    assert len(atw_units) >= 2, f"Expected 2+ ATW devices, found {len(atw_units)}"
+
+    # Find units with energy capabilities
+    energy_units = [
+        u
+        for u in atw_units
+        if u.capabilities.has_estimated_energy_consumption
+        or u.capabilities.has_measured_energy_consumption
+    ]
+
+    assert (
+        len(energy_units) >= 2
+    ), f"Expected 2+ ATW devices with energy, found {len(energy_units)}"
+
+    # Verify both devices have energy capabilities
+    for unit in energy_units:
+        assert (
+            unit.capabilities.has_estimated_energy_consumption is True
+            or unit.capabilities.has_measured_energy_consumption is True
+        ), f"Device {unit.id}: Energy consumption capability not detected"
+
+        assert (
+            unit.capabilities.has_estimated_energy_production is True
+            or unit.capabilities.has_measured_energy_production is True
+        ), f"Device {unit.id}: Energy production capability not detected"
+
+    # Find the device with cooling support
+    cooling_unit = next(
+        (u for u in energy_units if u.capabilities.has_cooling_mode), None
+    )
+
+    assert (
+        cooling_unit is not None
+    ), "Expected at least one ATW device with both energy AND cooling capabilities"
+
+    # Verify cooling device has all expected capabilities
+    assert cooling_unit.capabilities.has_cooling_mode is True
+    assert cooling_unit.capabilities.has_estimated_energy_consumption is True
+    assert cooling_unit.capabilities.has_estimated_energy_production is True
+    assert cooling_unit.capabilities.ftc_model == 3  # ERSC-VM2D controller type
+
+    # Log device capabilities for debugging
+    logging.info(f"Found {len(energy_units)} ATW devices with energy monitoring:")
+    for unit in energy_units:
+        logging.info(
+            f"  Device {unit.id}: has_cooling={unit.capabilities.has_cooling_mode}"
+        )

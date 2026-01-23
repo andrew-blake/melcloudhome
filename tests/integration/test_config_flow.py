@@ -3,7 +3,7 @@
 These tests require pytest-homeassistant-custom-component which provides
 mock Home Assistant fixtures. They run in Docker or CI.
 
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import MagicMock

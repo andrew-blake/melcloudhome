@@ -4,7 +4,7 @@ Tests cover climate entity behavior through Home Assistant core interfaces only.
 Follows HA best practices: test observable behavior, not implementation details.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -17,8 +17,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_ata import (
+    AirToAirCapabilities,
     AirToAirUnit,
-    DeviceCapabilities,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -59,7 +59,7 @@ def create_mock_unit(
         in_standby_mode=False,
         is_in_error=is_in_error,
         rssi=-50,
-        capabilities=DeviceCapabilities(),
+        capabilities=AirToAirCapabilities(),
     )
 
 

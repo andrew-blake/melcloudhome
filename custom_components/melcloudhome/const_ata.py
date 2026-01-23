@@ -9,8 +9,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 if TYPE_CHECKING:
     from .api.models import AirToAirUnit, Building
 
-# MELCloud API uses "Automatic" not "Auto"
-MELCLOUD_TO_HA_MODE = {
+# Maps API operation_mode to HA hvac_mode (MELCloud API uses "Automatic" not "Auto")
+ATA_TO_HA_HVAC_MODE = {
     "Heat": HVACMode.HEAT,
     "Cool": HVACMode.COOL,
     "Automatic": HVACMode.AUTO,
@@ -18,7 +18,7 @@ MELCLOUD_TO_HA_MODE = {
     "Fan": HVACMode.FAN_ONLY,
 }
 
-HA_TO_MELCLOUD_MODE = {
+HA_HVAC_MODE_TO_ATA = {
     HVACMode.HEAT: "Heat",
     HVACMode.COOL: "Cool",
     HVACMode.AUTO: "Automatic",
@@ -27,13 +27,13 @@ HA_TO_MELCLOUD_MODE = {
 }
 
 # Fan speed mappings (lowercase for HA standard compliance)
-FAN_SPEEDS = ["auto", "one", "two", "three", "four", "five"]
+ATA_FAN_SPEEDS = ["auto", "one", "two", "three", "four", "five"]
 
 # Vane position mappings (vertical, lowercase for HA standard compliance)
-VANE_POSITIONS = ["auto", "swing", "one", "two", "three", "four", "five"]
+ATA_VANE_POSITIONS = ["auto", "swing", "one", "two", "three", "four", "five"]
 
 # Horizontal vane position mappings (lowercase for HA standard compliance)
-VANE_HORIZONTAL_POSITIONS = [
+ATA_VANE_HORIZONTAL_POSITIONS = [
     "auto",
     "swing",
     "left",

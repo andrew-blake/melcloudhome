@@ -206,8 +206,3 @@ def initialize_entity_base(
 
     # Device info using shared helper
     entity._attr_device_info = create_device_info(unit, building)
-
-
-# Backwards-compatible aliases (for existing ATW code)
-create_atw_entity_name = create_entity_name
-create_atw_device_info = create_device_info

@@ -25,6 +25,7 @@ from .const_shared import (
 )
 from .exceptions import ApiError, AuthenticationError
 from .models import UserContext
+from .pacing import RequestPacer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,16 +33,28 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeClient:
     """Client for MELCloud Home API."""
 
-    def __init__(self, debug_mode: bool = False) -> None:
+    def __init__(
+        self,
+        debug_mode: bool = False,
+        request_pacer: RequestPacer | None = None,
+    ) -> None:
         """Initialize the client.
 
         Args:
             debug_mode: If True, use mock server at http://melcloud-mock:8080
+            request_pacer: Optional RequestPacer instance (for testing)
         """
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
-        self._auth = MELCloudHomeAuth(debug_mode=debug_mode)
         self._user_context: UserContext | None = None
+
+        # Request pacing to prevent rate limiting (shared across all requests)
+        self._request_pacer = request_pacer or RequestPacer()
+
+        # Auth needs RequestPacer to prevent rate limiting during login
+        self._auth = MELCloudHomeAuth(
+            debug_mode=debug_mode, request_pacer=self._request_pacer
+        )
 
         # Composition: Delegate ATA and ATW control to specialized clients
         self.ata = ATAControlClient(self)
@@ -102,55 +115,62 @@ class MELCloudHomeClient:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
         """
-        if not self._auth.is_authenticated:
-            raise AuthenticationError("Not authenticated - call login() first")
+        async with self._request_pacer:
+            if not self._auth.is_authenticated:
+                raise AuthenticationError("Not authenticated - call login() first")
 
-        try:
-            session = await self._auth.get_session()
+            try:
+                session = await self._auth.get_session()
 
-            # CRITICAL: All API requests require these headers
-            # User-Agent inherited from session (set in auth.py)
-            headers = kwargs.pop("headers", {})
-            headers.setdefault("Accept", "application/json")
-            headers.setdefault("x-csrf", "1")
-            headers.setdefault("referer", f"{self._base_url}/dashboard")
+                # CRITICAL: All API requests require these headers
+                # User-Agent inherited from session (set in auth.py)
+                headers = kwargs.pop("headers", {})
+                headers.setdefault("Accept", "application/json")
+                headers.setdefault("x-csrf", "1")
+                headers.setdefault("referer", f"{self._base_url}/dashboard")
 
-            url = f"{self._base_url}{endpoint}"
+                url = f"{self._base_url}{endpoint}"
 
-            _LOGGER.debug("API Request: %s %s", method, endpoint)
+                _LOGGER.debug("API Request: %s %s", method, endpoint)
 
-            async with session.request(method, url, headers=headers, **kwargs) as resp:
-                _LOGGER.debug("API Response: %s %s [%d]", method, endpoint, resp.status)
+                async with session.request(
+                    method, url, headers=headers, **kwargs
+                ) as resp:
+                    _LOGGER.debug(
+                        "API Response: %s %s [%d]", method, endpoint, resp.status
+                    )
 
-                # Handle 304 Not Modified (telemetry endpoints may return this)
-                if resp.status == 304:
-                    _LOGGER.debug("API Response: 304 Not Modified - no new data")
-                    return None
+                    # Handle 304 Not Modified (telemetry endpoints may return this)
+                    if resp.status == 304:
+                        _LOGGER.debug("API Response: 304 Not Modified - no new data")
+                        return None
 
-                # Handle authentication errors
-                if resp.status == 401:
-                    raise AuthenticationError("Session expired - please login again")
+                    # Handle authentication errors
+                    if resp.status == 401:
+                        raise AuthenticationError(
+                            "Session expired - please login again"
+                        )
 
-                # Handle other errors
-                if resp.status >= 400:
-                    try:
-                        error_data = await resp.json()
-                        error_msg = error_data.get("message", f"HTTP {resp.status}")
-                    except Exception:
-                        error_msg = f"HTTP {resp.status}"
+                    # Handle other errors
+                    if resp.status >= 400:
+                        try:
+                            error_data = await resp.json()
+                            error_msg = error_data.get("message", f"HTTP {resp.status}")
+                        except Exception:
+                            error_msg = f"HTTP {resp.status}"
 
-                    raise ApiError(f"API request failed: {error_msg}")
+                        raise ApiError(f"API request failed: {error_msg}")
 
-                # Parse and return JSON response
-                # Some endpoints (like control) return empty body
-                if resp.content_length == 0 or resp.content_type == "":
-                    return {}
+                    # Parse and return JSON response
+                    # Some endpoints (like control) return empty body
+                    if resp.content_length == 0 or resp.content_type == "":
+                        return {}
 
-                result: dict[str, Any] = await resp.json()
-                return result
+                    result: dict[str, Any] = await resp.json()
+                    return result
 
-        except aiohttp.ClientError as err:
-            raise ApiError(f"Network error: {err}") from err
+            except aiohttp.ClientError as err:
+                raise ApiError(f"Network error: {err}") from err
 
     async def get_user_context(self) -> UserContext:
         """

@@ -4,7 +4,7 @@ Tests cover binary sensor entity creation, connection/error state reporting.
 Follows HA best practices: test observable behavior through hass.states, not internals.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, PropertyMock, patch
@@ -16,8 +16,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_ata import (
+    AirToAirCapabilities,
     AirToAirUnit,
-    DeviceCapabilities,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -35,7 +35,7 @@ def create_mock_unit(
     is_in_error: bool = False,
 ) -> AirToAirUnit:
     """Create a mock AirToAirUnit for binary sensor testing."""
-    capabilities = DeviceCapabilities(has_energy_consumed_meter=False)
+    capabilities = AirToAirCapabilities(has_energy_consumed_meter=False)
 
     return AirToAirUnit(
         id=unit_id,

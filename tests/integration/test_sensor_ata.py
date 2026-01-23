@@ -4,7 +4,7 @@ Tests cover sensor entity creation, state updates, and conditional creation.
 Follows HA best practices: test observable behavior through hass.states, not internals.
 
 Reference: docs/testing-best-practices.md
-Run with: make test-ha
+Run with: make test-integration
 """
 
 from unittest.mock import AsyncMock, PropertyMock, patch
@@ -16,14 +16,14 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.models_ata import (
+    AirToAirCapabilities,
     AirToAirUnit,
-    DeviceCapabilities,
 )
 from custom_components.melcloudhome.const import DOMAIN
 
 # Mock at API boundary (NOT coordinator or sensor classes)
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker.Store"
+MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
 
 # Test device UUID - generates entity_id: sensor.melcloudhome_0efc_9abc_*
 TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
@@ -51,7 +51,7 @@ def create_mock_unit(
     Returns:
         Mock AirToAirUnit with sensor-relevant data
     """
-    capabilities = DeviceCapabilities(has_energy_consumed_meter=has_energy_meter)
+    capabilities = AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter)
 
     return AirToAirUnit(
         id=unit_id,

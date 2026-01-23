@@ -10,8 +10,8 @@ from .const_atw import (
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
-    ATW_TEMP_STEP,
 )
+from .const_shared import API_TELEMETRY_ENERGY
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -103,9 +103,8 @@ class ATWControlClient:
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
 
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
+        # Note: Temperature step validation removed - climate entity handles this
+        # via target_temperature_step based on hasHalfDegrees capability and hvac_mode
 
         payload = {"setTemperatureZone1": temperature}
         await self._update_atw_unit(unit_id, payload)
@@ -132,10 +131,6 @@ class ATWControlClient:
                 f"Zone temperature must be between {ATW_TEMP_MIN_ZONE} and "
                 f"{ATW_TEMP_MAX_ZONE}°C, got {temperature}"
             )
-
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
 
         payload = {"setTemperatureZone2": temperature}
         await self._update_atw_unit(unit_id, payload)
@@ -206,10 +201,6 @@ class ATWControlClient:
                 f"{ATW_TEMP_MAX_DHW}°C, got {temperature}"
             )
 
-        # Check if temperature is in correct increments
-        if (temperature / ATW_TEMP_STEP) % 1 != 0:
-            raise ValueError(f"Temperature must be in {ATW_TEMP_STEP}° increments")
-
         payload = {"setTankWaterTemperature": temperature}
         await self._update_atw_unit(unit_id, payload)
 
@@ -246,3 +237,102 @@ class ATWControlClient:
         """
         payload = {"inStandbyMode": standby}
         await self._update_atw_unit(unit_id, payload)
+
+    # ==========================================================================
+    # Energy Monitoring
+    # ==========================================================================
+
+    async def get_energy_consumed(
+        self,
+        unit_id: str,
+        from_time: Any,  # datetime
+        to_time: Any,  # datetime
+        interval: str = "Hour",
+    ) -> dict[str, Any] | None:
+        """Get energy consumed data for ATW unit.
+
+        Args:
+            unit_id: Unit UUID
+            from_time: Start time (UTC-aware datetime)
+            to_time: End time (UTC-aware datetime)
+            interval: Aggregation interval - "Hour", "Day", "Week", or "Month"
+
+        Returns:
+            Energy telemetry data, or None if no data available (304)
+
+        Raises:
+            AuthenticationError: If session expired
+            ApiError: If API request fails
+        """
+        return await self._get_energy_data(
+            unit_id, from_time, to_time, interval, "interval_energy_consumed"
+        )
+
+    async def get_energy_produced(
+        self,
+        unit_id: str,
+        from_time: Any,  # datetime
+        to_time: Any,  # datetime
+        interval: str = "Hour",
+    ) -> dict[str, Any] | None:
+        """Get energy produced data for ATW unit.
+
+        Args:
+            unit_id: Unit UUID
+            from_time: Start time (UTC-aware datetime)
+            to_time: End time (UTC-aware datetime)
+            interval: Aggregation interval - "Hour", "Day", "Week", or "Month"
+
+        Returns:
+            Energy telemetry data, or None if no data available (304)
+
+        Raises:
+            AuthenticationError: If session expired
+            ApiError: If API request fails
+        """
+        return await self._get_energy_data(
+            unit_id, from_time, to_time, interval, "interval_energy_produced"
+        )
+
+    async def _get_energy_data(
+        self,
+        unit_id: str,
+        from_time: Any,  # datetime
+        to_time: Any,  # datetime
+        interval: str,
+        measure: str,
+    ) -> dict[str, Any] | None:
+        """Shared method to fetch energy data from telemetry API.
+
+        Args:
+            unit_id: Unit UUID
+            from_time: Start time (UTC-aware datetime)
+            to_time: End time (UTC-aware datetime)
+            interval: Aggregation interval
+            measure: Measure name (interval_energy_consumed or interval_energy_produced)
+
+        Returns:
+            Energy telemetry data, or None if no data available (304)
+
+        Raises:
+            AuthenticationError: If session expired
+            ApiError: If API request fails
+        """
+        endpoint = API_TELEMETRY_ENERGY.format(unit_id=unit_id)
+        params = {
+            "from": from_time.strftime("%Y-%m-%d %H:%M"),
+            "to": to_time.strftime("%Y-%m-%d %H:%M"),
+            "interval": interval,
+            "measure": measure,
+        }
+
+        _LOGGER.debug(
+            "Fetching ATW energy data: unit=%s, measure=%s, from=%s, to=%s, interval=%s",
+            unit_id,
+            measure,
+            from_time,
+            to_time,
+            interval,
+        )
+
+        return await self._client._api_request("GET", endpoint, params=params)

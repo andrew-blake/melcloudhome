@@ -16,14 +16,16 @@ from homeassistant.const import UnitOfTemperature
 
 from .api.models import AirToWaterUnit, Building
 from .const_atw import (
+    ATW_OPERATION_MODES_COOLING,
     ATW_PRESET_MODES,
     ATW_TEMP_MAX_ZONE,
     ATW_TEMP_MIN_ZONE,
     ATW_TO_HA_PRESET,
-    HA_TO_ATW_PRESET,
+    HA_TO_ATW_PRESET_COOL,
+    HA_TO_ATW_PRESET_HEAT,
     ATWEntityBase,
 )
-from .helpers import create_atw_device_info, with_debounced_refresh
+from .helpers import create_device_info, with_debounced_refresh
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,17 +61,19 @@ class ATWClimateZone1(
         self._attr_unique_id = f"{unit.id}_zone_1"
         self._entry = entry
 
-        # HVAC modes (ATW is heat-only, OFF delegates to switch power control)
-        self._attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+        # HVAC modes (dynamic based on cooling capability)
+        hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+        if unit.capabilities and unit.capabilities.has_cooling_mode:
+            hvac_modes.append(HVACMode.COOL)
+        self._attr_hvac_modes = hvac_modes
 
-        # Preset modes (NEW: Not used in ATA)
-        self._attr_preset_modes = ATW_PRESET_MODES
+        # Preset modes (dynamic - see preset_modes property)
 
         # Short entity name (device name provides UUID prefix)
         self._attr_name = "Zone 1"
 
         # Device info using shared helper (groups with water_heater/sensors)
-        self._attr_device_info = create_atw_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit, building)
 
         # Supported features
         self._attr_supported_features = (
@@ -83,7 +87,10 @@ class ATWClimateZone1(
         if device is None or not device.power:
             return HVACMode.OFF
 
-        # ATW is heat-only
+        # Check if in cooling mode
+        if device.operation_mode_zone1 in ATW_OPERATION_MODES_COOLING:
+            return HVACMode.COOL
+
         return HVACMode.HEAT
 
     @property
@@ -124,16 +131,34 @@ class ATWClimateZone1(
         return device.room_temperature_zone1
 
     @property
-    def target_temperature_step(self) -> float:
-        """Return temperature step based on device capability.
+    def preset_modes(self) -> list[str]:
+        """Return available preset modes (dynamic based on hvac_mode).
 
-        Respects hasHalfDegrees to avoid breaking MELCloud web UI.
+        Cooling mode: ["room", "flow"] (2 presets)
+        Heating mode: ["room", "flow", "curve"] (3 presets)
+
+        Note: CoolCurve does NOT exist (confirmed from ERSC-VM2D testing)
+        """
+        if self.hvac_mode == HVACMode.COOL:
+            return ["room", "flow"]  # Only 2 presets for cooling
+        return ATW_PRESET_MODES  # All 3 presets for heating
+
+    @property
+    def target_temperature_step(self) -> float:
+        """Return temperature step based on hvac_mode and device capability.
+
+        Cooling mode: Always 1.0°C (confirmed from ERSC-VM2D testing)
+        Heating mode: 0.5°C or 1.0°C based on hasHalfDegrees capability
+
+        Note: hasHalfDegrees respected to avoid breaking MELCloud web UI.
         Even though API accepts 0.5°C values, MELCloud UI cannot display them
         properly when hasHalfDegrees=false (UI goes off scale).
-
-        Validated: Real ATW device with hasHalfDegrees=false breaks MELCloud UI
-        when set to values like 21.5°C.
         """
+        # Cooling mode always uses 1.0°C steps
+        if self.hvac_mode == HVACMode.COOL:
+            return 1.0
+
+        # Heating mode respects hasHalfDegrees capability
         device = self.get_device()
         if device and device.capabilities:
             return 0.5 if device.capabilities.has_half_degrees else 1.0
@@ -176,16 +201,36 @@ class ATWClimateZone1(
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode.
 
-        HEAT: Turn on system power
+        HEAT: Turn on system power and set heating mode
+        COOL: Turn on system power and set cooling mode
         OFF: Turn off system power (delegates to switch.py logic)
 
         Note: Climate OFF and switch OFF both call the same power control method.
         This provides standard HA UX while maintaining single responsibility.
         """
-        if hvac_mode == HVACMode.HEAT:
-            await self.coordinator.async_set_power_atw(self._unit_id, True)
-        elif hvac_mode == HVACMode.OFF:
+        if hvac_mode == HVACMode.OFF:
             await self.coordinator.async_set_power_atw(self._unit_id, False)
+            return
+
+        # Turn on power for HEAT or COOL
+        await self.coordinator.async_set_power_atw(self._unit_id, True)
+
+        # Set appropriate operation mode
+        if hvac_mode == HVACMode.HEAT:
+            # Preserve current preset if valid for heating, else default to room
+            current_preset = self.preset_mode or "room"
+            heat_mode = HA_TO_ATW_PRESET_HEAT.get(current_preset, "HeatRoomTemperature")
+            await self.coordinator.async_set_mode_zone1(self._unit_id, heat_mode)
+
+        elif hvac_mode == HVACMode.COOL:
+            # Preserve preset if valid for cooling, else default to room
+            current_preset = self.preset_mode or "room"
+            if current_preset == "curve":
+                # Curve doesn't exist for cooling, default to room
+                current_preset = "room"
+            cool_mode = HA_TO_ATW_PRESET_COOL.get(current_preset, "CoolRoomTemperature")
+            await self.coordinator.async_set_mode_zone1(self._unit_id, cool_mode)
+
         else:
             _LOGGER.warning("Invalid HVAC mode %s for ATW", hvac_mode)
 
@@ -203,16 +248,27 @@ class ATWClimateZone1(
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode (zone operation strategy).
 
-        room: HeatRoomTemperature (thermostat control)
-        flow: HeatFlowTemperature (flow temperature control)
-        curve: HeatCurve (weather compensation)
+        Mode-specific presets:
+        - Heating: room, flow, curve
+        - Cooling: room, flow (no curve)
+
+        Presets map to different API modes depending on hvac_mode:
+        - room: HeatRoomTemperature or CoolRoomTemperature
+        - flow: HeatFlowTemperature or CoolFlowTemperature
+        - curve: HeatCurve (heating only)
         """
         if preset_mode not in self.preset_modes:
-            _LOGGER.warning("Invalid preset mode: %s", preset_mode)
+            _LOGGER.warning(
+                "Invalid preset mode %s for hvac_mode %s", preset_mode, self.hvac_mode
+            )
             return
 
-        # Map HA preset to ATW zone mode
-        atw_mode = HA_TO_ATW_PRESET.get(preset_mode)
+        # Map preset to appropriate API mode based on current hvac_mode
+        if self.hvac_mode == HVACMode.COOL:
+            atw_mode = HA_TO_ATW_PRESET_COOL.get(preset_mode)
+        else:
+            atw_mode = HA_TO_ATW_PRESET_HEAT.get(preset_mode)
+
         if atw_mode is None:
             _LOGGER.warning("Unknown preset mode: %s", preset_mode)
             return

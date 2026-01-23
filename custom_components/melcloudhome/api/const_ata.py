@@ -88,7 +88,9 @@ VANE_HORIZONTAL_AMERICAN_TO_BRITISH = {
 TEMP_MIN_HEAT = 10.0
 TEMP_MAX_HEAT = 31.0
 TEMP_MIN_COOL_DRY = 16.0
-TEMP_STEP = 0.5
+
+# Note: Temperature step is capability-dependent (hasHalfDegreeIncrements)
+# Climate entity determines step dynamically: 0.5 if True, else 1.0
 
 # Note: Headers are constructed inline by the API client
 
@@ -102,7 +104,6 @@ __all__ = [
     "TEMP_MAX_HEAT",
     "TEMP_MIN_COOL_DRY",
     "TEMP_MIN_HEAT",
-    "TEMP_STEP",
     "VANE_HORIZONTAL_AMERICAN_TO_BRITISH",
     "VANE_HORIZONTAL_DIRECTIONS",
     "VANE_NUMERIC_TO_WORD",

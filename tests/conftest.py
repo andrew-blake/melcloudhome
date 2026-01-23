@@ -13,8 +13,68 @@ import pytest_asyncio
 # Add custom_components to path to allow direct API imports without loading HA integration
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+
+# Test timing constants
+# These delays were originally added with the assumption that API state changes
+# need time to propagate. However, the MELCloud API returns synchronously -
+# state updates are immediate. VCR cassettes record requests sequentially
+# without timing, so delays are unnecessary during both recording and playback.
+#
+# Set to 0 for maximum test performance. Can be increased for debugging or
+# testing against real hardware if eventual consistency issues are suspected.
+
+# VCR cassette tests - main control operations
+# Original: 2 seconds (assumed state propagation delay)
+# Actual: Unnecessary - API is synchronous, VCR responses are instant
+VCR_OPERATION_DELAY = 0
+
+# VCR cassette tests - cleanup/restore operations
+# Original: 1 second (less critical operations)
+# Actual: Unnecessary - same reasoning as above
+VCR_RESTORE_DELAY = 0
+
+# Mock server tests - localhost HTTP calls
+# Original: 0.5 seconds (assumed localhost latency)
+# Actual: Unnecessary - mock server responds in ~1-5ms
+MOCK_SERVER_DELAY = 0
+
+
+class NoOpRequestPacer:
+    """No-op request pacer for VCR tests.
+
+    VCR tests replay recorded HTTP interactions without actual network calls,
+    so rate limiting delays are unnecessary and just slow down tests.
+    """
+
+    def __init__(self, min_interval: float = 0.0):
+        """Initialize no-op pacer (ignores min_interval)."""
+        pass
+
+    async def __aenter__(self):
+        """No-op enter (no waiting)."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """No-op exit."""
+        return False
+
+
+# Configure pytest-socket to allow network for E2E tests
+@pytest.fixture(scope="session", autouse=True)
+def socket_allow_hosts():
+    """Allow Docker network IPs and hostnames for E2E tests."""
+    # Allow localhost, Docker bridge networks, and melcloud-mock hostname
+    return [
+        "localhost",
+        "127.0.0.1",
+        "melcloud-mock",  # Docker Compose service name
+        "172.17.0.0/16",
+        "172.18.0.0/16",
+        "172.19.0.0/16",
+    ]
 
 
 # Configure VCR to filter sensitive data
@@ -142,7 +202,7 @@ def vcr_config() -> dict[str, Any]:
 
 
 @pytest_asyncio.fixture
-async def authenticated_client() -> AsyncIterator[MELCloudHomeClient]:
+async def authenticated_client(request_pacer) -> AsyncIterator[MELCloudHomeClient]:
     """Provide an authenticated MELCloud Home client.
 
     Uses credentials from environment variables:
@@ -163,7 +223,7 @@ async def authenticated_client() -> AsyncIterator[MELCloudHomeClient]:
             "MELCLOUD_USER and MELCLOUD_PASSWORD required for initial cassette recording"
         )
 
-    client = MELCloudHomeClient()
+    client = MELCloudHomeClient(request_pacer=request_pacer)
     await client.login(username, password)
 
     yield client
@@ -175,6 +235,19 @@ async def authenticated_client() -> AsyncIterator[MELCloudHomeClient]:
         pass  # Best effort cleanup
     finally:
         await client.close()
+
+
+@pytest.fixture
+def request_pacer():
+    """Provide a no-op request pacer for VCR tests.
+
+    VCR tests don't need rate limiting since they replay recorded interactions.
+    This eliminates unnecessary delays in test execution.
+
+    Note: RequestPacer automatically disables pacing when PYTEST_CURRENT_TEST
+    environment variable is set, so this fixture is mainly for backwards compatibility.
+    """
+    return NoOpRequestPacer()
 
 
 @pytest.fixture
@@ -197,7 +270,7 @@ def credentials() -> tuple[str, str]:
 
 
 @pytest_asyncio.fixture
-async def authenticated_auth() -> AsyncIterator[MELCloudHomeAuth]:
+async def authenticated_auth(request_pacer) -> AsyncIterator[MELCloudHomeAuth]:
     """Provide authenticated MELCloudHomeAuth instance.
 
     Uses credentials from environment variables:
@@ -213,7 +286,7 @@ async def authenticated_auth() -> AsyncIterator[MELCloudHomeAuth]:
     if username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***":
         pytest.skip("MELCLOUD_USER and MELCLOUD_PASSWORD required for recording")
 
-    auth = MELCloudHomeAuth()
+    auth = MELCloudHomeAuth(request_pacer=request_pacer)
     await auth.login(username, password)
 
     yield auth

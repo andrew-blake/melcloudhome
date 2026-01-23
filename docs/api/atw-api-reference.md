@@ -1,8 +1,8 @@
 # MELCloud Home API Reference - Air-to-Water Units
 ## Complete Air-to-Water Heat Pump API Specification
 
-**Document Version:** 1.0
-**Last Updated:** 2026-01-03
+**Document Version:** 1.1
+**Last Updated:** 2026-01-18
 **Device Type:** Air-to-Water Heat Pumps (Ecodan, Hydrobox)
 **Source:** 107 captured API calls + community testing
 
@@ -18,7 +18,7 @@ This is a **complete API reference** documenting all endpoints for Air-to-Water 
 
 **Implementation Status:** The control endpoints documented here are **fully implemented** in the Home Assistant integration. Schedule API endpoints are documented for reference but not yet integrated.
 
-For current integration features, see [README.md](../../README.md) and [EXPERIMENTAL-ATW.md](../../EXPERIMENTAL-ATW.md).
+For current integration features, see [README.md](../../README.md).
 
 ---
 
@@ -62,9 +62,9 @@ The system automatically balances between these priorities unless Forced Hot Wat
 | Parameter | Type | Valid Values | Notes |
 |-----------|------|--------------|-------|
 | `power` | boolean | `true`, `false`, `null` | null for no change |
-| `setTemperatureZone1` | number | 10-30 (0.5° increments) | Zone heating target |
+| `setTemperatureZone1` | number | 10-30 (0.5° increments) | Zone target temperature |
 | `setTemperatureZone2` | number | null | Zone 2 support (if hasZone2=true) |
-| `operationModeZone1` | string | `"HeatRoomTemperature"`<br/>`"HeatFlowTemperature"`<br/>`"HeatCurve"` | How zone is heated |
+| `operationModeZone1` | string | **Heating:**<br/>`"HeatRoomTemperature"`<br/>`"HeatFlowTemperature"`<br/>`"HeatCurve"`<br/>**Cooling (if hasCoolingMode=true):**<br/>`"CoolRoomTemperature"`<br/>`"CoolFlowTemperature"` | Zone operation mode |
 | `operationModeZone2` | string | null | Zone 2 mode (if hasZone2=true) |
 | `setTankWaterTemperature` | number | 40-60 | DHW tank target |
 | `forcedHotWaterMode` | boolean | `true`, `false`, `null` | DHW priority mode |
@@ -303,6 +303,7 @@ Settings are returned as name-value pairs:
   "hasThermostatZone2": true,
   "hasHeatZone1": true,
   "hasHeatZone2": false,
+  "hasCoolingMode": false,
   "hasMeasuredEnergyConsumption": false,
   "hasMeasuredEnergyProduction": false,
   "hasEstimatedEnergyConsumption": true,
@@ -311,6 +312,28 @@ Settings are returned as name-value pairs:
   "hasDemandSideControl": true
 }
 ```
+
+**Key Capability Fields:**
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `hasCoolingMode` | boolean | **true**: Device supports cooling operation<br/>**false**: Heating-only system |
+| `hasEstimatedEnergyConsumption` | boolean | **true**: Energy consumed data available<br/>**false**: No consumption tracking |
+| `hasEstimatedEnergyProduction` | boolean | **true**: Energy produced data available<br/>**false**: No production tracking |
+| `hasHalfDegrees` | boolean | Temperature increments (true=0.5°C, false=1.0°C) |
+| `hasZone2` | boolean | Dual zone support |
+
+**Controller-Specific Capabilities:**
+
+**ERSC-VM2D (Modern controllers):**
+- `hasCoolingMode`: **true** (supports 2 cooling modes)
+- `hasEstimatedEnergyConsumption`: **true**
+- `hasEstimatedEnergyProduction`: **true**
+
+**EHSCVM2D (Older controllers):**
+- `hasCoolingMode`: **false** (heating-only)
+- `hasEstimatedEnergyConsumption`: **false**
+- `hasEstimatedEnergyProduction`: **false**
 
 **⚠️ Temperature Range Warning:**
 - API-reported ranges may be incorrect (known bug history)
@@ -338,7 +361,58 @@ It indicates what the 3-way valve is currently doing:
 
 ---
 
-## 4. Schedules
+## 4. Cooling Operation Modes
+
+**Availability:** Only on devices with `hasCoolingMode=true` (e.g., ERSC-VM2D controllers)
+
+### Supported Cooling Modes
+
+**Devices with cooling capability support 2 cooling modes:**
+
+| Mode | Description | Control Parameter |
+|------|-------------|-------------------|
+| `CoolRoomTemperature` | Cool based on room thermostat<br/>Target: Room temperature | `setTemperatureZone1` (10-30°C) |
+| `CoolFlowTemperature` | Cool based on flow temperature<br/>Target: Water flow temperature | `setCoolFlowTemperatureZone1` |
+
+**Note:** `CoolCurve` mode does NOT exist (only `HeatCurve` exists for heating).
+
+### Cooling vs Heating Modes
+
+**Heating-only systems (hasCoolingMode=false):**
+- 3 heating modes: `HeatRoomTemperature`, `HeatFlowTemperature`, `HeatCurve`
+- 0 cooling modes
+
+**Heating+cooling systems (hasCoolingMode=true):**
+- 3 heating modes: `HeatRoomTemperature`, `HeatFlowTemperature`, `HeatCurve`
+- 2 cooling modes: `CoolRoomTemperature`, `CoolFlowTemperature`
+
+### Mode Switching Behavior
+
+**When switching from heating to cooling:**
+- If current mode is `HeatCurve`: System automatically switches to `CoolRoomTemperature`
+  - **Reason:** `CoolCurve` does not exist, so curve mode not available for cooling
+  - **Workaround:** Integration automatically falls back to room temperature control
+- If current mode is `HeatRoomTemperature` or `HeatFlowTemperature`: Mode name updates to `Cool*`
+
+**Temperature Step:**
+- **Cooling mode:** Always 1.0°C increments (0.5°C NOT supported)
+- **Heating mode:** Depends on `hasHalfDegrees` capability (0.5°C or 1.0°C)
+
+### Control Example
+
+```json
+PUT /api/atwunit/{unitId}
+{
+  "operationModeZone1": "CoolRoomTemperature",
+  "setTemperatureZone1": 22.0
+}
+```
+
+**Result:** Zone 1 cools room to 22°C using room thermostat.
+
+---
+
+## 5. Schedules
 
 ### Create/Update Schedule
 ```
@@ -389,7 +463,7 @@ DELETE /api/atwcloudschedule/{unitId}/{scheduleId}
 
 ---
 
-## 5. Holiday Mode
+## 6. Holiday Mode
 
 ```
 POST /api/holidaymode
@@ -417,7 +491,7 @@ POST /api/holidaymode
 
 ---
 
-## 6. Frost Protection
+## 7. Frost Protection
 
 ```
 POST /api/protection/frost
@@ -441,23 +515,144 @@ POST /api/protection/frost
 
 ---
 
-## 7. Energy Reporting
+## 8. Telemetry Sensors
+
+### Real-Time Telemetry (Actual Values)
 
 ```
-GET /api/telemetry/energy/{unitId}?from=2026-01-01T00:00&to=2026-01-31T23:59&interval=Day&measure=interval_energy_consumed
+GET /api/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:00&measure=flow_temperature
 ```
 
-**Measures:**
-- `interval_energy_consumed` - Energy used
-- `interval_energy_produced` - Energy generated/saved
+**Supported Measures:**
+- `flow_temperature` - System flow temperature (°C)
+- `return_temperature` - System return temperature (°C)
+- `flow_temperature_zone1` - Zone 1 flow temperature (°C)
+- `return_temperature_zone1` - Zone 1 return temperature (°C)
+- `flow_temperature_boiler` - Boiler circuit flow temperature (°C)
+- `return_temperature_boiler` - Boiler circuit return temperature (°C)
+- `rssi` - WiFi signal strength (dBm, negative values: -40 to -90)
 
-**Intervals:** Hour, Day, Month
+**Response Format:**
+```json
+{
+  "measureData": [
+    {
+      "deviceId": "unit-uuid",
+      "type": "FlowTemperature",
+      "values": [
+        {
+          "time": "2026-01-18 19:45:12.123456",
+          "value": "45.5"
+        },
+        {
+          "time": "2026-01-18 19:30:08.987654",
+          "value": "44.8"
+        }
+      ]
+    }
+  ]
+}
+```
 
-**Note:** Only available if device has energy metering. Check `hasMeasuredEnergyConsumption` in capabilities.
+**Data Characteristics:**
+- Sparse data: 0-4 datapoints per hour (not minute-level)
+- Time window: Typically 4 hours of historical data
+- Values are strings (convert to float)
+- RSSI values are integers (dBm, e.g., "-55")
+
+**Polling Recommendations:**
+- **Temperature measures:** Poll every 60 minutes (changes slowly)
+- **RSSI:** Poll every 60 minutes (diagnostic only)
+- Use 4-hour lookback window for recent data
 
 ---
 
-## 8. Error Log
+## 9. Energy Reporting
+
+### Energy Consumption & Production
+
+```
+GET /api/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&interval=Hour&measure=interval_energy_consumed
+```
+
+**Supported Measures:**
+- `interval_energy_consumed` - Electrical energy consumed by heat pump (Wh per interval)
+- `interval_energy_produced` - Thermal energy produced by heat pump (Wh per interval)
+
+**Intervals:**
+- `Hour` - Hourly energy data (recommended for 24-48 hour windows)
+- `Day` - Daily energy totals
+- `Month` - Monthly energy totals
+
+**Response Format:**
+```json
+{
+  "cumulative": 0,
+  "hourValues": {
+    "2026-01-18 19:00:00": 3245,
+    "2026-01-18 18:00:00": 2890,
+    "2026-01-18 17:00:00": 3150
+  }
+}
+```
+
+**Data Characteristics:**
+- Values are in **kWh** (kilowatt-hours) - **NO conversion needed**
+- ⚠️ **CRITICAL:** Unlike ATA energy API (which returns Wh), ATW returns kWh directly
+- Response structure uses `measureData` format (not `hourValues` as shown above)
+- `cumulative` field is unused (always 0)
+- Data available up to ~48 hours historical
+
+**Actual Response Format** (from VCR cassette):
+```json
+{
+  "deviceId": "37de5a0f-4d42-4e9e-92f4-362aada35f18",
+  "measureData": [{
+    "type": "intervalEnergyConsumed",
+    "values": [
+      {"time": "2026-01-17 10:00:00.000000000", "value": "0.567"},  // 0.567 kWh
+      {"time": "2026-01-17 11:00:00.000000000", "value": "0.867"},  // 0.867 kWh
+      {"time": "2026-01-17 12:00:00.000000000", "value": "1.133"}   // 1.133 kWh
+    ]
+  }]
+}
+```
+
+**Capability Detection:**
+
+**ERSC-VM2D controllers (Complete energy data):**
+```json
+{
+  "hasEstimatedEnergyConsumption": true,
+  "hasEstimatedEnergyProduction": true
+}
+```
+- ✅ Full energy consumed data
+- ✅ Full energy produced data
+- ✅ COP calculable (produced/consumed)
+- ✅ Home Assistant Energy Dashboard compatible
+
+**EHSCVM2D controllers (No energy data):**
+```json
+{
+  "hasEstimatedEnergyConsumption": false,
+  "hasEstimatedEnergyProduction": false
+}
+```
+- ❌ Energy data not available
+- ✅ Telemetry temperature sensors still available
+
+**Integration Pattern:**
+1. Check both capabilities before creating energy sensors
+2. Only create sensors if BOTH are true
+3. Poll every 30-60 minutes for energy data
+4. Calculate COP from ratio: `produced / consumed`
+
+**Note:** Energy data is **estimated** by the controller, not measured by hardware meters. Accuracy depends on installation and controller calibration.
+
+---
+
+## 10. Error Log
 
 ```
 GET /api/atwunit/{unitId}/errorlog

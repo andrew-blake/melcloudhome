@@ -46,22 +46,6 @@ class TestTemperatureValidation:
             await client.ata.set_temperature("unit-id", 50.0)
 
     @pytest.mark.asyncio
-    async def test_temperature_invalid_increment(self) -> None:
-        """Temperature not in 0.5° increments should raise ValueError."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(ValueError, match="must be in 0.5° increments"):
-            await client.ata.set_temperature("unit-id", 20.3)
-
-    @pytest.mark.asyncio
-    async def test_temperature_invalid_increment_small(self) -> None:
-        """Temperature with 0.1° increment should raise ValueError."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(ValueError, match="must be in 0.5° increments"):
-            await client.ata.set_temperature("unit-id", 20.1)
-
-    @pytest.mark.asyncio
     async def test_temperature_valid_minimum(self) -> None:
         """Minimum temperature (10.0°C) should pass validation."""
         client = MELCloudHomeClient()

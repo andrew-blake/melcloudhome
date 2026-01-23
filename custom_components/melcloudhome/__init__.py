@@ -119,20 +119,93 @@ def _create_discovery_listener(
     return _device_discovery_listener
 
 
+async def _clear_friendly_device_names(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: MELCloudHomeCoordinator,
+) -> None:
+    """Clear name_by_user from devices before platform setup.
+
+    This ensures that when entities are created during platform setup,
+    they use the UUID-based device name (from 'name' field) for entity IDs,
+    not the friendly name_by_user.
+
+    Only clears name_by_user if it matches the API-based friendly name,
+    preserving user customizations.
+
+    We'll restore name_by_user after platform setup for friendly UI display.
+    """
+    from homeassistant.helpers import device_registry as dr
+
+    from .const import DOMAIN
+
+    device_reg = dr.async_get(hass)
+
+    # Build mapping: unit_id -> friendly_name from API
+    friendly_names: dict[str, str] = {}
+    for building in coordinator.data.buildings:
+        for unit in building.air_to_air_units:
+            friendly_names[unit.id] = f"{building.name} {unit.name}"
+        for unit in building.air_to_water_units:
+            friendly_names[unit.id] = f"{building.name} {unit.name}"
+
+    # Find all devices for this integration
+    cleared_count = 0
+    for device in device_reg.devices.values():
+        # Check if device belongs to this config entry
+        if entry.entry_id not in device.config_entries:
+            continue
+
+        # Get unit_id from identifiers
+        unit_id = None
+        for identifier in device.identifiers:
+            if identifier[0] == DOMAIN:
+                unit_id = identifier[1]
+                break
+
+        if unit_id is None:
+            continue
+
+        # Skip if name doesn't match UUID pattern
+        if not UUID_DEVICE_NAME_PATTERN.match(device.name):
+            continue
+
+        # Only clear if name_by_user matches the API friendly name
+        # This preserves user customizations
+        expected_friendly_name = friendly_names.get(unit_id)
+        if (
+            device.name_by_user is not None
+            and expected_friendly_name
+            and device.name_by_user == expected_friendly_name
+        ):
+            device_reg.async_update_device(
+                device.id,
+                name_by_user=None,
+            )
+            cleared_count += 1
+            _LOGGER.debug(
+                "Cleared name_by_user from device: %s (was: %s)",
+                device.name,
+                device.name_by_user,
+            )
+
+    if cleared_count > 0:
+        _LOGGER.info(
+            "Cleared name_by_user from %d device(s) before platform setup",
+            cleared_count,
+        )
+
+
 async def _migrate_device_names(
     hass: HomeAssistant,
     entry: ConfigEntry,
     coordinator: MELCloudHomeCoordinator,
 ) -> None:
-    """Migrate device names from UUID format to friendly API names.
+    """Set friendly display names on devices after platform setup.
 
-    Sets name_by_user to friendly location names for devices that:
-    1. Have auto-generated UUID names (melcloudhome_XXXX_YYYY pattern)
-    2. Haven't been customized by user (name_by_user is None)
-    3. Exist in coordinator data with valid building/unit names
-
-    This provides friendly device names in UI while preserving stable
-    UUID-based entity IDs (critical for automation compatibility).
+    This runs AFTER entities are created, so entity IDs use UUID-based device names.
+    Setting name_by_user after entity creation keeps entity IDs stable while
+    providing friendly device names in the UI.
     """
     from homeassistant.helpers import device_registry as dr
 
@@ -152,14 +225,14 @@ async def _migrate_device_names(
         for unit in building.air_to_water_units:
             friendly_names[unit.id] = f"{building.name} {unit.name}"
 
-    # Iterate devices and update if needed
+    # Set name_by_user on all devices with UUID names
     migrated_count = 0
     for device in device_reg.devices.values():
         # Check if device belongs to this config entry
         if entry.entry_id not in device.config_entries:
             continue
 
-        # Check if device belongs to this integration
+        # Get unit_id from identifiers
         unit_id = None
         for identifier in device.identifiers:
             if identifier[0] == DOMAIN:
@@ -169,12 +242,8 @@ async def _migrate_device_names(
         if unit_id is None:
             continue
 
-        # Skip if name doesn't match UUID pattern (already migrated or customized)
+        # Skip if name doesn't match UUID pattern
         if not UUID_DEVICE_NAME_PATTERN.match(device.name):
-            continue
-
-        # Skip if user already customized the name
-        if device.name_by_user is not None:
             continue
 
         # Get friendly name from mapping
@@ -187,23 +256,31 @@ async def _migrate_device_names(
             )
             continue
 
-        # Update name_by_user
+        # Skip if user has customized the name
+        # If name_by_user exists and doesn't match expected friendly name, user customized it
+        if device.name_by_user is not None and device.name_by_user != friendly_name:
+            _LOGGER.debug(
+                "Preserving user customization: %s (device_id=%s)",
+                device.name_by_user,
+                device.id[:8],
+            )
+            continue
+
+        # Set name_by_user (will be used for UI display, NOT entity IDs)
         device_reg.async_update_device(
             device.id,
             name_by_user=friendly_name,
         )
         migrated_count += 1
         _LOGGER.debug(
-            "Migrated device name: %s -> %s (device_id=%s)",
+            "Set friendly name: %s -> %s (device_id=%s)",
             device.name,
             friendly_name,
             device.id[:8],
         )
 
     if migrated_count > 0:
-        _LOGGER.info(
-            "Device name migration complete: %d device(s) updated", migrated_count
-        )
+        _LOGGER.info("Set friendly names on %d device(s)", migrated_count)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -286,11 +363,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=None,  # No parameters
         )
 
+    # Clear name_by_user from existing devices BEFORE platform setup
+    # This ensures new entities use UUID-based device names for entity IDs
+    # Only clears if name_by_user matches API friendly name (preserves user customizations)
+    await _clear_friendly_device_names(hass, entry, coordinator)
+
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
-    # Migrate device names from UUID format to friendly names
-    # This runs after platform setup to ensure devices exist in registry
+    # Set friendly names on devices AFTER platform setup
+    # Entity IDs are now locked in with UUID prefixes, this only affects UI display
     await _migrate_device_names(hass, entry, coordinator)
 
     # Set up coordinator listener for new device discovery

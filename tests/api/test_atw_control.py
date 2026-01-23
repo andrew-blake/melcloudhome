@@ -13,6 +13,7 @@ import pytest
 import pytest_asyncio
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from tests.conftest import MOCK_SERVER_DELAY
 
 # Skip mock server tests in CI (mock server not running)
 skip_if_no_mock_server = pytest.mark.skipif(
@@ -101,6 +102,7 @@ async def mock_client() -> AsyncIterator[MELCloudHomeClient]:
     await client.close()
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
@@ -114,7 +116,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     await mock_client.atw.set_power(unit_id, True)
 
     # Wait for state propagation
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     # Fetch fresh state
     ctx = await mock_client.get_user_context()
@@ -125,6 +127,7 @@ async def test_mock_set_power_atw_on(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is True
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
@@ -134,7 +137,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     unit_id = atw_unit.id
 
     await mock_client.atw.set_power(unit_id, False)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -143,6 +146,7 @@ async def test_mock_set_power_atw_off(mock_client: MELCloudHomeClient) -> None:
     assert unit.power is False
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> None:
@@ -153,7 +157,7 @@ async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> No
     target_temp = 22.0
 
     await mock_client.atw.set_temperature_zone1(unit_id, target_temp)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -162,6 +166,7 @@ async def test_mock_set_temperature_zone1(mock_client: MELCloudHomeClient) -> No
     assert unit.set_temperature_zone1 == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_temperature_zone1_half_degree(
@@ -174,7 +179,7 @@ async def test_mock_set_temperature_zone1_half_degree(
     target_temp = 21.5
 
     await mock_client.atw.set_temperature_zone1(unit_id, target_temp)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -183,6 +188,7 @@ async def test_mock_set_temperature_zone1_half_degree(
     assert unit.set_temperature_zone1 == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_room_temperature(
@@ -195,7 +201,7 @@ async def test_mock_set_mode_zone1_room_temperature(
     mode = "HeatRoomTemperature"
 
     await mock_client.atw.set_mode_zone1(unit_id, mode)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -204,6 +210,7 @@ async def test_mock_set_mode_zone1_room_temperature(
     assert unit.operation_mode_zone1 == mode
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_mode_zone1_heat_curve(
@@ -216,7 +223,7 @@ async def test_mock_set_mode_zone1_heat_curve(
     mode = "HeatCurve"
 
     await mock_client.atw.set_mode_zone1(unit_id, mode)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -225,6 +232,7 @@ async def test_mock_set_mode_zone1_heat_curve(
     assert unit.operation_mode_zone1 == mode
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None:
@@ -235,7 +243,7 @@ async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None
     target_temp = 50.0
 
     await mock_client.atw.set_dhw_temperature(unit_id, target_temp)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -244,6 +252,7 @@ async def test_mock_set_dhw_temperature(mock_client: MELCloudHomeClient) -> None
     assert unit.set_tank_water_temperature == target_temp
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_enable(
@@ -255,7 +264,7 @@ async def test_mock_set_forced_hot_water_enable(
     unit_id = atw_unit.id
 
     await mock_client.atw.set_forced_hot_water(unit_id, True)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -264,6 +273,7 @@ async def test_mock_set_forced_hot_water_enable(
     assert unit.forced_hot_water_mode is True
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_forced_hot_water_disable(
@@ -275,7 +285,7 @@ async def test_mock_set_forced_hot_water_disable(
     unit_id = atw_unit.id
 
     await mock_client.atw.set_forced_hot_water(unit_id, False)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
@@ -284,6 +294,7 @@ async def test_mock_set_forced_hot_water_disable(
     assert unit.forced_hot_water_mode is False
 
 
+@pytest.mark.e2e
 @skip_if_no_mock_server
 @pytest.mark.asyncio
 async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:
@@ -293,7 +304,7 @@ async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:
     unit_id = atw_unit.id
 
     await mock_client.atw.set_standby_mode(unit_id, True)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(MOCK_SERVER_DELAY)
 
     ctx = await mock_client.get_user_context()
     unit = ctx.get_air_to_water_unit_by_id(unit_id)
