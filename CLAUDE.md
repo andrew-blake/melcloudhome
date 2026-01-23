@@ -488,23 +488,31 @@ await hass.services.async_call(
 
 ### Debugging Failing Tests
 
-When a specific test fails, use docker-compose to run it in isolation:
-
+**API unit tests** (VCR cassettes - no mock server needed):
 ```bash
-# Start mock server
-docker-compose -f docker-compose.test.yml up -d melcloud-mock
+# Run natively, very fast
+pytest tests/api/test_auth.py::test_login_success -vv -s
+```
 
-# Run specific integration test with verbose output
+**Integration tests** (mocked client - no mock server needed):
+```bash
+# Run in Docker (needs pytest-homeassistant-custom-component)
 docker-compose -f docker-compose.test.yml run --rm integration-tests \
   sh -c "uv pip install pytest-homeassistant-custom-component && \
          uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
 
-# Run specific E2E test
-docker-compose -f docker-compose.test.yml run --rm e2e-tests \
-  sh -c "uv run pytest tests/api/test_e2e_rate_limiting.py -vv -s"
-
-# Interactive shell for debugging
+# Interactive shell
 docker-compose -f docker-compose.test.yml run --rm integration-tests bash
+```
+
+**E2E tests** (real HTTP - REQUIRES mock server):
+```bash
+# Start mock server first
+docker-compose -f docker-compose.test.yml up -d melcloud-mock
+
+# Run E2E test
+docker-compose -f docker-compose.test.yml run --rm e2e-tests \
+  sh -c "uv run pytest tests/api/test_rate_limiting_e2e.py::test_scene_with_three_devices -vv -s"
 
 # Cleanup
 docker-compose -f docker-compose.test.yml down

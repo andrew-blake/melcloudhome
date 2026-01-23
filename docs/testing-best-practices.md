@@ -307,33 +307,57 @@ make test
 
 ### Running Targeted Tests (Debugging)
 
-When debugging a specific failing test, use docker-compose directly:
+**Test type requirements:**
 
+| Test Type | Mock Server? | Docker? | Why |
+|-----------|--------------|---------|-----|
+| API unit | ❌ No | ❌ No | Uses VCR cassettes (recorded responses) |
+| Integration | ❌ No | ✅ Yes | Mocks client with `patch()`, needs pytest-homeassistant |
+| E2E | ✅ Yes | ✅ Yes | Tests real HTTP stack with rate limiting |
+
+Different test types have different requirements:
+
+**API unit tests** (VCR cassettes - no Docker needed):
 ```bash
-# 1. Start mock server first (required for integration/E2E tests)
-docker-compose -f docker-compose.test.yml up -d melcloud-mock
+# Run natively - very fast, no containers
+pytest tests/api/test_auth.py -vv
+pytest tests/api/test_auth.py::test_login_success -vv -s
+pytest tests/api/test_client_ata.py -k "temperature" -vv
+```
 
-# 2. Run specific integration test file
+**Integration tests** (mocked client - no mock server needed):
+```bash
+# Run in Docker (needs pytest-homeassistant-custom-component)
 docker-compose -f docker-compose.test.yml run --rm integration-tests \
   sh -c "uv pip install pytest-homeassistant-custom-component && \
          uv run pytest tests/integration/test_climate_ata.py -vv"
 
-# 3. Run specific test function
+# Run specific test function
 docker-compose -f docker-compose.test.yml run --rm integration-tests \
   sh -c "uv pip install pytest-homeassistant-custom-component && \
          uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
 
-# 4. Run specific E2E test
-docker-compose -f docker-compose.test.yml run --rm e2e-tests \
-  sh -c "uv run pytest tests/api/test_e2e_rate_limiting.py::test_rate_limit -vv -s"
-
-# 5. Interactive shell for manual testing
+# Interactive shell for debugging
 docker-compose -f docker-compose.test.yml run --rm integration-tests bash
 # Then inside container:
 # uv pip install pytest-homeassistant-custom-component
 # uv run pytest tests/integration/test_climate_ata.py -vv
+```
 
-# 6. Cleanup when done
+**E2E tests** (real HTTP stack - REQUIRES mock server):
+```bash
+# 1. Start mock server first (REQUIRED for E2E)
+docker-compose -f docker-compose.test.yml up -d melcloud-mock
+
+# 2. Run E2E test
+docker-compose -f docker-compose.test.yml run --rm e2e-tests \
+  sh -c "uv run pytest tests/api/test_rate_limiting_e2e.py -vv -s"
+
+# Run specific E2E test
+docker-compose -f docker-compose.test.yml run --rm e2e-tests \
+  sh -c "uv run pytest tests/api/test_rate_limiting_e2e.py::test_scene_with_three_devices -vv -s"
+
+# 3. Cleanup when done
 docker-compose -f docker-compose.test.yml down
 ```
 
