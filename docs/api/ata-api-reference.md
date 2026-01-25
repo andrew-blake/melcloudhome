@@ -12,7 +12,7 @@
 
 ---
 
-## 📖 About This Document
+## About This Document
 
 This is a **complete API reference** documenting all endpoints for Air-to-Air (ATA) devices.
 
