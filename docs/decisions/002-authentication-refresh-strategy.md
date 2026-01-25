@@ -73,7 +73,7 @@ async def _async_update_data(self):
 **Decision:** Option 2 is NOT acceptable. User experience must not degrade.
 
 ### Option 3: OAuth Refresh Tokens (PLANNED for v1.1+)
-**Strategy:** Use AWS Cognito refresh tokens for seamless token renewal
+**Strategy:** Use AWS Cognito refresh tokens for automatic token renewal without re-authentication
 
 **Implementation:**
 ```python

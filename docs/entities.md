@@ -183,7 +183,7 @@ For each heat pump system, the following entities are created:
 - **Cool Room** - Cools to target room temperature
 - **Cool Flow** - Direct flow temperature control for cooling
 
-**Most users should use Room/Cool Room modes** - they're the most intuitive
+**Most users should use Room/Cool Room modes** for standard residential heating/cooling
 
 **Note:** Cooling availability depends on device capabilities (`hasCoolingMode=true`). When switching between heating and cooling, system automatically adjusts available presets. Curve mode not available for cooling (fallback to room temperature control).
 
