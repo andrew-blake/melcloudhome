@@ -152,7 +152,11 @@ For each heat pump system, the following entities are created:
   - Typical values: 2.5-4.0 (higher is more efficient)
   - Update frequency: Every 30 minutes
 
-**Availability:** Energy sensors only created when device reports `hasEstimatedEnergyConsumption=true` AND `hasEstimatedEnergyProduction=true`. See [ADR-016](decisions/016-implement-atw-energy-monitoring.md) for technical details.
+**Availability:**
+- **Energy Consumed sensor:** Created when device has `hasEstimatedEnergyConsumption=true` OR `hasMeasuredEnergyConsumption=true`
+- **Energy Produced sensor:** Created when device has `hasEstimatedEnergyProduction=true` OR `hasMeasuredEnergyProduction=true`
+- **Note:** Sensors are created independently. A device may have only one sensor if it has only one capability flag.
+- See [ADR-016](decisions/016-implement-atw-energy-monitoring.md) for technical details.
 
 ### Binary Sensors
 
