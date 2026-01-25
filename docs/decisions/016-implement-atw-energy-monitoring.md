@@ -35,7 +35,7 @@ ADR-015 (2026-01-14) decided to skip ATW energy monitoring due to insufficient d
 
 **Approach:**
 1. Add 3 new sensors: `energy_consumed`, `energy_produced`, `cop`
-2. Capability-based detection: Only create sensors if `hasEstimatedEnergyConsumption=true` AND `hasEstimatedEnergyProduction=true`
+2. Capability-based detection: Each sensor created independently based on measured OR estimated capability flags
 3. Reuse ATA energy tracker pattern (DRY)
 4. Device-specific behavior: ERSC-VM2D gets sensors, EHSCVM2D does not
 
@@ -104,7 +104,7 @@ ADR-015 (2026-01-14) decided to skip ATW energy monitoring due to insufficient d
 
 **Approach:**
 - Check capabilities before creating sensors
-- Only create if BOTH consumed and produced are available
+- Each sensor created independently based on its capability flags (measured OR estimated)
 - Automatically supports future controller types
 
 **Pros:**
@@ -158,13 +158,26 @@ async def get_energy_produced(...) -> dict | None:
 2. `sensor.melcloudhome_*_energy_produced` - kWh produced (statistics, energy)
 3. `sensor.melcloudhome_*_cop` - Coefficient of performance (ratio)
 
-**Capability check:**
+**Capability checks (sensors created independently):**
 ```python
-if (
-    unit.capabilities.has_estimated_energy_consumption
-    and unit.capabilities.has_estimated_energy_production
-):
-    # Create energy sensors
+def _has_energy_consumption_capability(unit: AirToWaterUnit) -> bool:
+    """Check if unit has energy consumption capability (measured or estimated)."""
+    return (
+        unit.capabilities.has_estimated_energy_consumption
+        or unit.capabilities.has_measured_energy_consumption
+    )
+
+def _has_energy_production_capability(unit: AirToWaterUnit) -> bool:
+    """Check if unit has energy production capability (measured or estimated)."""
+    return (
+        unit.capabilities.has_estimated_energy_production
+        or unit.capabilities.has_measured_energy_production
+    )
+
+# Each sensor uses its own capability check:
+# - Energy Consumed: should_create_fn=_has_energy_consumption_capability
+# - Energy Produced: should_create_fn=_has_energy_production_capability
+# - COP: should_create_fn=_has_energy_consumption_capability (requires consumption data)
 ```
 
 ### Storage Migration

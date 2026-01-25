@@ -1,4 +1,4 @@
-# A2W Research Learnings - Coverage Analysis
+# ATW Research Learnings - Coverage Analysis
 
 **Purpose:** Track which research findings are captured in architectural documentation vs still in research notes only
 
@@ -13,7 +13,7 @@ These are documented in `docs/api/atw-api-reference.md`:
 - [x] Control endpoint: PUT /api/atwunit/{unitId}
 - [x] Sparse update pattern (nulls ignored)
 - [x] Empty 200 response for control commands
-- [x] UserContext structure (shared with A2A)
+- [x] UserContext structure (shared with ATA)
 - [x] Settings as name-value array
 - [x] Telemetry endpoint structure
 - [x] 9 telemetry measure types
@@ -195,7 +195,7 @@ Based on web app behavior:
 
 ### 2. Create docs/research/ATW/tested-hardware.md ✏️
 
-List known working A2W models for community reference.
+List known working ATW models for community reference.
 
 ### 3. Keep in Research Docs Only ✓
 

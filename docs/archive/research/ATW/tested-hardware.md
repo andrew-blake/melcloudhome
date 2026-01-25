@@ -100,11 +100,11 @@ If you have an Air-to-Water heat pump and want to help test compatibility:
 - **Manufacturer:** Mitsubishi Electric
 - **Product:** Ecodan Hydrobox Duo Silence Zubadan
 - **Source:** GitHub Issue #30 (@vincent-d-izo)
-- **Current status:** Integration doesn't detect devices yet (A2W support not implemented)
+- **Current status:** Integration doesn't detect devices yet (ATW support not implemented)
 - **Link:** https://www.izi-by-edf-renov.fr/produit/pompe-a-chaleur-ecodan-hydrobox-duo-silence-zubadan-mitsubishi
 
 **Next steps:**
-- Once A2W implementation complete, request testing from user
+- Once ATW implementation complete, request testing from user
 - Gather FTC model and capabilities
 - Confirm API compatibility
 

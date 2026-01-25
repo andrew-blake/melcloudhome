@@ -6,7 +6,7 @@
 
 ## Context
 
-MELCloud Home API supports both Air-to-Air (ATA/A2A) and Air-to-Water (ATW/A2W) devices through the same authentication and `/api/user/context` endpoint. Need to add ATW support to the existing ATA-only integration.
+MELCloud Home API supports both Air-to-Air (ATA) and Air-to-Water (ATW) devices through the same authentication and `/api/user/context` endpoint. Need to add ATW support to the existing ATA-only integration.
 
 **Key constraints:**
 

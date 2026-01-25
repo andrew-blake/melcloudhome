@@ -6,7 +6,7 @@
 
 ---
 
-## 📖 About This Document
+## About This Document
 
 This is a **complete API reference** documenting all read-only (GET) telemetry and reporting endpoints available in the MELCloud Home API.
 

@@ -12,7 +12,7 @@
 
 ---
 
-## 📖 About This Document
+## About This Document
 
 This is a **complete API reference** documenting all endpoints for Air-to-Water (ATW) heat pump devices.
 
@@ -46,12 +46,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 - **Zone 1** - Space heating control (underfloor heating/radiators)
 - **Hot Water (DHW)** - Domestic hot water tank
 
-**Critical Limitation:** The heat pump uses a **3-way valve** and can only perform ONE task at a time:
-- Either heat DHW tank
-- OR heat Zone 1
-- Cannot do both simultaneously
-
-The system automatically balances between these priorities unless Forced Hot Water mode is enabled.
+**3-way valve limitation:** The heat pump can only heat ONE target at a time (zones OR DHW tank, not both simultaneously). See [docs/architecture.md](../architecture.md#atw-3-way-valve-behavior) for detailed state diagram and operation logic.
 
 ---
 
@@ -227,7 +222,7 @@ GET /api/user/context
 
 Returns complete user context including all buildings, devices, current states, and capabilities.
 
-**Note:** This endpoint is **shared** between A2A and A2W devices.
+**Note:** This endpoint is **shared** between ATA and ATW devices.
 
 ### Response Structure
 ```json
@@ -824,7 +819,7 @@ Purpose: Error detection and notifications
 ```
 
 ### Rate Limiting Considerations
-- **Minimum interval:** 60 seconds for UserContext (per A2A experience)
+- **Minimum interval:** 60 seconds for UserContext (per ATA experience)
 - **Keep it simple:** UserContext provides all essential state (temperatures, operation status)
 - **Error logs:** Poll periodically for proactive error detection
 
@@ -881,5 +876,5 @@ Based on observed error logs:
 
 - HAR file analysis: `docs/research/ATW/melcloudhome_com_recording2_anonymized.har`
 - Research documentation: `docs/research/ATW/MelCloud_ATW_API_Reference.md`
-- For A2A devices: [ata-api-reference.md](ata-api-reference.md)
+- For ATA devices: [ata-api-reference.md](ata-api-reference.md)
 - Device comparison: [device-type-comparison.md](device-type-comparison.md)

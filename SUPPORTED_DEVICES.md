@@ -14,9 +14,9 @@ This integration **only works with MELCloud Home** (not the legacy MELCloud app)
 
 **✅ Compatible WiFi adapters:**
 
-- MAC-567 (including MAC-567IF-E, MAC-567IFB-E)
-- MAC-577 (including MAC-577IF-E, MAC-577IF-2)
-- MAC-587 (including MAC-587IF-E)
+- MAC-567
+- MAC-577
+- MAC-587
 - MAC-597
 
 **❌ Not supported:**
@@ -71,11 +71,12 @@ Air-to-Air systems are air conditioning units (wall-mounted, ducted, or console)
 
 Air-to-Water systems are heat pumps for underfloor heating/radiators and domestic hot water (DHW).
 
-### ⚠️ Status: Experimental
+### Production Status
 
-ATW support is **PRODUCTION-READY** - Available in v2.0.0+ and tested on real hardware.
+ATW support is **production-ready** - Available in v2.0.0 and tested on real hardware.
 
 **Current Implementation (v2.0.0):**
+
 - Zone 1 heating/cooling* control ✓
 - DHW tank control ✓
 - System power control ✓

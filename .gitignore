@@ -1,6 +1,7 @@
 # Environment
 .env
 .claude/settings.local.json
+CLAUDE.local.md
 
 # Internal development documentation
 _claude/

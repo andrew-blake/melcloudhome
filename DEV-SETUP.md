@@ -353,4 +353,4 @@ The mock server is perfect for testing integration logic, UI, and state manageme
 - Check logs for errors or debug output
 - Commit your changes when ready
 
-Happy developing! 🚀
+Happy developing!
