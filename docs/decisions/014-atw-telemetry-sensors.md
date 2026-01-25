@@ -254,7 +254,7 @@ ATWSensorEntityDescription(
 ## Related Decisions
 
 - [ADR-012: ATW Entity Architecture](012-atw-entity-architecture.md) - ATW sensor platform structure
-- [ADR-015: Skip ATW Energy Monitoring](015-skip-atw-energy-monitoring.md) - Why energy is ATA-only
+- [ADR-016: Implement ATW Energy Monitoring](016-implement-atw-energy-monitoring.md) - ATW energy monitoring implementation (supersedes ADR-015)
 
 ---
 
