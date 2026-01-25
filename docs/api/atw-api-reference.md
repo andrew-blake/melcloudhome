@@ -46,12 +46,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 - **Zone 1** - Space heating control (underfloor heating/radiators)
 - **Hot Water (DHW)** - Domestic hot water tank
 
-**Critical Limitation:** The heat pump uses a **3-way valve** and can only perform ONE task at a time:
-- Either heat DHW tank
-- OR heat Zone 1
-- Cannot do both simultaneously
-
-The system automatically balances between these priorities unless Forced Hot Water mode is enabled.
+**3-way valve limitation:** The heat pump can only heat ONE target at a time (zones OR DHW tank, not both simultaneously). See [docs/architecture.md](../architecture.md#atw-3-way-valve-behavior) for detailed state diagram and operation logic.
 
 ---
 

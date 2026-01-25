@@ -12,7 +12,7 @@ Air-to-Water (ATW) heat pumps are physically **one device** with **two capabilit
 1. Zone heating (Zone 1, optionally Zone 2)
 2. Domestic Hot Water (DHW) via tank
 
-**Physical constraint:** 3-way valve means device can only heat ONE thing at a time (documented in HAR analysis).
+**Physical constraint:** 3-way valve can only heat ONE target at a time (zones OR DHW tank). See [architecture documentation](../architecture.md#atw-3-way-valve-behavior) for detailed behavior.
 
 **Key question:** Which Home Assistant entity controls system power?
 

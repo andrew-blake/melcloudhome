@@ -118,10 +118,9 @@ User → Set Mode/Temp → A/C responds immediately
 
 ### Air-to-Water (Heat Pump)
 
-**Function:** Dual-purpose with **3-way valve limitation**
+**Function:** Dual-purpose with 3-way valve (see [architecture](../architecture.md#atw-3-way-valve-behavior))
 - Zone 1 heating (underfloor/radiators)
 - DHW tank heating
-- **Cannot do both simultaneously**
 
 **Typical Use:**
 - Whole-home heating
@@ -133,13 +132,7 @@ User → Set Mode/Temp → A/C responds immediately
 User → Set Targets → System prioritizes → 3-way valve → One task at a time
 ```
 
-**3-Way Valve Behavior:**
-```
-Can heat:
-  [Zone 1] ←→ [3-Way Valve] ←→ [DHW Tank]
-                    ↑
-            Only ONE direction at a time
-```
+See [architecture documentation](../architecture.md#atw-3-way-valve-behavior) for detailed 3-way valve behavior and state diagram.
 
 ---
 

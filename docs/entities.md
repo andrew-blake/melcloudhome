@@ -203,28 +203,9 @@ For each heat pump system, the following entities are created:
 
 ## Understanding ATW Operation (3-Way Valve)
 
-**3-Way Valve Limitation:**
-Your heat pump can only heat ONE thing at a time:
+Your heat pump uses a 3-way valve that can only heat ONE target at a time (zones OR DHW tank, never both). This affects what you'll see in Home Assistant.
 
-- Either Zone 1 (space heating)
-- OR DHW tank (hot water)
-- NOT both simultaneously
-
-**What You'll See:**
-
-- Climate entity shows "Heating" only when valve serves Zone 1
-- Climate shows "Idle" when valve serves DHW (even if zone below target)
-- Operation Status sensor shows current valve position
-- Force DHW mode temporarily suspends zone heating
-
-**Example:**
-
-1. Zone target: 21°C, DHW target: 50°C
-2. Zone at 19°C (needs heat), DHW at 48°C (needs heat)
-3. System heats Zone 1 → Climate shows "Heating"
-4. Zone reaches 21°C → System switches to DHW
-5. System heats DHW → Climate shows "Idle", Operation Status shows "HotWater"
-6. DHW reaches 50°C → System returns to monitoring both
+For complete operational details and state diagram, see [docs/architecture.md](architecture.md#atw-3-way-valve-behavior).
 
 ---
 
