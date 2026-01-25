@@ -222,7 +222,7 @@ GET /api/user/context
 
 Returns complete user context including all buildings, devices, current states, and capabilities.
 
-**Note:** This endpoint is **shared** between A2A and A2W devices.
+**Note:** This endpoint is **shared** between ATA and ATW devices.
 
 ### Response Structure
 ```json
@@ -819,7 +819,7 @@ Purpose: Error detection and notifications
 ```
 
 ### Rate Limiting Considerations
-- **Minimum interval:** 60 seconds for UserContext (per A2A experience)
+- **Minimum interval:** 60 seconds for UserContext (per ATA experience)
 - **Keep it simple:** UserContext provides all essential state (temperatures, operation status)
 - **Error logs:** Poll periodically for proactive error detection
 
@@ -876,5 +876,5 @@ Based on observed error logs:
 
 - HAR file analysis: `docs/research/ATW/melcloudhome_com_recording2_anonymized.har`
 - Research documentation: `docs/research/ATW/MelCloud_ATW_API_Reference.md`
-- For A2A devices: [ata-api-reference.md](ata-api-reference.md)
+- For ATA devices: [ata-api-reference.md](ata-api-reference.md)
 - Device comparison: [device-type-comparison.md](device-type-comparison.md)

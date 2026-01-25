@@ -33,15 +33,15 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 | **Telemetry** | `GET /api/telemetry/actual`<br/>(unitId as query param) | `GET /api/telemetry/actual/{id}`<br/>(unitId in path) | ⚠️ **Different structure** |
 | **Energy** | `GET /api/telemetry/energy/{id}` | `GET /api/telemetry/energy/{id}` | ✅ **Identical** |
 | **Error Log** | `GET /api/ataunit/{id}/errorlog` | `GET /api/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
-| **Holiday Mode** | N/A (unit-level only) | `POST /api/holidaymode` | ❌ **A2W exclusive** |
-| **Frost Protection** | N/A | `POST /api/protection/frost` | ❌ **A2W exclusive** |
+| **Holiday Mode** | N/A (unit-level only) | `POST /api/holidaymode` | ❌ **ATW exclusive** |
+| **Frost Protection** | N/A | `POST /api/protection/frost` | ❌ **ATW exclusive** |
 
 ### Key Observations
 
 - **Shared authentication:** 100% identical (AWS Cognito OAuth)
 - **Shared UserContext:** Single endpoint returns both device types
 - **Parallel structure:** Endpoints follow same pattern with different prefixes
-- **Multi-unit operations:** A2W supports batch operations (holiday mode, frost protection)
+- **Multi-unit operations:** ATW supports batch operations (holiday mode, frost protection)
 
 ---
 
@@ -52,18 +52,18 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 | Category | Air-to-Air | Air-to-Water | Notes |
 |----------|------------|--------------|-------|
 | **Power** | `power` (boolean) | `power` (boolean) | ✅ Identical |
-| **Temperature** | `setTemperature`<br/>(single target) | `setTemperatureZone1`<br/>`setTankWaterTemperature`<br/>(dual targets) | ❗ A2W has 2 temps |
+| **Temperature** | `setTemperature`<br/>(single target) | `setTemperatureZone1`<br/>`setTankWaterTemperature`<br/>(dual targets) | ❗ ATW has 2 temps |
 | **Temp Range** | 10-31°C<br/>(mode-specific) | Zone 1: 10-30°C<br/>DHW: 40-60°C | ❗ Different semantics |
 | **Operation Mode** | `operationMode`<br/>(5 modes) | `operationModeZone1`<br/>(3 modes) | ❗ Different modes |
 | **Mode Values** | Heat, Cool, Automatic,<br/>Dry, Fan | HeatRoomTemperature,<br/>HeatFlowTemperature,<br/>HeatCurve | ❗ Different names |
-| **Fan Control** | `setFanSpeed`<br/>(Auto, One-Five) | N/A | ❌ A2A exclusive |
-| **Vane Control** | `vaneVerticalDirection`<br/>`vaneHorizontalDirection` | N/A | ❌ A2A exclusive |
-| **Zone Control** | Single zone (implicit) | `Zone1`, `Zone2` (optional) | ❗ A2W multi-zone |
-| **DHW Control** | N/A | `forcedHotWaterMode` | ❌ A2W exclusive |
+| **Fan Control** | `setFanSpeed`<br/>(Auto, One-Five) | N/A | ❌ ATA exclusive |
+| **Vane Control** | `vaneVerticalDirection`<br/>`vaneHorizontalDirection` | N/A | ❌ ATA exclusive |
+| **Zone Control** | Single zone (implicit) | `Zone1`, `Zone2` (optional) | ❗ ATW multi-zone |
+| **DHW Control** | N/A | `forcedHotWaterMode` | ❌ ATW exclusive |
 | **Standby** | `inStandbyMode` | `InStandbyMode` | ✅ Similar (status) |
 | **Null Pattern** | Unset fields = null | Unset fields = null | ✅ Identical |
 
-### A2A Request Example
+### ATA Request Example
 ```json
 {
   "power": null,
@@ -77,7 +77,7 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 }
 ```
 
-### A2W Request Example
+### ATW Request Example
 ```json
 {
   "power": null,
@@ -173,8 +173,8 @@ See [architecture documentation](../architecture.md#atw-3-way-valve-behavior) fo
    - *(zone mode)* - Currently heating Zone 1
 
 **Critical distinction:**
-- A2A: `operationMode` is both control AND status
-- A2W: `operationModeZone1` = control, `OperationMode` = status
+- ATA: `operationMode` is both control AND status
+- ATW: `operationModeZone1` = control, `OperationMode` = status
 
 ---
 
@@ -185,14 +185,14 @@ See [architecture documentation](../architecture.md#atw-3-way-valve-behavior) fo
 | Capability | Air-to-Air | Air-to-Water | Notes |
 |------------|------------|--------------|-------|
 | **Temperature Ranges** | Mode-specific<br/>(heat/cool/auto/dry) | Function-specific<br/>(zone/DHW) | Different semantics |
-| **Operation Modes** | Boolean flags<br/>(hasCool, hasHeat, hasAuto, hasDry, hasFan) | Implicit<br/>(always heat-only) | A2W simpler |
-| **Fan Capabilities** | `numberOfFanSpeeds`<br/>`hasAutomaticFanSpeed`<br/>`hasSwing`<br/>`hasAirDirection` | N/A | A2A exclusive |
-| **Vane Capabilities** | `supportsWideVane` | N/A | A2A exclusive |
-| **Zone Support** | N/A | `hasZone2` | A2W exclusive |
-| **DHW Support** | N/A | `hasHotWater`<br/>`minSetTankTemperature`<br/>`maxSetTankTemperature` | A2W exclusive |
-| **FTC Model** | N/A | `ftcModel` (integer) | A2W exclusive |
-| **Energy Metering** | `hasEnergyConsumedMeter` | `hasMeasuredEnergyConsumption`<br/>`hasMeasuredEnergyProduction`<br/>`hasEstimatedEnergyConsumption`<br/>`hasEstimatedEnergyProduction` | A2W more granular |
-| **Standby** | `hasStandby` | N/A (always present) | A2A capability flag |
+| **Operation Modes** | Boolean flags<br/>(hasCool, hasHeat, hasAuto, hasDry, hasFan) | Implicit<br/>(always heat-only) | ATW simpler |
+| **Fan Capabilities** | `numberOfFanSpeeds`<br/>`hasAutomaticFanSpeed`<br/>`hasSwing`<br/>`hasAirDirection` | N/A | ATA exclusive |
+| **Vane Capabilities** | `supportsWideVane` | N/A | ATA exclusive |
+| **Zone Support** | N/A | `hasZone2` | ATW exclusive |
+| **DHW Support** | N/A | `hasHotWater`<br/>`minSetTankTemperature`<br/>`maxSetTankTemperature` | ATW exclusive |
+| **FTC Model** | N/A | `ftcModel` (integer) | ATW exclusive |
+| **Energy Metering** | `hasEnergyConsumedMeter` | `hasMeasuredEnergyConsumption`<br/>`hasMeasuredEnergyProduction`<br/>`hasEstimatedEnergyConsumption`<br/>`hasEstimatedEnergyProduction` | ATW more granular |
+| **Standby** | `hasStandby` | N/A (always present) | ATA capability flag |
 | **Demand Control** | `hasDemandSideControl` | `hasDemandSideControl` | ✅ Both |
 
 ### Temperature Range Details
@@ -293,16 +293,16 @@ GET /api/telemetry/actual/{id}?from=...&to=...&measure=tank_water_temperature
 - ❌ Device architecture (single vs dual-function)
 - ❌ Temperature semantics (one target vs two targets)
 - ❌ Operation modes (5 vs 3, different meanings)
-- ❌ A2A has fan/vane control, A2W doesn't
-- ❌ A2W has DHW control, A2A doesn't
-- ❌ A2W has multi-unit operations, A2A doesn't
-- ❌ A2W has 3-way valve limitation, A2A doesn't
+- ❌ ATA has fan/vane control, ATW doesn't
+- ❌ ATW has DHW control, ATA doesn't
+- ❌ ATW has multi-unit operations, ATA doesn't
+- ❌ ATW has 3-way valve limitation, ATA doesn't
 
 ---
 
 ## Related Documentation
 
-- **A2A API Reference:** [ata-api-reference.md](ata-api-reference.md)
-- **A2W API Reference:** [atw-api-reference.md](atw-api-reference.md)
+- **ATA API Reference:** [ata-api-reference.md](ata-api-reference.md)
+- **ATW API Reference:** [atw-api-reference.md](atw-api-reference.md)
 - **OpenAPI Specification:** [../../openapi.yaml](../../openapi.yaml)
 - **Architecture Decision:** [../decisions/011-multi-device-type-architecture.md](../decisions/011-multi-device-type-architecture.md)
