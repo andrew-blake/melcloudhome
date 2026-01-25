@@ -22,12 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 3-way valve logic with automatic priority management between space heating and DHW
 - Capability-based feature detection for energy monitoring and cooling mode
 
-*Feature availability auto-detected from device capabilities. Tested on ERSC-VM2D (full features) and EHSC-VM2D (heating-only) controllers.
-
-**Authentication & Configuration:**
-
-- Reauth flow - Integration now automatically prompts for password when credentials expire (Fixes #39)
-- Handles "already authenticated" edge case when auth cookies outlive API session
+*Feature availability auto-detected from device capabilities.
 
 **Development Tools:**
 
@@ -36,19 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **ATA Climate State Attributes Now Lowercase** - State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase per Home Assistant standards. **Migration required:** Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
+- **ATA Climate State Attributes Now Lowercase** - State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase per Home Assistant standards.
+- **Migration required:** Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
 - Entity naming pattern updated to `has_entity_name=True` for Home Assistant compatibility. Device names now show friendly locations (e.g., "Living Room") instead of UUIDs. Entity IDs include descriptive suffixes (e.g., `_climate`, `_zone_1`, `_tank`). Existing installations: Entity IDs preserved, device names automatically updated.
 
 ### Fixed
 
 - Request pacing prevents 429 errors when scenes/automations control multiple devices simultaneously (minimum 500ms spacing between API requests)
-- ATW zones showing IDLE when actively heating - added support for undocumented `"Heating"` operation status
 - Water heater temperature control respects device capability (whole degree vs half degree steps)
 - "Recreate entity ID" button now generates stable IDs instead of breaking automations
-- Zone 1 heating status display correctly shows HEATING when valve serves zone
-- Blank icon button labels in thermostat cards
 - Memory leak in config flow - Client sessions now properly closed when login fails
-- Login performance - Removed unnecessary 3-second delay after OAuth (3 seconds faster)
 
 ### Acknowledgments
 
@@ -131,7 +123,6 @@ Thanks to [@pwa-2025](https://github.com/pwa-2025) and [@Alexxx1986](https://git
 - "Recreate entity ID" button now generates stable IDs instead of breaking automations
 - Zone 1 heating status display - correctly shows HEATING when valve serves zone
 - Blank icon button labels in thermostat cards for ATA and ATW
-
 
 ### Acknowledgments
 
