@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-24
+
+**Air-to-Water (ATW) heat pump support is now production-ready.**
+
+### Added
+
+**Air-to-Water (ATW) Heat Pump Support:**
+
+- Climate platform for Zone 1 with heating/cooling*, preset modes (Room/Flow/Curve), and temperature control (10-30°C)
+- Water heater platform for DHW tank control (40-60°C, Eco/High demand modes)
+- Switch platform for system power control
+- Sensors: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temperatures)
+- Energy monitoring*: Sensors for consumed energy (kWh), produced energy (kWh), and COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
+- Binary sensors: Error state, connection state, forced DHW mode indicator
+- 3-way valve logic with automatic priority management between space heating and DHW
+- Capability-based feature detection for energy monitoring and cooling mode
+
+*Feature availability auto-detected from device capabilities. Tested on ERSC-VM2D (full features) and EHSC-VM2D (heating-only) controllers.
+
+**Authentication & Configuration:**
+
+- Reauth flow - Integration now automatically prompts for password when credentials expire (Fixes #39)
+- Handles "already authenticated" edge case when auth cookies outlive API session
+
+**Development Tools:**
+
+- Local Docker Compose development environment with mock API server (2 ATA + 1 ATW test devices)
+- Automated deployment tool for remote testing
+
+### Changed
+
+- **ATA Climate State Attributes Now Lowercase** - State values for `fan_mode`, `swing_mode`, and `swing_horizontal_mode` are now lowercase per Home Assistant standards. **Migration required:** Change `state_attr('climate.entity', 'fan_mode') == 'Auto'` → `== 'auto'`
+- Entity naming pattern updated to `has_entity_name=True` for Home Assistant compatibility. Device names now show friendly locations (e.g., "Living Room") instead of UUIDs. Entity IDs include descriptive suffixes (e.g., `_climate`, `_zone_1`, `_tank`). Existing installations: Entity IDs preserved, device names automatically updated.
+
+### Fixed
+
+- Request pacing prevents 429 errors when scenes/automations control multiple devices simultaneously (minimum 500ms spacing between API requests)
+- ATW zones showing IDLE when actively heating - added support for undocumented `"Heating"` operation status
+- Water heater temperature control respects device capability (whole degree vs half degree steps)
+- "Recreate entity ID" button now generates stable IDs instead of breaking automations
+- Zone 1 heating status display correctly shows HEATING when valve serves zone
+- Blank icon button labels in thermostat cards
+- Memory leak in config flow - Client sessions now properly closed when login fails
+- Login performance - Removed unnecessary 3-second delay after OAuth (3 seconds faster)
+
+### Acknowledgments
+
+Thanks to [@pwa-2025](https://github.com/pwa-2025) and [@Alexxx1986](https://github.com/Alexxx1986) for providing guest building access, enabling real hardware testing and validation of ATW features.
+
 ## [2.0.0-rc.2] - 2026-01-23
 
 **Beta Release: Authentication and Performance Fixes**
