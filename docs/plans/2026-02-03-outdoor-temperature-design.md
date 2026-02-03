@@ -113,6 +113,7 @@ class AirToAirUnit:
 Extend `MELCloudHomeCoordinator._async_update_data()` (`custom_components/melcloudhome/coordinator.py`):
 
 **Runtime capability discovery (first update only):**
+
 ```python
 # After fetching UserContext, discover outdoor sensor capability
 for building in user_context.buildings:
@@ -143,6 +144,7 @@ for building in user_context.buildings:
 ```
 
 **Ongoing polling (subsequent updates):**
+
 ```python
 # Poll outdoor temp every 30 minutes for devices with sensors
 if unit.has_outdoor_temp_sensor:
@@ -209,6 +211,7 @@ ATASensorEntityDescription(
 ### Graceful Degradation
 
 Outdoor temperature is a nice-to-have sensor, not critical for operation. If fetching fails:
+
 - Log warning (not error level)
 - Set `unit.outdoor_temperature = None`
 - Sensor shows "unavailable" in HA
@@ -217,22 +220,26 @@ Outdoor temperature is a nice-to-have sensor, not critical for operation. If fet
 ### Edge Cases
 
 **1. Missing OUTDOOR_TEMPERATURE dataset:**
+
 - Some units may not have outdoor sensors
 - Parse trendsummary, return `None` if dataset missing
 - Runtime discovery marks unit as `has_outdoor_temp_sensor = False`
 - Sensor entity not created, no ongoing API polling
 
 **2. Empty data array:**
+
 - Dataset exists but `data` array is empty
 - Return `None`, sensor shows unavailable temporarily
 - Continue polling (may be temporary API issue)
 
 **3. API timeout/failure:**
+
 - Use existing client timeout handling (30s default)
 - Catch exceptions, log warning and continue
 - Don't block main UserContext refresh
 
 **4. Rate limiting:**
+
 - 30-minute polling interval (conservative)
 - Only poll devices confirmed to have sensors
 - Unlikely to hit rate limits
@@ -242,12 +249,14 @@ Outdoor temperature is a nice-to-have sensor, not critical for operation. If fet
 **Why:** Don't spam the API polling for data that doesn't exist.
 
 **Approach:**
+
 1. **First coordinator refresh:** Fetch trendsummary for all ATA devices (one-time probe)
 2. **If OUTDOOR_TEMPERATURE dataset exists:** Set `has_outdoor_temp_sensor = True`
 3. **If missing:** Mark device as no sensor, skip future polling
 4. **Ongoing:** Only poll devices where sensor confirmed
 
 **Benefits:**
+
 - No wasted API calls for devices without sensors
 - Simple entity list (only shows sensors that exist)
 - Automatic discovery, no user configuration needed
@@ -259,6 +268,7 @@ Outdoor temperature is a nice-to-have sensor, not critical for operation. If fet
 ### Unit Tests
 
 **API Client** (`tests/api/test_outdoor_temperature.py`):
+
 - `test_parse_outdoor_temperature_success()` - Normal case with outdoor temp dataset
 - `test_parse_outdoor_temperature_missing_dataset()` - No OUTDOOR_TEMPERATURE in response
 - `test_parse_outdoor_temperature_empty_data()` - Dataset exists but data array empty
@@ -267,6 +277,7 @@ Outdoor temperature is a nice-to-have sensor, not critical for operation. If fet
 ### Integration Tests
 
 **Sensor Platform** (`tests/integration/test_sensor_ata.py`):
+
 - `test_outdoor_temperature_sensor_created()` - Device has sensor, entity created
 - `test_outdoor_temperature_sensor_not_created()` - Device lacks sensor, no entity
 - `test_outdoor_temperature_updates()` - Value changes on coordinator refresh
@@ -275,6 +286,7 @@ Outdoor temperature is a nice-to-have sensor, not critical for operation. If fet
 ### VCR Cassettes
 
 Create test fixtures from real HAR data:
+
 - Extract trendsummary response with outdoor temp (from Study, Dining Room, Living Room)
 - Create mock response without outdoor temp dataset (for negative test case)
 - Device names already anonymous in HAR (Study, Dining Room, Living Room)
@@ -284,25 +296,39 @@ Create test fixtures from real HAR data:
 Update `tools/mock_melcloud_server.py`:
 
 **Add trendsummary endpoint:**
+
 ```python
+from datetime import datetime
+
 @app.get("/api/report/trendsummary")
-async def get_trend_summary(unitId: str, from_time: str, to_time: str):
-    """Mock trendsummary endpoint for testing."""
+async def get_trend_summary(unitId: str, **params):
+    """Mock trendsummary endpoint for testing.
+
+    Uses query time range to generate realistic timestamps.
+    Query params: from, to (format: YYYY-MM-DDTHH:MM:SS.0000000)
+    """
+    # Parse 'to' timestamp from query (use for latest datapoint)
+    # Query params come as 'from' and 'to' but 'from' is Python keyword
+    to_param = params.get('to', '')
+
+    # Parse timestamp (remove nanosecond precision for parsing)
+    to_time = to_param.replace('.0000000', '') if to_param else datetime.now().isoformat()
+
     # Scenario 1: Device WITH outdoor sensor
     if unitId in ["unit-with-outdoor-sensor"]:
         return {
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
-                    "data": [{"x": "2026-02-03T12:00:00", "y": 20.5}]
+                    "data": [{"x": to_time, "y": 20.5}]
                 },
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
-                    "data": [{"x": "2026-02-03T12:00:00", "y": 21.0}]
+                    "data": [{"x": to_time, "y": 21.0}]
                 },
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
-                    "data": [{"x": "2026-02-03T12:00:00", "y": 12.0}]
+                    "data": [{"x": to_time, "y": 12.0}]
                 }
             ]
         }
@@ -312,25 +338,33 @@ async def get_trend_summary(unitId: str, from_time: str, to_time: str):
         "datasets": [
             {
                 "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
-                "data": [{"x": "2026-02-03T12:00:00", "y": 20.5}]
+                "data": [{"x": to_time, "y": 20.5}]
             },
             {
                 "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
-                "data": [{"x": "2026-02-03T12:00:00", "y": 21.0}]
+                "data": [{"x": to_time, "y": 21.0}]
             }
         ]
     }
 ```
 
+**Key improvements:**
+- Parses query `to` parameter for realistic timestamps
+- Tests work regardless of when they run
+- Validates client sends correct time range
+- Simple implementation (just uses latest timestamp from query)
+
 ### Manual Testing Checklist
 
 **Pre-implementation:**
+
 - [ ] Verify dev environment works: `make dev-up`
-- [ ] Check HA at http://localhost:8123 (dev/dev)
+- [ ] Check HA at <http://localhost:8123> (dev/dev)
 - [ ] Note existing ATA entity IDs for comparison
 - [ ] Confirm entity ID format: `sensor.melcloudhome_{short_id}_room_temperature`
 
 **Post-implementation (incremental test):**
+
 - [ ] Update code with outdoor temp feature
 - [ ] Restart HA: `make dev-restart`
 - [ ] Verify NEW outdoor temp sensor appears: `sensor.melcloudhome_{short_id}_outdoor_temperature`
@@ -341,6 +375,7 @@ async def get_trend_summary(unitId: str, from_time: str, to_time: str):
 - [ ] Check logs for errors or warnings
 
 **Real hardware testing:**
+
 - [ ] Deploy to remote HA instance: `make deploy`
 - [ ] Verify outdoor temp sensor appears for Dining Room
 - [ ] Check temperature value is reasonable
@@ -353,6 +388,7 @@ async def get_trend_summary(unitId: str, from_time: str, to_time: str):
 **Entity Reference** (`docs/entities.md`):
 
 Add to ATA Sensors section:
+
 ```markdown
 ### Sensors
 
@@ -363,6 +399,7 @@ Add to ATA Sensors section:
 ```
 
 Add note:
+
 ```markdown
 **Outdoor Temperature Sensor:**
 - Only created for devices with outdoor temperature sensors
@@ -375,6 +412,7 @@ Add note:
 **API Reference** (`docs/api/ata-api-reference.md`):
 
 Add new section:
+
 ```markdown
 ### Telemetry Endpoints
 
@@ -406,9 +444,11 @@ Returns historical temperature data for charts.
 ```
 
 **Integration Usage:**
+
 - Polled every 30 minutes for devices with outdoor sensors
 - Extracts latest outdoor temperature value from dataset
 - Not all devices have outdoor sensors (capability auto-detected)
+
 ```
 
 ---
