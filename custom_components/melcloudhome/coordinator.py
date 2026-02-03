@@ -160,6 +160,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             for unit in building.air_to_air_units:
                 unit_id = unit.id  # Capture for closures
 
+                # Preserve outdoor temp state from previous update
+                if unit_id in self._units:
+                    old_unit = self._units[unit_id]
+                    unit.has_outdoor_temp_sensor = old_unit.has_outdoor_temp_sensor
+                    unit.outdoor_temperature = old_unit.outdoor_temperature
+
                 # Runtime capability discovery - probe once per device
                 if unit_id not in self._outdoor_temp_checked:
                     try:
