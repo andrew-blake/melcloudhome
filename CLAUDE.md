@@ -101,7 +101,16 @@ make test                        # All tests with coverage
 
 ## Pre-commit Hooks
 
-- Run `make pre-commit` before attempting `git commit` to catch issues early
+**CRITICAL WORKFLOW RULE:**
+
+1. Make all your changes
+2. Run `make pre-commit`
+3. **DO NOT make ANY edits after this point**
+4. Immediately run `git commit`
+5. If you need to make more edits, return to step 2
+
+**Why:** Pre-commit hooks only check staged files during commit. If you run `make pre-commit`, then edit files, then commit - the commit hooks will catch unformatted code and fail.
+
 - NEVER work around pre-commit hooks - they are important code quality checks
 
 ---
