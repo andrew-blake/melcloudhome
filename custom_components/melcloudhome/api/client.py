@@ -7,6 +7,7 @@ Provides unified API access using the Facade pattern:
 """
 
 import logging
+from datetime import UTC
 from typing import Any
 
 import aiohttp
@@ -230,6 +231,77 @@ class MELCloudHomeClient:
             endpoint,
             params=params,
         )
+
+    def _parse_outdoor_temp(self, response: dict[str, Any]) -> float | None:
+        """Extract outdoor temperature from trendsummary response.
+
+        Response format:
+        {
+          "datasets": [
+            {
+              "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+              "data": [{"x": "2026-01-12T20:00:00", "y": 11}, ...]
+            }
+          ]
+        }
+
+        Args:
+            response: Trendsummary API response
+
+        Returns:
+            Outdoor temperature in Celsius, or None if not available
+        """
+        datasets = response.get("datasets", [])
+        for dataset in datasets:
+            label = dataset.get("label", "")
+            if "OUTDOOR_TEMPERATURE" in label:
+                data = dataset.get("data", [])
+                if data:
+                    # Return latest value (last datapoint)
+                    value = data[-1].get("y")
+                    return float(value) if value is not None else None
+        return None  # No outdoor temp dataset found
+
+    async def get_outdoor_temperature(self, unit_id: str) -> float | None:
+        """Get latest outdoor temperature for an ATA unit.
+
+        Queries trendsummary endpoint for last hour, extracts most recent
+        outdoor temperature from the OUTDOOR_TEMPERATURE dataset.
+
+        Args:
+            unit_id: ATA unit UUID
+
+        Returns:
+            Outdoor temperature in Celsius, or None if not available
+        """
+        from datetime import datetime, timedelta
+
+        # Build time range: last 1 hour
+        now = datetime.now(UTC)
+        from_time = now - timedelta(hours=1)
+
+        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
+        params = {
+            "unitId": unit_id,
+            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+        }
+
+        try:
+            response = await self._api_request(
+                "GET", "/api/report/trendsummary", params=params
+            )
+            if response is None:
+                return None
+            return self._parse_outdoor_temp(response)
+        except Exception:
+            # Log at debug level - outdoor temp is nice-to-have, not critical
+            _LOGGER.debug(
+                "Failed to fetch outdoor temperature for unit %s",
+                unit_id,
+                exc_info=True,
+            )
+            return None
 
     async def get_telemetry_actual(
         self,
