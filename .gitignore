@@ -67,3 +67,4 @@ tools/recorder.log*
 dev-config-snapshots/
 RESUME*.md
 MOCK_SERVER_VALIDATION.md
+.worktrees/
