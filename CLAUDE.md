@@ -29,6 +29,9 @@ make dev-up                      # Start dev environment
 make dev-restart                 # Restart HA after code changes
 make dev-logs                    # View logs
 make dev-reset                   # Clear entity registry, fresh start
+                                 # ⚠️ CRITICAL: Enable Advanced Mode in user profile
+                                 # to see "Connect to Mock Server" checkbox during setup
+                                 # See DEV-SETUP.md section 2.1 for details
 
 # Code quality
 make format                      # Format with ruff
