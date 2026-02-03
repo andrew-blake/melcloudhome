@@ -101,6 +101,9 @@ class AirToAirUnit:
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
     energy_consumed: float | None = None  # kWh
+    # Outdoor temperature monitoring (set by coordinator via trendsummary API)
+    outdoor_temperature: float | None = None  # °C
+    has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":
