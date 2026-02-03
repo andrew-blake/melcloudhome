@@ -1122,15 +1122,16 @@ git branch -D feature/outdoor-temperature-sensor
 ## Success Criteria
 
 - [x] Design document exists and approved
-- [ ] Mock server supports trendsummary endpoint
-- [ ] Data model has outdoor_temperature field
-- [ ] API client can fetch outdoor temperature
-- [ ] Sensor entity created for devices with sensors
+- [x] Mock server supports trendsummary endpoint
+- [x] Data model has outdoor_temperature field
+- [x] API client can fetch outdoor temperature
+- [x] VCR cassette recorded from real API
+- [ ] Sensor entity created for devices with sensors (IN PROGRESS - Task 4)
 - [ ] Coordinator polls outdoor temp every 30 minutes
 - [ ] Dev environment shows correct entities
 - [ ] All tests passing (API + integration)
 - [ ] Documentation updated
-- [ ] Pre-commit hooks pass
+- [x] Pre-commit hooks pass
 - [ ] Ready for PR
 
 ---
