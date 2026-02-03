@@ -130,3 +130,12 @@ dev = [
     "voluptuous>=0.15.0",
     "freezegun>=1.5.5",
 ]
+
+[tool.coverage.paths]
+source = [
+    "custom_components/melcloudhome",
+    "/app/custom_components/melcloudhome",
+]
+
+[tool.coverage.run]
+relative_files = true
