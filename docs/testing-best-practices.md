@@ -78,6 +78,79 @@ This document outlines testing standards for the MELCloud Home integration, base
 - ✅ Create cassettes for error scenarios
 - ✅ Scrub sensitive data (credentials, tokens)
 
+#### VCR Testing Pattern
+
+**Recording Real API Responses:**
+
+VCR tests record HTTP interactions with the real MELCloud API, then replay them for fast, deterministic tests.
+
+**Setup:**
+
+1. **Credentials file** - `.env` in repository root contains:
+   ```bash
+   MELCLOUD_USER=your_email@example.com
+   MELCLOUD_PASSWORD=your_password
+   ```
+
+2. **Recording cassettes** - First run records, subsequent runs replay:
+   ```bash
+   # Source credentials (pytest doesn't auto-load .env)
+   set -a && source .env && set +a
+
+   # Run test - will record cassette if missing
+   pytest tests/api/test_outdoor_temperature_vcr.py -v
+
+   # Re-record existing cassette
+   rm tests/api/cassettes/test_get_outdoor_temperature.yaml
+   pytest tests/api/test_outdoor_temperature_vcr.py -v
+   ```
+
+3. **Cassette storage** - `tests/api/cassettes/<test_name>.yaml`
+
+**Test Pattern (Use This):**
+
+```python
+from typing import TYPE_CHECKING
+import pytest
+from freezegun import freeze_time
+
+if TYPE_CHECKING:
+    from custom_components.melcloudhome.api.client import MELCloudHomeClient
+
+@freeze_time("2026-02-03 12:30:00", real_asyncio=True)  # For time-sensitive data
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_get_outdoor_temperature(
+    authenticated_client: "MELCloudHomeClient",
+) -> None:
+    """Test fetching outdoor temperature for ATA unit."""
+    # Get data
+    context = await authenticated_client.get_user_context()
+    unit = context.buildings[0].air_to_air_units[0]
+
+    # Call API
+    result = await authenticated_client.get_outdoor_temperature(unit.id)
+
+    # Assert
+    assert result is not None
+    assert isinstance(result, float)
+```
+
+**Key Rules:**
+
+- ✅ Use `authenticated_client` fixture (handles login automatically)
+- ✅ Use standalone functions (no test classes)
+- ✅ Use `@freeze_time` for time-sensitive data (energy, telemetry)
+- ✅ Use `TYPE_CHECKING` import guard to avoid HA dependency
+- ❌ Don't manually login/close (fixture handles it)
+- ❌ Don't use test classes (use standalone functions)
+
+**Worktree Considerations:**
+
+Cassettes are branch-specific and live in the worktree:
+- When tests run from worktree, cassettes go to main repo initially
+- Move cassettes to worktree for committing: `mv ../../tests/api/cassettes/<file> tests/api/cassettes/`
+
 ### 3. Unit Tests (`tests/integration/test_coordinator_retry.py`, etc.)
 
 **Purpose:** Test internal component logic in isolation
