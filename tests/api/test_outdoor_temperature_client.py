@@ -110,3 +110,30 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
 
     # Verify result
     assert result == 12.0
+
+
+@pytest.mark.asyncio
+async def test_get_outdoor_temperature_api_returns_none(mocker):
+    """Test when API returns None."""
+    client = MELCloudHomeClient()
+
+    # Mock _api_request to return None
+    mocker.patch.object(client, "_api_request", return_value=None)
+
+    result = await client.get_outdoor_temperature("test-unit-id")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_outdoor_temperature_exception_handling(mocker):
+    """Test exception handling returns None and logs debug."""
+    client = MELCloudHomeClient()
+
+    # Mock _api_request to raise an exception
+    mocker.patch.object(client, "_api_request", side_effect=Exception("API error"))
+
+    result = await client.get_outdoor_temperature("test-unit-id")
+
+    # Should return None on exception, not raise
+    assert result is None
