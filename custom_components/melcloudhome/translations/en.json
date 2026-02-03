@@ -87,6 +87,9 @@
       "energy": {
         "name": "Energy"
       },
+      "outdoor_temperature": {
+        "name": "Outdoor temperature"
+      },
       "zone_1_temperature": {
         "name": "Zone 1 temperature"
       },

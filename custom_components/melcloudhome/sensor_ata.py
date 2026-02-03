@@ -84,6 +84,19 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         should_create_fn=lambda unit: unit.capabilities.has_energy_consumed_meter,
         available_fn=lambda unit: unit.energy_consumed is not None,
     ),
+    # Outdoor temperature - ambient temperature from outdoor unit sensor
+    # Only created for devices where outdoor sensor detected during capability discovery
+    # Updates every 30 minutes via trendsummary API endpoint
+    ATASensorEntityDescription(
+        key="outdoor_temperature",
+        translation_key="outdoor_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.outdoor_temperature,
+        available_fn=lambda unit: unit.outdoor_temperature is not None,
+        should_create_fn=lambda unit: unit.has_outdoor_temp_sensor,
+    ),
 )
 
 
