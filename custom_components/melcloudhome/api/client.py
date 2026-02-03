@@ -7,7 +7,7 @@ Provides unified API access using the Facade pattern:
 """
 
 import logging
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import aiohttp
@@ -274,8 +274,6 @@ class MELCloudHomeClient:
         Returns:
             Outdoor temperature in Celsius, or None if not available
         """
-        from datetime import datetime, timedelta
-
         # Build time range: last 1 hour
         now = datetime.now(UTC)
         from_time = now - timedelta(hours=1)
