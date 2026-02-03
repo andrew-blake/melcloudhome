@@ -13,7 +13,7 @@ Reference: docs/testing-best-practices.md
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from freezegun import freeze_time
@@ -21,115 +21,109 @@ from freezegun import freeze_time
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
 
+if TYPE_CHECKING:
+    from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
-class TestEnergyDataRetrieval:
-    """Test energy telemetry endpoint (requires VCR cassettes)."""
 
-    @freeze_time("2026-01-08 17:38:00", real_asyncio=True)
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_get_energy_data_hourly(self, credentials: tuple[str, str]) -> None:
-        """Test fetching hourly energy data for ATA unit."""
-        email, password = credentials
-        client = MELCloudHomeClient(debug_mode=False)
-        await client.login(email, password)
+@freeze_time("2026-01-08 17:38:00", real_asyncio=True)
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_get_energy_data_hourly(
+    authenticated_client: "MELCloudHomeClient",
+) -> None:
+    """Test fetching hourly energy data for ATA unit."""
+    # Get user context to find a unit with energy meter
+    context = await authenticated_client.get_user_context()
 
-        # Get user context to find a unit with energy meter
-        context = await client.get_user_context()
-
-        # Find first ATA unit with energy meter
-        unit = None
-        for building in context.buildings:
-            for ata_unit in building.air_to_air_units:
-                if ata_unit.capabilities.has_energy_consumed_meter:
-                    unit = ata_unit
-                    break
-            if unit:
+    # Find first ATA unit with energy meter
+    unit = None
+    for building in context.buildings:
+        for ata_unit in building.air_to_air_units:
+            if ata_unit.capabilities.has_energy_consumed_meter:
+                unit = ata_unit
                 break
+        if unit:
+            break
 
-        if not unit:
-            pytest.skip("No ATA units with energy meters found")
+    if not unit:
+        pytest.skip("No ATA units with energy meters found")
 
-        # Request last 24 hours (time frozen for VCR consistency)
-        to_time = datetime.now(UTC)
-        from_time = to_time - timedelta(hours=24)
+    # Request last 24 hours (time frozen for VCR consistency)
+    to_time = datetime.now(UTC)
+    from_time = to_time - timedelta(hours=24)
 
-        assert unit is not None  # Type narrowing
-        result = await client.get_energy_data(
-            unit_id=unit.id,
+    assert unit is not None  # Type narrowing
+    result = await authenticated_client.get_energy_data(
+        unit_id=unit.id,
+        from_time=from_time,
+        to_time=to_time,
+        interval="Hour",
+    )
+
+    # Verify response structure
+    assert result is not None or result is None  # Can be None if 304
+    if result:
+        assert isinstance(result, dict)
+        # Energy responses have measureData structure
+        assert "measureData" in result or len(result) == 0
+
+
+@freeze_time("2026-01-08 17:38:00", real_asyncio=True)
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_get_energy_data_daily(
+    authenticated_client: "MELCloudHomeClient",
+) -> None:
+    """Test fetching daily energy data for ATA unit."""
+    context = await authenticated_client.get_user_context()
+
+    # Find first ATA unit with energy meter
+    unit = None
+    for building in context.buildings:
+        for ata_unit in building.air_to_air_units:
+            if ata_unit.capabilities.has_energy_consumed_meter:
+                unit = ata_unit
+                break
+        if unit:
+            break
+
+    if not unit:
+        pytest.skip("No ATA units with energy meters found")
+
+    # Request last 7 days (time frozen for VCR consistency)
+    to_time = datetime.now(UTC)
+    from_time = to_time - timedelta(days=7)
+
+    assert unit is not None  # Type narrowing
+    result = await authenticated_client.get_energy_data(
+        unit_id=unit.id,
+        from_time=from_time,
+        to_time=to_time,
+        interval="Day",
+    )
+
+    # Verify response
+    assert result is not None or result is None
+    if result:
+        assert isinstance(result, dict)
+
+
+@pytest.mark.asyncio
+async def test_get_energy_data_requires_authentication() -> None:
+    """Energy endpoint should require authentication."""
+    client = MELCloudHomeClient(debug_mode=False)
+
+    to_time = datetime.now(UTC)
+    from_time = to_time - timedelta(hours=1)
+
+    with pytest.raises(AuthenticationError, match="Not authenticated"):
+        await client.get_energy_data(
+            unit_id="test-unit-id",
             from_time=from_time,
             to_time=to_time,
-            interval="Hour",
         )
 
-        # Verify response structure
-        assert result is not None or result is None  # Can be None if 304
-        if result:
-            assert isinstance(result, dict)
-            # Energy responses have measureData structure
-            assert "measureData" in result or len(result) == 0
-
-        await client.close()
-
-    @freeze_time("2026-01-08 17:38:00", real_asyncio=True)
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_get_energy_data_daily(self, credentials: tuple[str, str]) -> None:
-        """Test fetching daily energy data for ATA unit."""
-        email, password = credentials
-        client = MELCloudHomeClient(debug_mode=False)
-        await client.login(email, password)
-
-        context = await client.get_user_context()
-
-        # Find first ATA unit with energy meter
-        unit = None
-        for building in context.buildings:
-            for ata_unit in building.air_to_air_units:
-                if ata_unit.capabilities.has_energy_consumed_meter:
-                    unit = ata_unit
-                    break
-            if unit:
-                break
-
-        if not unit:
-            pytest.skip("No ATA units with energy meters found")
-
-        # Request last 7 days (time frozen for VCR consistency)
-        to_time = datetime.now(UTC)
-        from_time = to_time - timedelta(days=7)
-
-        assert unit is not None  # Type narrowing
-        result = await client.get_energy_data(
-            unit_id=unit.id,
-            from_time=from_time,
-            to_time=to_time,
-            interval="Day",
-        )
-
-        # Verify response
-        assert result is not None or result is None
-        if result:
-            assert isinstance(result, dict)
-
-        await client.close()
-
-    @pytest.mark.asyncio
-    async def test_get_energy_data_requires_authentication(self) -> None:
-        """Energy endpoint should require authentication."""
-        client = MELCloudHomeClient(debug_mode=False)
-
-        to_time = datetime.now(UTC)
-        from_time = to_time - timedelta(hours=1)
-
-        with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.get_energy_data(
-                unit_id="test-unit-id",
-                from_time=from_time,
-                to_time=to_time,
-            )
-
-        await client.close()
+    await client.close()
 
 
 class TestEnergyResponseParsing:
