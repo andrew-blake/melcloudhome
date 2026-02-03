@@ -33,6 +33,7 @@ For each air conditioning unit, the following entities are created:
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
+- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
 
@@ -77,6 +78,15 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 2. Add your devices under "Individual devices"
 3. Select the energy sensor for each unit
 4. Energy data accumulates over time and persists across restarts
+
+**Outdoor Temperature Sensor:**
+
+- Only created for devices with outdoor temperature sensors
+- Automatically detected during integration setup
+- Updates every 30 minutes
+- Shows ambient temperature from outdoor unit
+- Useful for efficiency monitoring and automations
+- Not all devices have outdoor sensors (runtime discovery determines availability)
 
 ---
 
