@@ -19,6 +19,7 @@ from .const import (
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
+    UPDATE_INTERVAL_OUTDOOR_TEMP,
     UPDATE_INTERVAL_TELEMETRY,
 )
 from .control_client_ata import ATAControlClient
@@ -510,7 +511,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         import time
 
         now = time.time()
-        if now - self._last_outdoor_temp_poll > 1800:  # 30 minutes
+        interval_seconds = UPDATE_INTERVAL_OUTDOOR_TEMP.total_seconds()
+        if now - self._last_outdoor_temp_poll > interval_seconds:
             self._last_outdoor_temp_poll = now
             return True
         return False
