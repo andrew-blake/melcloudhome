@@ -298,7 +298,7 @@ Update `tools/mock_melcloud_server.py`:
 **Add trendsummary endpoint:**
 
 ```python
-from datetime import datetime
+from datetime import datetime, timedelta
 
 @app.get("/api/report/trendsummary")
 async def get_trend_summary(unitId: str, **params):
@@ -306,13 +306,39 @@ async def get_trend_summary(unitId: str, **params):
 
     Uses query time range to generate realistic timestamps.
     Query params: from, to (format: YYYY-MM-DDTHH:MM:SS.0000000)
+
+    Real API returns ~60 datapoints per hour (one per minute).
+    Mock returns fewer for simplicity but maintains the pattern.
     """
-    # Parse 'to' timestamp from query (use for latest datapoint)
+    # Parse 'to' timestamp from query
     # Query params come as 'from' and 'to' but 'from' is Python keyword
     to_param = params.get('to', '')
+    from_param = params.get('from', '')
 
-    # Parse timestamp (remove nanosecond precision for parsing)
-    to_time = to_param.replace('.0000000', '') if to_param else datetime.now().isoformat()
+    # Parse timestamps (remove nanosecond precision for parsing)
+    if to_param:
+        to_time = datetime.fromisoformat(to_param.replace('.0000000', ''))
+    else:
+        to_time = datetime.now()
+
+    if from_param:
+        from_time = datetime.fromisoformat(from_param.replace('.0000000', ''))
+    else:
+        from_time = to_time - timedelta(hours=1)
+
+    # Generate multiple datapoints (every 10 minutes for simplicity)
+    # Real API has ~60 per hour, we'll use 6 to keep mock simple
+    datapoints_room = []
+    datapoints_set = []
+    datapoints_outdoor = []
+
+    current = from_time
+    while current <= to_time:
+        timestamp = current.isoformat()
+        datapoints_room.append({"x": timestamp, "y": 20.5})
+        datapoints_set.append({"x": timestamp, "y": 21.0})
+        datapoints_outdoor.append({"x": timestamp, "y": 12.0})
+        current += timedelta(minutes=10)
 
     # Scenario 1: Device WITH outdoor sensor
     if unitId in ["unit-with-outdoor-sensor"]:
@@ -320,39 +346,87 @@ async def get_trend_summary(unitId: str, **params):
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
-                    "data": [{"x": to_time, "y": 20.5}]
+                    "data": datapoints_room,
+                    "backgroundColor": "#F1995D",
+                    "borderColor": "#F1995D",
+                    "yAxisId": "yTemp",
+                    "pointRadius": 0,
+                    "lineTension": 0,
+                    "borderWidth": 2,
+                    "stepped": True,
+                    "spanGaps": False,
+                    "isNonInteractive": False
                 },
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
-                    "data": [{"x": to_time, "y": 21.0}]
+                    "data": datapoints_set,
+                    "backgroundColor": "#36BC6A",
+                    "borderColor": "#36BC6A",
+                    "yAxisId": "yTemp",
+                    "pointRadius": 0,
+                    "lineTension": 0,
+                    "borderWidth": 2,
+                    "stepped": True,
+                    "spanGaps": False,
+                    "isNonInteractive": False
                 },
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
-                    "data": [{"x": to_time, "y": 12.0}]
+                    "data": datapoints_outdoor,
+                    "backgroundColor": "#156082",
+                    "borderColor": "#156082",
+                    "yAxisId": "yTemp",
+                    "pointRadius": 0,
+                    "lineTension": 0,
+                    "borderWidth": 2,
+                    "stepped": True,
+                    "spanGaps": False,
+                    "isNonInteractive": False
                 }
-            ]
+            ],
+            "annotations": []
         }
 
-    # Scenario 2: Device WITHOUT outdoor sensor
+    # Scenario 2: Device WITHOUT outdoor sensor (only room + set temp)
     return {
         "datasets": [
             {
                 "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
-                "data": [{"x": to_time, "y": 20.5}]
+                "data": datapoints_room,
+                "backgroundColor": "#F1995D",
+                "borderColor": "#F1995D",
+                "yAxisId": "yTemp",
+                "pointRadius": 0,
+                "lineTension": 0,
+                "borderWidth": 2,
+                "stepped": True,
+                "spanGaps": False,
+                "isNonInteractive": False
             },
             {
                 "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
-                "data": [{"x": to_time, "y": 21.0}]
+                "data": datapoints_set,
+                "backgroundColor": "#36BC6A",
+                "borderColor": "#36BC6A",
+                "yAxisId": "yTemp",
+                "pointRadius": 0,
+                "lineTension": 0,
+                "borderWidth": 2,
+                "stepped": True,
+                "spanGaps": False,
+                "isNonInteractive": False
             }
-        ]
+        ],
+        "annotations": []
     }
 ```
 
 **Key improvements:**
-- Parses query `to` parameter for realistic timestamps
-- Tests work regardless of when they run
-- Validates client sends correct time range
-- Simple implementation (just uses latest timestamp from query)
+- Generates multiple datapoints per query time range (realistic)
+- Real API returns ~60/hour (one per minute), mock uses 6/hour (one per 10 minutes)
+- Tests extraction of latest value from array: `data[-1].get("y")`
+- Includes chart metadata matching real API response format
+- Validates client correctly sends time range parameters
 
 ### Manual Testing Checklist
 
