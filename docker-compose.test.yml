@@ -57,7 +57,7 @@ services:
       - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
       - COVERAGE_FILE=/app/coverage-output/.coverage
       - PYTEST_DISABLE_SOCKET_ALLOW_HOSTS=melcloud-mock,localhost,127.0.0.1
-    command: sh -c "uv pip uninstall pytest-socket pytest-homeassistant-custom-component && uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report=xml:/app/coverage-output/coverage.xml --cov-report=html:/app/coverage-output/htmlcov --cov-report=term-missing"
+    command: sh -c "uv pip uninstall pytest-socket pytest-homeassistant-custom-component && uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report="
 
 networks:
   test-network:

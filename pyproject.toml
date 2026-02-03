@@ -138,4 +138,5 @@ source = [
 ]
 
 [tool.coverage.run]
+source = ["custom_components/melcloudhome"]
 relative_files = true
