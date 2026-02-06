@@ -20,6 +20,7 @@ MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
 # Test device UUIDs (match mock server IDs)
 LIVING_ROOM_ID = "0efc1234-5678-9abc-def0-123456787db"  # Has outdoor sensor
 BEDROOM_ID = "5b3e4321-8765-cba9-fed0-abcdef987a9b"  # No outdoor sensor
+STUDY_ID = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"  # Has outdoor sensor (2nd unit)
 TEST_BUILDING_ID = "building-test-id"
 
 
@@ -199,3 +200,98 @@ async def test_outdoor_temperature_unavailable_when_api_fails(
         entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
         state = hass.states.get(entity_id)
         assert state is None  # Not created due to discovery failure
+
+
+async def test_outdoor_temperature_all_units_polled_on_refresh(
+    hass: HomeAssistant,
+):
+    """Test that ALL units with outdoor sensors get polled, not just the first.
+
+    Regression test: a shared polling timer was consumed by the first unit
+    in the loop, starving all subsequent units from ever updating.
+    """
+    # Create two units that BOTH have outdoor sensors
+    living_room = create_mock_unit(
+        LIVING_ROOM_ID, "Living Room AC", has_outdoor_sensor=True
+    )
+    study = create_mock_unit(STUDY_ID, "Study AC", has_outdoor_sensor=True)
+
+    mock_context = create_mock_user_context(
+        [create_mock_building([living_room, study])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        # Return different temperatures per unit to verify both are polled
+        async def mock_get_outdoor_temp(unit_id: str) -> float | None:
+            if unit_id == LIVING_ROOM_ID:
+                return 8.0
+            if unit_id == STUDY_ID:
+                return 3.0
+            return None
+
+        mock_client.get_outdoor_temperature = AsyncMock(
+            side_effect=mock_get_outdoor_temp
+        )
+
+        mock_client.ata = MagicMock()
+        mock_client.ata.set_power = AsyncMock()
+        mock_client.ata.set_temperature = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Both sensors should exist with their respective values
+        living_room_entity = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+        # STUDY_ID clean: a1b2c3d4e5f678901234ef0123456789 -> first4=a1b2 last4=6789
+        study_entity = "sensor.melcloudhome_a1b2_6789_outdoor_temperature"
+
+        state_lr = hass.states.get(living_room_entity)
+        state_study = hass.states.get(study_entity)
+
+        assert state_lr is not None, "Living Room outdoor temp sensor not created"
+        assert state_study is not None, "Study outdoor temp sensor not created"
+        assert state_lr.state == "8.0"
+        assert state_study.state == "3.0"
+
+        # Now change the mock to return updated temps and trigger a refresh
+        # after the polling interval has elapsed
+        async def mock_get_outdoor_temp_updated(unit_id: str) -> float | None:
+            if unit_id == LIVING_ROOM_ID:
+                return 10.0
+            if unit_id == STUDY_ID:
+                return 1.0
+            return None
+
+        mock_client.get_outdoor_temperature = AsyncMock(
+            side_effect=mock_get_outdoor_temp_updated
+        )
+
+        # Force polling interval to elapse by resetting per-unit timestamps
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        coordinator._last_outdoor_temp_poll.clear()
+
+        await coordinator.async_request_refresh()
+        await hass.async_block_till_done()
+
+        # BOTH units should have updated values
+        state_lr = hass.states.get(living_room_entity)
+        state_study = hass.states.get(study_entity)
+
+        assert (
+            state_lr.state == "10.0"
+        ), f"Living Room stuck at {state_lr.state}, expected 10.0"
+        assert (
+            state_study.state == "1.0"
+        ), f"Study stuck at {state_study.state}, expected 1.0"

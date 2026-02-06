@@ -92,7 +92,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
 
         # Outdoor temperature tracking for ATA devices
-        self._last_outdoor_temp_poll: float = 0.0
+        self._last_outdoor_temp_poll: dict[str, float] = {}  # Per-unit poll timestamps
         self._outdoor_temp_checked: set[str] = set()  # Track which units we've probed
 
         # Initialize ATA control client
@@ -204,7 +204,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                         self._outdoor_temp_checked.add(unit_id)
 
                 # Ongoing polling for devices with sensors
-                elif unit.has_outdoor_temp_sensor and self._should_poll_outdoor_temp():
+                elif unit.has_outdoor_temp_sensor and self._should_poll_outdoor_temp(
+                    unit_id
+                ):
                     try:
 
                         async def get_outdoor_temp(
@@ -506,14 +508,15 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             _LOGGER.error("API error during %s: %s", operation_name, err)
             raise HomeAssistantError(f"API error: {err}") from err
 
-    def _should_poll_outdoor_temp(self) -> bool:
-        """Check if outdoor temp should be polled (30 minute interval)."""
+    def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
+        """Check if outdoor temp should be polled for a specific unit."""
         import time
 
         now = time.time()
         interval_seconds = UPDATE_INTERVAL_OUTDOOR_TEMP.total_seconds()
-        if now - self._last_outdoor_temp_poll > interval_seconds:
-            self._last_outdoor_temp_poll = now
+        last_poll = self._last_outdoor_temp_poll.get(unit_id, 0.0)
+        if now - last_poll > interval_seconds:
+            self._last_outdoor_temp_poll[unit_id] = now
             return True
         return False
 

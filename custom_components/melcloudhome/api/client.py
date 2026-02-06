@@ -290,7 +290,25 @@ class MELCloudHomeClient:
                 "GET", "/api/report/trendsummary", params=params
             )
             if response is None:
+                _LOGGER.debug(
+                    "Trendsummary returned None for unit %s (from=%s, to=%s)",
+                    unit_id,
+                    params["from"],
+                    params["to"],
+                )
                 return None
+            # Log raw response to diagnose 1-hour window behavior
+            outdoor_dataset = None
+            for ds in response.get("datasets", []):
+                if "OUTDOOR_TEMPERATURE" in ds.get("label", ""):
+                    outdoor_dataset = ds.get("data", [])
+                    break
+            _LOGGER.debug(
+                "Trendsummary outdoor data for unit %s: %d points, raw=%s",
+                unit_id,
+                len(outdoor_dataset) if outdoor_dataset is not None else 0,
+                outdoor_dataset,
+            )
             return self._parse_outdoor_temp(response)
         except Exception:
             # Log at debug level - outdoor temp is nice-to-have, not critical
