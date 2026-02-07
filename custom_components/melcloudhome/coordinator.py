@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
@@ -218,8 +219,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             get_outdoor_temp,
                             "outdoor temperature update",
                         )
-                        unit.outdoor_temperature = temp
+                        self._record_outdoor_temp_poll(unit_id)
                         if temp is not None:
+                            unit.outdoor_temperature = temp
                             _LOGGER.debug(
                                 "Updated outdoor temp for %s: %.1f°C",
                                 unit.name,
@@ -231,7 +233,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             unit.name,
                             exc_info=True,
                         )
-                        unit.outdoor_temperature = None
 
         # Update caches for O(1) lookups
         self._rebuild_caches(context)
@@ -510,15 +511,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
         """Check if outdoor temp should be polled for a specific unit."""
-        import time
-
         now = time.time()
         interval_seconds = UPDATE_INTERVAL_OUTDOOR_TEMP.total_seconds()
         last_poll = self._last_outdoor_temp_poll.get(unit_id, 0.0)
-        if now - last_poll > interval_seconds:
-            self._last_outdoor_temp_poll[unit_id] = now
-            return True
-        return False
+        return now - last_poll > interval_seconds
+
+    def _record_outdoor_temp_poll(self, unit_id: str) -> None:
+        """Record that outdoor temp was successfully polled for a unit."""
+        self._last_outdoor_temp_poll[unit_id] = time.time()
 
     # =================================================================
     # Air-to-Air (A2A) Control Methods - Delegate to ATAControlClient

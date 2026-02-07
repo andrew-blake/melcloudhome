@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+from freezegun import freeze_time
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -202,8 +203,10 @@ async def test_outdoor_temperature_unavailable_when_api_fails(
         assert state is None  # Not created due to discovery failure
 
 
+@freeze_time("2026-02-07 12:00:00", real_asyncio=True)
 async def test_outdoor_temperature_all_units_polled_on_refresh(
     hass: HomeAssistant,
+    freezer,
 ):
     """Test that ALL units with outdoor sensors get polled, not just the first.
 
@@ -278,10 +281,10 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
             side_effect=mock_get_outdoor_temp_updated
         )
 
-        # Force polling interval to elapse by resetting per-unit timestamps
-        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-        coordinator._last_outdoor_temp_poll.clear()
+        # Advance time past the polling interval
+        freezer.move_to("2026-02-07 12:31:00")
 
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         await coordinator.async_request_refresh()
         await hass.async_block_till_done()
 
