@@ -2,7 +2,7 @@
 
 Complete reference for all entities created by the MELCloud Home integration.
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-02-07
 
 ---
 

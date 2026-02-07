@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.1
-**Last Updated:** 2026-01-03
+**Document Version:** 1.2
+**Last Updated:** 2026-02-07
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
