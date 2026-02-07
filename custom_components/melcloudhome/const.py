@@ -30,7 +30,7 @@ UPDATE_INTERVAL_TELEMETRY = timedelta(minutes=60)  # Hourly (temps change slowly
 DATA_LOOKBACK_HOURS_TELEMETRY = 4  # Sparse data, 4 hours sufficient
 
 # Outdoor temperature polling configuration (ATA devices)
-UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=5)
+UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=30)
 
 # ATW telemetry measures
 ATW_TELEMETRY_MEASURES = [
