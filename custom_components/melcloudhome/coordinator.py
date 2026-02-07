@@ -168,15 +168,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     unit.has_outdoor_temp_sensor = old_unit.has_outdoor_temp_sensor
                     unit.outdoor_temperature = old_unit.outdoor_temperature
 
+                async def get_outdoor_temp(
+                    uid: str = unit_id,
+                ) -> float | None:
+                    return await self.client.get_outdoor_temperature(uid)
+
                 # Runtime capability discovery - probe once per device
                 if unit_id not in self._outdoor_temp_checked:
                     try:
-
-                        async def get_outdoor_temp(
-                            uid: str = unit_id,
-                        ) -> float | None:
-                            return await self.client.get_outdoor_temperature(uid)
-
                         temp = await self._execute_with_retry(
                             get_outdoor_temp,
                             "outdoor temperature check",
@@ -209,12 +208,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     unit_id
                 ):
                     try:
-
-                        async def get_outdoor_temp(
-                            uid: str = unit_id,
-                        ) -> float | None:
-                            return await self.client.get_outdoor_temperature(uid)
-
                         temp = await self._execute_with_retry(
                             get_outdoor_temp,
                             "outdoor temperature update",
