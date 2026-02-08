@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
@@ -19,6 +20,7 @@ from .const import (
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
+    UPDATE_INTERVAL_OUTDOOR_TEMP,
     UPDATE_INTERVAL_TELEMETRY,
 )
 from .control_client_ata import ATAControlClient
@@ -90,6 +92,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             get_coordinator_data=lambda: self.data,
         )
 
+        # Outdoor temperature tracking for ATA devices
+        self._last_outdoor_temp_poll: dict[str, float] = {}  # Per-unit poll timestamps
+        self._outdoor_temp_checked: set[str] = set()  # Track which units we've probed
+
         # Initialize ATA control client
         self.control_client_ata = ATAControlClient(
             hass=hass,
@@ -150,6 +156,76 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     atw_unit.tank_water_temperature,
                     atw_unit.set_tank_water_temperature,
                 )
+
+        # Update outdoor temperature for ATA devices (30 minute interval)
+        for building in context.buildings:
+            for unit in building.air_to_air_units:
+                unit_id = unit.id  # Capture for closures
+
+                # Preserve outdoor temp state from previous update
+                if unit_id in self._units:
+                    old_unit = self._units[unit_id]
+                    unit.has_outdoor_temp_sensor = old_unit.has_outdoor_temp_sensor
+                    unit.outdoor_temperature = old_unit.outdoor_temperature
+
+                async def get_outdoor_temp(
+                    uid: str = unit_id,
+                ) -> float | None:
+                    return await self.client.get_outdoor_temperature(uid)
+
+                # Runtime capability discovery - probe once per device
+                if unit_id not in self._outdoor_temp_checked:
+                    try:
+                        temp = await self._execute_with_retry(
+                            get_outdoor_temp,
+                            "outdoor temperature check",
+                        )
+                        self._outdoor_temp_checked.add(unit_id)
+
+                        if temp is not None:
+                            unit.has_outdoor_temp_sensor = True
+                            unit.outdoor_temperature = temp
+                            _LOGGER.debug(
+                                "Device %s has outdoor temperature sensor: %.1f°C",
+                                unit.name,
+                                temp,
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Device %s has no outdoor temperature sensor",
+                                unit.name,
+                            )
+                    except Exception:
+                        _LOGGER.debug(
+                            "Failed to check outdoor temp for %s",
+                            unit.name,
+                            exc_info=True,
+                        )
+                        self._outdoor_temp_checked.add(unit_id)
+
+                # Ongoing polling for devices with sensors
+                elif unit.has_outdoor_temp_sensor and self._should_poll_outdoor_temp(
+                    unit_id
+                ):
+                    try:
+                        temp = await self._execute_with_retry(
+                            get_outdoor_temp,
+                            "outdoor temperature update",
+                        )
+                        self._record_outdoor_temp_poll(unit_id)
+                        if temp is not None:
+                            unit.outdoor_temperature = temp
+                            _LOGGER.debug(
+                                "Updated outdoor temp for %s: %.1f°C",
+                                unit.name,
+                                temp,
+                            )
+                    except Exception:
+                        _LOGGER.warning(
+                            "Failed to update outdoor temp for %s",
+                            unit.name,
+                            exc_info=True,
+                        )
 
         # Update caches for O(1) lookups
         self._rebuild_caches(context)
@@ -425,6 +501,17 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         except ApiError as err:
             _LOGGER.error("API error during %s: %s", operation_name, err)
             raise HomeAssistantError(f"API error: {err}") from err
+
+    def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
+        """Check if outdoor temp should be polled for a specific unit."""
+        now = time.time()
+        interval_seconds = UPDATE_INTERVAL_OUTDOOR_TEMP.total_seconds()
+        last_poll = self._last_outdoor_temp_poll.get(unit_id, 0.0)
+        return now - last_poll > interval_seconds
+
+    def _record_outdoor_temp_poll(self, unit_id: str) -> None:
+        """Record that outdoor temp was successfully polled for a unit."""
+        self._last_outdoor_temp_poll[unit_id] = time.time()
 
     # =================================================================
     # Air-to-Air (A2A) Control Methods - Delegate to ATAControlClient

@@ -29,6 +29,9 @@ DATA_LOOKBACK_HOURS_ENERGY = 48
 UPDATE_INTERVAL_TELEMETRY = timedelta(minutes=60)  # Hourly (temps change slowly)
 DATA_LOOKBACK_HOURS_TELEMETRY = 4  # Sparse data, 4 hours sufficient
 
+# Outdoor temperature polling configuration (ATA devices)
+UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=30)
+
 # ATW telemetry measures
 ATW_TELEMETRY_MEASURES = [
     "flow_temperature",
@@ -52,6 +55,7 @@ __all__ = [
     "PLATFORMS",
     "UPDATE_INTERVAL",
     "UPDATE_INTERVAL_ENERGY",
+    "UPDATE_INTERVAL_OUTDOOR_TEMP",
     "UPDATE_INTERVAL_TELEMETRY",
     "DeviceUnit",
 ]

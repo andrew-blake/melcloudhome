@@ -40,6 +40,12 @@ async def async_setup_entry(
     # ATA (Air-to-Air) sensors
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
+            _LOGGER.debug(
+                "Sensor setup: unit %s has_outdoor_temp_sensor=%s outdoor_temperature=%s",
+                unit.name,
+                unit.has_outdoor_temp_sensor,
+                unit.outdoor_temperature,
+            )
             for description in ATA_SENSOR_TYPES:
                 # Use should_create_fn if defined, otherwise use available_fn
                 create_check = (

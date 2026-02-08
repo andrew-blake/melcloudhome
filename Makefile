@@ -61,7 +61,8 @@ test:  ## Run ALL tests with combined coverage
 	@uv run pytest tests/api/ -v -m "not e2e" \
 		--cov=custom_components/melcloudhome \
 		--cov-report=
-	@cp .coverage coverage-output/.coverage
+	@mv .coverage .coverage.api
+	@echo "Saved API test coverage to .coverage.api"
 	@echo "🐳 Integration + E2E (sequential startup to avoid DNS race)..."
 	@docker compose -f docker-compose.test.yml up -d melcloud-mock
 	@echo "Waiting for mock server health check..."
@@ -70,10 +71,16 @@ test:  ## Run ALL tests with combined coverage
 		docker compose -f docker-compose.test.yml run --rm e2e-tests; \
 		E2E_EXIT=$$?; \
 		docker compose -f docker-compose.test.yml down -v; \
-		echo "📤 Uploading coverage results..."; \
-		if [ -f coverage-output/.coverage ]; then cp coverage-output/.coverage .coverage; fi; \
-		if [ -f coverage-output/coverage.xml ]; then cp coverage-output/coverage.xml coverage.xml; fi; \
-		if [ -d coverage-output/htmlcov ]; then cp -r coverage-output/htmlcov htmlcov; fi; \
+		echo "📤 Combining coverage from API + Docker tests..."; \
+		if [ -f coverage-output/.coverage ]; then \
+			mv coverage-output/.coverage .coverage.docker; \
+			uv run coverage combine .coverage.api .coverage.docker; \
+			uv run coverage xml; \
+			uv run coverage html; \
+		else \
+			echo "❌ Error: Docker coverage file not found"; \
+			exit 1; \
+		fi; \
 		echo "📊 Coverage: open htmlcov/index.html"; \
 		if [ $$INTEGRATION_EXIT -ne 0 ]; then exit $$INTEGRATION_EXIT; fi; \
 		exit $$E2E_EXIT

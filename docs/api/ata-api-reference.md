@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.1
-**Last Updated:** 2026-01-03
+**Document Version:** 1.2
+**Last Updated:** 2026-02-07
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
@@ -541,6 +541,74 @@ Use these capabilities to:
 - Enable/disable HVAC modes based on device support
 - Determine available fan speeds
 - Check for vane/swing support
+
+---
+
+## Telemetry Endpoints
+
+### Trend Summary (Temperature Reports)
+
+**GET** `/api/report/trendsummary`
+
+Returns historical temperature data for chart display. Used by integration to fetch outdoor temperature.
+
+**Query Parameters:**
+- `unitId` - Device UUID
+- `from` - Start datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
+- `to` - End datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
+
+**Example Request:**
+
+```
+GET /api/report/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=2026-02-03T11:00:00.0000000&to=2026-02-03T12:00:00.0000000
+```
+
+**Response:**
+
+```json
+{
+  "datasets": [
+    {
+      "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
+      "data": [{"x": "2026-02-03T12:00:00", "y": 17.0}],
+      "backgroundColor": "#F1995D",
+      "borderColor": "#F1995D",
+      "yAxisId": "yTemp",
+      "pointRadius": 0,
+      "lineTension": 0,
+      "borderWidth": 2,
+      "stepped": true,
+      "spanGaps": false,
+      "isNonInteractive": false
+    },
+    {
+      "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
+      "data": [{"x": "2026-02-03T12:00:00", "y": 19.0}]
+    },
+    {
+      "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+      "data": [{"x": "2026-02-03T12:00:00", "y": 11.0}]
+    }
+  ],
+  "annotations": []
+}
+```
+
+**Integration Usage:**
+
+- Polled every 30 minutes for devices with outdoor sensors
+- Extracts latest outdoor temperature value from OUTDOOR_TEMPERATURE dataset
+- Not all devices have outdoor sensors (capability auto-detected)
+- Dataset may be absent if device lacks outdoor temperature sensor
+- Real API returns ~60 datapoints per hour (one per minute)
+- Integration uses latest value (last array element)
+
+**Notes:**
+
+- Response includes chart styling metadata (colors, borders, etc.)
+- Multiple temperature datasets returned in single call
+- Used by MELCloud web UI for temperature graphs
+- Time range typically last 1 hour for current temperature
 
 ---
 

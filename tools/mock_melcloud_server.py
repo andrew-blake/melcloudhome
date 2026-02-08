@@ -29,6 +29,7 @@ import asyncio
 import json
 import logging
 import signal
+from datetime import datetime, timedelta
 from time import time
 from typing import Any
 
@@ -233,6 +234,11 @@ class MockMELCloudServer:
             "/api/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
 
+        # Report endpoints
+        trendsummary_route = app.router.add_get(
+            "/api/report/trendsummary", self.get_trend_summary
+        )
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -246,6 +252,7 @@ class MockMELCloudServer:
             schedule_enabled_put,
             telemetry_route,
             energy_route,
+            trendsummary_route,
         ]:
             cors.add(route)
 
@@ -805,6 +812,91 @@ class MockMELCloudServer:
                 ],
             }
         )
+
+    async def get_trend_summary(self, request: web.Request) -> web.Response:
+        """GET /api/report/trendsummary - Temperature trend data."""
+        unit_id = request.query.get("unitId")
+        to_param = request.query.get("to", "")
+        from_param = request.query.get("from", "")
+
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+
+        # Parse timestamps
+        if to_param:
+            to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
+        else:
+            to_time = datetime.now()
+
+        if from_param:
+            from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
+        else:
+            from_time = to_time - timedelta(hours=1)
+
+        # Generate datapoints (every 10 minutes)
+        datapoints_room = []
+        datapoints_set = []
+        datapoints_outdoor = []
+
+        current = from_time
+        while current <= to_time:
+            timestamp = current.isoformat()
+            datapoints_room.append({"x": timestamp, "y": 20.5})
+            datapoints_set.append({"x": timestamp, "y": 21.0})
+            datapoints_outdoor.append({"x": timestamp, "y": 12.0})
+            current += timedelta(minutes=10)
+
+        # Check if device has outdoor sensor (Living Room AC has it, Bedroom doesn't)
+        has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-123456787db"
+
+        datasets = [
+            {
+                "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
+                "data": datapoints_room,
+                "backgroundColor": "#F1995D",
+                "borderColor": "#F1995D",
+                "yAxisId": "yTemp",
+                "pointRadius": 0,
+                "lineTension": 0,
+                "borderWidth": 2,
+                "stepped": True,
+                "spanGaps": False,
+                "isNonInteractive": False,
+            },
+            {
+                "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
+                "data": datapoints_set,
+                "backgroundColor": "#36BC6A",
+                "borderColor": "#36BC6A",
+                "yAxisId": "yTemp",
+                "pointRadius": 0,
+                "lineTension": 0,
+                "borderWidth": 2,
+                "stepped": True,
+                "spanGaps": False,
+                "isNonInteractive": False,
+            },
+        ]
+
+        # Add outdoor temp dataset only for devices with sensor
+        if has_outdoor_sensor:
+            datasets.append(
+                {
+                    "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+                    "data": datapoints_outdoor,
+                    "backgroundColor": "#156082",
+                    "borderColor": "#156082",
+                    "yAxisId": "yTemp",
+                    "pointRadius": 0,
+                    "lineTension": 0,
+                    "borderWidth": 2,
+                    "stepped": True,
+                    "spanGaps": False,
+                    "isNonInteractive": False,
+                }
+            )
+
+        return web.json_response({"datasets": datasets, "annotations": []})
 
     def _snake_to_camel(self, snake_str: str) -> str:
         """Convert snake_case to camelCase."""
