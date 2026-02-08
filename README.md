@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.0.0
+## What's New in v2.1.0
 
-Air-to-Water (ATW) heat pump support is now production-ready. Tested on Ecodan hardware with zone heating/cooling, DHW control, energy monitoring, and telemetry sensors. See [CHANGELOG.md](CHANGELOG.md) for details.
+Outdoor temperature sensor for ATA air conditioning units. Automatically discovered from device capabilities, updated every 30 minutes. See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Features
 
@@ -20,8 +20,10 @@ Air-to-Water (ATW) heat pump support is now production-ready. Tested on Ecodan h
 
 - Full climate control (power, temperature, modes, fan speeds, vane directions)
 - Energy monitoring with Home Assistant Energy Dashboard support
-- Real-time sensors (temperature, WiFi signal, connection status)
-- 60-second polling for climate updates
+- Real-time sensors (room temperature, outdoor temperature*, WiFi signal, connection status)
+- 60-second polling for climate updates, 30-minute for outdoor temperature
+
+*Auto-detected from device capabilities - not all units have outdoor temperature sensors
 
 ### Air-to-Water (ATW) - Heat Pumps
 
@@ -112,7 +114,7 @@ The integration creates the following entities for each device:
 **Air-to-Air (ATA) Systems:**
 
 - Climate control (HVAC modes, temperature, fan speeds, swing)
-- Sensors (room temperature, WiFi signal, energy consumption)
+- Sensors (room temperature, outdoor temperature*, WiFi signal, energy consumption)
 - Binary sensors (error state, connection status)
 
 **Air-to-Water (ATW) Heat Pumps:**
@@ -160,6 +162,7 @@ The integration uses conservative polling intervals to respect API limits:
 
 - **Climate/Sensors**: 60 seconds
 - **Energy Data**: 30 minutes
+- **Outdoor Temperature**: 30 minutes
 
 These intervals balance update frequency with API rate limits.
 
