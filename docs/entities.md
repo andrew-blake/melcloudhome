@@ -99,6 +99,12 @@ For each heat pump system, the following entities are created:
 - **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
 - **Features**: Zone 1 heating control, temperature setting (10-30°C), preset modes, HVAC modes
 
+### Climate Entity (Zone 2)
+
+- **Entity ID**: `climate.melcloudhome_{short_id}_zone_2` (if device supports Zone 2)
+- **Features**: Same capabilities as Zone 1: HVAC modes, preset modes, temperature control (10-30°C)
+- **Created automatically** when `hasZone2=true` in device capabilities
+
 ### Water Heater Entity (DHW Tank)
 
 - **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
@@ -116,6 +122,7 @@ For each heat pump system, the following entities are created:
 **Temperature Sensors:**
 
 - **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
+- **Zone 2 Temperature**: `sensor.melcloudhome_{short_id}_zone_2_temperature` (if device supports Zone 2)
 - **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
 
 **Operation Status:**
@@ -129,6 +136,8 @@ For each heat pump system, the following entities are created:
 - **Return Temperature**: `sensor.melcloudhome_{short_id}_return_temperature`
 - **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone1`
 - **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone1`
+- **Flow Temperature Zone 2**: `sensor.melcloudhome_{short_id}_flow_temperature_zone2` (if device supports Zone 2)
+- **Return Temperature Zone 2**: `sensor.melcloudhome_{short_id}_return_temperature_zone2` (if device supports Zone 2)
 - **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 

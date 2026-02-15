@@ -27,7 +27,7 @@ Outdoor temperature sensor for ATA air conditioning units. Automatically discove
 
 ### Air-to-Water (ATW) - Heat Pumps
 
-- Zone 1 climate control with preset modes (Room/Flow/Curve)
+- Zone 1 & Zone 2 climate control with preset modes (Room/Flow/Curve) - Zone 2 auto-detected
 - DHW tank control via water heater platform
 - System power switch
 - Multiple sensors (temperatures, operation status, 6 telemetry sensors)
@@ -58,7 +58,7 @@ For complete hardware compatibility including specific models, WiFi adapters, an
 
 - **Status:** Production-ready (tested on real hardware)
 - **Supported systems:** Mitsubishi Electric Ecodan heat pumps with FTC controllers
-- **Core features:** Zone 1 heating, DHW control, 3-way valve systems, telemetry sensors, energy monitoring*
+- **Core features:** Zone 1 & Zone 2 heating, DHW control, 3-way valve systems, telemetry sensors, energy monitoring*
 - **Optional features:** Cooling mode (capability-based), energy monitoring (capability-based)
 
 *Feature availability auto-detected from device capabilities
@@ -69,15 +69,11 @@ For tested controller models and capability details, see [SUPPORTED_DEVICES.md](
 
 ### HACS (Recommended)
 
-1. Open HACS in Home Assistant
-2. Click on "Integrations"
-3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add repository URL: `https://github.com/andrew-blake/melcloudhome`
-6. Select category: "Integration"
-7. Click "Add"
-8. Find "MELCloud Home" in HACS and click "Download"
-9. Restart Home Assistant
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrew-blake&repository=melcloudhome&category=integration)
+
+Or manually: HACS → Integrations → ⋮ → Custom repositories → add `https://github.com/andrew-blake/melcloudhome`
+
+After adding, find "MELCloud Home" in HACS, click "Download", and restart Home Assistant.
 
 ### Manual Installation
 
@@ -87,13 +83,11 @@ For tested controller models and capability details, see [SUPPORTED_DEVICES.md](
 
 ## Configuration
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **Add Integration**
-3. Search for "MELCloud Home"
-4. Enter your MELCloud Home credentials (email and password)
-5. Click **Submit**
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=melcloudhome)
 
-Your devices will be automatically discovered and added.
+Or manually: **Settings** → **Devices & Services** → **Add Integration** → search "MELCloud Home"
+
+Enter your MELCloud Home credentials (email and password). Your devices will be automatically discovered and added.
 
 ## Important Notes
 
@@ -119,7 +113,7 @@ The integration creates the following entities for each device:
 
 **Air-to-Water (ATW) Heat Pumps:**
 
-- Climate control (Zone 1 heating/cooling with preset modes)
+- Climate control (Zone 1 & Zone 2 heating/cooling with preset modes)
 - Water heater (DHW tank control)
 - System power switch
 - Sensors (temperatures, operation status, telemetry, WiFi signal, energy*)

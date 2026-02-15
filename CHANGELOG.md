@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Zone 2 support** for Air-to-Water (ATW) devices with automatic capability detection
+  - Climate entity with full HVAC control (heating/cooling, preset modes, temperature)
+  - Zone 2 room temperature sensor
+  - Zone 2 flow and return temperature telemetry sensors
+  - Shared base class architecture for consistent Zone 1/Zone 2 behavior
+
 ## [2.1.0] - 2026-02-08
 
 ### Added

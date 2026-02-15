@@ -84,7 +84,7 @@ ATW support is **production-ready** - Available in v2.0.0 and tested on real har
 - Telemetry sensors (6 flow/return temperatures) ✓
 - Energy monitoring* (consumed, produced, COP) ✓
 - Operation status monitoring ✓
-- Single zone systems only (no Zone 2)
+- Zone 2 support (auto-detected when device has `hasZone2=true`)
 
 *Feature availability depends on device capabilities - see README.md for details
 

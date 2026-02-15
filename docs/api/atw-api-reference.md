@@ -81,7 +81,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 | `TankWaterTemperature` | number | Current DHW temp |
 | `SetTankWaterTemperature` | number | DHW target |
 | `ForcedHotWaterMode` | boolean | DHW priority enabled |
-| `HasZone2` | number | Zone 2 support (0/1) |
+| `HasZone2` | number | Zone 2 support (0=no, 2=yes) |
 | `HasCoolingMode` | boolean | Cooling available (usually false) |
 | `IsInError` | boolean | Error state |
 | `ErrorCode` | string | Error code if any |
@@ -277,7 +277,7 @@ Settings are returned as name-value pairs:
   {"name": "TankWaterTemperature", "value": "45"},
   {"name": "SetTankWaterTemperature", "value": "50"},
   {"name": "ForcedHotWaterMode", "value": "False"},
-  {"name": "HasZone2", "value": "0"},
+  {"name": "HasZone2", "value": "0"},  // "0" = no Zone 2, "2" = has Zone 2
   {"name": "HasCoolingMode", "value": "False"},
   {"name": "IsInError", "value": "False"},
   {"name": "ErrorCode", "value": ""}
@@ -726,7 +726,7 @@ This API documentation is based on comprehensive testing:
 
 ### Hardware Tested
 - **Model:** EHSCVM2D Hydrokit
-- **Configuration:** Single zone (Zone 2: no), DHW support
+- **Configuration:** Single zone, DHW support
 - **Heating type:** Underfloor heating
 - **Location:** Spain (vacation home)
 
@@ -765,7 +765,6 @@ This API documentation is based on comprehensive testing:
 - ✅ Multiple time ranges (hourly, daily, monthly)
 
 ### Known Limitations
-- **Zone 2:** Not tested (test system has hasZone2=false)
 - **Cooling mode:** Not tested (heat-only system)
 - **Measured energy:** Not tested (system has estimated only)
 - **Schedule integer mapping:** Unknown (requires additional testing)
