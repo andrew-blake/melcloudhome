@@ -72,6 +72,8 @@ TEST_SENSOR_ENERGY_PRODUCED = "sensor.melcloudhome_0efc_9abc_energy_produced"
 TEST_SENSOR_COP = "sensor.melcloudhome_0efc_9abc_cop"
 TEST_BINARY_SENSOR_ERROR = "binary_sensor.melcloudhome_0efc_9abc_error_state"
 TEST_BINARY_SENSOR_CONNECTION = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
+TEST_CLIMATE_ZONE2_ENTITY_ID = "climate.melcloudhome_0efc_9abc_zone_2"
+TEST_SENSOR_ZONE2_TEMP = "sensor.melcloudhome_0efc_9abc_zone_2_temperature"
 
 
 def create_mock_atw_unit(
@@ -93,6 +95,9 @@ def create_mock_atw_unit(
     in_standby_mode: bool = False,
     has_energy_meter: bool = False,
     has_cooling_mode: bool = False,
+    operation_mode_zone2: str | None = None,
+    set_temperature_zone2: float | None = None,
+    room_temperature_zone2: float | None = None,
     energy_consumed: float | None = None,
     energy_produced: float | None = None,
     cop: float | None = None,
@@ -107,6 +112,14 @@ def create_mock_atw_unit(
         AirToWaterUnit,
     )
 
+    # Set sensible Zone 2 defaults if enabled but fields not specified
+    if has_zone2 and operation_mode_zone2 is None:
+        operation_mode_zone2 = "HeatRoomTemperature"
+    if has_zone2 and set_temperature_zone2 is None:
+        set_temperature_zone2 = 21.0
+    if has_zone2 and room_temperature_zone2 is None:
+        room_temperature_zone2 = 20.0
+
     return AirToWaterUnit(
         id=unit_id,
         name=name,
@@ -118,6 +131,9 @@ def create_mock_atw_unit(
         room_temperature_zone1=room_temperature_zone1,
         set_temperature_zone1=set_temperature_zone1,
         operation_mode_zone1=operation_mode_zone1,
+        operation_mode_zone2=operation_mode_zone2,
+        set_temperature_zone2=set_temperature_zone2,
+        room_temperature_zone2=room_temperature_zone2,
         operation_status=operation_status,
         has_zone2=has_zone2,
         is_in_error=is_in_error,
@@ -129,6 +145,8 @@ def create_mock_atw_unit(
         cop=cop,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
+            has_heat_zone2=has_zone2,
+            has_thermostat_zone2=has_zone2,
             has_estimated_energy_consumption=has_energy_meter,
             has_estimated_energy_production=has_energy_meter,
             has_cooling_mode=has_cooling_mode,
