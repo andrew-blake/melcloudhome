@@ -76,6 +76,17 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
+    # Zone 2 room temperature (only if device has zone 2)
+    ATWSensorEntityDescription(
+        key="zone_2_temperature",
+        translation_key="zone_2_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.room_temperature_zone2,
+        should_create_fn=lambda unit: unit.has_zone2,
+        available_fn=lambda unit: unit.room_temperature_zone2 is not None,
+    ),
     # Tank water temperature
     ATWSensorEntityDescription(
         key="tank_temperature",
@@ -132,6 +143,29 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
         available_fn=lambda unit: unit.telemetry.get("return_temperature_zone1")
+        is not None,
+    ),
+    # Zone 2 telemetry (flow/return temperatures)
+    ATWSensorEntityDescription(
+        key="flow_temperature_zone2",
+        translation_key="flow_temperature_zone2",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
+        should_create_fn=lambda unit: unit.has_zone2,
+        available_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2")
+        is not None,
+    ),
+    ATWSensorEntityDescription(
+        key="return_temperature_zone2",
+        translation_key="return_temperature_zone2",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
+        should_create_fn=lambda unit: unit.has_zone2,
+        available_fn=lambda unit: unit.telemetry.get("return_temperature_zone2")
         is not None,
     ),
     ATWSensorEntityDescription(

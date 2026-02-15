@@ -18,7 +18,11 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
-from .const import ATW_TELEMETRY_MEASURES, DATA_LOOKBACK_HOURS_TELEMETRY
+from .const import (
+    ATW_TELEMETRY_MEASURES,
+    ATW_TELEMETRY_MEASURES_ZONE2,
+    DATA_LOOKBACK_HOURS_TELEMETRY,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -124,13 +128,18 @@ class TelemetryTracker:
         if unit.id not in self._telemetry_data:
             self._telemetry_data[unit.id] = {}
 
+        # Build measure list — Zone 2 measures only for devices with Zone 2
+        measures = list(ATW_TELEMETRY_MEASURES)
+        if unit.capabilities and unit.capabilities.has_zone2:
+            measures.extend(ATW_TELEMETRY_MEASURES_ZONE2)
+
         # Fetch each measure with jitter
-        for i, measure in enumerate(ATW_TELEMETRY_MEASURES):
+        for i, measure in enumerate(measures):
             try:
                 await self._fetch_measure(unit, measure)
 
                 # Jitter between measures (except last one)
-                if i < len(ATW_TELEMETRY_MEASURES) - 1:
+                if i < len(measures) - 1:
                     jitter = random.uniform(
                         TELEMETRY_INTER_MEASURE_JITTER_MIN,
                         TELEMETRY_INTER_MEASURE_JITTER_MAX,

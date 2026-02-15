@@ -43,11 +43,18 @@ ATW_TELEMETRY_MEASURES = [
     "rssi",  # WiFi signal strength in dBm
 ]
 
+# ATW telemetry measures for Zone 2 devices only
+ATW_TELEMETRY_MEASURES_ZONE2 = [
+    "flow_temperature_zone2",
+    "return_temperature_zone2",
+]
+
 # Type alias for any device unit (ATA or ATW)
 DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
 
 __all__ = [
     "ATW_TELEMETRY_MEASURES",
+    "ATW_TELEMETRY_MEASURES_ZONE2",
     "CONF_DEBUG_MODE",
     "DATA_LOOKBACK_HOURS_ENERGY",
     "DATA_LOOKBACK_HOURS_TELEMETRY",

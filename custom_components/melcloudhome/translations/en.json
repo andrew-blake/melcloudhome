@@ -93,6 +93,9 @@
       "zone_1_temperature": {
         "name": "Zone 1 temperature"
       },
+      "zone_2_temperature": {
+        "name": "Zone 2 temperature"
+      },
       "tank_temperature": {
         "name": "Tank temperature"
       },
@@ -110,6 +113,12 @@
       },
       "return_temperature_zone1": {
         "name": "Return temperature zone 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Flow temperature zone 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Return temperature zone 2"
       },
       "flow_temperature_boiler": {
         "name": "Flow temperature boiler"

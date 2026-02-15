@@ -20,6 +20,7 @@ from custom_components.melcloudhome.const import DOMAIN
 from .conftest import (
     TEST_ATW_UNIT_ID,
     TEST_CLIMATE_ZONE2_ENTITY_ID,
+    TEST_SENSOR_ZONE2_TEMP,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
@@ -219,3 +220,67 @@ async def test_atw_zone2_hvac_action_heating(hass: HomeAssistant) -> None:
 
         state = hass.states.get(TEST_CLIMATE_ZONE2_ENTITY_ID)
         assert state.attributes["hvac_action"] == HVACAction.HEATING
+
+
+@pytest.mark.asyncio
+async def test_atw_zone2_temperature_sensor_created(hass: HomeAssistant) -> None:
+    """Test Zone 2 temperature sensor created when device has Zone 2."""
+    mock_unit = create_mock_atw_unit(
+        has_zone2=True,
+        room_temperature_zone2=20.0,
+        operation_mode_zone2="HeatRoomTemperature",
+        set_temperature_zone2=21.0,
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_SENSOR_ZONE2_TEMP)
+        assert state is not None
+        assert float(state.state) == 20.0
+
+
+@pytest.mark.asyncio
+async def test_atw_zone2_temperature_sensor_not_created_without_zone2(
+    hass: HomeAssistant,
+) -> None:
+    """Test Zone 2 temperature sensor NOT created without Zone 2."""
+    mock_unit = create_mock_atw_unit(has_zone2=False)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get(TEST_SENSOR_ZONE2_TEMP)
+        assert state is None
