@@ -200,12 +200,24 @@ class AirToWaterUnit:
 
         This method parses the settings array and handles type conversions.
         """
+        # DEBUG: Log raw API data for ATW unit
+        import json
+
+        settings_list = data.get("settings", [])
+        unit_id = data.get("id", "unknown")
+        unit_name = data.get("givenDisplayName", "Unknown")
+        _LOGGER.debug(
+            "[ATW %s '%s'] Raw API settings: %s",
+            unit_id[:8],
+            unit_name,
+            json.dumps(settings_list, indent=2),
+        )
+
         # Parse capabilities
         capabilities_data = data.get("capabilities", {})
         capabilities = AirToWaterCapabilities.from_dict(capabilities_data)
 
         # Parse settings array into dict for easy access
-        settings_list = data.get("settings", [])
         settings = {item["name"]: item["value"] for item in settings_list}
 
         # Extract Zone 2 flag (can be string "0"/"1" or int)

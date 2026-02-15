@@ -4,12 +4,15 @@ Contains Building and UserContext which are used by both ATA and ATW devices.
 Device-specific models are in models_ata.py and models_atw.py.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from . import const_ata, const_atw, const_shared
 from .models_ata import AirToAirUnit
 from .models_atw import AirToWaterUnit
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = [
     "Building",
@@ -54,6 +57,16 @@ class Building:
 
         # Parse A2W units (NEW)
         a2w_units_data = data.get(const_atw.API_FIELD_AIR_TO_WATER_UNITS, [])
+
+        # DEBUG: Log building context for ATW units
+        if a2w_units_data:
+            building_name = data.get("name", "Unknown")
+            _LOGGER.debug(
+                "[Building '%s'] Processing %d ATW unit(s)",
+                building_name,
+                len(a2w_units_data),
+            )
+
         a2w_units = [AirToWaterUnit.from_dict(u) for u in a2w_units_data]
 
         return cls(
