@@ -233,28 +233,44 @@ class AirToWaterUnit:
         error_code_value = settings.get("ErrorCode", "")
         error_code = error_code_value if error_code_value else None
 
+        # Extract key values for logging
+        operation_status = settings.get("OperationMode", ATW_STATUS_STOP)
+        operation_mode_zone1 = settings.get(
+            "OperationModeZone1", ATW_MODE_HEAT_ROOM_TEMP
+        )
+        operation_mode_zone2 = settings.get("OperationModeZone2") if has_zone2 else None
+        power = _parse_bool(settings.get("Power"))
+
+        # DEBUG: Log operation status vs zone modes when system is active
+        # This helps us understand if OperationMode contains generic values ("Heating")
+        # or zone-specific values ("HeatFlowTemperature")
+        if power and operation_status != ATW_STATUS_STOP:
+            _LOGGER.debug(
+                "[ATW %s] OperationMode='%s' | Zone1Mode='%s' | Zone2Mode='%s'",
+                data.get("id", "unknown")[:8],
+                operation_status,
+                operation_mode_zone1,
+                operation_mode_zone2,
+            )
+
         return cls(
             # Identity
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
             # Power
-            power=_parse_bool(settings.get("Power")),
+            power=power,
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
             # Operation Status (READ-ONLY)
             # CRITICAL: This is "OperationMode" in API but renamed to avoid confusion
             # with operationModeZone1 (which is the control field)
-            operation_status=settings.get("OperationMode", ATW_STATUS_STOP),
+            operation_status=operation_status,
             # Zone 1
-            operation_mode_zone1=settings.get(
-                "OperationModeZone1", ATW_MODE_HEAT_ROOM_TEMP
-            ),
+            operation_mode_zone1=operation_mode_zone1,
             set_temperature_zone1=_parse_float(settings.get("SetTemperatureZone1")),
             room_temperature_zone1=_parse_float(settings.get("RoomTemperatureZone1")),
             # Zone 2 (if present)
             has_zone2=has_zone2,
-            operation_mode_zone2=settings.get("OperationModeZone2")
-            if has_zone2
-            else None,
+            operation_mode_zone2=operation_mode_zone2,
             set_temperature_zone2=_parse_float(settings.get("SetTemperatureZone2"))
             if has_zone2
             else None,
