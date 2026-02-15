@@ -325,3 +325,46 @@ class ATWClimateZone1(ATWClimateBase):
                 device.operation_status == device.operation_mode_zone1
             )
         return attrs
+
+
+class ATWClimateZone2(ATWClimateBase):
+    """Climate entity for ATW Zone 2.
+
+    Only created when device capabilities report has_zone2=True.
+    """
+
+    def __init__(
+        self,
+        coordinator: CoordinatorProtocol,
+        unit: AirToWaterUnit,
+        building: Building,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize Zone 2 climate entity."""
+        super().__init__(coordinator, unit, building, entry, zone_number=2)
+
+    @property
+    def _zone_operation_mode(self) -> str | None:
+        """Return Zone 2 operation mode."""
+        device = self.get_device()
+        return device.operation_mode_zone2 if device else None
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return current Zone 2 room temperature."""
+        device = self.get_device()
+        return device.room_temperature_zone2 if device else None
+
+    @property
+    def target_temperature(self) -> float | None:
+        """Return target Zone 2 temperature."""
+        device = self.get_device()
+        return device.set_temperature_zone2 if device else None
+
+    async def _async_set_zone_temperature(self, temperature: float) -> None:
+        """Set Zone 2 temperature."""
+        await self.coordinator.async_set_temperature_zone2(self._unit_id, temperature)
+
+    async def _async_set_zone_mode(self, mode: str) -> None:
+        """Set Zone 2 operation mode."""
+        await self.coordinator.async_set_mode_zone2(self._unit_id, mode)
