@@ -317,13 +317,17 @@ class ATWClimateZone1(ATWClimateBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes (Zone 1 specific)."""
+        """Return additional state attributes (Zone 1 specific).
+
+        Note: zone_heating_available indicates that the system is currently
+        heating a zone (any zone). For dual-zone systems, the API does not
+        distinguish which specific zone is being heated - both zones will
+        show True when operation_status is "Heating".
+        """
         attrs = super().extra_state_attributes
         device = self.get_device()
         if device:
-            attrs["zone_heating_available"] = (
-                device.operation_status == device.operation_mode_zone1
-            )
+            attrs["zone_heating_available"] = device.operation_status == "Heating"
         return attrs
 
 
@@ -368,3 +372,18 @@ class ATWClimateZone2(ATWClimateBase):
     async def _async_set_zone_mode(self, mode: str) -> None:
         """Set Zone 2 operation mode."""
         await self.coordinator.async_set_mode_zone2(self._unit_id, mode)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes (Zone 2 specific).
+
+        Note: zone_heating_available indicates that the system is currently
+        heating a zone (any zone). For dual-zone systems, the API does not
+        distinguish which specific zone is being heated - both zones will
+        show True when operation_status is "Heating".
+        """
+        attrs = super().extra_state_attributes
+        device = self.get_device()
+        if device:
+            attrs["zone_heating_available"] = device.operation_status == "Heating"
+        return attrs
