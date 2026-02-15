@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.2.0] - 2026-02-15
 
 ### Added
 
@@ -29,16 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Air-to-Water (ATW) Heat Pump Support:**
 
-- Climate platform for Zone 1 with heating/cooling*, preset modes (Room/Flow/Curve), and temperature control (10-30°C)
+- Climate platform for Zone 1 with heating/cooling\*, preset modes (Room/Flow/Curve), and temperature control (10-30°C)
 - Water heater platform for DHW tank control (40-60°C, Eco/High demand modes)
 - Switch platform for system power control
 - Sensors: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temperatures)
-- Energy monitoring*: Sensors for consumed energy (kWh), produced energy (kWh), and COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
+- Energy monitoring\*: Sensors for consumed energy (kWh), produced energy (kWh), and COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
 - Binary sensors: Error state, connection state, forced DHW mode indicator
 - 3-way valve logic with automatic priority management between space heating and DHW
 - Capability-based feature detection for energy monitoring and cooling mode
 
-*Feature availability auto-detected from device capabilities.
+\*Feature availability auto-detected from device capabilities.
 
 **Development Tools:**
 
@@ -100,12 +100,12 @@ Thanks to [@pwa-2025](https://github.com/pwa-2025) and [@Alexxx1986](https://git
 - **Water Heater Platform** (DHW Tank): Temperature control (40-60°C), operation modes (Eco/High demand)
 - **Switch Platform** (System Power): Primary power control
 - **Sensors**: Zone 1 temperature, tank temperature, operation status, WiFi signal (RSSI), 6 telemetry sensors (flow/return temperatures)
-- **Energy Monitoring***: Energy consumed (kWh), energy produced (kWh), COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
+- **Energy Monitoring\***: Energy consumed (kWh), energy produced (kWh), COP (efficiency ratio) - compatible with Home Assistant Energy Dashboard
 - **Binary Sensors**: Error state, connection state, forced DHW mode active
 - **3-Way Valve Logic**: Automatic priority management between space heating and DHW
 - **Capability-Based Features**: Energy monitoring and cooling mode auto-detected from device capabilities
 
-*Feature availability depends on device capabilities
+\*Feature availability depends on device capabilities
 
 **Tested Devices:**
 
