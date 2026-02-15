@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from abc import abstractmethod
 from typing import Any
 
 from homeassistant.components.climate import (
@@ -31,17 +32,21 @@ from .protocols import CoordinatorProtocol
 _LOGGER = logging.getLogger(__name__)
 
 
-class ATWClimateZone1(
+class ATWClimateBase(
     ATWEntityBase,
     ClimateEntity,  # type: ignore[misc]
 ):
-    """Climate entity for ATW Zone 1.
+    """Base climate entity for ATW zones.
+
+    Shared logic for Zone 1 and Zone 2. Subclasses provide zone-specific
+    data access (which fields to read) and control methods (which coordinator
+    methods to call).
 
     Note: HA is not installed in dev environment (aiohttp version conflict).
     Mypy sees HA base classes as 'Any'.
     """
 
-    _attr_has_entity_name = True  # Use device name + entity name pattern
+    _attr_has_entity_name = True
     _attr_translation_key = "melcloudhome"  # For preset mode translations
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_ZONE
@@ -53,12 +58,13 @@ class ATWClimateZone1(
         unit: AirToWaterUnit,
         building: Building,
         entry: ConfigEntry,
+        zone_number: int,
     ) -> None:
-        """Initialize the climate entity for Zone 1."""
+        """Initialize the climate entity for a zone."""
         super().__init__(coordinator)
         self._unit_id = unit.id
         self._building_id = building.id
-        self._attr_unique_id = f"{unit.id}_zone_1"
+        self._attr_unique_id = f"{unit.id}_zone_{zone_number}"
         self._entry = entry
 
         # HVAC modes (dynamic based on cooling capability)
@@ -67,10 +73,8 @@ class ATWClimateZone1(
             hvac_modes.append(HVACMode.COOL)
         self._attr_hvac_modes = hvac_modes
 
-        # Preset modes (dynamic - see preset_modes property)
-
         # Short entity name (device name provides UUID prefix)
-        self._attr_name = "Zone 1"
+        self._attr_name = f"Zone {zone_number}"
 
         # Device info using shared helper (groups with water_heater/sensors)
         self._attr_device_info = create_device_info(unit, building)
@@ -80,6 +84,33 @@ class ATWClimateZone1(
             ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
         )
 
+    # --- Abstract zone-specific properties ---
+
+    @property
+    @abstractmethod
+    def _zone_operation_mode(self) -> str | None:
+        """Return the operation mode for this zone."""
+
+    @property
+    @abstractmethod
+    def current_temperature(self) -> float | None:
+        """Return current room temperature for this zone."""
+
+    @property
+    @abstractmethod
+    def target_temperature(self) -> float | None:
+        """Return target temperature for this zone."""
+
+    @abstractmethod
+    async def _async_set_zone_temperature(self, temperature: float) -> None:
+        """Set target temperature for this zone."""
+
+    @abstractmethod
+    async def _async_set_zone_mode(self, mode: str) -> None:
+        """Set operation mode for this zone."""
+
+    # --- Shared properties ---
+
     @property
     def hvac_mode(self) -> HVACMode:
         """Return current HVAC mode."""
@@ -87,8 +118,8 @@ class ATWClimateZone1(
         if device is None or not device.power:
             return HVACMode.OFF
 
-        # Check if in cooling mode
-        if device.operation_mode_zone1 in ATW_OPERATION_MODES_COOLING:
+        zone_mode = self._zone_operation_mode
+        if zone_mode in ATW_OPERATION_MODES_COOLING:
             return HVACMode.COOL
 
         return HVACMode.HEAT
@@ -99,36 +130,24 @@ class ATWClimateZone1(
 
         CRITICAL: Must check if valve is serving THIS specific zone.
         operation_status shows what valve is ACTIVELY doing RIGHT NOW.
-        operation_mode_zone1 shows CONFIGURED mode for Zone 1.
 
         API operation_status values:
         - "Stop" = Idle (target reached, no heating)
-        - "HotWater" = Heating DHW tank (not Zone 1)
-        - "Heating" = Actively heating zone
+        - "HotWater" = Heating DHW tank
+        - "Heating" = Actively heating zone (no zone distinction in API)
         """
         device = self.get_device()
         if device is None or not device.power:
             return HVACAction.OFF
 
-        # Check what the 3-way valve is doing right now
-        # If operation_status is "Stop", system is idle
         if device.operation_status == "Stop":
             return HVACAction.IDLE
 
-        # API returns "Heating" when actively heating zone
         if device.operation_status == "Heating":
             return HVACAction.HEATING
 
-        # Valve is elsewhere (DHW or Zone 2) - this zone is idle
+        # Valve is elsewhere (DHW) - this zone is idle
         return HVACAction.IDLE
-
-    @property
-    def current_temperature(self) -> float | None:
-        """Return current Zone 1 room temperature."""
-        device = self.get_device()
-        if device is None:
-            return None
-        return device.room_temperature_zone1
 
     @property
     def preset_modes(self) -> list[str]:
@@ -140,8 +159,8 @@ class ATWClimateZone1(
         Note: CoolCurve does NOT exist (confirmed from ERSC-VM2D testing)
         """
         if self.hvac_mode == HVACMode.COOL:
-            return ["room", "flow"]  # Only 2 presets for cooling
-        return ATW_PRESET_MODES  # All 3 presets for heating
+            return ["room", "flow"]
+        return ATW_PRESET_MODES
 
     @property
     def target_temperature_step(self) -> float:
@@ -154,23 +173,13 @@ class ATWClimateZone1(
         Even though API accepts 0.5°C values, MELCloud UI cannot display them
         properly when hasHalfDegrees=false (UI goes off scale).
         """
-        # Cooling mode always uses 1.0°C steps
         if self.hvac_mode == HVACMode.COOL:
             return 1.0
 
-        # Heating mode respects hasHalfDegrees capability
         device = self.get_device()
         if device and device.capabilities:
             return 0.5 if device.capabilities.has_half_degrees else 1.0
-        return 1.0  # Safe default
-
-    @property
-    def target_temperature(self) -> float | None:
-        """Return target Zone 1 temperature."""
-        device = self.get_device()
-        if device is None:
-            return None
-        return device.set_temperature_zone1
+        return 1.0
 
     @property
     def preset_mode(self) -> str | None:
@@ -179,8 +188,7 @@ class ATWClimateZone1(
         if device is None:
             return None
 
-        # Map ATW zone mode to HA preset
-        return ATW_TO_HA_PRESET.get(device.operation_mode_zone1, "room")
+        return ATW_TO_HA_PRESET.get(self._zone_operation_mode or "", "room")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -190,12 +198,12 @@ class ATWClimateZone1(
             return {}
 
         return {
-            "operation_status": device.operation_status,  # 3-way valve position
+            "operation_status": device.operation_status,
             "forced_dhw_active": device.forced_hot_water_mode,
-            "zone_heating_available": device.operation_status
-            == device.operation_mode_zone1,
             "ftc_model": device.ftc_model,
         }
+
+    # --- Shared control methods ---
 
     @with_debounced_refresh()
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -212,37 +220,30 @@ class ATWClimateZone1(
             await self.coordinator.async_set_power_atw(self._unit_id, False)
             return
 
-        # Turn on power for HEAT or COOL
         await self.coordinator.async_set_power_atw(self._unit_id, True)
 
-        # Set appropriate operation mode
         if hvac_mode == HVACMode.HEAT:
-            # Preserve current preset if valid for heating, else default to room
             current_preset = self.preset_mode or "room"
             heat_mode = HA_TO_ATW_PRESET_HEAT.get(current_preset, "HeatRoomTemperature")
-            await self.coordinator.async_set_mode_zone1(self._unit_id, heat_mode)
+            await self._async_set_zone_mode(heat_mode)
 
         elif hvac_mode == HVACMode.COOL:
-            # Preserve preset if valid for cooling, else default to room
             current_preset = self.preset_mode or "room"
             if current_preset == "curve":
-                # Curve doesn't exist for cooling, default to room
                 current_preset = "room"
             cool_mode = HA_TO_ATW_PRESET_COOL.get(current_preset, "CoolRoomTemperature")
-            await self.coordinator.async_set_mode_zone1(self._unit_id, cool_mode)
+            await self._async_set_zone_mode(cool_mode)
 
         else:
             _LOGGER.warning("Invalid HVAC mode %s for ATW", hvac_mode)
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target Zone 1 temperature."""
+        """Set new target temperature."""
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-
-        # Set Zone 1 temperature
-        await self.coordinator.async_set_temperature_zone1(self._unit_id, temperature)
+        await self._async_set_zone_temperature(temperature)
 
     @with_debounced_refresh()
     async def async_set_preset_mode(self, preset_mode: str) -> None:
@@ -263,7 +264,6 @@ class ATWClimateZone1(
             )
             return
 
-        # Map preset to appropriate API mode based on current hvac_mode
         if self.hvac_mode == HVACMode.COOL:
             atw_mode = HA_TO_ATW_PRESET_COOL.get(preset_mode)
         else:
@@ -273,5 +273,55 @@ class ATWClimateZone1(
             _LOGGER.warning("Unknown preset mode: %s", preset_mode)
             return
 
-        # Set Zone 1 operation mode
-        await self.coordinator.async_set_mode_zone1(self._unit_id, atw_mode)
+        await self._async_set_zone_mode(atw_mode)
+
+
+class ATWClimateZone1(ATWClimateBase):
+    """Climate entity for ATW Zone 1."""
+
+    def __init__(
+        self,
+        coordinator: CoordinatorProtocol,
+        unit: AirToWaterUnit,
+        building: Building,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize Zone 1 climate entity."""
+        super().__init__(coordinator, unit, building, entry, zone_number=1)
+
+    @property
+    def _zone_operation_mode(self) -> str | None:
+        """Return Zone 1 operation mode."""
+        device = self.get_device()
+        return device.operation_mode_zone1 if device else None
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return current Zone 1 room temperature."""
+        device = self.get_device()
+        return device.room_temperature_zone1 if device else None
+
+    @property
+    def target_temperature(self) -> float | None:
+        """Return target Zone 1 temperature."""
+        device = self.get_device()
+        return device.set_temperature_zone1 if device else None
+
+    async def _async_set_zone_temperature(self, temperature: float) -> None:
+        """Set Zone 1 temperature."""
+        await self.coordinator.async_set_temperature_zone1(self._unit_id, temperature)
+
+    async def _async_set_zone_mode(self, mode: str) -> None:
+        """Set Zone 1 operation mode."""
+        await self.coordinator.async_set_mode_zone1(self._unit_id, mode)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional state attributes (Zone 1 specific)."""
+        attrs = super().extra_state_attributes
+        device = self.get_device()
+        if device:
+            attrs["zone_heating_available"] = (
+                device.operation_status == device.operation_mode_zone1
+            )
+        return attrs
