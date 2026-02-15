@@ -124,8 +124,9 @@ class MockMELCloudServer:
     def _init_atw_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATW (Air-to-Water) device states.
 
-        Returns 1 ATW device by default:
+        Returns 2 ATW devices by default:
         - House Heat Pump (single zone + DHW)
+        - Dual Zone Heat Pump (zone 1 + zone 2 + DHW)
 
         Note: Using UUID that matches chrome_override test data
         """
@@ -144,6 +145,24 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 4,  # API internal value, mapping to physical FTC controller unknown
+            },
+            "aed2afac-01a5-4c4c-8d58-95989aa1c71e": {
+                "name": "Dual Zone Heat Pump",
+                "power": True,
+                "operation_mode": "Heating",
+                "operation_mode_zone1": "HeatFlowTemperature",
+                "set_temperature_zone1": 19.0,
+                "room_temperature_zone1": 21.0,
+                "operation_mode_zone2": "HeatFlowTemperature",
+                "set_temperature_zone2": 21.0,
+                "room_temperature_zone2": 21.0,
+                "set_tank_water_temperature": 40.0,
+                "tank_water_temperature": 40.0,
+                "forced_hot_water_mode": False,
+                "has_zone2": True,
+                "in_standby_mode": False,
+                "is_in_error": False,
+                "ftc_model": 5,
             },
         }
 
@@ -174,7 +193,7 @@ class MockMELCloudServer:
                 "name": "Shared Building",
                 "timezone": "Europe/Madrid",
                 "ata_unit_ids": [],
-                "atw_unit_ids": [],
+                "atw_unit_ids": ["aed2afac-01a5-4c4c-8d58-95989aa1c71e"],
             },
         }
 
@@ -352,7 +371,7 @@ class MockMELCloudServer:
                         "rssi": -42,
                         "scheduleEnabled": False,
                         "settings": self._build_atw_settings(unit_id),
-                        "capabilities": self._get_atw_capabilities(),
+                        "capabilities": self._get_atw_capabilities(unit_id),
                         "schedule": [],
                     }
                 )
@@ -396,7 +415,7 @@ class MockMELCloudServer:
                         "rssi": -42,
                         "scheduleEnabled": False,
                         "settings": self._build_atw_settings(unit_id),
-                        "capabilities": self._get_atw_capabilities(),
+                        "capabilities": self._get_atw_capabilities(unit_id),
                         "schedule": [],
                     }
                 )
@@ -551,6 +570,9 @@ class MockMELCloudServer:
                 "tank_water_temperature": 48.5,
                 "forced_hot_water_mode": False,
                 "has_zone2": False,
+                "operation_mode_zone2": "HeatRoomTemperature",
+                "set_temperature_zone2": 21.0,
+                "room_temperature_zone2": 20.0,
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 4,
@@ -589,6 +611,30 @@ class MockMELCloudServer:
                 logger.warning("   ⚠️  Unusual zone operation mode: %s", mode)
             state["operation_mode_zone1"] = mode
             logger.info("   ✅ Zone 1 Mode: %s", mode)
+
+        if body.get("setTemperatureZone2") is not None:
+            temp = body["setTemperatureZone2"]
+            if temp < 10 or temp > 30:
+                logger.warning(
+                    "   ⚠️  Zone 2 temperature %.1f°C outside typical range (10-30°C)",
+                    temp,
+                )
+            state["set_temperature_zone2"] = temp
+            logger.info("   ✅ Zone 2 Target: %.1f°C", temp)
+
+        if body.get("operationModeZone2") is not None:
+            mode = body["operationModeZone2"]
+            valid_modes = [
+                "HeatRoomTemperature",
+                "HeatFlowTemperature",
+                "HeatCurve",
+                "CoolRoomTemperature",
+                "CoolFlowTemperature",
+            ]
+            if mode not in valid_modes:
+                logger.warning("   ⚠️  Unusual zone 2 operation mode: %s", mode)
+            state["operation_mode_zone2"] = mode
+            logger.info("   ✅ Zone 2 Mode: %s", mode)
 
         if body.get("setTankWaterTemperature") is not None:
             temp = body["setTankWaterTemperature"]
@@ -729,6 +775,8 @@ class MockMELCloudServer:
                         "return_temperature_zone1": 41.0,
                         "flow_temperature_boiler": 46.0,
                         "return_temperature_boiler": 43.0,
+                        "flow_temperature_zone2": 38.0,
+                        "return_temperature_zone2": 35.0,
                     }
                     value = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
 
@@ -1016,13 +1064,10 @@ class MockMELCloudServer:
         Note: Returns minimal field set for MVP. Real API returns 25+ fields.
         """
         state = self.atw_states[unit_id]
-        return [
+        settings = [
             {"name": "Power", "value": str(state["power"])},
-            {"name": "OperationMode", "value": state["operation_mode"]},  # STATUS
-            {
-                "name": "OperationModeZone1",
-                "value": state["operation_mode_zone1"],
-            },  # CONTROL
+            {"name": "OperationMode", "value": state["operation_mode"]},
+            {"name": "OperationModeZone1", "value": state["operation_mode_zone1"]},
             {
                 "name": "SetTemperatureZone1",
                 "value": str(state["set_temperature_zone1"]),
@@ -1043,11 +1088,34 @@ class MockMELCloudServer:
                 "name": "ForcedHotWaterMode",
                 "value": str(state["forced_hot_water_mode"]),
             },
-            {"name": "HasZone2", "value": str(int(state["has_zone2"]))},  # 0 or 1
+            {"name": "HasZone2", "value": str(int(state["has_zone2"]))},
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
             {"name": "FTCModel", "value": str(state["ftc_model"])},
         ]
+
+        # Zone 2 settings (only if device has zone 2)
+        if state.get("has_zone2"):
+            settings.extend(
+                [
+                    {
+                        "name": "OperationModeZone2",
+                        "value": state.get(
+                            "operation_mode_zone2", "HeatRoomTemperature"
+                        ),
+                    },
+                    {
+                        "name": "SetTemperatureZone2",
+                        "value": str(state.get("set_temperature_zone2", 21.0)),
+                    },
+                    {
+                        "name": "RoomTemperatureZone2",
+                        "value": str(state.get("room_temperature_zone2", 21.0)),
+                    },
+                ]
+            )
+
+        return settings
 
     def _get_ata_capabilities(self) -> dict:
         """Get ATA device capabilities.
@@ -1074,11 +1142,14 @@ class MockMELCloudServer:
             "hasStandby": False,
         }
 
-    def _get_atw_capabilities(self) -> dict:
+    def _get_atw_capabilities(self, unit_id: str) -> dict:
         """Get ATW device capabilities.
 
         Reference: atw-api-reference.md
         """
+        state = self.atw_states.get(unit_id, {})
+        has_zone2 = state.get("has_zone2", False)
+
         return {
             "hasHotWater": True,
             "minSetTankTemperature": 40.0,
@@ -1086,15 +1157,17 @@ class MockMELCloudServer:
             "minSetTemperature": 10.0,
             "maxSetTemperature": 30.0,
             "hasHalfDegrees": True,
-            "hasZone2": False,
+            "hasZone2": has_zone2,
             "hasThermostatZone1": True,
+            "hasThermostatZone2": True,
             "hasHeatZone1": True,
-            "hasCoolingMode": True,  # NEW: Cooling mode support
+            "hasHeatZone2": has_zone2,
+            "hasCoolingMode": True,
             "hasMeasuredEnergyConsumption": False,
-            "hasEstimatedEnergyConsumption": True,  # NEW: Energy monitoring
+            "hasEstimatedEnergyConsumption": True,
             "hasMeasuredEnergyProduction": False,
-            "hasEstimatedEnergyProduction": True,  # NEW: Energy production
-            "ftcModel": 4,  # API internal value
+            "hasEstimatedEnergyProduction": True,
+            "ftcModel": state.get("ftc_model", 4),
         }
 
     def print_startup_banner(self, host: str, port: int):
@@ -1131,6 +1204,39 @@ class MockMELCloudServer:
                         f"       - Zone 1: Space heating "
                         f"({state['room_temperature_zone1']}°C → {state['set_temperature_zone1']}°C)"
                     )
+                    print(
+                        f"       - DHW Tank: Hot water "
+                        f"({state['tank_water_temperature']}°C → {state['set_tank_water_temperature']}°C)"
+                    )
+                print()
+
+        for building_id, building in self.guest_buildings.items():
+            print(f"🏢 Guest Building: {building['name']} ({building_id})")
+            print()
+
+            if building["ata_unit_ids"]:
+                print(f"🔌 ATA (Air-to-Air) - {len(building['ata_unit_ids'])} devices:")
+                for unit_id in building["ata_unit_ids"]:
+                    state = self.ata_states[unit_id]
+                    print(f"   🌡️  {state['name']} ({unit_id})")
+                print()
+
+            if building["atw_unit_ids"]:
+                print(
+                    f"🔌 ATW (Air-to-Water) - {len(building['atw_unit_ids'])} devices:"
+                )
+                for unit_id in building["atw_unit_ids"]:
+                    state = self.atw_states[unit_id]
+                    print(f"   ♨️  {state['name']} ({unit_id})")
+                    print(
+                        f"       - Zone 1: Space heating "
+                        f"({state['room_temperature_zone1']}°C → {state['set_temperature_zone1']}°C)"
+                    )
+                    if state.get("has_zone2"):
+                        print(
+                            f"       - Zone 2: Space heating "
+                            f"({state['room_temperature_zone2']}°C → {state['set_temperature_zone2']}°C)"
+                        )
                     print(
                         f"       - DHW Tank: Hot water "
                         f"({state['tank_water_temperature']}°C → {state['set_tank_water_temperature']}°C)"
