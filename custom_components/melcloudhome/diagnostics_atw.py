@@ -21,6 +21,7 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         "name": unit.name,
         "power": unit.power,
         "in_standby_mode": unit.in_standby_mode,
+        "operation_status": unit.operation_status,
         "operation_mode_zone1": unit.operation_mode_zone1,
         "set_temperature_zone1": unit.set_temperature_zone1,
         "room_temperature_zone1": unit.room_temperature_zone1,
