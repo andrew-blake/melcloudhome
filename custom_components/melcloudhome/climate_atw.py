@@ -132,9 +132,10 @@ class ATWClimateBase(
         operation_status shows what valve is ACTIVELY doing RIGHT NOW.
 
         API operation_status values:
-        - "Stop" = Idle (target reached, no heating)
+        - "Stop" = Idle (target reached, no heating/cooling)
         - "HotWater" = Heating DHW tank
         - "Heating" = Actively heating zone (no zone distinction in API)
+        - "Cooling" = Actively cooling zone (no zone distinction in API)
         """
         device = self.get_device()
         if device is None or not device.power:
@@ -145,6 +146,9 @@ class ATWClimateBase(
 
         if device.operation_status == "Heating":
             return HVACAction.HEATING
+
+        if device.operation_status == "Cooling":
+            return HVACAction.COOLING
 
         # Valve is elsewhere (DHW) - this zone is idle
         return HVACAction.IDLE
