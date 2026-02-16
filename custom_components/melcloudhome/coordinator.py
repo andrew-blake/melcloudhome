@@ -143,8 +143,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
             # Log ATW (Air-to-Water) devices
             for atw_unit in building.air_to_water_units:
-                _LOGGER.debug(
-                    "ATW Poll: %s | Power=%s | Standby=%s | OpStatus=%s | OpModeZ1=%s | ForcedDHW=%s | Z1: %s°C→%s°C | DHW: %s°C→%s°C",
+                # Build log message with Zone 2 if device has it
+                base_msg = "ATW Poll: %s | Power=%s | Standby=%s | OpStatus=%s | OpModeZ1=%s | ForcedDHW=%s | Z1: %s°C→%s°C"
+                base_args = [
                     atw_unit.name,
                     atw_unit.power,
                     atw_unit.in_standby_mode,
@@ -153,9 +154,26 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     atw_unit.forced_hot_water_mode,
                     atw_unit.room_temperature_zone1,
                     atw_unit.set_temperature_zone1,
-                    atw_unit.tank_water_temperature,
-                    atw_unit.set_tank_water_temperature,
+                ]
+
+                if atw_unit.has_zone2:
+                    base_msg += " | Z2: %s°C→%s°C"
+                    base_args.extend(
+                        [
+                            atw_unit.room_temperature_zone2,
+                            atw_unit.set_temperature_zone2,
+                        ]
+                    )
+
+                base_msg += " | DHW: %s°C→%s°C"
+                base_args.extend(
+                    [
+                        atw_unit.tank_water_temperature,
+                        atw_unit.set_tank_water_temperature,
+                    ]
                 )
+
+                _LOGGER.debug(base_msg, *base_args)
 
         # Update outdoor temperature for ATA devices (30 minute interval)
         for building in context.buildings:
