@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.1.0
+## What's New in v2.2.0
 
-Outdoor temperature sensor for ATA air conditioning units. Automatically discovered from device capabilities, updated every 30 minutes. See [CHANGELOG.md](CHANGELOG.md) for details.
+Zone 2 support for ATW heat pumps with automatic capability detection. Full climate control, temperature sensors, and shared architecture for consistent zone behavior. See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Features
 
