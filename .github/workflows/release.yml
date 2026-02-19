@@ -48,6 +48,23 @@ jobs:
           fi
           echo "✅ CHANGELOG entry found!"
 
+      - name: Validate README "What's New" version
+        run: |
+          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          README_VERSION=$(grep "## What's New in v" README.md | sed -n 's/## What'\''s New in v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
+          echo "README 'What's New' version: $README_VERSION"
+          echo "Tag version: $TAG_VERSION"
+          if [ -z "$README_VERSION" ]; then
+            echo "❌ No 'What's New' version found in README.md"
+            exit 1
+          fi
+          if [ "$README_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "README 'What's New' version ($README_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "✅ README version matches!"
+
       - name: Detect pre-release
         id: detect-prerelease
         run: |
