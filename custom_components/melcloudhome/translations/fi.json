@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kirjautuminen MELCloud Home -palveluun",
+        "description": "MELCloud Home kirjautumistiedot",
+        "data": {
+          "email": "Sähköposti",
+          "password": "Salasana",
+          "debug_mode": "Kirjautuminen testipalvelimeen"
+        },
+        "data_description": {
+          "debug_mode": "Vain kehityskäyttöön - yhteys paikalliseen testipalvelimeen virallisen MELCloud API:n sijaan"
+        }
+      },
+      "reconfigure": {
+        "title": "Uudelleenkonfigurointi",
+        "description": "Kirjautumistietojen päivittäminen käyttäjälle {email}",
+        "data": {
+          "password": "Salasana"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Virheellinen sähköposti tai salasana",
+      "cannot_connect": "Kirjautuminen MELCloud Home -palveluun epäonnistunut. Tarkista internet-yhteys ja yritä uudelleen.",
+      "unknown": "Odottamaton virhe. Yritä uudelleen."
+    },
+    "abort": {
+      "already_configured": "Tämä tili on jo konfiguroitu",
+      "reconfigure_successful": "Kirjautumistiedot päivitetty onnistuneesti"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Huone",
+              "flow": "Virtaus",
+              "curve": "Käyrä"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Tuuletin 1",
+              "two": "Tuuletin 2",
+              "three": "Tuuletin 3",
+              "four": "Tuuletin 4",
+              "five": "Tuuletin 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Liikkuva",
+              "one": "Liikkuva 1",
+              "two": "Liikkuva 2",
+              "three": "Liikkuva 3",
+              "four": "Liikkuva 4",
+              "five": "Liikkuva 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Liikkuva",
+              "left": "Vasen",
+              "leftcentre": "Vasen keskellä",
+              "centre": "Keskellä",
+              "rightcentre": "Oikea keskellä",
+              "right": "Oikea"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Huonelämpötila"
+      },
+      "wifi_signal": {
+        "name": "WiFi-signaali"
+      },
+      "energy": {
+        "name": "Energia"
+      },
+      "outdoor_temperature": {
+        "name": "Ulkolämpötila"
+      },
+      "zone_1_temperature": {
+        "name": "Vyöhyke 1 lämpötila"
+      },
+      "zone_2_temperature": {
+        "name": "Vyöhyke 2 lämpötila"
+      },
+      "tank_temperature": {
+        "name": "Vesivaraajan lämpötila"
+      },
+      "operation_status": {
+        "name": "Toimintatila"
+      },
+      "flow_temperature": {
+        "name": "Menolämpötila"
+      },
+      "return_temperature": {
+        "name": "Paluulämpötila"
+      },
+      "flow_temperature_zone1": {
+        "name": "Menolämpötila vyöhyke 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Paluulämpötila vyöhyke 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Menolämpötila vyöhyke 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Paluulämpötila vyöhyke 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Menolämpötila vesivaraaja"
+      },
+      "return_temperature_boiler": {
+        "name": "Paluulämpötila vesivaraaja"
+      },
+      "energy_consumed": {
+        "name": "Kulutettu energia"
+      },
+      "energy_produced": {
+        "name": "Tuotettu energia"
+      },
+      "cop": {
+        "name": "Hyötysuhde (COP)"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Virhetila"
+      },
+      "connection_state": {
+        "name": "Yhteystila"
+      },
+      "forced_dhw_active": {
+        "name": "Pakotettu käyttövesitila aktiivinen"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Päivitä heti",
+      "description": "Päivitä laitetiedot välittömästi MELCloud-palvelimilta (testaus/kehitys)"
+    }
+  }
+}
