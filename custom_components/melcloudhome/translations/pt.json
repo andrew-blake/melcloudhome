@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ligar a MELCloud Home",
+        "description": "Introduza as suas credenciais do MELCloud Home",
+        "data": {
+          "email": "Email",
+          "password": "Palavra-passe",
+          "debug_mode": "Ligar ao Servidor de Testes"
+        },
+        "data_description": {
+          "debug_mode": "Apenas para desenvolvimento - liga-se ao servidor mock local em vez da API de produção do MELCloud"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurar",
+        "description": "Atualizar credenciais para {email}",
+        "data": {
+          "password": "Palavra-passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Email ou palavra-passe inválidos",
+      "cannot_connect": "Não foi possível ligar a MELCloud Home. Verifique a sua ligação à internet e tente novamente.",
+      "unknown": "Ocorreu um erro inesperado. Tente novamente."
+    },
+    "abort": {
+      "already_configured": "Esta conta já está configurada",
+      "reconfigure_successful": "Credenciais atualizadas com sucesso"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Divisão",
+              "flow": "Fluxo",
+              "curve": "Curva"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Automático",
+              "one": "Ventilador 1",
+              "two": "Ventilador 2",
+              "three": "Ventilador 3",
+              "four": "Ventilador 4",
+              "five": "Ventilador 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Automático",
+              "swing": "Oscilação",
+              "one": "Oscilação 1",
+              "two": "Oscilação 2",
+              "three": "Oscilação 3",
+              "four": "Oscilação 4",
+              "five": "Oscilação 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Automático",
+              "swing": "Oscilação",
+              "left": "Esquerda",
+              "leftcentre": "Centro-esquerda",
+              "centre": "Centro",
+              "rightcentre": "Centro-direita",
+              "right": "Direita"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Temperatura da divisão"
+      },
+      "wifi_signal": {
+        "name": "Sinal WiFi"
+      },
+      "energy": {
+        "name": "Energia"
+      },
+      "outdoor_temperature": {
+        "name": "Temperatura exterior"
+      },
+      "zone_1_temperature": {
+        "name": "Temperatura da zona 1"
+      },
+      "zone_2_temperature": {
+        "name": "Temperatura da zona 2"
+      },
+      "tank_temperature": {
+        "name": "Temperatura do depósito"
+      },
+      "operation_status": {
+        "name": "Estado operacional"
+      },
+      "flow_temperature": {
+        "name": "Temperatura de ida"
+      },
+      "return_temperature": {
+        "name": "Temperatura de retorno"
+      },
+      "flow_temperature_zone1": {
+        "name": "Temperatura de ida zona 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Temperatura de retorno zona 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Temperatura de ida zona 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Temperatura de retorno zona 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Temperatura de ida caldeira"
+      },
+      "return_temperature_boiler": {
+        "name": "Temperatura de retorno caldeira"
+      },
+      "energy_consumed": {
+        "name": "Energia consumida"
+      },
+      "energy_produced": {
+        "name": "Energia produzida"
+      },
+      "cop": {
+        "name": "Coeficiente de desempenho"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Estado de erro"
+      },
+      "connection_state": {
+        "name": "Estado da ligação"
+      },
+      "forced_dhw_active": {
+        "name": "AQS forçada ativa"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Atualizar agora",
+      "description": "Atualizar imediatamente os dados do dispositivo a partir dos servidores MELCloud (para testes/desenvolvimento)"
+    }
+  }
+}
