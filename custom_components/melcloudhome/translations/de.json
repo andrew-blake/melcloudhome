@@ -38,7 +38,7 @@
           "preset_mode": {
             "state": {
               "room": "Raum",
-              "flow": "Luftstrom",
+              "flow": "Vorlauftemperatur",
               "curve": "Kurve"
             }
           },
