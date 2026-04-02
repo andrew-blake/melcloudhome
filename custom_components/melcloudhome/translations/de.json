@@ -15,7 +15,7 @@
       },
       "reconfigure": {
         "title": "Neu konfigurieren",
-        "description": "Aktualisiere die Zugangsdaten für {email}",
+        "description": "Aktualisieren Sie die Zugangsdaten für {email}",
         "data": {
           "password": "Passwort"
         }
