@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "เชื่อมต่อกับ MELCloud Home",
+        "description": "ป้อนข้อมูลประจำตัวบัญชี MELCloud Home ของคุณ",
+        "data": {
+          "email": "อีเมล",
+          "password": "รหัสผ่าน",
+          "debug_mode": "เชื่อมต่อกับเซิร์ฟเวอร์ทดสอบ"
+        },
+        "data_description": {
+          "debug_mode": "สำหรับการพัฒนาเท่านั้น - จะเชื่อมต่อกับเซิร์ฟเวอร์ mock บนเครื่องแทนที่จะเป็น API MELCloud ในการผลิต"
+        }
+      },
+      "reconfigure": {
+        "title": "กำหนดค่าใหม่",
+        "description": "อัปเดตข้อมูลรับรองสำหรับ {email}",
+        "data": {
+          "password": "รหัสผ่าน"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+      "cannot_connect": "ไม่สามารถเชื่อมต่อกับ MELCloud Home ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองอีกครั้ง",
+      "unknown": "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองอีกครั้ง"
+    },
+    "abort": {
+      "already_configured": "บัญชีนี้ถูกกำหนดค่าแล้ว",
+      "reconfigure_successful": "อัปเดตข้อมูลรับรองเรียบร้อยแล้ว"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "ห้อง",
+              "flow": "การไหล",
+              "curve": "โค้ง"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "อัตโนมัติ",
+              "one": "พัดลม 1",
+              "two": "พัดลม 2",
+              "three": "พัดลม 3",
+              "four": "พัดลม 4",
+              "five": "พัดลม 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "อัตโนมัติ",
+              "swing": "สวิง",
+              "one": "สวิง 1",
+              "two": "สวิง 2",
+              "three": "สวิง 3",
+              "four": "สวิง 4",
+              "five": "สวิง 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "อัตโนมัติ",
+              "swing": "สวิง",
+              "left": "ซ้าย",
+              "leftcentre": "ซ้าย-กลาง",
+              "centre": "กลาง",
+              "rightcentre": "กลาง-ขวา",
+              "right": "ขวา"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "อุณหภูมิห้อง"
+      },
+      "wifi_signal": {
+        "name": "สัญญาณ WiFi"
+      },
+      "energy": {
+        "name": "พลังงาน"
+      },
+      "outdoor_temperature": {
+        "name": "อุณหภูมิภายนอก"
+      },
+      "zone_1_temperature": {
+        "name": "อุณหภูมิโซน 1"
+      },
+      "zone_2_temperature": {
+        "name": "อุณหภูมิโซน 2"
+      },
+      "tank_temperature": {
+        "name": "อุณหภูมิถัง"
+      },
+      "operation_status": {
+        "name": "สถานะการทำงาน"
+      },
+      "flow_temperature": {
+        "name": "อุณหภูมิส่ง"
+      },
+      "return_temperature": {
+        "name": "อุณหภูมิกลับ"
+      },
+      "flow_temperature_zone1": {
+        "name": "อุณหภูมิส่งโซน 1"
+      },
+      "return_temperature_zone1": {
+        "name": "อุณหภูมิกลับโซน 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "อุณหภูมิส่งโซน 2"
+      },
+      "return_temperature_zone2": {
+        "name": "อุณหภูมิกลับโซน 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "อุณหภูมิส่งหม้อต้ม"
+      },
+      "return_temperature_boiler": {
+        "name": "อุณหภูมิกลับหม้อต้ม"
+      },
+      "energy_consumed": {
+        "name": "พลังงานที่ใช้"
+      },
+      "energy_produced": {
+        "name": "พลังงานที่ผลิต"
+      },
+      "cop": {
+        "name": "ค่า COP"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "สถานะข้อผิดพลาด"
+      },
+      "connection_state": {
+        "name": "สถานะการเชื่อมต่อ"
+      },
+      "forced_dhw_active": {
+        "name": "การบังคับน้ำร้อนกำลังทำงาน"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "อัปเดตทันที",
+      "description": "อัปเดตข้อมูลอุปกรณ์ทันทีจากเซิร์ฟเวอร์ MELCloud (สำหรับทดสอบ/พัฒนา)"
+    }
+  }
+}

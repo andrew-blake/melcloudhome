@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit MELCloud Home verbinden",
+        "description": "Geben Sie die Anmeldeinformationen Ihres MELCloud Home-Kontos ein",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort",
+          "debug_mode": "Mit Testserver verbinden"
+        },
+        "data_description": {
+          "debug_mode": "Nur für Entwicklung - verbindet mit dem lokalen Mock-Server statt den Produktions-MELCloud-APIs"
+        }
+      },
+      "reconfigure": {
+        "title": "Neu konfigurieren",
+        "description": "Aktualisiere die Zugangsdaten für {email}",
+        "data": {
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "E-Mail oder Passwort ungültig",
+      "cannot_connect": "Verbindung zu MELCloud Home fehlgeschlagen. Überprüfen Sie die Internetverbindung und versuchen Sie es erneut.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+    },
+    "abort": {
+      "already_configured": "Dieses Konto ist bereits konfiguriert",
+      "reconfigure_successful": "Zugangsdaten erfolgreich aktualisiert"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Raum",
+              "flow": "Luftstrom",
+              "curve": "Kurve"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Automatisch",
+              "one": "Lüfter 1",
+              "two": "Lüfter 2",
+              "three": "Lüfter 3",
+              "four": "Lüfter 4",
+              "five": "Lüfter 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Automatisch",
+              "swing": "Schwenken",
+              "one": "Schwenk 1",
+              "two": "Schwenk 2",
+              "three": "Schwenk 3",
+              "four": "Schwenk 4",
+              "five": "Schwenk 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Automatisch",
+              "swing": "Schwenken",
+              "left": "Links",
+              "leftcentre": "Links-Mitte",
+              "centre": "Mitte",
+              "rightcentre": "Mitte-Rechts",
+              "right": "Rechts"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Raumtemperatur"
+      },
+      "wifi_signal": {
+        "name": "WLAN-Signal"
+      },
+      "energy": {
+        "name": "Energie"
+      },
+      "outdoor_temperature": {
+        "name": "Außentemperatur"
+      },
+      "zone_1_temperature": {
+        "name": "Temperatur Zone 1"
+      },
+      "zone_2_temperature": {
+        "name": "Temperatur Zone 2"
+      },
+      "tank_temperature": {
+        "name": "Tanktemperatur"
+      },
+      "operation_status": {
+        "name": "Betriebszustand"
+      },
+      "flow_temperature": {
+        "name": "Vorlauftemperatur"
+      },
+      "return_temperature": {
+        "name": "Rücklauftemperatur"
+      },
+      "flow_temperature_zone1": {
+        "name": "Vorlauftemperatur Zone 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Rücklauftemperatur Zone 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Vorlauftemperatur Zone 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Rücklauftemperatur Zone 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Kessel-Vorlauftemperatur"
+      },
+      "return_temperature_boiler": {
+        "name": "Kessel-Rücklauftemperatur"
+      },
+      "energy_consumed": {
+        "name": "Verbrauchte Energie"
+      },
+      "energy_produced": {
+        "name": "Erzeugte Energie"
+      },
+      "cop": {
+        "name": "Leistungskoeffizient"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Fehlerstatus"
+      },
+      "connection_state": {
+        "name": "Verbindungsstatus"
+      },
+      "forced_dhw_active": {
+        "name": "Erzwungenes Warmwasser aktiv"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Jetzt aktualisieren",
+      "description": "Aktualisiert die Gerätedaten sofort von den MELCloud-Servern (für Test/Entwicklung)"
+    }
+  }
+}
