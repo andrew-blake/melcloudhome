@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.2.0
+## What's New in v2.2.2
 
-Zone 2 support for ATW heat pumps with automatic capability detection. Full climate control, temperature sensors, and shared architecture for consistent zone behavior. See [CHANGELOG.md](CHANGELOG.md) for details.
+Italian (it) translations now available. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
