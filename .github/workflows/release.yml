@@ -133,7 +133,7 @@ jobs:
           cat release_notes.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.6.1
         with:
           body_path: release_notes.txt
           draft: false
