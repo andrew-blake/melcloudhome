@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.2.3
+## What's New in v2.2.4
 
-Now available in German, Thai, Finnish, and Portuguese — alongside Italian. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Now available in Spanish — bringing MELCloud Home to 7 languages. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
