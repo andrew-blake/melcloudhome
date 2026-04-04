@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut till MELCloud Home",
+        "description": "Ange dina inloggningsuppgifter för MELCloud Home",
+        "data": {
+          "email": "E-post",
+          "password": "Lösenord",
+          "debug_mode": "Anslut till Mock-server"
+        },
+        "data_description": {
+          "debug_mode": "Endast för utveckling - ansluter till en lokal mock-server istället för MELClouds produktions-API"
+        }
+      },
+      "reconfigure": {
+        "title": "Konfigurera om",
+        "description": "Uppdatera inloggningsuppgifter för {email}",
+        "data": {
+          "password": "Lösenord"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ogiltig e-postadress eller lösenord",
+      "cannot_connect": "Kunde inte ansluta till MELCloud Home. Kontrollera din internetanslutning och försök igen.",
+      "unknown": "Ett oväntat fel uppstod. Försök igen."
+    },
+    "abort": {
+      "already_configured": "Detta konto är redan konfigurerat",
+      "reconfigure_successful": "Inloggningsuppgifterna har uppdaterats"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Rum",
+              "flow": "Framledning",
+              "curve": "Kurva"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Fläkt 1",
+              "two": "Fläkt 2",
+              "three": "Fläkt 3",
+              "four": "Fläkt 4",
+              "five": "Fläkt 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Sving",
+              "one": "Sving 1",
+              "two": "Sving 2",
+              "three": "Sving 3",
+              "four": "Sving 4",
+              "five": "Sving 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Sving",
+              "left": "Vänster",
+              "leftcentre": "Vänster-mitten",
+              "centre": "Mitten",
+              "rightcentre": "Höger-mitten",
+              "right": "Höger"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Rumstemperatur"
+      },
+      "wifi_signal": {
+        "name": "WiFi-signal"
+      },
+      "energy": {
+        "name": "Energi"
+      },
+      "outdoor_temperature": {
+        "name": "Utomhustemperatur"
+      },
+      "zone_1_temperature": {
+        "name": "Zon 1 temperatur"
+      },
+      "zone_2_temperature": {
+        "name": "Zon 2 temperatur"
+      },
+      "tank_temperature": {
+        "name": "Tanktemperatur"
+      },
+      "operation_status": {
+        "name": "Driftstatus"
+      },
+      "flow_temperature": {
+        "name": "Framledningstemperatur"
+      },
+      "return_temperature": {
+        "name": "Returtemperatur"
+      },
+      "flow_temperature_zone1": {
+        "name": "Framledningstemperatur zon 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Returtemperatur zon 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Framledningstemperatur zon 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Returtemperatur zon 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Framledningstemperatur panna"
+      },
+      "return_temperature_boiler": {
+        "name": "Returtemperatur panna"
+      },
+      "energy_consumed": {
+        "name": "Förbrukad energi"
+      },
+      "energy_produced": {
+        "name": "Producerad energi"
+      },
+      "cop": {
+        "name": "Värmefaktor (COP)"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Felstatus"
+      },
+      "connection_state": {
+        "name": "Anslutningsstatus"
+      },
+      "forced_dhw_active": {
+        "name": "Forcerat varmvatten aktivt"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Tvinga uppdatering",
+      "description": "Uppdatera enhetsdata från MELCloud-servrar omedelbart (för testning/utveckling)"
+    }
+  }
+}
