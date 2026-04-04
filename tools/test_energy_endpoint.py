@@ -133,7 +133,7 @@ async def test_energy_endpoint():
                         print("   Typical daily usage: 5-20 kWh for HVAC")
                     else:
                         print(
-                            f"   Likely in Wh (value: {last_value} Wh = {last_value/1000:.2f} kWh)"
+                            f"   Likely in Wh (value: {last_value} Wh = {last_value / 1000:.2f} kWh)"
                         )
                         print("   Will need conversion to kWh for HA")
 

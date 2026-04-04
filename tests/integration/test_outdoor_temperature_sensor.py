@@ -292,9 +292,9 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         state_lr = hass.states.get(living_room_entity)
         state_study = hass.states.get(study_entity)
 
-        assert (
-            state_lr.state == "10.0"
-        ), f"Living Room stuck at {state_lr.state}, expected 10.0"
-        assert (
-            state_study.state == "1.0"
-        ), f"Study stuck at {state_study.state}, expected 1.0"
+        assert state_lr.state == "10.0", (
+            f"Living Room stuck at {state_lr.state}, expected 10.0"
+        )
+        assert state_study.state == "1.0", (
+            f"Study stuck at {state_study.state}, expected 1.0"
+        )

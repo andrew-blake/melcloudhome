@@ -32,9 +32,9 @@ async def test_guest_buildings_only(
     # This account only has guest buildings, all should have is_guest=True
     guest_buildings = [b for b in context.buildings if b.is_guest]
     assert len(guest_buildings) > 0, "Should have at least one guest building"
-    assert len(guest_buildings) == len(
-        context.buildings
-    ), "All buildings should be guest buildings for this test account"
+    assert len(guest_buildings) == len(context.buildings), (
+        "All buildings should be guest buildings for this test account"
+    )
 
     # Verify is_guest flag is set correctly (all True for this account)
     for building in context.buildings:

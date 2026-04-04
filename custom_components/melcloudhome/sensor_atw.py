@@ -103,7 +103,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         key="operation_status",
         translation_key="operation_status",
         device_class=None,  # Categorical (not numeric)
-        value_fn=lambda unit: unit.operation_status,  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
+        value_fn=lambda unit: (
+            unit.operation_status
+        ),  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
     ),
     # Telemetry sensors (flow/return temperatures from telemetry API)
     # HA auto-creates statistics for MEASUREMENT sensors (validated via spike)
@@ -132,8 +134,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
-        available_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("flow_temperature_zone1") is not None
+        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone1",
@@ -142,8 +145,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
-        available_fn=lambda unit: unit.telemetry.get("return_temperature_zone1")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("return_temperature_zone1") is not None
+        ),
     ),
     # Zone 2 telemetry (flow/return temperatures)
     ATWSensorEntityDescription(
@@ -154,8 +158,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
         should_create_fn=lambda unit: unit.has_zone2,
-        available_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("flow_temperature_zone2") is not None
+        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone2",
@@ -165,8 +170,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
         should_create_fn=lambda unit: unit.has_zone2,
-        available_fn=lambda unit: unit.telemetry.get("return_temperature_zone2")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("return_temperature_zone2") is not None
+        ),
     ),
     ATWSensorEntityDescription(
         key="flow_temperature_boiler",
@@ -175,8 +181,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
-        available_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("flow_temperature_boiler") is not None
+        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_boiler",
@@ -185,8 +192,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
-        available_fn=lambda unit: unit.telemetry.get("return_temperature_boiler")
-        is not None,
+        available_fn=lambda unit: (
+            unit.telemetry.get("return_temperature_boiler") is not None
+        ),
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm

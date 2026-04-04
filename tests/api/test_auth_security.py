@@ -97,9 +97,9 @@ class TestURLValidationSecurity:
             or cookie_domain == ".melcloudhome.com"
             or cookie_domain.endswith(".melcloudhome.com")
         )
-        assert (
-            is_valid == expected_valid
-        ), f"Cookie domain {cookie_domain} validation mismatch"
+        assert is_valid == expected_valid, (
+            f"Cookie domain {cookie_domain} validation mismatch"
+        )
 
     def test_cognito_login_path_validation(self):
         """Test that Cognito URL validation checks both hostname and path."""

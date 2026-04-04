@@ -513,9 +513,9 @@ async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
         or u.capabilities.has_measured_energy_consumption
     ]
 
-    assert (
-        len(energy_units) >= 2
-    ), f"Expected 2+ ATW devices with energy, found {len(energy_units)}"
+    assert len(energy_units) >= 2, (
+        f"Expected 2+ ATW devices with energy, found {len(energy_units)}"
+    )
 
     # Verify both devices have energy capabilities
     for unit in energy_units:
@@ -534,9 +534,9 @@ async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
         (u for u in energy_units if u.capabilities.has_cooling_mode), None
     )
 
-    assert (
-        cooling_unit is not None
-    ), "Expected at least one ATW device with both energy AND cooling capabilities"
+    assert cooling_unit is not None, (
+        "Expected at least one ATW device with both energy AND cooling capabilities"
+    )
 
     # Verify cooling device has all expected capabilities
     assert cooling_unit.capabilities.has_cooling_mode is True

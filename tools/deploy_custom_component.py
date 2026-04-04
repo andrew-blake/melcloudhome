@@ -194,7 +194,7 @@ def deploy_component(
 
     # Step 1: Copy to remote temp directory
     print(f"{YELLOW}📦 Copying files to {ssh_host}...{NC}")
-    success, stdout, stderr = run_ssh_command_with_retry(
+    success, stdout, _stderr = run_ssh_command_with_retry(
         ssh_host, f"mkdir -p /tmp/{component_name}"
     )
     if not success:
@@ -219,15 +219,15 @@ def deploy_component(
 
     # Step 2: Install into HA container
     print(f"{YELLOW}📋 Installing into container...{NC}")
-    success, stdout, stderr = run_ssh_command(
+    success, stdout, _stderr = run_ssh_command(
         ssh_host,
-        f"sudo docker exec {container_name} " f"mkdir -p /config/custom_components",
+        f"sudo docker exec {container_name} mkdir -p /config/custom_components",
     )
     if not success:
         print(f"{RED}❌ Failed to create custom_components directory{NC}")
         return False
 
-    success, stdout, stderr = run_ssh_command(
+    success, stdout, _stderr = run_ssh_command(
         ssh_host,
         f"sudo docker cp /tmp/{component_name}/. "
         f"{container_name}:/config/custom_components/{component_name}/",
@@ -247,7 +247,7 @@ def deploy_component(
         if not reload_integration(component_name):
             # Fallback to restart if reload fails
             print(f"{YELLOW}🔄 Restarting Home Assistant (reload failed)...{NC}")
-            success, stdout, stderr = run_ssh_command(
+            success, stdout, _stderr = run_ssh_command(
                 ssh_host, f"sudo docker restart {container_name}"
             )
             if not success:
@@ -259,7 +259,7 @@ def deploy_component(
             print(f"{YELLOW}⏳ Waiting for Home Assistant to initialize...{NC}")
             time.sleep(5)
             for _attempt in range(30):
-                success, stdout, stderr = run_ssh_command(
+                success, stdout, _stderr = run_ssh_command(
                     ssh_host, f"sudo docker logs --tail 50 {container_name} 2>&1"
                 )
                 if success and "Home Assistant initialized" in stdout:
@@ -271,7 +271,7 @@ def deploy_component(
     else:
         # Full restart
         print(f"{YELLOW}🔄 Restarting Home Assistant...{NC}")
-        success, stdout, stderr = run_ssh_command(
+        success, stdout, _stderr = run_ssh_command(
             ssh_host, f"sudo docker restart {container_name}"
         )
         if not success:
@@ -285,7 +285,7 @@ def deploy_component(
         time.sleep(5)
 
         for _attempt in range(30):
-            success, stdout, stderr = run_ssh_command(
+            success, stdout, _stderr = run_ssh_command(
                 ssh_host, f"sudo docker logs --tail 50 {container_name} 2>&1"
             )
             if success and "Home Assistant initialized" in stdout:

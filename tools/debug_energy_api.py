@@ -117,13 +117,13 @@ async def main():
                             total_increase = last_val - first_val
 
                             print(
-                                f"      First value: {first_val:.1f} Wh ({first_val/1000:.3f} kWh)"
+                                f"      First value: {first_val:.1f} Wh ({first_val / 1000:.3f} kWh)"
                             )
                             print(
-                                f"      Last value:  {last_val:.1f} Wh ({last_val/1000:.3f} kWh)"
+                                f"      Last value:  {last_val:.1f} Wh ({last_val / 1000:.3f} kWh)"
                             )
                             print(
-                                f"      Total increase: {total_increase:.1f} Wh ({total_increase/1000:.3f} kWh)"
+                                f"      Total increase: {total_increase:.1f} Wh ({total_increase / 1000:.3f} kWh)"
                             )
 
                             if total_increase > 0:

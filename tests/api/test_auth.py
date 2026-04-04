@@ -98,7 +98,7 @@ class TestLoginFailure:
         # Use obviously wrong credentials
         with pytest.raises(
             AuthenticationError,
-            match="Authentication failed|Invalid username or password",
+            match=r"Authentication failed|Invalid username or password",
         ):
             await auth.login("wrong@example.com", "wrongpassword")
 

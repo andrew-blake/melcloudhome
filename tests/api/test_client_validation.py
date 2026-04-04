@@ -18,7 +18,7 @@ class TestTemperatureValidation:
         """Temperature below 10°C should raise ValueError."""
         client = MELCloudHomeClient()
 
-        with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
+        with pytest.raises(ValueError, match=r"must be between 10\.0 and 31\.0"):
             await client.ata.set_temperature("unit-id", 9.5)
 
     @pytest.mark.asyncio
@@ -26,7 +26,7 @@ class TestTemperatureValidation:
         """Temperature above 31°C should raise ValueError."""
         client = MELCloudHomeClient()
 
-        with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
+        with pytest.raises(ValueError, match=r"must be between 10\.0 and 31\.0"):
             await client.ata.set_temperature("unit-id", 31.5)
 
     @pytest.mark.asyncio
@@ -34,7 +34,7 @@ class TestTemperatureValidation:
         """Temperature far below minimum should raise ValueError."""
         client = MELCloudHomeClient()
 
-        with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
+        with pytest.raises(ValueError, match=r"must be between 10\.0 and 31\.0"):
             await client.ata.set_temperature("unit-id", 0.0)
 
     @pytest.mark.asyncio
@@ -42,7 +42,7 @@ class TestTemperatureValidation:
         """Temperature far above maximum should raise ValueError."""
         client = MELCloudHomeClient()
 
-        with pytest.raises(ValueError, match="must be between 10.0 and 31.0"):
+        with pytest.raises(ValueError, match=r"must be between 10\.0 and 31\.0"):
             await client.ata.set_temperature("unit-id", 50.0)
 
     @pytest.mark.asyncio
@@ -90,7 +90,7 @@ class TestModeValidation:
         """Invalid mode string should raise ValueError."""
         client = MELCloudHomeClient()
 
-        with pytest.raises(ValueError, match="Invalid mode.*Must be one of"):
+        with pytest.raises(ValueError, match=r"Invalid mode.*Must be one of"):
             await client.ata.set_mode("unit-id", "InvalidMode")
 
     @pytest.mark.asyncio
