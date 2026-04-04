@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Conectar a MELCloud Home",
+        "description": "Introduce tus credenciales de MELCloud Home",
+        "data": {
+          "email": "Correo electrónico",
+          "password": "Contraseña",
+          "debug_mode": "Conectar al servidor de pruebas"
+        },
+        "data_description": {
+          "debug_mode": "Solo para desarrollo: conecta al servidor mock local en lugar de la API de producción de MELCloud"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurar",
+        "description": "Actualizar credenciales para {email}",
+        "data": {
+          "password": "Contraseña"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Correo electrónico o contraseña incorrectos",
+      "cannot_connect": "No se puede conectar a MELCloud Home. Comprueba tu conexión a internet e inténtalo de nuevo.",
+      "unknown": "Se ha producido un error inesperado. Inténtalo de nuevo."
+    },
+    "abort": {
+      "already_configured": "Esta cuenta ya está configurada",
+      "reconfigure_successful": "Credenciales actualizadas correctamente"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Habitación",
+              "flow": "Flujo",
+              "curve": "Curva"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Velocidad 1",
+              "two": "Velocidad 2",
+              "three": "Velocidad 3",
+              "four": "Velocidad 4",
+              "five": "Velocidad 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Oscilación",
+              "one": "Oscilación 1",
+              "two": "Oscilación 2",
+              "three": "Oscilación 3",
+              "four": "Oscilación 4",
+              "five": "Oscilación 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Oscilación",
+              "left": "Izquierda",
+              "leftcentre": "Centro izquierda",
+              "centre": "Centro",
+              "rightcentre": "Centro derecha",
+              "right": "Derecha"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Temperatura de la habitación"
+      },
+      "wifi_signal": {
+        "name": "Señal WiFi"
+      },
+      "energy": {
+        "name": "Energía"
+      },
+      "outdoor_temperature": {
+        "name": "Temperatura exterior"
+      },
+      "zone_1_temperature": {
+        "name": "Temperatura zona 1"
+      },
+      "zone_2_temperature": {
+        "name": "Temperatura zona 2"
+      },
+      "tank_temperature": {
+        "name": "Temperatura del depósito"
+      },
+      "operation_status": {
+        "name": "Estado de operación"
+      },
+      "flow_temperature": {
+        "name": "Temperatura de impulsión"
+      },
+      "return_temperature": {
+        "name": "Temperatura de retorno"
+      },
+      "flow_temperature_zone1": {
+        "name": "Temperatura de impulsión zona 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Temperatura de retorno zona 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Temperatura de impulsión zona 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Temperatura de retorno zona 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Temperatura de impulsión caldera"
+      },
+      "return_temperature_boiler": {
+        "name": "Temperatura de retorno caldera"
+      },
+      "energy_consumed": {
+        "name": "Energía consumida"
+      },
+      "energy_produced": {
+        "name": "Energía producida"
+      },
+      "cop": {
+        "name": "Coeficiente de rendimiento"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Estado de error"
+      },
+      "connection_state": {
+        "name": "Estado de conexión"
+      },
+      "forced_dhw_active": {
+        "name": "ACS forzado activo"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Forzar actualización",
+      "description": "Actualiza inmediatamente los datos del dispositivo desde los servidores de MELCloud (para pruebas y desarrollo)"
+    }
+  }
+}
