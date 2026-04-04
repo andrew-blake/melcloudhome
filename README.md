@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.2.4
+## What's New in v2.2.5
 
-Now available in Spanish — bringing MELCloud Home to 7 languages. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Now available in 8 languages with Swedish added. Prepared for HACS default repository submission. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
