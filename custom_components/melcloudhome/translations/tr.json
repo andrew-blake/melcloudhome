@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MELCloud Home'a bağlanın",
+        "description": "MELCloud Home bilgilerinizi girin",
+        "data": {
+          "email": "E-Posta",
+          "password": "Şifre",
+          "debug_mode": "Mock Server'a bağlanın"
+        },
+        "data_description": {
+          "debug_mode": "Sadece geliştirme için - MELCloud sunucusu yerine lokal Mock Sever'a bağlanılacak"
+        }
+      },
+      "reconfigure": {
+        "title": "Yeniden düzenle",
+        "description": "{email} için bilgilerinizi güncelleyin",
+        "data": {
+          "password": "Şifre"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "E-Posta veya şifrenizi yanlış girdiniz.",
+      "cannot_connect": "MELCloud Home'a bağlanılamadı. Lütfen internet bağlanızı kontrol edip tekrar deneyin.",
+      "unknown": "Beklenmeyen bir hata oluştu, lütfen tekrar deneyin."
+    },
+    "abort": {
+      "already_configured": "Bu hesap zaten kurulu",
+      "reconfigure_successful": "Bilgileriniz başarıyla güncellendi."
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Oda",
+              "flow": "Akış",
+              "curve": "Kıvrım"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Oto",
+              "one": "Fan 1",
+              "two": "Fan 2",
+              "three": "Fan 3",
+              "four": "Fan 4",
+              "five": "Fan 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Oto",
+              "swing": "Swing",
+              "one": "Swing 1",
+              "two": "Swing 2",
+              "three": "Swing 3",
+              "four": "Swing 4",
+              "five": "Swing 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Oto",
+              "swing": "Swing",
+              "left": "Sol",
+              "leftcentre": "Merkez Sol",
+              "centre": "Merkez",
+              "rightcentre": "Merkez Sağ",
+              "right": "Sağ"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Oda sıcaklığı"
+      },
+      "wifi_signal": {
+        "name": "WiFi sinyali"
+      },
+      "energy": {
+        "name": "Enerji"
+      },
+      "outdoor_temperature": {
+        "name": "Dışarı sıcaklığı"
+      },
+      "zone_1_temperature": {
+        "name": "Alan 1 sıcaklığı"
+      },
+      "zone_2_temperature": {
+        "name": "Alan 2 sıcaklığı"
+      },
+      "tank_temperature": {
+        "name": "Tank sıcaklığı"
+      },
+      "operation_status": {
+        "name": "Operasyon durumu"
+      },
+      "flow_temperature": {
+        "name": "Akış sıcaklığı"
+      },
+      "return_temperature": {
+        "name": "Dönüş sıcaklığı"
+      },
+      "flow_temperature_zone1": {
+        "name": "Alan 1 akış sıcaklığı"
+      },
+      "return_temperature_zone1": {
+        "name": "Alan 1 dönüş sıcaklığı"
+      },
+      "flow_temperature_zone2": {
+        "name": "Alan 2 akış sıcaklığı"
+      },
+      "return_temperature_zone2": {
+        "name": "Alan 2 dönüş sıcaklığı"
+      },
+      "flow_temperature_boiler": {
+        "name": "Kaynatıcı akış sıcaklığı"
+      },
+      "return_temperature_boiler": {
+        "name": "Kaynatıcı dönüş sıcaklığı"
+      },
+      "energy_consumed": {
+        "name": "Harcanılan enerji"
+      },
+      "energy_produced": {
+        "name": "Üretilen enerji"
+      },
+      "cop": {
+        "name": "Performans katsayısı"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Hata durumu"
+      },
+      "connection_state": {
+        "name": "Bağlantı durumu"
+      },
+      "forced_dhw_active": {
+        "name": "Forced DHW aktif"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Zorla yenile",
+      "description": "Hemen MelCloud sürücülerinden datayı yenile (test ve geliştirme için)"
+    }
+  }
+}
