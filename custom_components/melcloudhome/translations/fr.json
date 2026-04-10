@@ -20,16 +20,16 @@
           "password": "Mot de passe"
         }
       }
+    },
+    "error": {
+      "invalid_auth": "Adresse e-mail ou mot de passe invalide",
+      "cannot_connect": "Impossible de se connecter à MELCloud Home. Veuillez vérifier votre connexion Internet et réessayer.",
+      "unknown": "Une erreur inattendue s’est produite. Veuillez réessayer."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré",
+      "reconfigure_successful": "Identifiants mis à jour avec succès"
     }
-  },
-  "error": {
-    "invalid_auth": "Adresse e-mail ou mot de passe invalide",
-    "cannot_connect": "Impossible de se connecter à MELCloud Home. Veuillez vérifier votre connexion Internet et réessayer.",
-    "unknown": "Une erreur inattendue s’est produite. Veuillez réessayer."
-  },
-  "abort": {
-    "already_configured": "Ce compte est déjà configuré",
-    "reconfigure_successful": "Identifiants mis à jour avec succès"
   },
   "entity": {
     "climate": {
