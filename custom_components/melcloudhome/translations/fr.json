@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à MELCloud Home",
+        "description": "Saisissez vos identifiants MELCloud Home",
+        "data": {
+          "email": "Adresse e-mail",
+          "password": "Mot de passe",
+          "debug_mode": "Connexion au serveur bouchon"
+        },
+        "data_description": {
+          "debug_mode": "Réservé au développement – Se connecte à un serveur bouchon local au lieu de l’API MELCloud de production"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer",
+        "description": "Mettre à jour les identifiants pour {email}",
+        "data": {
+          "password": "Mot de passe"
+        }
+      }
+    }
+  },
+  "error": {
+    "invalid_auth": "Adresse e-mail ou mot de passe invalide",
+    "cannot_connect": "Impossible de se connecter à MELCloud Home. Veuillez vérifier votre connexion Internet et réessayer.",
+    "unknown": "Une erreur inattendue s’est produite. Veuillez réessayer."
+  },
+  "abort": {
+    "already_configured": "Ce compte est déjà configuré",
+    "reconfigure_successful": "Identifiants mis à jour avec succès"
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Pièce",
+              "flow": "Flux",
+              "curve": "Courbe"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Automatique",
+              "one": "Ventilation 1",
+              "two": "Ventilation 2",
+              "three": "Ventilation 3",
+              "four": "Ventilation 4",
+              "five": "Ventilation 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Automatique",
+              "swing": "Oscillation",
+              "one": "Oscillation 1",
+              "two": "Oscillation 2",
+              "three": "Oscillation 3",
+              "four": "Oscillation 4",
+              "five": "Oscillation 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Automatique",
+              "swing": "Oscillation",
+              "left": "Gauche",
+              "leftcentre": "Centre gauche",
+              "centre": "Centre",
+              "rightcentre": "Centre droit",
+              "right": "Droite"
+            }
+          }
+        }
+      }
+    }
+  },
+  "sensor": {
+    "room_temperature": {
+      "name": "Température ambiante"
+    },
+    "wifi_signal": {
+      "name": "Signal Wi‑Fi"
+    },
+    "energy": {
+      "name": "Énergie"
+    },
+    "outdoor_temperature": {
+      "name": "Température extérieure"
+    },
+    "zone_1_temperature": {
+      "name": "Température zone 1"
+    },
+    "zone_2_temperature": {
+      "name": "Température zone 2"
+    },
+    "tank_temperature": {
+      "name": "Température du ballon"
+    },
+    "operation_status": {
+      "name": "État de fonctionnement"
+    },
+    "flow_temperature": {
+      "name": "Température de départ"
+    },
+    "return_temperature": {
+      "name": "Température de retour"
+    },
+    "flow_temperature_zone1": {
+      "name": "Température de départ zone 1"
+    },
+    "return_temperature_zone1": {
+      "name": "Température de retour zone 1"
+    },
+    "flow_temperature_zone2": {
+      "name": "Température de départ zone 2"
+    },
+    "return_temperature_zone2": {
+      "name": "Température de retour zone 2"
+    },
+    "flow_temperature_boiler": {
+      "name": "Température de départ chaudière"
+    },
+    "return_temperature_boiler": {
+      "name": "Température de retour chaudière"
+    },
+    "energy_consumed": {
+      "name": "Énergie consommée"
+    },
+    "energy_produced": {
+      "name": "Énergie produite"
+    },
+    "cop": {
+      "name": "Coefficient de performance"
+    }
+  },
+  "binary_sensor": {
+    "error_state": {
+      "name": "État erreur"
+    },
+    "connection_state": {
+      "name": "État connexion"
+    },
+    "forced_dhw_active": {
+      "name": "ECS forcée active"
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Forcer l’actualisation",
+      "description": "Actualise immédiatement les données de l’appareil depuis les serveurs MELCloud (à des fins de tests/développement)"
+    }
+  }
+}
