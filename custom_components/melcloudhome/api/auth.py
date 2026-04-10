@@ -17,7 +17,7 @@ from .const_shared import (
     MOCK_BASE_URL,
     USER_AGENT,
 )
-from .exceptions import AuthenticationError
+from .exceptions import AuthenticationError, ServiceUnavailableError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -252,6 +252,10 @@ class MELCloudHomeAuth:
                     final_url = str(resp.url)
                     _LOGGER.debug("Redirected to: %s", final_url)
 
+                    # Check for server errors before inspecting URL
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
+
                     parsed = urlparse(final_url)
 
                     # Check if already authenticated (redirected to dashboard)
@@ -316,6 +320,10 @@ class MELCloudHomeAuth:
                     final_url = str(resp.url)
                     _LOGGER.debug("After login redirect: %s", final_url)
 
+                    # Check for server errors before inspecting URL
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
+
                     # Check if we ended up on the dashboard (success)
                     parsed = urlparse(final_url)
                     if (
@@ -370,7 +378,7 @@ class MELCloudHomeAuth:
                 f"Network error during authentication: {err}"
             ) from err
         except Exception as err:
-            if isinstance(err, AuthenticationError):
+            if isinstance(err, (AuthenticationError, ServiceUnavailableError)):
                 raise
             raise AuthenticationError(
                 f"Unexpected error during authentication: {err}"

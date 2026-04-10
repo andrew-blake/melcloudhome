@@ -228,7 +228,7 @@ class TestATWEnergyValueParsing:
         from pathlib import Path
         from typing import Any
 
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         cassette_path = Path("tests/api/cassettes/test_get_energy_consumed_hourly.yaml")
 

@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api.client import MELCloudHomeClient
-from .api.exceptions import ApiError, AuthenticationError
+from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .const import (
     DOMAIN,
@@ -116,16 +116,19 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
-        # If not authenticated yet, login first
-        if not self.client.is_authenticated:
-            _LOGGER.debug("Not authenticated, logging in")
-            await self.client.login(self._email, self._password)
+        try:
+            # If not authenticated yet, login first
+            if not self.client.is_authenticated:
+                _LOGGER.debug("Not authenticated, logging in")
+                await self.client.login(self._email, self._password)
 
-        # Use retry helper for consistency
-        context: UserContext = await self._execute_with_retry(
-            self.client.get_user_context,
-            "coordinator_update",
-        )
+            # Use retry helper for consistency
+            context: UserContext = await self._execute_with_retry(
+                self.client.get_user_context,
+                "coordinator_update",
+            )
+        except ServiceUnavailableError as err:
+            raise UpdateFailed(str(err)) from err
 
         # Debug logging: Log verbose device states (controlled by HA logger config)
         for building in context.buildings:
@@ -515,6 +518,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 raise ConfigEntryAuthFailed(
                     "Authentication failed after re-auth. Please reconfigure."
                 ) from err
+
+        except ServiceUnavailableError:
+            # Don't retry or re-auth on server outage — let it propagate
+            # so _async_update_data can raise UpdateFailed for backoff
+            raise
 
         except ApiError as err:
             _LOGGER.error("API error during %s: %s", operation_name, err)
