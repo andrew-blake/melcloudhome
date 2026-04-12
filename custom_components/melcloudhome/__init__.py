@@ -267,7 +267,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create API client and coordinator
     # Note: Coordinator will handle authentication on first refresh
     client = MELCloudHomeClient(debug_mode=debug_mode)
-    coordinator = MELCloudHomeCoordinator(hass, client, email, password)
+
+    # Restore tokens from config entry (survives HA restarts)
+    client.restore_tokens(
+        access_token=entry.data.get("access_token"),
+        refresh_token=entry.data.get("refresh_token"),
+        token_expiry=entry.data.get("token_expiry", 0.0),
+    )
+
+    coordinator = MELCloudHomeCoordinator(hass, client, email, password, entry)
 
     # Fetch initial data (coordinator handles login automatically)
     try:
