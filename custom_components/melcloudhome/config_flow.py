@@ -19,7 +19,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .api.client import MELCloudHomeClient
-from .api.exceptions import ApiError, AuthenticationError
+from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .const import CONF_DEBUG_MODE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,6 +52,8 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 await client.login(email, password)
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
+            except ServiceUnavailableError:
+                errors["base"] = "service_unavailable"
             except ApiError:
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -134,6 +136,8 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 await client.login(email, password)
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
+            except ServiceUnavailableError:
+                errors["base"] = "service_unavailable"
             except ApiError:
                 errors["base"] = "cannot_connect"
             except (TimeoutError, aiohttp.ClientError) as err:
@@ -184,6 +188,8 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 await client.login(email, password)
             except AuthenticationError:
                 errors["base"] = "invalid_auth"
+            except ServiceUnavailableError:
+                errors["base"] = "service_unavailable"
             except ApiError:
                 errors["base"] = "cannot_connect"
             except (TimeoutError, aiohttp.ClientError) as err:
