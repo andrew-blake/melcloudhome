@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for MELCloud Home."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -59,7 +59,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             except Exception:
                 errors["base"] = "unknown"
             else:
-                # Success - create entry
+                # Success - create entry with token state
                 title = "MELCloud Home (Debug)" if debug_mode else "MELCloud Home"
                 return self.async_create_entry(
                     title=title,
@@ -67,6 +67,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                         CONF_EMAIL: email,
                         CONF_PASSWORD: password,
                         CONF_DEBUG_MODE: debug_mode,
+                        **client.get_token_snapshot(),
                     },
                 )
             finally:
@@ -144,10 +145,13 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 _LOGGER.debug("Connection error during reauth: %s", err)
                 errors["base"] = "cannot_connect"
             else:
-                # Update config entry with new password (partial update)
+                # Update config entry with new password and tokens
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={CONF_PASSWORD: password},
+                    data_updates={
+                        CONF_PASSWORD: password,
+                        **client.get_token_snapshot(),
+                    },
                 )
             finally:
                 # CRITICAL: Always close the client session to prevent memory leak
@@ -196,10 +200,13 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 _LOGGER.debug("Connection error during reconfigure: %s", err)
                 errors["base"] = "cannot_connect"
             else:
-                # Update config entry with new password (partial update)
+                # Update config entry with new password and tokens
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={CONF_PASSWORD: password},
+                    data_updates={
+                        CONF_PASSWORD: password,
+                        **client.get_token_snapshot(),
+                    },
                 )
             finally:
                 # CRITICAL: Always close the client session to prevent memory leak

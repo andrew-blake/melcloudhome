@@ -243,6 +243,18 @@ async def _restore_device_names(
         _LOGGER.info("Set friendly names on %d new device(s)", migrated_count)
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entry to new version."""
+    if entry.version == 1:
+        _LOGGER.info("Migrating config entry from v1 to v2 (adding token storage)")
+        new_data = {**entry.data}
+        new_data.setdefault("access_token", None)
+        new_data.setdefault("refresh_token", None)
+        new_data.setdefault("token_expiry", 0.0)
+        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
     # Lazy imports - see module docstring for explanation
