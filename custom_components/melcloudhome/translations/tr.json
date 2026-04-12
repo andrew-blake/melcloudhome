@@ -24,6 +24,7 @@
     "error": {
       "invalid_auth": "E-Posta veya şifrenizi yanlış girdiniz.",
       "cannot_connect": "MELCloud Home'a bağlanılamadı. Lütfen internet bağlanızı kontrol edip tekrar deneyin.",
+      "service_unavailable": "MELCloud hizmeti şu anda kullanılamıyor. Bu sunucu tarafında bir sorundur — lütfen daha sonra tekrar deneyin.",
       "unknown": "Beklenmeyen bir hata oluştu, lütfen tekrar deneyin."
     },
     "abort": {
