@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Proof-of-concept: MELCloud Home mobile BFF API via OAuth PKCE.
+"""Test MELCloud Home mobile BFF API via OAuth PKCE.
 
-Tests the full auth flow and API access against mobile.bff.melcloudhome.com.
+Validates the full auth flow and API access against mobile.bff.melcloudhome.com.
+Useful for verifying credentials work and checking API response shapes.
 
 Usage:
     source .env
@@ -18,9 +19,8 @@ import sys
 
 import aiohttp
 
-# Constants from Charles capture analysis
 AUTH_BASE = "https://auth.melcloudhome.com"
-MOBILE_BFF_BASE = "https://mobile.bff.melcloudhome.com"
+BFF_BASE = "https://mobile.bff.melcloudhome.com"
 COGNITO_DOMAIN_SUFFIX = ".amazoncognito.com"
 CLIENT_ID = "homemobile"
 REDIRECT_URI = "melcloudhome://"
@@ -68,7 +68,7 @@ async def main() -> None:
             headers={"User-Agent": USER_AGENT},
         ) as resp:
             if resp.status != 201:
-                print(f"   FAILED: {resp.status} {await resp.text()}")
+                print(f"   FAILED: {resp.status}")
                 return
             par_data = await resp.json()
             request_uri = par_data["request_uri"]
@@ -76,42 +76,25 @@ async def main() -> None:
 
         # Step 2: Authorize — follow redirects to Cognito login page
         print("2. Authorize (follow redirects to Cognito)...")
-        authorize_url = (
-            f"{AUTH_BASE}/connect/authorize"
-            f"?client_id={CLIENT_ID}&request_uri={request_uri}"
-        )
-        # Follow redirects but stop at the Cognito login page
         async with session.get(
-            authorize_url,
+            f"{AUTH_BASE}/connect/authorize"
+            f"?client_id={CLIENT_ID}&request_uri={request_uri}",
             headers={"User-Agent": USER_AGENT},
             allow_redirects=True,
         ) as resp:
             final_url = str(resp.url)
             if COGNITO_DOMAIN_SUFFIX not in final_url:
                 print(f"   UNEXPECTED: ended up at {final_url}")
-                print(f"   Status: {resp.status}")
-                if resp.status >= 500:
-                    print("   Auth server returning 5xx — partially affected by outage")
-                    return
-                # Might have been redirected back with a code already (existing session)
-                if "code=" in final_url:
-                    print("   Already authenticated via existing session")
-                    # Extract code from redirect
-                    # This path would need handling but skip for PoC
-                    return
-                body = await resp.text()
-                print(f"   Body preview: {body[:200]}")
                 return
 
-            # Extract CSRF token from Cognito login page
             body = await resp.text()
             csrf_match = re.search(r'name="_csrf"\s+value="([^"]+)"', body)
             if not csrf_match:
-                print("   FAILED: could not extract CSRF token from Cognito page")
+                print("   FAILED: could not extract CSRF token")
                 return
             csrf_token = csrf_match.group(1)
             cognito_login_url = str(resp.url)
-            print(f"   OK: Cognito login page at {cognito_login_url[:60]}...")
+            print("   OK: Cognito login page")
 
         # Step 3: Submit credentials to Cognito
         print("3. Cognito login...")
@@ -134,91 +117,36 @@ async def main() -> None:
             },
             allow_redirects=True,
         ) as resp:
-            final_url = str(resp.url)
-            # The redirect chain should end at auth.melcloudhome.com with a page
-            # that contains a JS redirect to melcloudhome:// with the auth code
             body = await resp.text()
+            final_url = str(resp.url)
 
-            # Look for the auth code in the page (redirect page or final URL)
-            code_match = re.search(r"code=([^&\"' ]+)", body) or re.search(
-                r"code=([^&\"' ]+)", final_url
-            )
-            if not code_match:
-                if "error" in final_url.lower() or "error" in body.lower():
-                    print(f"   FAILED: auth error at {final_url}")
-                    error_match = re.search(r"error[_description]*=([^&]+)", final_url)
-                    if error_match:
-                        print(f"   Error: {error_match.group(1)}")
-                    return
-
-                # Debug: dump the redirect page to understand its structure
-                print(f"   Redirect page URL: {final_url}")
-                # Look for any URLs in the page
-                url_matches = re.findall(
-                    r'(https?://[^"\'<>\s]+|/connect/[^"\'<>\s]+)', body
+            # Extract callback URL from redirect page
+            callback_match = re.search(r"/connect/authorize/callback\?([^\"' ]+)", body)
+            if not callback_match:
+                code_match = re.search(r"code=([^&\"' ]+)", final_url) or re.search(
+                    r"code=([^&\"' ]+)", body
                 )
-                for u in url_matches[:10]:
-                    print(f"   Found URL: {u}")
-
-                # The redirect page may contain a JS redirect or a link
-                # to melcloudhome:// — look for the authorize/callback URL
-                callback_match = re.search(
-                    r"/connect/authorize/callback\?([^\"' ]+)", body
-                ) or re.search(r"/connect/authorize/callback\?([^\"' ]+)", final_url)
-                if callback_match:
-                    callback_qs = callback_match.group(1).replace("&amp;", "&")
-                    # Need to follow this URL to get the actual code redirect
-                    import urllib.parse
-
-                    callback_url = f"{AUTH_BASE}/connect/authorize/callback?{urllib.parse.unquote(callback_qs)}"
-                    print("   Found callback URL, following...")
-
-                    # Follow callback but DON'T follow the melcloudhome:// redirect
-                    async with session.get(
-                        callback_url,
-                        headers={"User-Agent": USER_AGENT},
-                        allow_redirects=False,
-                    ) as cb_resp:
-                        location = cb_resp.headers.get("Location", "")
-                        if location.startswith("melcloudhome://"):
-                            code_match = re.search(r"code=([^&]+)", location)
-                            if code_match:
-                                auth_code = code_match.group(1)
-                                print(f"   OK: got auth code {auth_code[:20]}...")
-                            else:
-                                print(
-                                    f"   FAILED: no code in redirect: {location[:100]}"
-                                )
-                                return
-                        else:
-                            # Might be another redirect in the chain
-                            print(f"   Redirect to: {location[:100]}")
-                            # Follow one more hop
-                            async with session.get(
-                                location
-                                if location.startswith("http")
-                                else f"{AUTH_BASE}{location}",
-                                headers={"User-Agent": USER_AGENT},
-                                allow_redirects=False,
-                            ) as cb_resp2:
-                                location2 = cb_resp2.headers.get("Location", "")
-                                code_match = re.search(r"code=([^&]+)", location2)
-                                if code_match:
-                                    auth_code = code_match.group(1)
-                                    print(f"   OK: got auth code {auth_code[:20]}...")
-                                else:
-                                    body2 = await cb_resp2.text()
-                                    print(
-                                        f"   FAILED: {cb_resp2.status} Location: {location2[:100]}"
-                                    )
-                                    print(f"   Body: {body2[:500]}")
-                                    return
-                else:
+                if not code_match:
                     print("   FAILED: no auth code or callback found")
-                    print(f"   URL: {final_url}")
-                    print(f"   Body preview: {body[:500]}")
                     return
-            auth_code = code_match.group(1)
+                auth_code = code_match.group(1)
+            else:
+                callback_qs = callback_match.group(1).replace("&amp;", "&")
+                callback_url = f"{AUTH_BASE}/connect/authorize/callback?{callback_qs}"
+
+                # Follow callback to get auth code from redirect
+                async with session.get(
+                    callback_url,
+                    headers={"User-Agent": USER_AGENT},
+                    allow_redirects=False,
+                ) as cb_resp:
+                    location = cb_resp.headers.get("Location", "")
+                    code_match = re.search(r"code=([^&]+)", location)
+                    if not code_match:
+                        print("   FAILED: no code in redirect")
+                        return
+                    auth_code = code_match.group(1)
+
             print(f"   OK: got auth code {auth_code[:20]}...")
 
         # Step 4: Exchange code for tokens
@@ -235,7 +163,7 @@ async def main() -> None:
             headers={"User-Agent": USER_AGENT},
         ) as resp:
             if resp.status != 200:
-                print(f"   FAILED: {resp.status} {await resp.text()}")
+                print(f"   FAILED: {resp.status}")
                 return
             token_data = await resp.json()
             access_token = token_data["access_token"]
@@ -243,7 +171,6 @@ async def main() -> None:
             expires_in = token_data.get("expires_in", "?")
             print(f"   OK: access_token (expires in {expires_in}s)")
             print(f"   OK: refresh_token={'yes' if refresh_token else 'no'}")
-            print(f"   OK: scope={token_data.get('scope', '?')}")
 
         # Step 5: Test mobile BFF endpoints
         api_headers = {
@@ -254,11 +181,7 @@ async def main() -> None:
 
         print("\n5. Testing mobile BFF endpoints...")
 
-        # /context
-        async with session.get(
-            f"{MOBILE_BFF_BASE}/context",
-            headers=api_headers,
-        ) as resp:
+        async with session.get(f"{BFF_BASE}/context", headers=api_headers) as resp:
             if resp.status == 200:
                 ctx = await resp.json(content_type=None)
                 buildings = ctx.get("buildings", []) + ctx.get("guestBuildings", [])
@@ -267,13 +190,6 @@ async def main() -> None:
                 print(f"   GET /context -> 200 ({ata_count} ATA, {atw_count} ATW)")
             else:
                 print(f"   GET /context -> {resp.status} FAILED")
-
-        # /config
-        async with session.get(
-            f"{MOBILE_BFF_BASE}/config",
-            headers=api_headers,
-        ) as resp:
-            print(f"   GET /config -> {resp.status}")
 
         # Step 6: Test token refresh
         print("\n6. Token refresh...")
@@ -291,13 +207,10 @@ async def main() -> None:
                 print(
                     f"   OK: new access_token (expires in {new_tokens.get('expires_in', '?')}s)"
                 )
-                print(
-                    f"   OK: new refresh_token={'yes' if new_tokens.get('refresh_token') else 'no'}"
-                )
             else:
-                print(f"   FAILED: {resp.status} {await resp.text()}")
+                print(f"   FAILED: {resp.status}")
 
-        print("\n✅ All steps completed")
+        print("\nAll steps completed")
 
 
 if __name__ == "__main__":

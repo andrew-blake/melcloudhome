@@ -311,8 +311,26 @@ Testing climate.melcloud_0efc_76db...
   ✅ Successfully turned on (state: heat)
 ```
 
-### Future Tools
+## API Diagnostic Tools
 
-- Integration validation
-- Entity testing
-- Performance profiling
+### `test_mobile_api.py`
+
+Tests the full OAuth PKCE auth flow and mobile BFF API access. Useful for verifying credentials work and checking API response shapes.
+
+```bash
+source .env
+python tools/test_mobile_api.py
+```
+
+### `dump_device_state.py`
+
+Dumps current state of all MELCloud devices via the mobile BFF API. Supports filtering by unit ID and JSON output for before/after comparison.
+
+```bash
+source .env
+python tools/dump_device_state.py                    # All devices, table format
+python tools/dump_device_state.py --json              # JSON output (sorted keys)
+python tools/dump_device_state.py --unit-id <uuid>    # Single device
+```
+
+Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
