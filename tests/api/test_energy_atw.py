@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
 
-@freeze_time("2026-01-18 10:24:22", real_asyncio=True)
+@freeze_time("2026-04-12 08:00:00", real_asyncio=True)
 @pytest.mark.vcr()
 @pytest.mark.asyncio
 async def test_get_energy_consumed_hourly(
@@ -76,7 +76,7 @@ async def test_get_energy_consumed_hourly(
         assert "measureData" in result or len(result) == 0
 
 
-@freeze_time("2026-01-18 10:24:22", real_asyncio=True)
+@freeze_time("2026-04-12 08:00:00", real_asyncio=True)
 @pytest.mark.vcr()
 @pytest.mark.asyncio
 async def test_get_energy_produced_hourly(
@@ -125,7 +125,7 @@ async def test_get_energy_produced_hourly(
         assert "measureData" in result or len(result) == 0
 
 
-@freeze_time("2026-01-18 10:24:22", real_asyncio=True)
+@freeze_time("2026-04-12 08:00:00", real_asyncio=True)
 @pytest.mark.vcr()
 @pytest.mark.asyncio
 async def test_get_energy_consumed_daily(
@@ -213,15 +213,14 @@ class TestATWEnergyValueParsing:
     """Test ATW energy value parsing to verify unit conversion."""
 
     @pytest.mark.asyncio
-    async def test_atw_energy_values_in_kwh_not_wh(self) -> None:
-        """Verify ATW energy API returns kWh, not Wh.
+    async def test_atw_energy_produced_values_in_kwh_not_wh(self) -> None:
+        """Verify ATW energy production API returns kWh, not Wh.
 
-        This test verifies the fix for the bug where ATW energy values were
-        incorrectly converted from Wh to kWh (divided by 1000), when they
-        were already in kWh from the API.
+        This test verifies that ATW energy values are in kWh from the API,
+        not Wh. Uses the produced energy cassette since the test device
+        reports estimated production but not consumption.
 
-        Reference VCR cassette: test_get_energy_consumed_hourly.yaml
-        Sample value: 0.5666666666666667 (kWh, not Wh)
+        Reference VCR cassette: test_get_energy_produced_hourly.yaml
         """
         # Load the VCR cassette data to verify actual API response format
         import json
@@ -230,11 +229,11 @@ class TestATWEnergyValueParsing:
 
         import yaml
 
-        cassette_path = Path("tests/api/cassettes/test_get_energy_consumed_hourly.yaml")
+        cassette_path = Path("tests/api/cassettes/test_get_energy_produced_hourly.yaml")
 
         if not cassette_path.exists():
             pytest.skip(
-                "VCR cassette not found - run test_get_energy_consumed_hourly first"
+                "VCR cassette not found - run test_get_energy_produced_hourly first"
             )
 
         with open(cassette_path) as f:
@@ -243,7 +242,7 @@ class TestATWEnergyValueParsing:
         # Find the energy API response
         energy_response: str | None = None
         for interaction in cassette["interactions"]:
-            if "interval_energy_consumed" in interaction["request"]["uri"]:
+            if "interval_energy_produced" in interaction["request"]["uri"]:
                 energy_response = interaction["response"]["body"]["string"]
                 break
 
@@ -260,15 +259,15 @@ class TestATWEnergyValueParsing:
         values = data["measureData"][0]["values"]
         assert len(values) > 0
 
-        # Check actual values - they should be in kWh (0.5-5 range for heat pump)
-        # NOT in Wh (500-5000 range)
+        # Check actual values - they should be in kWh (0.5-15 range for heat pump)
+        # NOT in Wh (500-15000 range)
         sample_value = float(values[0]["value"])
 
-        # Heat pump hourly consumption is typically 0.5-5 kWh/hour
-        # If it were in Wh, we'd see 500-5000
-        assert 0.1 < sample_value < 10, (
+        # Heat pump hourly production is typically 1-15 kWh/hour (COP ~3)
+        # If it were in Wh, we'd see 1000-15000
+        assert 0.1 < sample_value < 20, (
             f"ATW energy value {sample_value} doesn't look like kWh. "
-            f"Expected 0.1-10 kWh/hour range for heat pump. "
+            f"Expected 0.1-20 kWh/hour range for heat pump. "
             f"If this is >100, it's likely in Wh (bug not fixed)."
         )
 

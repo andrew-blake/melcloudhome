@@ -489,21 +489,17 @@ class TestAPIBugValidation:
 
 @pytest.mark.vcr()
 @pytest.mark.asyncio
-async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
-    """Test parsing ATW devices with energy + cooling capabilities.
+async def test_atw_device_with_energy_capabilities(authenticated_client) -> None:
+    """Test parsing ATW device with energy capabilities.
 
-    This test records a real API call using VCR to capture the /api/user/context
-    response from beta tester's ATW devices:
-    - Device 1 (Madrid): Energy monitoring, NO cooling
-    - Device 2 (Belgrade): Energy monitoring AND cooling
-
-    Validates that capability detection works correctly for these features.
+    Records a real API call to capture the /api/user/context response.
+    The test account has guest access to one ATW device (Madrid) with
+    estimated energy production/consumption capabilities.
     """
     context = await authenticated_client.get_user_context()
     atw_units = context.get_all_air_to_water_units()
 
-    # Should have at least 2 ATW devices
-    assert len(atw_units) >= 2, f"Expected 2+ ATW devices, found {len(atw_units)}"
+    assert len(atw_units) >= 1, f"Expected 1+ ATW devices, found {len(atw_units)}"
 
     # Find units with energy capabilities
     energy_units = [
@@ -511,42 +507,48 @@ async def test_atw_device_with_energy_and_cooling(authenticated_client) -> None:
         for u in atw_units
         if u.capabilities.has_estimated_energy_consumption
         or u.capabilities.has_measured_energy_consumption
+        or u.capabilities.has_estimated_energy_production
+        or u.capabilities.has_measured_energy_production
     ]
 
-    assert len(energy_units) >= 2, (
-        f"Expected 2+ ATW devices with energy, found {len(energy_units)}"
+    assert len(energy_units) >= 1, (
+        f"Expected 1+ ATW devices with energy, found {len(energy_units)}"
     )
 
-    # Verify both devices have energy capabilities
-    for unit in energy_units:
-        assert (
-            unit.capabilities.has_estimated_energy_consumption is True
-            or unit.capabilities.has_measured_energy_consumption is True
-        ), f"Device {unit.id}: Energy consumption capability not detected"
+    # Verify energy capabilities
+    unit = energy_units[0]
+    assert (
+        unit.capabilities.has_estimated_energy_consumption is True
+        or unit.capabilities.has_measured_energy_consumption is True
+    ), f"Device {unit.id}: Energy consumption capability not detected"
 
-        assert (
-            unit.capabilities.has_estimated_energy_production is True
-            or unit.capabilities.has_measured_energy_production is True
-        ), f"Device {unit.id}: Energy production capability not detected"
+    assert (
+        unit.capabilities.has_estimated_energy_production is True
+        or unit.capabilities.has_measured_energy_production is True
+    ), f"Device {unit.id}: Energy production capability not detected"
 
-    # Find the device with cooling support
-    cooling_unit = next(
-        (u for u in energy_units if u.capabilities.has_cooling_mode), None
-    )
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+@pytest.mark.xfail(
+    reason="Belgrade beta tester revoked access — no cooling-capable ATW device available"
+)
+async def test_atw_device_with_cooling_capability(authenticated_client) -> None:
+    """Test parsing ATW device with cooling capability.
+
+    Requires access to an ATW device with has_cooling_mode=True
+    (e.g., ERSC-VM2D controller). Previously tested via Belgrade
+    beta tester's device. Will pass again when a cooling-capable
+    device is accessible to the test account.
+    """
+    context = await authenticated_client.get_user_context()
+    atw_units = context.get_all_air_to_water_units()
+
+    cooling_unit = next((u for u in atw_units if u.capabilities.has_cooling_mode), None)
 
     assert cooling_unit is not None, (
-        "Expected at least one ATW device with both energy AND cooling capabilities"
+        "No ATW device with cooling capability found in test account"
     )
-
-    # Verify cooling device has all expected capabilities
     assert cooling_unit.capabilities.has_cooling_mode is True
     assert cooling_unit.capabilities.has_estimated_energy_consumption is True
     assert cooling_unit.capabilities.has_estimated_energy_production is True
-    assert cooling_unit.capabilities.ftc_model == 3  # ERSC-VM2D controller type
-
-    # Log device capabilities for debugging
-    logging.info(f"Found {len(energy_units)} ATW devices with energy monitoring:")
-    for unit in energy_units:
-        logging.info(
-            f"  Device {unit.id}: has_cooling={unit.capabilities.has_cooling_mode}"
-        )
