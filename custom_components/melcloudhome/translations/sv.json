@@ -24,6 +24,7 @@
     "error": {
       "invalid_auth": "Ogiltig e-postadress eller lösenord",
       "cannot_connect": "Kunde inte ansluta till MELCloud Home. Kontrollera din internetanslutning och försök igen.",
+      "service_unavailable": "MELCloud-tjänsten är för närvarande otillgänglig. Det är ett serverfel — försök igen senare.",
       "unknown": "Ett oväntat fel uppstod. Försök igen."
     },
     "abort": {

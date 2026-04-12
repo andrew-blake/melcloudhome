@@ -6,7 +6,7 @@ repos:
     rev: v0.15.9
     hooks:
       # Run the linter
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       # Run the formatter
       - id: ruff-format
@@ -29,6 +29,7 @@ repos:
         args: [--ignore-missing-imports, --explicit-package-bases]
         additional_dependencies:
           - types-requests
+          - types-PyYAML
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2

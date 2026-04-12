@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from custom_components.melcloudhome.api.exceptions import ServiceUnavailableError
 
 
 def create_mock_context_manager(return_value: Any) -> MagicMock:
@@ -74,3 +75,34 @@ async def test_client_uses_request_pacer(mock_pacer, mock_session, mocker):
     # Verify pacer context manager was used
     mock_pacer.__aenter__.assert_called_once()
     mock_pacer.__aexit__.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_api_request_reports_service_unavailable_on_503(mock_pacer, mocker):
+    """API request should report service unavailable when server returns 503."""
+    mock_response = AsyncMock()
+    mock_response.status = 503
+    mock_response.content_length = 100
+    mock_response.content_type = "text/html"
+
+    session = MagicMock()
+    session.request = MagicMock(return_value=create_mock_context_manager(mock_response))
+
+    mocker.patch(
+        "custom_components.melcloudhome.api.client.RequestPacer",
+        return_value=mock_pacer,
+    )
+    mocker.patch.object(
+        MELCloudHomeAuth,
+        "is_authenticated",
+        new_callable=PropertyMock,
+        return_value=True,
+    )
+
+    client = MELCloudHomeClient()
+    mocker.patch.object(
+        client._auth, "get_session", new=AsyncMock(return_value=session)
+    )
+
+    with pytest.raises(ServiceUnavailableError, match="MELCloud service unavailable"):
+        await client._api_request("GET", "/api/user/context")

@@ -24,7 +24,7 @@ from .const_shared import (
     BASE_URL,
     MOCK_BASE_URL,
 )
-from .exceptions import ApiError, AuthenticationError
+from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
 from .pacing import RequestPacer
 
@@ -152,7 +152,11 @@ class MELCloudHomeClient:
                             "Session expired - please login again"
                         )
 
-                    # Handle other errors
+                    # Handle server errors (MELCloud outage)
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
+
+                    # Handle other client errors
                     if resp.status >= 400:
                         try:
                             error_data = await resp.json()

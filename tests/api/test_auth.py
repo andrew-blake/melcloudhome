@@ -11,7 +11,10 @@ import pytest
 import pytest_asyncio
 
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
-from custom_components.melcloudhome.api.exceptions import AuthenticationError
+from custom_components.melcloudhome.api.exceptions import (
+    AuthenticationError,
+    ServiceUnavailableError,
+)
 
 
 @pytest_asyncio.fixture
@@ -240,6 +243,74 @@ class TestErrorMessageExtraction:
         """_extract_error_message should handle empty HTML."""
         error = auth._extract_error_message("")
         assert error is None or isinstance(error, str)
+
+
+class TestServerErrors:
+    """Test handling of server-side errors during login."""
+
+    @pytest.mark.asyncio
+    async def test_login_reports_service_unavailable_on_503(
+        self, request_pacer
+    ) -> None:
+        """Login should report service unavailable when server returns 503."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from yarl import URL
+
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        try:
+            mock_response = MagicMock()
+            mock_response.url = URL(
+                "https://melcloudhome.com/bff/login?returnUrl=/dashboard"
+            )
+            mock_response.status = 503
+            mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_response.__aexit__ = AsyncMock(return_value=None)
+
+            with patch.object(
+                auth, "_ensure_session", return_value=AsyncMock()
+            ) as mock_session:
+                mock_session.return_value.get = MagicMock(return_value=mock_response)
+
+                with pytest.raises(
+                    ServiceUnavailableError, match="MELCloud service unavailable"
+                ):
+                    await auth.login("test@example.com", "password")
+
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_login_reports_service_unavailable_on_500(
+        self, request_pacer
+    ) -> None:
+        """Login should report service unavailable when server returns 500."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from yarl import URL
+
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        try:
+            mock_response = MagicMock()
+            mock_response.url = URL(
+                "https://melcloudhome.com/bff/login?returnUrl=/dashboard"
+            )
+            mock_response.status = 500
+            mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+            mock_response.__aexit__ = AsyncMock(return_value=None)
+
+            with patch.object(
+                auth, "_ensure_session", return_value=AsyncMock()
+            ) as mock_session:
+                mock_session.return_value.get = MagicMock(return_value=mock_response)
+
+                with pytest.raises(ServiceUnavailableError, match=r"HTTP 500"):
+                    await auth.login("test@example.com", "password")
+
+        finally:
+            await auth.close()
 
 
 class TestMultipleAuthInstances:
