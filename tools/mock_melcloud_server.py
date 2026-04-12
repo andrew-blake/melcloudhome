@@ -214,54 +214,58 @@ class MockMELCloudServer:
             },
         )
 
-        # Authentication (both paths for compatibility)
+        # Authentication (legacy mock login paths for compatibility)
         auth_route = app.router.add_post("/api/auth/login", self.handle_login)
         login_route = app.router.add_post("/api/login", self.handle_login)
 
-        # Device discovery (SHARED endpoint - returns both types)
-        context_route = app.router.add_get(
-            "/api/user/context", self.handle_user_context
-        )
+        # OAuth token endpoint (matches real IdentityServer)
+        token_route = app.router.add_post("/connect/token", self.handle_token)
 
-        # Device control (SEPARATE endpoints per type)
+        # Device discovery (mobile BFF path)
+        context_route = app.router.add_get("/context", self.handle_user_context)
+
+        # Device control (mobile BFF paths)
         ata_route = app.router.add_put(
-            "/api/ataunit/{unit_id}", self.handle_ata_control
+            "/monitor/ataunit/{unit_id}", self.handle_ata_control
         )
         atw_route = app.router.add_put(
-            "/api/atwunit/{unit_id}", self.handle_atw_control
+            "/monitor/atwunit/{unit_id}", self.handle_atw_control
         )
 
-        # Schedule endpoints
+        # Schedule endpoints (mobile BFF paths)
         schedule_get = app.router.add_get(
-            "/api/atwcloudschedule/{unit_id}", self.handle_schedule
+            "/monitor/atwcloudschedule/{unit_id}", self.handle_schedule
         )
         schedule_post = app.router.add_post(
-            "/api/atwcloudschedule/{unit_id}", self.handle_schedule
+            "/monitor/atwcloudschedule/{unit_id}", self.handle_schedule
         )
         schedule_enabled_get = app.router.add_get(
-            "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_get
+            "/monitor/atwcloudschedule/{unit_id}/enabled",
+            self.handle_schedule_enabled_get,
         )
         schedule_enabled_put = app.router.add_put(
-            "/api/atwcloudschedule/{unit_id}/enabled", self.handle_schedule_enabled_put
+            "/monitor/atwcloudschedule/{unit_id}/enabled",
+            self.handle_schedule_enabled_put,
         )
 
-        # Telemetry endpoints (spike: sparse data pattern)
+        # Telemetry endpoints (mobile BFF paths)
         telemetry_route = app.router.add_get(
-            "/api/telemetry/actual/{unit_id}", self.handle_telemetry_actual
+            "/telemetry/telemetry/actual/{unit_id}", self.handle_telemetry_actual
         )
         energy_route = app.router.add_get(
-            "/api/telemetry/energy/{unit_id}", self.handle_telemetry_energy
+            "/telemetry/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
 
-        # Report endpoints
+        # Report endpoints (mobile BFF path)
         trendsummary_route = app.router.add_get(
-            "/api/report/trendsummary", self.get_trend_summary
+            "/report/v1/trendsummary", self.get_trend_summary
         )
 
         # Add CORS to all routes
         for route in [
             auth_route,
             login_route,
+            token_route,
             context_route,
             ata_route,
             atw_route,
@@ -327,8 +331,30 @@ class MockMELCloudServer:
             status=401,
         )
 
+    async def handle_token(self, request: web.Request) -> web.Response:
+        """Mock OAuth token endpoint (POST /connect/token).
+
+        Returns application/json (matching real IdentityServer behaviour).
+        Supports authorization_code and refresh_token grant types.
+        """
+        data = await request.post()
+        grant_type = data.get("grant_type")
+
+        if grant_type in ("authorization_code", "refresh_token"):
+            logger.info("🔑 Token: grant_type=%s (mock - success)", grant_type)
+            return web.json_response(
+                {
+                    "access_token": "mock-access-token",
+                    "refresh_token": "mock-refresh-token",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                    "scope": "openid profile email offline_access IdentityServerApi",
+                }
+            )
+        return web.json_response({"error": "unsupported_grant_type"}, status=400)
+
     async def handle_user_context(self, request: web.Request) -> web.Response:
-        """GET /api/user/context - Returns all devices (both types).
+        """GET /context - Returns all devices (both types).
 
         Architecture: Multi-type container
         Format: {buildings: [...], guestBuildings: [...]}
@@ -445,15 +471,19 @@ class MockMELCloudServer:
             len(guest_buildings_response),
         )
 
-        return web.json_response(
-            {
-                "buildings": buildings_response,
-                "guestBuildings": guest_buildings_response,
-            }
+        return web.Response(
+            text=json.dumps(
+                {
+                    "buildings": buildings_response,
+                    "guestBuildings": guest_buildings_response,
+                }
+            ),
+            content_type="text/plain",
+            charset="utf-8",
         )
 
     async def handle_ata_control(self, request: web.Request) -> web.Response:
-        """PUT /api/ataunit/{unit_id} - Control ATA device.
+        """PUT /monitor/ataunit/{unit_id} - Control ATA device.
 
         Architecture: Device-specific endpoint
         Reference: docs/api/ata-api-reference.md
@@ -541,7 +571,7 @@ class MockMELCloudServer:
         return web.Response(status=200, body=b"")
 
     async def handle_atw_control(self, request: web.Request) -> web.Response:
-        """PUT /api/atwunit/{unit_id} - Control ATW device.
+        """PUT /monitor/atwunit/{unit_id} - Control ATW device.
 
         Architecture: Device-specific endpoint
         Reference: docs/api/atw-api-reference.md
@@ -734,7 +764,7 @@ class MockMELCloudServer:
                 state["operation_mode"] = "Stop"
 
     async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
-        """GET /api/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
+        """GET /telemetry/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
 
         Returns sparse telemetry data matching real API behavior observed in HAR:
         - 0-4 datapoints per hour
@@ -791,20 +821,24 @@ class MockMELCloudServer:
 
         logger.info("📊 Returning %d datapoints for %s", len(values), measure)
 
-        return web.json_response(
-            {
-                "measureData": [
-                    {
-                        "deviceId": unit_id,
-                        "type": self._snake_to_camel(measure),
-                        "values": values,
-                    }
-                ]
-            }
+        return web.Response(
+            text=json.dumps(
+                {
+                    "measureData": [
+                        {
+                            "deviceId": unit_id,
+                            "type": self._snake_to_camel(measure),
+                            "values": values,
+                        }
+                    ]
+                }
+            ),
+            content_type="text/plain",
+            charset="utf-8",
         )
 
     async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
-        """GET /api/telemetry/energy/{unit_id} - Get energy telemetry data.
+        """GET /telemetry/telemetry/energy/{unit_id} - Get energy telemetry data.
 
         Returns hourly energy data for ATW devices.
         Supports interval_energy_consumed and interval_energy_produced measures.
@@ -849,20 +883,24 @@ class MockMELCloudServer:
 
         logger.info("⚡ Returning 24 hours of data for %s", measure)
 
-        return web.json_response(
-            {
-                "deviceId": unit_id,
-                "measureData": [
-                    {
-                        "type": self._snake_to_camel(measure),
-                        "values": values,
-                    }
-                ],
-            }
+        return web.Response(
+            text=json.dumps(
+                {
+                    "deviceId": unit_id,
+                    "measureData": [
+                        {
+                            "type": self._snake_to_camel(measure),
+                            "values": values,
+                        }
+                    ],
+                }
+            ),
+            content_type="text/plain",
+            charset="utf-8",
         )
 
     async def get_trend_summary(self, request: web.Request) -> web.Response:
-        """GET /api/report/trendsummary - Temperature trend data."""
+        """GET /report/v1/trendsummary - Temperature trend data."""
         unit_id = request.query.get("unitId")
         to_param = request.query.get("to", "")
         from_param = request.query.get("from", "")
@@ -944,7 +982,11 @@ class MockMELCloudServer:
                 }
             )
 
-        return web.json_response({"datasets": datasets, "annotations": []})
+        return web.Response(
+            text=json.dumps({"datasets": datasets, "annotations": []}),
+            content_type="text/plain",
+            charset="utf-8",
+        )
 
     def _snake_to_camel(self, snake_str: str) -> str:
         """Convert snake_case to camelCase."""
@@ -952,7 +994,7 @@ class MockMELCloudServer:
         return components[0] + "".join(x.title() for x in components[1:])
 
     async def handle_schedule(self, request: web.Request) -> web.Response:
-        """GET/POST /api/atwcloudschedule/{unit_id} - Get or update schedule."""
+        """GET/POST /monitor/atwcloudschedule/{unit_id} - Get or update schedule."""
         unit_id = request.match_info.get("unit_id")
         method = request.method
 
@@ -976,7 +1018,7 @@ class MockMELCloudServer:
         return web.Response(status=405, body=b"Method Not Allowed")
 
     async def handle_schedule_enabled_get(self, request: web.Request) -> web.Response:
-        """GET /api/atwcloudschedule/{unit_id}/enabled - Get schedule enabled status."""
+        """GET /monitor/atwcloudschedule/{unit_id}/enabled - Get schedule enabled status."""
         unit_id = request.match_info.get("unit_id")
         logger.info("📅 Schedule Enabled GET: %s", unit_id)
 
@@ -985,7 +1027,7 @@ class MockMELCloudServer:
         return web.json_response({"enabled": enabled})
 
     async def handle_schedule_enabled_put(self, request: web.Request) -> web.Response:
-        """PUT /api/atwcloudschedule/{unit_id}/enabled - Set schedule enabled status."""
+        """PUT /monitor/atwcloudschedule/{unit_id}/enabled - Set schedule enabled status."""
         unit_id = request.match_info.get("unit_id")
 
         try:
