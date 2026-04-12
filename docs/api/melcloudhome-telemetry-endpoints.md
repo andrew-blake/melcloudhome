@@ -44,7 +44,7 @@ MELCloud Home provides several reporting and telemetry endpoints for reading his
 
 ### 1. Actual Telemetry Data 📋 (Reference Only)
 
-**GET** `/api/telemetry/actual/{unit_id}`
+**GET** `/telemetry/telemetry/actual/{unit_id}`
 
 Retrieves time-series data for various measurements over a specified time range.
 
@@ -60,7 +60,7 @@ Retrieves time-series data for various measurements over a specified time range.
 
 **Example Request:**
 ```
-GET /api/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
+GET /telemetry/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
 ```
 
 **Response Format:**
@@ -105,14 +105,15 @@ GET /api/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2
 
 **Headers Required:**
 ```http
-x-csrf: 1
+authorization: Bearer {access_token}
+user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 ---
 
 ### 2. Operation Mode History 📋 (Reference Only)
 
-**GET** `/api/telemetry/operationmode/{unit_id}`
+**GET** `/telemetry/telemetry/operationmode/{unit_id}`
 
 Retrieves operation mode changes over a specified time range.
 
@@ -122,7 +123,7 @@ Retrieves operation mode changes over a specified time range.
 
 **Example Request:**
 ```
-GET /api/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:33
+GET /telemetry/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:33
 ```
 
 **Response Format:**
@@ -155,7 +156,7 @@ GET /api/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-
 
 ### 3. Energy Consumption ✅ (Implemented)
 
-**GET** `/api/telemetry/energy/{unit_id}`
+**GET** `/telemetry/telemetry/energy/{unit_id}`
 
 Retrieves energy consumption data over a specified time range.
 
@@ -171,7 +172,7 @@ Retrieves energy consumption data over a specified time range.
 
 **Example Request:**
 ```
-GET /api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
+GET /telemetry/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
 ```
 
 **Response Format:**
@@ -227,7 +228,7 @@ GET /api/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2
 
 ### 4. Error Log 📋 (Reference Only)
 
-**GET** `/api/ataunit/{unit_id}/errorlog`
+**GET** `/monitor/ataunit/{unit_id}/errorlog`
 
 Retrieves error history for the specified unit.
 
@@ -235,7 +236,7 @@ Retrieves error history for the specified unit.
 
 **Example Request:**
 ```
-GET /api/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
+GET /monitor/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
 ```
 
 **Response Format (No Errors):**
@@ -274,25 +275,25 @@ GET /api/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
 The MELCloud Home UI provides 4 report types:
 
 ### 1. TEMPERATURES Report
-- **Endpoint:** `/api/telemetry/actual/{unit_id}`
+- **Endpoint:** `/telemetry/telemetry/actual/{unit_id}`
 - **Measures:** `room_temperature`, `set_temperature`
 - **Time ranges:** Hour, Day, Week, Month
 - **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/trendsummary`
 
 ### 2. ERROR LOG Report
-- **Endpoint:** `/api/ataunit/{unit_id}/errorlog`
+- **Endpoint:** `/monitor/ataunit/{unit_id}/errorlog`
 - **Shows:** Error code, start time, end time
 - **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/uniterrorlog`
 
 ### 3. ENERGY Report
-- **Endpoint:** `/api/telemetry/energy/{unit_id}`
+- **Endpoint:** `/telemetry/telemetry/energy/{unit_id}`
 - **Measure:** `cumulative_energy_consumed_since_last_upload`
 - **Intervals:** Hour, Day, Week, Month
 - **Shows:** Energy consumption data aggregated by interval
 - **URL:** `/{unit_id}/energy`
 
 ### 4. WI-FI SIGNAL Report
-- **Endpoint:** `/api/telemetry/actual/{unit_id}` with `measure=rssi`
+- **Endpoint:** `/telemetry/telemetry/actual/{unit_id}` with `measure=rssi`
 - **Shows:** Wi-Fi signal strength over time
 - **URL:** TBD
 
@@ -303,16 +304,16 @@ The MELCloud Home UI provides 4 report types:
 ### Real-Time Monitoring
 ```python
 # Poll current temperature
-GET /api/user/context  # Get current state
+GET /context  # Get current state
 # OR
-GET /api/telemetry/actual/{id}?from={now-5min}&to={now}&measure=room_temperature
+GET /telemetry/telemetry/actual/{id}?from={now-5min}&to={now}&measure=room_temperature
 # Use most recent value
 ```
 
 ### Historical Data for Graphs
 ```python
 # Get last 24 hours of temperature data
-GET /api/telemetry/actual/{id}?from={now-24h}&to={now}&measure=room_temperature
+GET /telemetry/telemetry/actual/{id}?from={now-24h}&to={now}&measure=room_temperature
 
 # Create HA sensor with state_class='measurement'
 # Enable long-term statistics in HA
@@ -321,7 +322,7 @@ GET /api/telemetry/actual/{id}?from={now-24h}&to={now}&measure=room_temperature
 ### Error Monitoring
 ```python
 # Check for errors every 5 minutes
-GET /api/ataunit/{id}/errorlog
+GET /monitor/ataunit/{id}/errorlog
 
 # Create HA binary_sensor for error state
 # Trigger notification when errors appear
@@ -330,7 +331,7 @@ GET /api/ataunit/{id}/errorlog
 ### Wi-Fi Signal Monitoring
 ```python
 # Track connectivity
-GET /api/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
+GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
 
 # Create HA sensor for RSSI
 # Alert on weak signal
@@ -339,7 +340,7 @@ GET /api/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
 ### Operation Mode Tracking
 ```python
 # Get mode change history
-GET /api/telemetry/operationmode/{id}?from={start}&to={end}
+GET /telemetry/telemetry/operationmode/{id}?from={start}&to={end}
 
 # Track usage patterns
 # Generate efficiency reports
@@ -384,14 +385,15 @@ async def get_temperature_history(session, unit_id, hours=1):
     now = datetime.utcnow()
     start = now - timedelta(hours=hours)
 
-    url = f"https://melcloudhome.com/api/telemetry/actual/{unit_id}"
+    url = f"https://mobile.bff.melcloudhome.com/telemetry/telemetry/actual/{unit_id}"
     params = {
         "from": start.strftime("%Y-%m-%d %H:%M"),
         "to": now.strftime("%Y-%m-%d %H:%M"),
         "measure": "room_temperature"
     }
     headers = {
-        "x-csrf": "1"
+        "authorization": f"Bearer {access_token}",
+        "user-agent": "MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0"
     }
 
     async with session.get(url, params=params, headers=headers) as resp:
@@ -411,8 +413,11 @@ async def get_temperature_history(session, unit_id, hours=1):
 
 async def check_errors(session, unit_id):
     """Check for device errors."""
-    url = f"https://melcloudhome.com/api/ataunit/{unit_id}/errorlog"
-    headers = {"x-csrf": "1"}
+    url = f"https://mobile.bff.melcloudhome.com/monitor/ataunit/{unit_id}/errorlog"
+    headers = {
+        "authorization": f"Bearer {access_token}",
+        "user-agent": "MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0"
+    }
 
     async with session.get(url, headers=headers) as resp:
         errors = await resp.json()

@@ -59,25 +59,25 @@ For current integration features, see [README.md](../../README.md).
 
 ### Base URL
 ```
-https://melcloudhome.com
+https://mobile.bff.melcloudhome.com
 ```
 
 ### Authentication
-- Uses OAuth 2.0 + AWS Cognito (see [../architecture.md](../architecture.md) for details)
-- Session cookies managed automatically by client
-- Session expires ~8 hours
+- Uses OAuth 2.0 PKCE + AWS Cognito (see [../architecture.md](../architecture.md) for details)
+- Bearer token authentication
+- User-Agent: `MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0`
 
 ### Control Endpoint
 
-**PUT** `/api/ataunit/{unit_id}`
+**PUT** `/monitor/ataunit/{unit_id}`
 
 Updates device settings. Supports **partial updates** - only send changed fields, set others to `null`.
 
 **Headers:**
 ```http
-x-csrf: 1
+authorization: Bearer {access_token}
 content-type: application/json; charset=utf-8
-user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36...
+user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 **Request Body:**
@@ -100,7 +100,7 @@ user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36..
 
 ### Device Status Endpoint
 
-**GET** `/api/user/context`
+**GET** `/context`
 
 Returns complete device list with current states and capabilities.
 
@@ -222,7 +222,7 @@ HA values: "auto", "one", "two", "three", "four", "five"
 **Device Capabilities:**
 - `hasHalfDegreeIncrements`: `true`
 - `hasExtendedTemperatureRange`: `true`
-- Ranges returned in GET `/api/user/context` response
+- Ranges returned in GET `/context` response
 
 **Example Request:**
 ```json
@@ -510,7 +510,7 @@ Documented in device capabilities. Not tested in this session.
 
 ## Device Capabilities
 
-Device capabilities are returned in GET `/api/user/context` response. Key capabilities:
+Device capabilities are returned in GET `/context` response. Key capabilities:
 
 ```json
 {
@@ -548,7 +548,7 @@ Use these capabilities to:
 
 ### Trend Summary (Temperature Reports)
 
-**GET** `/api/report/trendsummary`
+**GET** `/report/v1/trendsummary`
 
 Returns historical temperature data for chart display. Used by integration to fetch outdoor temperature.
 
@@ -560,7 +560,7 @@ Returns historical temperature data for chart display. Used by integration to fe
 **Example Request:**
 
 ```
-GET /api/report/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=2026-02-03T11:00:00.0000000&to=2026-02-03T12:00:00.0000000
+GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=2026-02-03T11:00:00.0000000&to=2026-02-03T12:00:00.0000000
 ```
 
 **Response:**
@@ -629,10 +629,10 @@ GET /api/report/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=20
 
 ## Session Management
 
-- Session cookies managed automatically by HTTP client
-- Session expires ~8 hours (check `bff:session_expires_in`)
-- 401 response indicates need to re-authenticate
-- Use OAuth 2.0 + PKCE flow (see API discovery doc)
+- Bearer token authentication via OAuth 2.0 PKCE
+- Access token expires periodically; use refresh token to renew
+- 401 response indicates need to refresh token
+- Content-Type for data endpoints: `text/plain; charset=utf-8` (token endpoint returns `application/json`)
 
 ---
 

@@ -24,15 +24,15 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 
 | Feature | Air-to-Air (A/C) | Air-to-Water (Heat Pump) | Shared? |
 |---------|------------------|--------------------------|---------|
-| **Control** | `PUT /api/ataunit/{id}` | `PUT /api/atwunit/{id}` | ❌ Different prefix |
-| **User Context** | `GET /api/user/context` | `GET /api/user/context` | ✅ **Same endpoint** |
+| **Control** | `PUT /monitor/ataunit/{id}` | `PUT /monitor/atwunit/{id}` | ❌ Different prefix |
+| **User Context** | `GET /context` | `GET /context` | ✅ **Same endpoint** |
 | **Context Structure** | `buildings[].airToAirUnits[]` | `buildings[].airToWaterUnits[]` | ⚠️ Parallel arrays |
-| **Schedule Create** | `POST /api/cloudschedule/{id}` | `POST /api/atwcloudschedule/{id}` | ❌ Different prefix |
-| **Schedule Delete** | `DELETE /api/cloudschedule/{id}/{scheduleId}` | `DELETE /api/atwcloudschedule/{id}/{scheduleId}` | ❌ Different prefix |
-| **Schedule Enable** | `PUT /api/cloudschedule/{id}/enabled` | `PUT /api/atwcloudschedule/{id}/enabled` | ❌ Different prefix |
-| **Telemetry** | `GET /api/telemetry/actual`<br/>(unitId as query param) | `GET /api/telemetry/actual/{id}`<br/>(unitId in path) | ⚠️ **Different structure** |
-| **Energy** | `GET /api/telemetry/energy/{id}` | `GET /api/telemetry/energy/{id}` | ✅ **Identical** |
-| **Error Log** | `GET /api/ataunit/{id}/errorlog` | `GET /api/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
+| **Schedule Create** | `POST /monitor/cloudschedule/{id}` | `POST /monitor/atwcloudschedule/{id}` | ❌ Different prefix |
+| **Schedule Delete** | `DELETE /monitor/cloudschedule/{id}/{scheduleId}` | `DELETE /monitor/atwcloudschedule/{id}/{scheduleId}` | ❌ Different prefix |
+| **Schedule Enable** | `PUT /monitor/cloudschedule/{id}/enabled` | `PUT /monitor/atwcloudschedule/{id}/enabled` | ❌ Different prefix |
+| **Telemetry** | `GET /telemetry/telemetry/actual`<br/>(unitId as query param) | `GET /telemetry/telemetry/actual/{id}`<br/>(unitId in path) | ⚠️ **Different structure** |
+| **Energy** | `GET /telemetry/telemetry/energy/{id}` | `GET /telemetry/telemetry/energy/{id}` | ✅ **Identical** |
+| **Error Log** | `GET /monitor/ataunit/{id}/errorlog` | `GET /monitor/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
 | **Holiday Mode** | N/A (unit-level only) | `POST /api/holidaymode` | ❌ **ATW exclusive** |
 | **Frost Protection** | N/A | `POST /api/protection/frost` | ❌ **ATW exclusive** |
 
@@ -260,13 +260,13 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 
 **Air-to-Air:**
 ```
-GET /api/telemetry/actual?unitId={id}&from=...&to=...
+GET /telemetry/telemetry/actual?unitId={id}&from=...&to=...
 ```
 (unitId as query parameter)
 
 **Air-to-Water:**
 ```
-GET /api/telemetry/actual/{id}?from=...&to=...&measure=tank_water_temperature
+GET /telemetry/telemetry/actual/{id}?from=...&to=...&measure=tank_water_temperature
 ```
 (unitId in path, measure specified)
 
@@ -304,5 +304,4 @@ GET /api/telemetry/actual/{id}?from=...&to=...&measure=tank_water_temperature
 
 - **ATA API Reference:** [ata-api-reference.md](ata-api-reference.md)
 - **ATW API Reference:** [atw-api-reference.md](atw-api-reference.md)
-- **OpenAPI Specification:** [../../openapi.yaml](../../openapi.yaml)
 - **Architecture Decision:** [../decisions/011-multi-device-type-architecture.md](../decisions/011-multi-device-type-architecture.md)

@@ -66,7 +66,6 @@ make test                        # All tests with coverage
 - **ATA (Air-to-Air) API:** `docs/api/ata-api-reference.md`
 - **ATW (Air-to-Water) API:** `docs/api/atw-api-reference.md`
 - **Device comparison:** `docs/api/device-type-comparison.md`
-- **OpenAPI spec:** `openapi.yaml` (root directory)
 
 ### Development Guides
 

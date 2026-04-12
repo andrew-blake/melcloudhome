@@ -1,7 +1,7 @@
 # ADR-002: Authentication Refresh Strategy
 
 **Date:** 2025-01-17
-**Status:** Accepted
+**Status:** Implemented (see ADR-017)
 **Deciders:** @andrew-blake
 
 ## Context
@@ -213,3 +213,7 @@ Future enhancement to implement proper refresh token flow.
 - Production deployments should migrate to refresh tokens (v1.1)
 
 This decision prioritizes user experience and development speed for v1.0 while maintaining a clear path to enhanced security in v1.1+.
+
+## Resolution
+
+Implemented via ADR-017: migration to mobile BFF API with OAuth 2.0 PKCE and refresh tokens.
