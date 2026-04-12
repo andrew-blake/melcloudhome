@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format format-check type-check test test-api test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
+.PHONY: help install lint format format-check type-check test test-api test-build test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -30,9 +30,12 @@ test-api:  ## API unit tests only
 		--cov-report=html \
 		--cov-report=term-missing
 
+test-build:  ## Build test Docker images (run after changing pyproject.toml/uv.lock)
+	docker compose -f docker-compose.test.yml build
+
 test-integration:  ## Integration tests only
 	@rm -f .coverage coverage.xml
-	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm integration-tests \
 		sh -c "uv pip install pytest-homeassistant-custom-component && \
 		       uv run pytest tests/integration/ -v \
@@ -40,18 +43,18 @@ test-integration:  ## Integration tests only
 		         --cov-report=xml \
 		         --cov-report=html \
 		         --cov-report=term-missing"
-	docker compose -f docker-compose.test.yml down -v
+	docker compose -f docker-compose.test.yml down
 
 test-e2e:  ## E2E tests only
 	@rm -f .coverage coverage.xml
-	docker compose -f docker-compose.test.yml up -d melcloud-mock
+	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm e2e-tests \
 		sh -c "uv run pytest tests/api/ -m e2e -v \
 		         --cov=custom_components/melcloudhome \
 		         --cov-report=xml \
 		         --cov-report=html \
 		         --cov-report=term-missing"
-	docker compose -f docker-compose.test.yml down -v
+	docker compose -f docker-compose.test.yml down
 
 test:  ## Run ALL tests with combined coverage
 	@rm -f .coverage coverage.xml
@@ -64,13 +67,13 @@ test:  ## Run ALL tests with combined coverage
 	@mv .coverage .coverage.api
 	@echo "Saved API test coverage to .coverage.api"
 	@echo "🐳 Integration + E2E (sequential startup to avoid DNS race)..."
-	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	@echo "Waiting for mock server health check..."
 	@docker compose -f docker-compose.test.yml run --rm integration-tests; \
 		INTEGRATION_EXIT=$$?; \
 		docker compose -f docker-compose.test.yml run --rm e2e-tests; \
 		E2E_EXIT=$$?; \
-		docker compose -f docker-compose.test.yml down -v; \
+		docker compose -f docker-compose.test.yml down; \
 		echo "📤 Combining coverage from API + Docker tests..."; \
 		if [ -f coverage-output/.coverage ]; then \
 			mv coverage-output/.coverage .coverage.docker; \
@@ -90,13 +93,13 @@ test:  ## Run ALL tests with combined coverage
 test-quick:  ## Quick test - E2E only (skip API unit tests for fast iteration)
 	@echo "🐳 Integration + E2E tests only (API tests skipped)..."
 	@echo "Starting mock server..."
-	@docker compose -f docker-compose.test.yml up -d melcloud-mock
+	@docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	@echo "Waiting for mock server health check..."
 	@docker compose -f docker-compose.test.yml run --rm integration-tests; \
 		INTEGRATION_EXIT=$$?; \
 		docker compose -f docker-compose.test.yml run --rm e2e-tests; \
 		E2E_EXIT=$$?; \
-		docker compose -f docker-compose.test.yml down -v; \
+		docker compose -f docker-compose.test.yml down; \
 		if [ $$INTEGRATION_EXIT -ne 0 ]; then exit $$INTEGRATION_EXIT; fi; \
 		exit $$E2E_EXIT
 

@@ -1,6 +1,7 @@
 services:
   # Mock MELCloud API Server (rate limiting disabled for CI tests)
   melcloud-mock:
+    image: melcloudhome-mock:latest
     build:
       context: .
       dockerfile: Dockerfile.mock
@@ -16,6 +17,7 @@ services:
 
   # Integration tests with pytest-homeassistant (socket blocking enabled)
   integration-tests:
+    image: melcloudhome-test:latest
     build:
       context: .
       dockerfile: Dockerfile.test
@@ -24,6 +26,7 @@ services:
       - ./custom_components:/app/custom_components:ro
       - ./tests:/app/tests:ro
       - ./tools:/app/tools:ro
+      - uv-cache:/root/.cache/uv
     working_dir: /app
     networks:
       - test-network
@@ -37,6 +40,7 @@ services:
 
   # E2E tests without pytest-homeassistant (real network access)
   e2e-tests:
+    image: melcloudhome-test:latest
     build:
       context: .
       dockerfile: Dockerfile.test
@@ -45,6 +49,7 @@ services:
       - ./custom_components:/app/custom_components:ro
       - ./tests:/app/tests:ro
       - ./tools:/app/tools:ro
+      - uv-cache:/root/.cache/uv
     working_dir: /app
     networks:
       - test-network
@@ -58,6 +63,9 @@ services:
       - COVERAGE_FILE=/app/coverage-output/.coverage
       - PYTEST_DISABLE_SOCKET_ALLOW_HOSTS=melcloud-mock,localhost,127.0.0.1
     command: sh -c "uv pip uninstall pytest-socket pytest-homeassistant-custom-component && uv run pytest tests/api/ -m e2e -v --cov=custom_components/melcloudhome --cov-append --cov-report="
+
+volumes:
+  uv-cache:
 
 networks:
   test-network:
