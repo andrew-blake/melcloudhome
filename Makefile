@@ -1,6 +1,6 @@
 # Makefile for MELCloud Home Integration
 
-.PHONY: help install lint format format-check type-check test test-api test-build test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
+.PHONY: help install lint format format-check type-check test test-api test-build test-ensure-images test-integration test-e2e test-ha pre-commit clean dev-up dev-down dev-restart dev-reset dev-reset-full dev-logs dev-rebuild deploy deploy-test deploy-watch version-patch version-minor version-major release
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -33,7 +33,12 @@ test-api:  ## API unit tests only
 test-build:  ## Build test Docker images (run after changing pyproject.toml/uv.lock)
 	docker compose -f docker-compose.test.yml build
 
-test-integration:  ## Integration tests only
+# Build images if they don't exist locally (avoids pulling from registry)
+test-ensure-images:
+	@docker image inspect melcloudhome-mock:latest >/dev/null 2>&1 || $(MAKE) test-build
+	@docker image inspect melcloudhome-test:latest >/dev/null 2>&1 || $(MAKE) test-build
+
+test-integration: test-ensure-images  ## Integration tests only
 	@rm -f .coverage coverage.xml
 	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm integration-tests \
@@ -45,7 +50,7 @@ test-integration:  ## Integration tests only
 		         --cov-report=term-missing"
 	docker compose -f docker-compose.test.yml down
 
-test-e2e:  ## E2E tests only
+test-e2e: test-ensure-images  ## E2E tests only
 	@rm -f .coverage coverage.xml
 	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm e2e-tests \
@@ -56,7 +61,7 @@ test-e2e:  ## E2E tests only
 		         --cov-report=term-missing"
 	docker compose -f docker-compose.test.yml down
 
-test:  ## Run ALL tests with combined coverage
+test: test-ensure-images  ## Run ALL tests with combined coverage
 	@rm -f .coverage coverage.xml
 	@rm -rf htmlcov coverage-output
 	@mkdir -p coverage-output
@@ -90,7 +95,7 @@ test:  ## Run ALL tests with combined coverage
 
 # TODO: Remove test-quick after Docker test infrastructure stabilizes
 # Temporary target for fast iteration during debugging (skips 4m VCR tests)
-test-quick:  ## Quick test - E2E only (skip API unit tests for fast iteration)
+test-quick: test-ensure-images  ## Quick test - E2E only (skip API unit tests for fast iteration)
 	@echo "🐳 Integration + E2E tests only (API tests skipped)..."
 	@echo "Starting mock server..."
 	@docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
