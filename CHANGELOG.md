@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.3.0] - 2026-04-12
+
+### Changed
+
+- Migrated from web BFF to mobile BFF API (`mobile.bff.melcloudhome.com`), resolving the ongoing service outage
+- Authentication now uses OAuth 2.0 PKCE with automatic token refresh instead of cookie-based sessions
+- Config entry upgraded from v1 to v2 (automatic migration on first startup)
+
+
 ## [2.2.5] - 2026-04-04
 
 ### Added

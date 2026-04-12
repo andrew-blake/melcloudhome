@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.2.5
+## What's New in v2.3.0
 
-Now available in 8 languages with Swedish added. Prepared for HACS default repository submission. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Migrated to the mobile BFF API with OAuth 2.0 PKCE authentication, resolving the MELCloud service outage. Existing users will be automatically migrated on upgrade. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
