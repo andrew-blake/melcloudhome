@@ -19,6 +19,8 @@ from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_REPORT_TRENDSUMMARY,
+    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
@@ -291,7 +293,7 @@ class MELCloudHomeClient:
 
         try:
             response = await self._api_request(
-                "GET", "/api/report/trendsummary", params=params
+                "GET", API_REPORT_TRENDSUMMARY, params=params
             )
             if response is None:
                 _LOGGER.debug(
@@ -366,7 +368,7 @@ class MELCloudHomeClient:
 
         return await self._api_request(
             "GET",
-            f"/api/telemetry/actual/{unit_id}",
+            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
             params=params,
         )
 

@@ -4,7 +4,7 @@
 API_FIELD_AIR_TO_AIR_UNITS = "airToAirUnits"
 
 # API Endpoints - ATA
-API_CONTROL_UNIT = "/api/ataunit/{unit_id}"
+API_CONTROL_UNIT = "/monitor/ataunit/{unit_id}"
 
 # Operation Modes (Control API - Strings)
 # CRITICAL: AUTO mode is "Automatic" NOT "Auto"!
