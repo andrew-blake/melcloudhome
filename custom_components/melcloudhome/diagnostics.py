@@ -15,7 +15,7 @@ from .coordinator import MELCloudHomeCoordinator
 from .diagnostics_ata import serialize_ata_unit
 from .diagnostics_atw import serialize_atw_unit
 
-TO_REDACT = {CONF_EMAIL, CONF_PASSWORD}
+TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "access_token", "refresh_token", "token_expiry"}
 
 
 async def async_get_config_entry_diagnostics(

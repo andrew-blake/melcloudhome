@@ -49,8 +49,8 @@ class MELCloudHomeAuth:
         self._base_url = MOCK_BASE_URL if debug_mode else ""
         self._request_pacer = request_pacer
 
-        # OAuth configuration
-        self._auth_base = AUTH_BASE_URL
+        # OAuth configuration — use mock server for token endpoint in debug mode
+        self._auth_base = MOCK_BASE_URL if debug_mode else AUTH_BASE_URL
 
         # OAuth token state
         self._access_token: str | None = None
