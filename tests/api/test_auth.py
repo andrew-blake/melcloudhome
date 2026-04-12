@@ -416,27 +416,6 @@ class TestCSRFTokenExtraction:
         assert token is None
 
 
-class TestErrorMessageExtraction:
-    """Test error message extraction from HTML."""
-
-    @pytest.mark.asyncio
-    async def test_extract_error_message_from_html(
-        self, auth: MELCloudHomeAuth
-    ) -> None:
-        """_extract_error_message should extract error from HTML."""
-        html = '<div class="error-message">Invalid credentials</div>'
-        error = auth._extract_error_message(html)
-        assert error is None or isinstance(error, str)
-
-    @pytest.mark.asyncio
-    async def test_extract_error_message_from_empty_html(
-        self, auth: MELCloudHomeAuth
-    ) -> None:
-        """_extract_error_message should handle empty HTML."""
-        error = auth._extract_error_message("")
-        assert error is None or isinstance(error, str)
-
-
 class TestMultipleAuthInstances:
     """Test multiple auth instances can coexist."""
 

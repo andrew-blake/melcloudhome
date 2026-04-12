@@ -75,6 +75,31 @@ async def rate_limit_middleware(request, handler):
     return await handler(request)
 
 
+# Paths that don't require Bearer auth
+AUTH_EXEMPT_PATHS = {"/api/login", "/api/auth/login", "/connect/token"}
+
+
+@web.middleware
+async def bearer_auth_middleware(request, handler):
+    """Reject data endpoint requests without a Bearer token.
+
+    Catches client bugs where Authorization header is missing or malformed.
+    Auth endpoints (login, token) are exempt.
+    """
+    if request.path not in AUTH_EXEMPT_PATHS:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            logger.warning(
+                "🔒 Rejected %s %s — missing Bearer token", request.method, request.path
+            )
+            return web.json_response(
+                {"error": "unauthorized", "error_description": "Bearer token required"},
+                status=401,
+            )
+
+    return await handler(request)
+
+
 class MockMELCloudServer:
     """Mock MELCloud Home API server supporting ATA and ATW devices."""
 
@@ -199,7 +224,9 @@ class MockMELCloudServer:
 
     def create_app(self) -> web.Application:
         """Create aiohttp application with routes."""
-        app = web.Application(middlewares=[rate_limit_middleware])
+        app = web.Application(
+            middlewares=[rate_limit_middleware, bearer_auth_middleware]
+        )
 
         # Configure CORS to allow web client access from melcloudhome.com
         cors = aiohttp_cors.setup(

@@ -516,18 +516,3 @@ class MELCloudHomeAuth:
             return match.group(1)
 
         return None
-
-    def _extract_error_message(self, html: str) -> str | None:
-        """Extract error message from error page HTML."""
-        patterns = [
-            r'<div[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</div>',
-            r'<span[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</span>',
-            r'<p[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</p>',
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, html, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-
-        return None
