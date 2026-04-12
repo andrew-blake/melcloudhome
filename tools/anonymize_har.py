@@ -209,7 +209,7 @@ class HARAnonymizer:
                     result[key] = (
                         self.anonymize_email(value) if isinstance(value, str) else value
                     )
-                elif key in ["firstname", "lastname", "name", "givenDisplayName"]:
+                elif key in ["firstname", "lastname", "givenDisplayName"]:
                     # Replace with generic names
                     if key == "firstname":
                         result[key] = "John"
@@ -218,11 +218,18 @@ class HARAnonymizer:
                     elif key == "givenDisplayName":
                         result[key] = f"Device {self.counters['device']}"
                         self.counters["device"] += 1
-                    elif key == "name" and isinstance(value, str):
+                    else:
+                        result[key] = "Anonymous"
+                elif key == "name" and isinstance(value, str):
+                    # Only anonymize "name" in MELCloud data objects, not in
+                    # HAR structures where "name" is a header/param/cookie
+                    # name-value pair (e.g. {"name": "Host", "value": "..."}).
+                    is_har_pair = "value" in obj and len(obj) <= 3
+                    if not is_har_pair:
                         result[key] = f"Building {self.counters['building']}"
                         self.counters["building"] += 1
                     else:
-                        result[key] = "Anonymous"
+                        result[key] = value
                 elif key in ["macAddress", "connectedInterfaceIdentifier"]:
                     result[key] = (
                         self.anonymize_mac(value) if isinstance(value, str) else value
@@ -230,7 +237,17 @@ class HARAnonymizer:
                 elif key in ["authorization", "Authorization", "cookie", "Cookie"]:
                     result[key] = "ANONYMIZED"
                 elif isinstance(value, str):
-                    result[key] = self.anonymize_string(value, key)
+                    # HAR response bodies are JSON strings inside content.text.
+                    # Parse and recursively anonymize, then re-serialize.
+                    if key == "text" and value.startswith(("{", "[")):
+                        try:
+                            parsed = json.loads(value)
+                            anonymized = self.anonymize_object(parsed, new_path)
+                            result[key] = json.dumps(anonymized)
+                        except json.JSONDecodeError:
+                            result[key] = self.anonymize_string(value, key)
+                    else:
+                        result[key] = self.anonymize_string(value, key)
                 else:
                     result[key] = self.anonymize_object(value, new_path)
 

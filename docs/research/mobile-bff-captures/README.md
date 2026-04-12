@@ -47,6 +47,10 @@ Raw Charles proxy session files are stored in Google Drive (contain real credent
 
 These are NOT committed to the repository.
 
+## For Future Captures
+
+Use the project's mitmproxy setup instead of Charles Proxy — see [tools/mitmproxy/README.md](../../../tools/mitmproxy/README.md) for installation and iOS device configuration.
+
 ## Related
 
 - **ADR:** `docs/decisions/017-migrate-to-mobile-bff.md`
