@@ -1,0 +1,18 @@
+# mitmproxy configuration for MELCloud Home API capture
+#
+# IMPORTANT: Do NOT use --set confdir=tools/mitmproxy — that overrides
+# the certificate directory, causing TLS failures on devices that trust
+# the default ~/.mitmproxy CA cert.
+#
+# Instead, copy this file to ~/.mitmproxy/config.yaml, or pass options
+# on the command line (which is what `make mitmweb` does).
+
+# Only show MELCloud traffic in the UI. All other traffic passes through
+# the proxy transparently but isn't displayed.
+view_filter: "~d melcloudhome.com | ~d amazoncognito.com"
+
+# Show request/response details
+flow_detail: 2
+
+# Console layout (for mitmproxy TUI)
+console_layout: columns

@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
     """Handle a config flow for MELCloud Home."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -59,7 +59,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             except Exception:
                 errors["base"] = "unknown"
             else:
-                # Success - create entry
+                # Success - create entry with token state
                 title = "MELCloud Home (Debug)" if debug_mode else "MELCloud Home"
                 return self.async_create_entry(
                     title=title,
@@ -67,6 +67,7 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                         CONF_EMAIL: email,
                         CONF_PASSWORD: password,
                         CONF_DEBUG_MODE: debug_mode,
+                        **client.get_token_snapshot(),
                     },
                 )
             finally:
@@ -112,76 +113,40 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle reauth confirmation and collect new password.
-
-        Args:
-            user_input: User-provided password (or None to show form)
-
-        Returns:
-            Flow result (form with errors, or successful entry update)
-        """
-        errors: dict[str, str] = {}
-
-        # Get current config entry using reauth helper
-        entry = self._get_reauth_entry()
-
-        if user_input is not None:
-            email = entry.data[CONF_EMAIL]  # Keep existing email
-            password = user_input[CONF_PASSWORD]
-
-            # Validate new credentials
-            client = None
-            try:
-                client = MELCloudHomeClient()
-                await client.login(email, password)
-            except AuthenticationError:
-                errors["base"] = "invalid_auth"
-            except ServiceUnavailableError:
-                errors["base"] = "service_unavailable"
-            except ApiError:
-                errors["base"] = "cannot_connect"
-            except (TimeoutError, aiohttp.ClientError) as err:
-                _LOGGER.debug("Connection error during reauth: %s", err)
-                errors["base"] = "cannot_connect"
-            else:
-                # Update config entry with new password (partial update)
-                return self.async_update_reload_and_abort(
-                    entry,
-                    data_updates={CONF_PASSWORD: password},
-                )
-            finally:
-                # CRITICAL: Always close the client session to prevent memory leak
-                if client is not None:
-                    await client.close()
-
-        # Show form with current email (read-only display)
-        return self.async_show_form(
+        """Handle reauth confirmation and collect new password."""
+        return await self._validate_and_update_credentials(
             step_id="reauth_confirm",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_PASSWORD): TextSelector(
-                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
-                    ),
-                }
-            ),
-            description_placeholders={"email": entry.data[CONF_EMAIL]},
-            errors=errors,
+            entry=self._get_reauth_entry(),
+            user_input=user_input,
         )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle reconfiguration to update credentials."""
+        return await self._validate_and_update_credentials(
+            step_id="reconfigure",
+            entry=self._get_reconfigure_entry(),
+            user_input=user_input,
+        )
+
+    async def _validate_and_update_credentials(
+        self,
+        *,
+        step_id: str,
+        entry: config_entries.ConfigEntry,
+        user_input: dict[str, Any] | None,
+    ) -> ConfigFlowResult:
+        """Validate new credentials and update the config entry.
+
+        Shared implementation for reauth and reconfigure flows.
+        """
         errors: dict[str, str] = {}
 
-        # Get current config entry using helper
-        entry = self._get_reconfigure_entry()
-
         if user_input is not None:
-            email = entry.data[CONF_EMAIL]  # Keep existing email
+            email = entry.data[CONF_EMAIL]
             password = user_input[CONF_PASSWORD]
 
-            # Validate new credentials
             client = None
             try:
                 client = MELCloudHomeClient()
@@ -193,22 +158,22 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             except ApiError:
                 errors["base"] = "cannot_connect"
             except (TimeoutError, aiohttp.ClientError) as err:
-                _LOGGER.debug("Connection error during reconfigure: %s", err)
+                _LOGGER.debug("Connection error during %s: %s", step_id, err)
                 errors["base"] = "cannot_connect"
             else:
-                # Update config entry with new password (partial update)
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={CONF_PASSWORD: password},
+                    data_updates={
+                        CONF_PASSWORD: password,
+                        **client.get_token_snapshot(),
+                    },
                 )
             finally:
-                # CRITICAL: Always close the client session to prevent memory leak
                 if client is not None:
                     await client.close()
 
-        # Show form with current email (read-only display)
         return self.async_show_form(
-            step_id="reconfigure",
+            step_id=step_id,
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_PASSWORD): TextSelector(

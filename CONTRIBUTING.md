@@ -136,7 +136,6 @@ Example: `feat: Add support for ATW heat pump devices`
 
 **Key documentation:**
 
-- **openapi.yaml** - Complete API specification (OpenAPI 3.0.3)
 - **docs/api/** - API reference and endpoint documentation
 - **docs/decisions/** - Architecture Decision Records (ADRs)
 - **docs/research/** - Reverse engineering notes and findings
@@ -146,12 +145,13 @@ ADRs document significant architectural decisions and their rationale. When maki
 
 ## API Discovery and Reverse Engineering
 
-The MELCloud Home API was reverse engineered by observing the official web application. This enables contributing device support without owning the hardware.
+The MELCloud Home API was reverse engineered by capturing traffic from the official mobile app. This enables contributing device support without owning the hardware.
 
 ### Reverse Engineering Tools
 
 **We provide specialized tools** for understanding API behavior without real devices:
 
+- **mitmproxy** - Capture and inspect mobile app API traffic ([setup guide](tools/mitmproxy/README.md))
 - **Chrome Local Overrides** - Inject captured API data into official web app
 - **Request Proxying** - Capture control commands without affecting real hardware
 - **Mock Server** - Simulate API responses for local testing
@@ -163,7 +163,7 @@ The MELCloud Home API was reverse engineered by observing the official web appli
 **You can help add device support even if you don't own the device:**
 
 1. User reports unsupported device (e.g., different Ecodan model)
-2. They capture HAR file from https://melcloudhome.com
+2. They capture API traffic from the MELCloud Home mobile app (via [mitmproxy](tools/mitmproxy/README.md))
 3. You use Chrome Local Overrides to inject that data
 4. Observe official web app behavior
 5. Document API structure and mappings
@@ -175,19 +175,16 @@ The MELCloud Home API was reverse engineered by observing the official web appli
 
 If you're adding support for new device types (e.g., ERV ventilators):
 
-1. Capture HAR from official web app
+1. Capture API traffic from official mobile app ([mitmproxy setup](tools/mitmproxy/README.md))
 2. Use reverse engineering tools to understand API
 3. Document request/response patterns
-4. Update openapi.yaml with new endpoints
-5. Implement corresponding client methods
+4. Implement corresponding client methods
 6. Add tests with VCR cassettes
 
 **Tools:**
-- Chrome DevTools + Local Overrides
+- mitmproxy for mobile app traffic capture ([setup guide](tools/mitmproxy/README.md))
 - Mock server for testing
 - pytest-recording (VCR) for API tests
-
-The openapi.yaml specification serves as the authoritative API reference. Update it when adding new endpoints.
 
 ## Adding Device Support
 
@@ -200,7 +197,7 @@ If you've tested the integration with hardware not listed in [SUPPORTED_DEVICES.
 
 **For new device types (ATW, ERV):**
 
-- Document API endpoints used (update openapi.yaml)
+- Document API endpoints used
 - Add corresponding data models:
   - Shared models: `api/models.py` (Building, UserContext, etc.)
   - Device-specific: `api/models_ata.py` or `api/models_atw.py`

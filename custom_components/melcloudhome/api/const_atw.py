@@ -8,7 +8,7 @@
 API_FIELD_AIR_TO_WATER_UNITS = "airToWaterUnits"
 
 # API Endpoints - ATW
-API_ATW_CONTROL_UNIT = "/api/atwunit/{unit_id}"
+API_ATW_CONTROL_UNIT = "/monitor/atwunit/{unit_id}"
 
 # Operation Modes - Zone Control (Control API - Strings)
 # These determine HOW the zone is heated or cooled

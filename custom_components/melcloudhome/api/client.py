@@ -19,10 +19,13 @@ from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_REPORT_TRENDSUMMARY,
+    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
     MOCK_BASE_URL,
+    USER_AGENT,
 )
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
@@ -95,18 +98,39 @@ class MELCloudHomeClient:
         """Check if client is authenticated."""
         return self._auth.is_authenticated
 
+    def restore_tokens(
+        self,
+        access_token: str | None,
+        refresh_token: str | None,
+        token_expiry: float,
+    ) -> None:
+        """Restore persisted token state."""
+        self._auth.restore_tokens(access_token, refresh_token, token_expiry)
+
+    def get_token_snapshot(self) -> dict[str, Any]:
+        """Return current token state for persistence."""
+        return self._auth.get_token_snapshot()
+
+    @property
+    def has_refresh_token(self) -> bool:
+        """Check if a refresh token is available."""
+        return self._auth.refresh_token is not None
+
+    async def refresh_access_token(self) -> bool:
+        """Refresh the access token using stored refresh token."""
+        return await self._auth.refresh_access_token()
+
     async def _api_request(
         self,
         method: str,
         endpoint: str,
         **kwargs: Any,
     ) -> dict[str, Any] | None:
-        """
-        Make an API request.
+        """Make an API request.
 
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
-            endpoint: API endpoint path (e.g., "/api/user/context")
+            endpoint: API endpoint path (e.g., "/context")
             **kwargs: Additional arguments to pass to aiohttp request
 
         Returns:
@@ -123,12 +147,12 @@ class MELCloudHomeClient:
             try:
                 session = await self._auth.get_session()
 
-                # CRITICAL: All API requests require these headers
-                # User-Agent inherited from session (set in auth.py)
+                # Bearer auth headers (no CSRF, no referer needed)
                 headers = kwargs.pop("headers", {})
                 headers.setdefault("Accept", "application/json")
-                headers.setdefault("x-csrf", "1")
-                headers.setdefault("referer", f"{self._base_url}/dashboard")
+                headers.setdefault("User-Agent", USER_AGENT)
+                if self._auth.access_token:
+                    headers["Authorization"] = f"Bearer {self._auth.access_token}"
 
                 url = f"{self._base_url}{endpoint}"
 
@@ -159,7 +183,7 @@ class MELCloudHomeClient:
                     # Handle other client errors
                     if resp.status >= 400:
                         try:
-                            error_data = await resp.json()
+                            error_data = await resp.json(content_type=None)
                             error_msg = error_data.get("message", f"HTTP {resp.status}")
                         except Exception:
                             error_msg = f"HTTP {resp.status}"
@@ -171,7 +195,8 @@ class MELCloudHomeClient:
                     if resp.content_length == 0 or resp.content_type == "":
                         return {}
 
-                    result: dict[str, Any] = await resp.json()
+                    # content_type=None because mobile BFF returns text/plain
+                    result: dict[str, Any] = await resp.json(content_type=None)
                     return result
 
             except aiohttp.ClientError as err:
@@ -291,7 +316,7 @@ class MELCloudHomeClient:
 
         try:
             response = await self._api_request(
-                "GET", "/api/report/trendsummary", params=params
+                "GET", API_REPORT_TRENDSUMMARY, params=params
             )
             if response is None:
                 _LOGGER.debug(
@@ -366,7 +391,7 @@ class MELCloudHomeClient:
 
         return await self._api_request(
             "GET",
-            f"/api/telemetry/actual/{unit_id}",
+            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
             params=params,
         )
 

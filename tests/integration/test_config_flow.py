@@ -669,3 +669,28 @@ async def test_reconfigure_flow_closes_session_on_connection_error(
 
     # Verify close() was called even though connection failed
     mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_config_entry_migration_v1_to_v2(hass: HomeAssistant) -> None:
+    """Test v1 config entries get token fields added."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "password",
+            CONF_DEBUG_MODE: False,
+        },
+        unique_id="test@example.com",
+        version=1,
+    )
+    entry.add_to_hass(hass)
+
+    from custom_components.melcloudhome import async_migrate_entry
+
+    result = await async_migrate_entry(hass, entry)
+    assert result is True
+    assert entry.version == 2
+    assert entry.data.get("access_token") is None
+    assert entry.data.get("refresh_token") is None
+    assert entry.data.get("token_expiry") == 0.0

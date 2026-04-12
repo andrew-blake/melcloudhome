@@ -136,6 +136,17 @@ def scrub_body_string(body_string: str | bytes) -> str | bytes:
         r"username=[^&]+", "username=***REDACTED_EMAIL***", body_string
     )
 
+    # Scrub OAuth tokens from JSON responses
+    body_string = re.sub(
+        r'"access_token":"[^"]+?"', '"access_token":"***REDACTED***"', body_string
+    )
+    body_string = re.sub(
+        r'"refresh_token":"[^"]+?"', '"refresh_token":"***REDACTED***"', body_string
+    )
+    body_string = re.sub(
+        r'"id_token":"[^"]+?"', '"id_token":"***REDACTED***"', body_string
+    )
+
     return body_string
 
 
@@ -192,6 +203,9 @@ def vcr_config() -> dict[str, Any]:
             ("username", "***REDACTED_EMAIL***"),
             ("password", "***REDACTED***"),
             ("_csrf", "***REDACTED***"),
+            ("code_verifier", "***REDACTED***"),
+            ("code", "***REDACTED***"),
+            ("refresh_token", "***REDACTED***"),
         ],
         # Record once, then replay
         "record_mode": "once",
@@ -218,7 +232,7 @@ async def authenticated_client(request_pacer) -> AsyncIterator[MELCloudHomeClien
     # Note: VCR will replay even without real credentials after first recording
     if (
         username == "***PLACEHOLDER***" or password == "***PLACEHOLDER***"
-    ) and not os.path.exists("tests/cassettes"):
+    ) and not os.path.exists("tests/api/cassettes"):
         pytest.skip(
             "MELCLOUD_USER and MELCLOUD_PASSWORD required for initial cassette recording"
         )

@@ -100,7 +100,7 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
     mock_request.assert_called_once()
     call_args = mock_request.call_args
     assert call_args[0][0] == "GET"
-    assert call_args[0][1] == "/api/report/trendsummary"
+    assert call_args[0][1] == "/report/v1/trendsummary"
 
     params = call_args[1]["params"]
     assert params["unitId"] == "test-unit-id"

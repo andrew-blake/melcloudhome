@@ -78,6 +78,54 @@ async def test_client_uses_request_pacer(mock_pacer, mock_session, mocker):
 
 
 @pytest.mark.asyncio
+async def test_api_request_sends_bearer_header(mock_pacer, mocker):
+    """API requests should use Bearer auth, not cookies."""
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json = AsyncMock(return_value={"data": "test"})
+    mock_response.content_length = 100
+    mock_response.content_type = "text/plain"
+
+    session = MagicMock()
+    session.request = MagicMock(return_value=create_mock_context_manager(mock_response))
+
+    mocker.patch(
+        "custom_components.melcloudhome.api.client.RequestPacer",
+        return_value=mock_pacer,
+    )
+    mocker.patch.object(
+        MELCloudHomeAuth,
+        "is_authenticated",
+        new_callable=PropertyMock,
+        return_value=True,
+    )
+    mocker.patch.object(
+        MELCloudHomeAuth,
+        "access_token",
+        new_callable=PropertyMock,
+        return_value="test-bearer-token",
+    )
+    mocker.patch.object(
+        MELCloudHomeAuth,
+        "is_token_expired",
+        new_callable=PropertyMock,
+        return_value=False,
+    )
+
+    client = MELCloudHomeClient()
+    mocker.patch.object(
+        client._auth, "get_session", new=AsyncMock(return_value=session)
+    )
+
+    await client._api_request("GET", "/context")
+
+    call_args = session.request.call_args
+    headers = call_args[1].get("headers", {}) if call_args[1] else {}
+    assert headers.get("Authorization") == "Bearer test-bearer-token"
+    assert "x-csrf" not in headers
+
+
+@pytest.mark.asyncio
 async def test_api_request_reports_service_unavailable_on_503(mock_pacer, mocker):
     """API request should report service unavailable when server returns 503."""
     mock_response = AsyncMock()

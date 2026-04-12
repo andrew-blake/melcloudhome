@@ -118,7 +118,7 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
 
         # Verify entry data
         assert diagnostics["entry"]["title"] == "MELCloud Home"
-        assert diagnostics["entry"]["version"] == 1
+        assert diagnostics["entry"]["version"] == 2
 
         # Verify credentials are redacted
         assert diagnostics["entry"]["data"][CONF_EMAIL] == "**REDACTED**"

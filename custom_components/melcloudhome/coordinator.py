@@ -44,6 +44,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         client: MELCloudHomeClient,
         email: str,
         password: str,
+        config_entry: Any = None,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -55,6 +56,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self.client = client
         self._email = email
         self._password = password
+        self._config_entry = config_entry
         # Caches for O(1) lookups
         self._unit_to_building: dict[str, Building] = {}
         self._units: dict[str, AirToAirUnit] = {}
@@ -115,6 +117,15 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             execute_with_retry=self._execute_with_retry,
             get_atw_device=self.get_atw_device,
             async_request_refresh=self.async_request_refresh,
+        )
+
+    def _persist_tokens(self) -> None:
+        """Persist current token state to config entry."""
+        if self._config_entry is None:
+            return
+        self.hass.config_entries.async_update_entry(
+            self._config_entry,
+            data={**self._config_entry.data, **self.client.get_token_snapshot()},
         )
 
     async def _async_update_data(self) -> UserContext:
@@ -504,27 +515,33 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     )
                     return await operation()
                 except AuthenticationError:
-                    # Still expired, re-authenticate
-                    _LOGGER.info(
-                        "Session still expired, attempting re-authentication for %s",
-                        operation_name,
-                    )
+                    pass
+
+                # Try token refresh first (cheaper than full re-login)
+                if self.client.has_refresh_token:
                     try:
-                        await self.client.login(self._email, self._password)
-                        _LOGGER.info("Re-authentication successful")
-                    except AuthenticationError as err:
-                        _LOGGER.error("Re-authentication failed: %s", err)
-                        raise ConfigEntryAuthFailed(
-                            "Re-authentication failed. Please reconfigure the integration."
-                        ) from err
+                        await self.client.refresh_access_token()
+                        self._persist_tokens()
+                        return await operation()
+                    except AuthenticationError:
+                        _LOGGER.debug(
+                            "Token refresh failed, falling back to full re-login"
+                        )
+
+                # Full re-login
+                _LOGGER.debug("Re-authenticating with full login")
+                try:
+                    await self.client.login(self._email, self._password)
+                    self._persist_tokens()
+                except AuthenticationError as err:
+                    raise ConfigEntryAuthFailed(
+                        "Re-authentication failed. Please reconfigure the integration."
+                    ) from err
 
             # Retry operation after successful re-auth (outside lock)
-            _LOGGER.debug("Retrying %s after successful re-auth", operation_name)
             try:
                 return await operation()
             except AuthenticationError as err:
-                # Still failing after re-auth - credentials are invalid
-                _LOGGER.error("%s failed even after re-auth", operation_name)
                 raise ConfigEntryAuthFailed(
                     "Authentication failed after re-auth. Please reconfigure."
                 ) from err

@@ -130,6 +130,9 @@ dev = [
     "voluptuous>=0.15.0",
     "freezegun>=1.5.5",
 ]
+reverse-engineering = [
+    "mitmproxy>=11",
+]
 
 [tool.coverage.paths]
 source = [

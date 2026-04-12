@@ -40,6 +40,7 @@ make type-check                  # Type check with mypy
 make pre-commit                  # Run all pre-commit checks
 
 # Testing
+make test-build                  # Build Docker test images (after dep changes)
 make test-api                    # API unit tests (VCR, no Docker)
 make test-integration            # Integration tests (Docker, mocked API)
 make test-e2e                    # E2E tests (Docker, mock server)
@@ -66,7 +67,6 @@ make test                        # All tests with coverage
 - **ATA (Air-to-Air) API:** `docs/api/ata-api-reference.md`
 - **ATW (Air-to-Water) API:** `docs/api/atw-api-reference.md`
 - **Device comparison:** `docs/api/device-type-comparison.md`
-- **OpenAPI spec:** `openapi.yaml` (root directory)
 
 ### Development Guides
 

@@ -2,7 +2,8 @@
 
 import asyncio
 import contextlib
-from unittest.mock import AsyncMock
+import time
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -28,7 +29,9 @@ def mock_client():
 @pytest.fixture
 def coordinator(hass, mock_client):
     """Create coordinator instance for testing."""
-    return MELCloudHomeCoordinator(hass, mock_client, "test@example.com", "password")
+    return MELCloudHomeCoordinator(
+        hass, mock_client, "test@example.com", "password", None
+    )
 
 
 @pytest.mark.asyncio
@@ -127,6 +130,61 @@ async def test_final_retry_catches_auth_error(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_token_refresh_on_auth_error(coordinator):
+    """Test that auth error triggers token refresh before full re-login."""
+    coordinator.client.restore_tokens(
+        "expired-token", "valid-refresh", time.time() + 3600
+    )
+    coordinator.client.refresh_access_token = AsyncMock()
+
+    call_count = 0
+
+    async def mock_operation():
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:  # Fails on first attempt + double-check
+            raise AuthenticationError("Session expired")
+        return "success"
+
+    result = await coordinator._execute_with_retry(mock_operation, "test_op")
+    assert result == "success"
+    coordinator.client.refresh_access_token.assert_awaited_once()
+    # login should NOT be called since refresh succeeded
+    assert coordinator.client.login.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_persist_tokens_updates_config_entry(hass, mock_client):
+    """Test that _persist_tokens writes token snapshot to config entry."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"email": "test@example.com", "password": "pw", "access_token": None},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = MELCloudHomeCoordinator(
+        hass, mock_client, "test@example.com", "pw", entry
+    )
+    mock_client.get_token_snapshot = MagicMock(
+        return_value={
+            "access_token": "new-token",
+            "refresh_token": "new-refresh",
+            "token_expiry": 1234567890.0,
+        }
+    )
+
+    coordinator._persist_tokens()
+
+    assert entry.data["access_token"] == "new-token"
+    assert entry.data["refresh_token"] == "new-refresh"
+    assert entry.data["token_expiry"] == 1234567890.0
+
+
+@pytest.mark.asyncio
 async def test_service_unavailable_passes_through_retry(coordinator):
     """Test ServiceUnavailableError is not retried or re-authed."""
     operation = AsyncMock(side_effect=ServiceUnavailableError(503))
@@ -144,7 +202,9 @@ async def test_outage_backoff_escalates(coordinator, hass):
     """Test retry_after escalates on consecutive outages."""
     from homeassistant.helpers.update_coordinator import UpdateFailed
 
-    coordinator.client._auth._is_authenticated = False
+    # Ensure client looks unauthenticated so login is attempted
+    coordinator.client._auth._authenticated = False
+    coordinator.client._auth._access_token = None
 
     coordinator.client.login = AsyncMock(side_effect=ServiceUnavailableError(503))
 
@@ -166,7 +226,9 @@ async def test_outage_backoff_resets_on_success(coordinator, hass):
 
     from custom_components.melcloudhome.api.models import UserContext
 
-    coordinator.client._auth._is_authenticated = False
+    # Ensure client looks unauthenticated so login is attempted
+    coordinator.client._auth._authenticated = False
+    coordinator.client._auth._access_token = None
 
     # Simulate 3 failures to build up the counter
     coordinator.client.login = AsyncMock(side_effect=ServiceUnavailableError(503))
@@ -176,8 +238,8 @@ async def test_outage_backoff_resets_on_success(coordinator, hass):
 
     assert coordinator._outage_retry_count == 3
 
-    # Now simulate success
-    coordinator.client._auth._is_authenticated = True
+    # Now simulate success — restore tokens so is_authenticated returns True
+    coordinator.client.restore_tokens("token", "refresh", time.time() + 3600)
     coordinator.client.login = AsyncMock()
     mock_context = AsyncMock(spec=UserContext)
     mock_context.buildings = []
