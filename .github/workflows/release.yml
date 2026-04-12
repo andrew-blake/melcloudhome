@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      base_version: ${{ steps.base-version.outputs.base }}
       prerelease: ${{ steps.detect-prerelease.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v6
@@ -26,41 +27,49 @@ jobs:
           echo "version=$TAG" >> $GITHUB_OUTPUT
           echo "Tag version: $TAG"
 
+      - name: Get base version (strip pre-release suffix)
+        id: base-version
+        run: |
+          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          BASE_VERSION=$(echo "$TAG_VERSION" | sed 's/-.*//')
+          echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Base version: $BASE_VERSION (from tag: $TAG_VERSION)"
+
       - name: Validate manifest version
         run: |
           MANIFEST_VERSION=$(jq -r '.version' custom_components/melcloudhome/manifest.json)
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          BASE_VERSION="${{ steps.base-version.outputs.base }}"
           echo "Manifest version: $MANIFEST_VERSION"
-          echo "Tag version: $TAG_VERSION"
-          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
+          echo "Expected version: $BASE_VERSION"
+          if [ "$MANIFEST_VERSION" != "$BASE_VERSION" ]; then
             echo "❌ Version mismatch!"
-            echo "Manifest version ($MANIFEST_VERSION) does not match tag ($TAG_VERSION)"
+            echo "Manifest version ($MANIFEST_VERSION) does not match expected ($BASE_VERSION)"
             exit 1
           fi
           echo "✅ Versions match!"
 
       - name: Validate CHANGELOG entry
         run: |
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
-          if ! grep -q "\[$TAG_VERSION\]" CHANGELOG.md; then
-            echo "❌ No CHANGELOG entry found for version $TAG_VERSION"
+          BASE_VERSION="${{ steps.base-version.outputs.base }}"
+          if ! grep -q "\[$BASE_VERSION\]" CHANGELOG.md; then
+            echo "❌ No CHANGELOG entry found for version $BASE_VERSION"
             exit 1
           fi
           echo "✅ CHANGELOG entry found!"
 
       - name: Validate README "What's New" version
         run: |
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          BASE_VERSION="${{ steps.base-version.outputs.base }}"
           README_VERSION=$(grep "## What's New in v" README.md | sed -n 's/## What'\''s New in v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
           echo "README 'What's New' version: $README_VERSION"
-          echo "Tag version: $TAG_VERSION"
+          echo "Expected version: $BASE_VERSION"
           if [ -z "$README_VERSION" ]; then
             echo "❌ No 'What's New' version found in README.md"
             exit 1
           fi
-          if [ "$README_VERSION" != "$TAG_VERSION" ]; then
+          if [ "$README_VERSION" != "$BASE_VERSION" ]; then
             echo "❌ Version mismatch!"
-            echo "README 'What's New' version ($README_VERSION) does not match tag ($TAG_VERSION)"
+            echo "README 'What's New' version ($README_VERSION) does not match expected ($BASE_VERSION)"
             exit 1
           fi
           echo "✅ README version matches!"
@@ -115,7 +124,7 @@ jobs:
       - name: Extract release notes
         id: extract-notes
         run: |
-          VERSION="${{ needs.validate.outputs.version }}"
+          VERSION="${{ needs.validate.outputs.base_version }}"
 
           # Extract section between current version and next version heading
           # Using sed for better portability across awk implementations
