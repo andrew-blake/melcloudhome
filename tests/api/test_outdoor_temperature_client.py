@@ -65,6 +65,24 @@ class TestParseOutdoorTemp:
 
         assert result is None
 
+    def test_parse_outdoor_temperature_list_wrapped(self):
+        """Test parsing when mobile BFF wraps response in a list."""
+        client = MELCloudHomeClient()
+        response = [
+            {
+                "datasets": [
+                    {
+                        "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+                        "data": [{"x": "2026-04-12T20:00:00", "y": 14.5}],
+                    }
+                ]
+            }
+        ]
+
+        result = client._parse_outdoor_temp(response)
+
+        assert result == 14.5
+
     def test_parse_outdoor_temperature_malformed(self):
         """Test with malformed response structure."""
         client = MELCloudHomeClient()
@@ -104,6 +122,7 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
 
     params = call_args[1]["params"]
     assert params["unitId"] == "test-unit-id"
+    assert params["period"] == "Hourly"
     # Verify timestamp format (7 zeros for nanoseconds)
     assert params["from"].endswith(".0000000")
     assert params["to"].endswith(".0000000")
