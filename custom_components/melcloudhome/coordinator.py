@@ -92,6 +92,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             get_coordinator_data=lambda: self.data,
         )
 
+        # Outage backoff: tracks consecutive 5xx failures for retry spacing
+        self._outage_retry_count: int = 0
+
         # Outdoor temperature tracking for ATA devices
         self._last_outdoor_temp_poll: dict[str, float] = {}  # Per-unit poll timestamps
         self._outdoor_temp_checked: set[str] = set()  # Track which units we've probed
@@ -128,7 +131,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 "coordinator_update",
             )
         except ServiceUnavailableError as err:
-            raise UpdateFailed(str(err)) from err
+            self._outage_retry_count += 1
+            retry_after = min(120 * 2 ** (self._outage_retry_count - 1), 900)
+            _LOGGER.warning(
+                "MELCloud service unavailable, retrying in %ds", retry_after
+            )
+            raise UpdateFailed(str(err), retry_after=retry_after) from err
+
+        self._outage_retry_count = 0
 
         # Debug logging: Log verbose device states (controlled by HA logger config)
         for building in context.buildings:
@@ -522,6 +532,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         except ServiceUnavailableError:
             # Don't retry or re-auth on server outage — let it propagate
             # so _async_update_data can raise UpdateFailed for backoff
+            _LOGGER.warning(
+                "MELCloud service unavailable during %s, backing off",
+                operation_name,
+            )
             raise
 
         except ApiError as err:

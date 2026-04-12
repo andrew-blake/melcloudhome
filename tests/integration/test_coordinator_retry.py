@@ -1,13 +1,18 @@
 """Tests for coordinator retry logic on session expiry."""
 
 import asyncio
+import contextlib
 from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
-from custom_components.melcloudhome.api.exceptions import ApiError, AuthenticationError
+from custom_components.melcloudhome.api.exceptions import (
+    ApiError,
+    AuthenticationError,
+    ServiceUnavailableError,
+)
 from custom_components.melcloudhome.coordinator import MELCloudHomeCoordinator
 
 
@@ -119,6 +124,67 @@ async def test_final_retry_catches_auth_error(coordinator):
 
     with pytest.raises(ConfigEntryAuthFailed, match="after re-auth"):
         await coordinator._execute_with_retry(operation, "test_op")
+
+
+@pytest.mark.asyncio
+async def test_service_unavailable_passes_through_retry(coordinator):
+    """Test ServiceUnavailableError is not retried or re-authed."""
+    operation = AsyncMock(side_effect=ServiceUnavailableError(503))
+
+    with pytest.raises(ServiceUnavailableError):
+        await coordinator._execute_with_retry(operation, "test_op")
+
+    # Should NOT attempt re-auth — outage is not an auth problem
+    assert coordinator.client.login.call_count == 0
+    assert operation.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_outage_backoff_escalates(coordinator, hass):
+    """Test retry_after escalates on consecutive outages."""
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
+    coordinator.client._auth._is_authenticated = False
+
+    coordinator.client.login = AsyncMock(side_effect=ServiceUnavailableError(503))
+
+    # Collect retry_after values across consecutive failures
+    retry_values = []
+    for _ in range(5):
+        try:
+            await coordinator._async_update_data()
+        except UpdateFailed as err:
+            retry_values.append(err.retry_after)
+
+    assert retry_values == [120, 240, 480, 900, 900]
+
+
+@pytest.mark.asyncio
+async def test_outage_backoff_resets_on_success(coordinator, hass):
+    """Test retry count resets after a successful update."""
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
+    from custom_components.melcloudhome.api.models import UserContext
+
+    coordinator.client._auth._is_authenticated = False
+
+    # Simulate 3 failures to build up the counter
+    coordinator.client.login = AsyncMock(side_effect=ServiceUnavailableError(503))
+    for _ in range(3):
+        with contextlib.suppress(UpdateFailed):
+            await coordinator._async_update_data()
+
+    assert coordinator._outage_retry_count == 3
+
+    # Now simulate success
+    coordinator.client._auth._is_authenticated = True
+    coordinator.client.login = AsyncMock()
+    mock_context = AsyncMock(spec=UserContext)
+    mock_context.buildings = []
+    coordinator.client.get_user_context = AsyncMock(return_value=mock_context)
+    await coordinator._async_update_data()
+
+    assert coordinator._outage_retry_count == 0
 
 
 @pytest.mark.asyncio
