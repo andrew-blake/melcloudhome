@@ -479,27 +479,31 @@ class MELCloudHomeAuth:
                 allow_redirects=False,
             ) as cb_resp:
                 location = cb_resp.headers.get("Location", "")
-                if not location.startswith("melcloudhome://"):
-                    # Follow one more redirect hop
-                    redirect_url = (
-                        location
-                        if location.startswith("http")
-                        else f"{self._auth_base}{location}"
-                    )
-                    async with self._request_pacer:  # noqa: SIM117
-                        async with session.get(
-                            redirect_url,
-                            headers={"User-Agent": USER_AGENT},
-                            allow_redirects=False,
-                        ) as cb_resp2:
-                            location = cb_resp2.headers.get("Location", "")
 
-                code_match = re.search(r"code=([^&]+)", location)
-                if not code_match:
-                    raise AuthenticationError(
-                        "Failed to extract auth code from redirect"
-                    )
+        if location.startswith("melcloudhome://"):
+            code_match = re.search(r"code=([^&]+)", location)
+            if code_match:
                 return code_match.group(1)
+
+        if not location or location == "/":
+            raise AuthenticationError("Callback returned empty or root redirect")
+
+        # Follow one more redirect hop
+        redirect_url = (
+            location if location.startswith("http") else f"{self._auth_base}{location}"
+        )
+        async with self._request_pacer:  # noqa: SIM117
+            async with session.get(
+                redirect_url,
+                headers={"User-Agent": USER_AGENT},
+                allow_redirects=False,
+            ) as cb_resp2:
+                location = cb_resp2.headers.get("Location", "")
+
+        code_match = re.search(r"code=([^&]+)", location)
+        if not code_match:
+            raise AuthenticationError("Failed to extract auth code from redirect")
+        return code_match.group(1)
 
     async def refresh_access_token(self) -> bool:
         """Refresh the access token using the stored refresh token.

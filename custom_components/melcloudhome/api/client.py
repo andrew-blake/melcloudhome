@@ -6,6 +6,7 @@ Provides unified API access using the Facade pattern:
 - Shared energy tracking and user context methods
 """
 
+import asyncio
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -53,6 +54,7 @@ class MELCloudHomeClient:
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
         self._user_context: UserContext | None = None
         self._on_tokens_refreshed: Callable[[], None] | None = None
+        self._refresh_lock = asyncio.Lock()
 
         # Request pacing to prevent rate limiting (shared across all requests)
         self._request_pacer = request_pacer or RequestPacer()
@@ -146,19 +148,26 @@ class MELCloudHomeClient:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
         """
-        async with self._request_pacer:
-            # Proactive token refresh — avoid making a request we know will 401
-            if self._auth.is_token_expired and self._auth.refresh_token:
-                try:
-                    await self._auth.refresh_access_token()
-                    _LOGGER.info("Proactive token refresh successful")
-                    if self._on_tokens_refreshed:
-                        self._on_tokens_refreshed()
-                except AuthenticationError:
-                    _LOGGER.warning(
-                        "Proactive token refresh failed, will retry via login"
-                    )
+        # Proactive token refresh BEFORE acquiring pacer — refresh_access_token
+        # also acquires the pacer, so nesting would deadlock (asyncio.Lock is
+        # not reentrant). Lock prevents concurrent refreshes from racing on
+        # single-use refresh tokens.
+        if self._auth.is_token_expired and self._auth.refresh_token:
+            async with self._refresh_lock:
+                # Double-check after acquiring lock — another request may have
+                # already refreshed while we waited
+                if self._auth.is_token_expired:
+                    try:
+                        await self._auth.refresh_access_token()
+                        _LOGGER.info("Proactive token refresh successful")
+                        if self._on_tokens_refreshed:
+                            self._on_tokens_refreshed()
+                    except AuthenticationError:
+                        _LOGGER.warning(
+                            "Proactive token refresh failed, will retry via login"
+                        )
 
+        async with self._request_pacer:
             if not self._auth.is_authenticated:
                 raise AuthenticationError("Not authenticated - call login() first")
 
