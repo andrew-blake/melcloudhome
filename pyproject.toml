@@ -131,7 +131,7 @@ dev = [
     "freezegun>=1.5.5",
 ]
 reverse-engineering = [
-    "mitmproxy>=11",
+    "mitmproxy>=12.2.2",
 ]
 
 [tool.coverage.paths]
