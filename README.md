@@ -12,7 +12,7 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.3.0
 
-Migrated to the mobile BFF API with OAuth 2.0 PKCE authentication, resolving the MELCloud service outage. Existing users will be automatically migrated on upgrade. Now available in 10 languages with French and Turkish added. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Migrated to the mobile BFF API with OAuth 2.0 PKCE authentication. Now available in 11 languages with Dutch, French and Turkish added. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 

@@ -6,19 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.3.0] - 2026-04-12
+## [2.3.0] - 2026-04-16
 
 ### Added
 
+- Dutch (nl) translations (thanks @yw13931835525-cyber)
 - French (fr) translations (thanks @pfauchet)
 - Turkish (tr) translations (thanks @freedomwarriorx86)
+- Clear error messages when MELCloud servers are unavailable
 
 ### Changed
 
-- Migrated from web BFF to mobile BFF API (`mobile.bff.melcloudhome.com`), resolving the ongoing service outage
-- Authentication now uses OAuth 2.0 PKCE with automatic token refresh instead of cookie-based sessions
-- Config entry upgraded from v1 to v2 (automatic migration on first startup)
-
+- Migrated from web BFF to mobile BFF API with OAuth 2.0 PKCE authentication
 
 ## [2.2.5] - 2026-04-04
 
