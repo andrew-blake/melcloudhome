@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Verbinden met MELCloud Home",
+        "description": "Voer uw MELCloud Home-inloggegevens in",
+        "data": {
+          "email": "E-mail",
+          "password": "Wachtwoord",
+          "debug_mode": "Verbinden met mock-server"
+        },
+        "data_description": {
+          "debug_mode": "Alleen voor ontwikkeling - verbindt met lokale mock-server in plaats van productie MELCloud API"
+        }
+      },
+      "reconfigure": {
+        "title": "Opnieuw configureren",
+        "description": "Wijzig inloggegevens voor {email}",
+        "data": {
+          "password": "Wachtwoord"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldig e-mailadres of wachtwoord",
+      "cannot_connect": "Kan geen verbinding maken met MELCloud Home. Controleer uw internetverbinding en probeer het opnieuw.",
+      "service_unavailable": "MELCloud-service is momenteel niet beschikbaar. Dit is een server-side probleem — probeer het later opnieuw.",
+      "unknown": "Er is een onverwachte fout opgetreden. Probeer het opnieuw."
+    },
+    "abort": {
+      "already_configured": "Dit account is al geconfigureerd",
+      "reconfigure_successful": "Inloggegevens succesvol bijgewerkt"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Kamer",
+              "flow": "Stroom",
+              "curve": "Kromme"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Ventilator 1",
+              "two": "Ventilator 2",
+              "three": "Ventilator 3",
+              "four": "Ventilator 4",
+              "five": "Ventilator 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Zwaai",
+              "one": "Zwaai 1",
+              "two": "Zwaai 2",
+              "three": "Zwaai 3",
+              "four": "Zwaai 4",
+              "five": "Zwaai 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Zwaai",
+              "left": "Links",
+              "leftcentre": "Links midden",
+              "centre": "Midden",
+              "rightcentre": "Rechts midden",
+              "right": "Rechts"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Kamertemperatuur"
+      },
+      "wifi_signal": {
+        "name": "WiFi-signaal"
+      },
+      "energy": {
+        "name": "Energie"
+      },
+      "outdoor_temperature": {
+        "name": "Buitentemperatuur"
+      },
+      "zone_1_temperature": {
+        "name": "Zone 1 temperatuur"
+      },
+      "zone_2_temperature": {
+        "name": "Zone 2 temperatuur"
+      },
+      "tank_temperature": {
+        "name": "Boiler temperatuur"
+      },
+      "operation_status": {
+        "name": "Bedrijfsstatus"
+      },
+      "flow_temperature": {
+        "name": "Aanvoertemperatuur"
+      },
+      "return_temperature": {
+        "name": "Retourtemperatuur"
+      },
+      "flow_temperature_zone1": {
+        "name": "Aanvoertemperatuur zone 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Retourtemperatuur zone 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Aanvoertemperatuur zone 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Retourtemperatuur zone 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Ketel aanvoertemperatuur"
+      },
+      "return_temperature_boiler": {
+        "name": "Ketel retourtemperatuur"
+      },
+      "energy_consumed": {
+        "name": "Verbruikte energie"
+      },
+      "energy_produced": {
+        "name": "Opgewekte energie"
+      },
+      "cop": {
+        "name": "Prestatiecoëfficiënt"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Foutstatus"
+      },
+      "connection_state": {
+        "name": "Verbindingsstatus"
+      },
+      "forced_dhw_active": {
+        "name": "Geforceerd WW actief"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": " Geforceerd vernieuwen",
+      "description": "Ververst onmiddellijk apparaatgegevens van MELCloud-servers (voor testen/ontwikkeling)"
+    }
+  }
+}
