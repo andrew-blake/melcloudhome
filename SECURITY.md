@@ -7,7 +7,7 @@ Security updates are provided for the current stable release:
 | Version | Supported          |
 | ------- | ------------------ |
 | Latest  | :white_check_mark: |
-| < 1.3   | :x:                |
+| Older   | :x:                |
 
 Please ensure you're running the latest version before reporting vulnerabilities.
 
@@ -79,7 +79,7 @@ When using this integration:
 
 - This integration uses cloud polling and does not expose local network services
 - All API communication uses HTTPS
-- Credentials are stored securely by Home Assistant's credential storage system
+- Credentials are stored in Home Assistant's config entry storage on the local filesystem — securing the host machine is important
 - No user data is collected or transmitted beyond what's required for MELCloud API communication
 
 ## Questions?
