@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Fixed
+
+- Vertical swing mode "Swing" silently ignored on A/C units without horizontal vanes (e.g. MSZ-HR25VFK2). The integration now sends vane commands per axis — matching the official MELCloud app — instead of always sending both axes together. ([#100](https://github.com/andrew-blake/melcloudhome/issues/100))
+
+
 ## [2.3.0] - 2026-04-16
 
 ### Added

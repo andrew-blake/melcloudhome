@@ -11,7 +11,6 @@ from .const_ata import (
     TEMP_MIN_HEAT,
     VANE_HORIZONTAL_DIRECTIONS,
     VANE_VERTICAL_DIRECTIONS,
-    VANE_WORD_TO_NUMERIC,
 )
 
 if TYPE_CHECKING:
@@ -162,48 +161,64 @@ class ATAControlClient:
             json=payload,
         )
 
-    async def set_vanes(self, unit_id: str, vertical: str, horizontal: str) -> None:
+    async def set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """
-        Set vane directions.
+        Set vertical vane direction only. Sends null for the horizontal axis.
+
+        Decoupling the two axes matches the official MELCloud app's behavior
+        and avoids server-side cross-axis validation silently dropping the
+        request on units without horizontal vanes (issue #100).
 
         Args:
             unit_id: Device ID (UUID)
             vertical: Vertical direction - "Auto", "Swing", "One", "Two", "Three",
                       "Four", or "Five"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If vertical is invalid
+        """
+        if vertical not in set(VANE_VERTICAL_DIRECTIONS):
+            raise ValueError(
+                f"Invalid vertical direction: {vertical}. "
+                f"Must be one of {set(VANE_VERTICAL_DIRECTIONS)}"
+            )
+
+        payload = self._build_ata_control_payload(
+            vaneVerticalDirection=vertical,
+        )
+
+        await self._client._api_request(
+            "PUT",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
+            json=payload,
+        )
+
+    async def set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """
+        Set horizontal vane direction only. Sends null for the vertical axis.
+
+        See set_vane_vertical for rationale (issue #100).
+
+        Args:
+            unit_id: Device ID (UUID)
             horizontal: Horizontal direction - "Auto", "Swing", "Left", "LeftCentre",
                         "Centre", "RightCentre", or "Right" (British spelling)
 
         Raises:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
-            ValueError: If vertical or horizontal is invalid
+            ValueError: If horizontal is invalid
         """
-        valid_vertical = set(VANE_VERTICAL_DIRECTIONS)
-        # Horizontal uses British-spelled named positions (official API format)
-        valid_horizontal = set(VANE_HORIZONTAL_DIRECTIONS)
-
-        if vertical not in valid_vertical:
-            raise ValueError(
-                f"Invalid vertical direction: {vertical}. "
-                f"Must be one of {valid_vertical}"
-            )
-
-        if horizontal not in valid_horizontal:
+        if horizontal not in set(VANE_HORIZONTAL_DIRECTIONS):
             raise ValueError(
                 f"Invalid horizontal direction: {horizontal}. "
-                f"Must be one of {valid_horizontal}"
+                f"Must be one of {set(VANE_HORIZONTAL_DIRECTIONS)}"
             )
 
-        # Denormalize VERTICAL vane direction: convert word strings back to numeric
-        # strings that the API expects (API returns "0", "1", etc. which we normalize
-        # to "Auto", "One", etc. for HA, but need to convert back when sending)
-        vertical_numeric = VANE_WORD_TO_NUMERIC.get(vertical, vertical)
-        # Horizontal uses named strings (British spelling) - send as-is
-        horizontal_string = horizontal
-
         payload = self._build_ata_control_payload(
-            vaneVerticalDirection=vertical_numeric,
-            vaneHorizontalDirection=horizontal_string,
+            vaneHorizontalDirection=horizontal,
         )
 
         await self._client._api_request(
