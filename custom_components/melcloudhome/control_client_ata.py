@@ -136,38 +136,54 @@ class ATAControlClient(ControlClientBase):
             f"set_fan_speed({unit_id}, {fan_speed})",
         )
 
-    async def async_set_vanes(
-        self,
-        unit_id: str,
-        vertical: str,
-        horizontal: str,
-    ) -> None:
-        """Set vane positions with automatic session recovery.
+    async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
+        """Set vertical vane position with automatic session recovery.
+
+        The horizontal axis is left untouched (sent as null). This matches the
+        official MELCloud app and avoids a server-side validation quirk that
+        silently drops cross-axis updates on units without horizontal vanes
+        (issue #100).
 
         Args:
             unit_id: Unit ID
             vertical: Vertical vane position
+        """
+        device = self._get_device(unit_id)
+        if device and device.vane_vertical_direction == vertical:
+            _LOGGER.debug(
+                "Vertical vane already %s for %s, skipping API call",
+                vertical,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info("Setting vertical vane for %s to %s", unit_id[-8:], vertical)
+        await self._execute_with_retry(
+            lambda: self._client.ata.set_vane_vertical(unit_id, vertical),
+            f"set_vane_vertical({unit_id}, {vertical})",
+        )
+
+    async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """Set horizontal vane position with automatic session recovery.
+
+        The vertical axis is left untouched (sent as null). See
+        async_set_vane_vertical for rationale (issue #100).
+
+        Args:
+            unit_id: Unit ID
             horizontal: Horizontal vane position
         """
-        # Skip if already at desired vane positions
         device = self._get_device(unit_id)
-        if (
-            device
-            and device.vane_vertical_direction == vertical
-            and device.vane_horizontal_direction == horizontal
-        ):
+        if device and device.vane_horizontal_direction == horizontal:
             _LOGGER.debug(
-                "Vanes already V:%s H:%s for %s, skipping API call",
-                vertical,
+                "Horizontal vane already %s for %s, skipping API call",
                 horizontal,
                 unit_id[-8:],
             )
             return
 
-        _LOGGER.info(
-            "Setting vanes for %s to V:%s H:%s", unit_id[-8:], vertical, horizontal
-        )
+        _LOGGER.info("Setting horizontal vane for %s to %s", unit_id[-8:], horizontal)
         await self._execute_with_retry(
-            lambda: self._client.ata.set_vanes(unit_id, vertical, horizontal),
-            f"set_vanes({unit_id}, {vertical}, {horizontal})",
+            lambda: self._client.ata.set_vane_horizontal(unit_id, horizontal),
+            f"set_vane_horizontal({unit_id}, {horizontal})",
         )

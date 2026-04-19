@@ -243,8 +243,8 @@ class TestFanSpeedValidation:
             await client.ata.set_fan_speed("unit-id", "Five")
 
 
-class TestVaneValidation:
-    """Test vane direction parameter validation."""
+class TestVaneVerticalValidation:
+    """Test vertical vane direction parameter validation."""
 
     @pytest.mark.asyncio
     async def test_invalid_vertical_direction(self) -> None:
@@ -252,7 +252,43 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.ata.set_vanes("unit-id", "Up", "Auto")
+            await client.ata.set_vane_vertical("unit-id", "Up")
+
+    @pytest.mark.asyncio
+    async def test_vertical_numeric_string(self) -> None:
+        """Numeric string for vertical should be rejected (we expose words)."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(ValueError, match="Invalid vertical direction"):
+            await client.ata.set_vane_vertical("unit-id", "1")
+
+    @pytest.mark.asyncio
+    async def test_valid_vertical_auto(self) -> None:
+        """Valid 'Auto' should pass validation."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_vane_vertical("unit-id", "Auto")
+
+    @pytest.mark.asyncio
+    async def test_valid_vertical_swing(self) -> None:
+        """Valid 'Swing' should pass validation."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_vane_vertical("unit-id", "Swing")
+
+    @pytest.mark.asyncio
+    async def test_valid_vertical_position(self) -> None:
+        """Valid position 'Three' should pass validation."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_vane_vertical("unit-id", "Three")
+
+
+class TestVaneHorizontalValidation:
+    """Test horizontal vane direction parameter validation."""
 
     @pytest.mark.asyncio
     async def test_invalid_horizontal_direction(self) -> None:
@@ -260,24 +296,7 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid horizontal direction"):
-            await client.ata.set_vanes("unit-id", "Auto", "Invalid")
-
-    @pytest.mark.asyncio
-    async def test_both_invalid(self) -> None:
-        """Both directions invalid should raise ValueError for vertical first."""
-        client = MELCloudHomeClient()
-
-        # Vertical is checked first, so should raise vertical error
-        with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.ata.set_vanes("unit-id", "Invalid", "AlsoInvalid")
-
-    @pytest.mark.asyncio
-    async def test_vertical_numeric_string(self) -> None:
-        """Numeric string for vertical should be rejected."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(ValueError, match="Invalid vertical direction"):
-            await client.ata.set_vanes("unit-id", "1", "Auto")
+            await client.ata.set_vane_horizontal("unit-id", "Invalid")
 
     @pytest.mark.asyncio
     async def test_horizontal_numeric_string(self) -> None:
@@ -285,39 +304,31 @@ class TestVaneValidation:
         client = MELCloudHomeClient()
 
         with pytest.raises(ValueError, match="Invalid horizontal direction"):
-            await client.ata.set_vanes("unit-id", "Auto", "1")
+            await client.ata.set_vane_horizontal("unit-id", "1")
 
     @pytest.mark.asyncio
-    async def test_valid_auto_auto(self) -> None:
-        """Valid vane directions 'Auto', 'Auto' should pass validation."""
+    async def test_valid_horizontal_auto(self) -> None:
+        """Valid 'Auto' should pass validation."""
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.ata.set_vanes("unit-id", "Auto", "Auto")
+            await client.ata.set_vane_horizontal("unit-id", "Auto")
 
     @pytest.mark.asyncio
-    async def test_valid_swing_swing(self) -> None:
-        """Valid vane directions 'Swing', 'Swing' should pass validation."""
+    async def test_valid_horizontal_swing(self) -> None:
+        """Valid 'Swing' should pass validation."""
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.ata.set_vanes("unit-id", "Swing", "Swing")
+            await client.ata.set_vane_horizontal("unit-id", "Swing")
 
     @pytest.mark.asyncio
-    async def test_valid_vertical_positions(self) -> None:
-        """Valid vertical position 'Three' should pass validation."""
+    async def test_valid_horizontal_centre(self) -> None:
+        """Valid 'Centre' (British spelling) should pass validation."""
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.ata.set_vanes("unit-id", "Three", "Auto")
-
-    @pytest.mark.asyncio
-    async def test_valid_horizontal_positions(self) -> None:
-        """Valid horizontal position 'Centre' should pass validation."""
-        client = MELCloudHomeClient()
-
-        with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.ata.set_vanes("unit-id", "Auto", "Centre")
+            await client.ata.set_vane_horizontal("unit-id", "Centre")
 
 
 class TestPowerValidation:
@@ -368,9 +379,17 @@ class TestAuthenticationRequired:
             await client.ata.set_fan_speed("unit-id", "Auto")
 
     @pytest.mark.asyncio
-    async def test_set_vanes_requires_auth(self) -> None:
-        """set_vanes should raise AuthenticationError when not logged in."""
+    async def test_set_vane_vertical_requires_auth(self) -> None:
+        """set_vane_vertical should raise AuthenticationError when not logged in."""
         client = MELCloudHomeClient()
 
         with pytest.raises(AuthenticationError, match="Not authenticated"):
-            await client.ata.set_vanes("unit-id", "Auto", "Auto")
+            await client.ata.set_vane_vertical("unit-id", "Auto")
+
+    @pytest.mark.asyncio
+    async def test_set_vane_horizontal_requires_auth(self) -> None:
+        """set_vane_horizontal should raise AuthenticationError when not logged in."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_vane_horizontal("unit-id", "Auto")

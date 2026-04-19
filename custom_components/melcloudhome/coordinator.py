@@ -589,15 +589,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Set fan speed with automatic session recovery."""
         return await self.control_client_ata.async_set_fan_speed(unit_id, fan_speed)
 
-    async def async_set_vanes(
-        self,
-        unit_id: str,
-        vertical: str,
-        horizontal: str,
-    ) -> None:
-        """Set vane positions with automatic session recovery."""
-        return await self.control_client_ata.async_set_vanes(
-            unit_id, vertical, horizontal
+    async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
+        """Set vertical vane position (horizontal axis untouched)."""
+        return await self.control_client_ata.async_set_vane_vertical(unit_id, vertical)
+
+    async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """Set horizontal vane position (vertical axis untouched)."""
+        return await self.control_client_ata.async_set_vane_horizontal(
+            unit_id, horizontal
         )
 
     # =================================================================

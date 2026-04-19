@@ -239,24 +239,8 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             _LOGGER.warning("Invalid swing mode: %s", swing_mode)
             return
 
-        # Get current horizontal vane position from device
-        # Device returns capitalized values, normalize to lowercase for comparison
-        device = self.get_device()
-        horizontal_raw = device.vane_horizontal_direction if device else "Auto"
-        horizontal = horizontal_raw.lower() if horizontal_raw else "auto"
-
-        # Handle legacy or unknown values by defaulting to auto
-        if horizontal not in self.swing_horizontal_modes:
-            _LOGGER.debug(
-                "Legacy/unknown horizontal position %s, defaulting to auto",
-                horizontal_raw,
-            )
-            horizontal = "auto"
-
-        # Convert both HA lowercase values back to API capitalized values
         api_swing = normalize_to_api(swing_mode)
-        api_horizontal = normalize_to_api(horizontal)
-        await self.coordinator.async_set_vanes(self._unit_id, api_swing, api_horizontal)
+        await self.coordinator.async_set_vane_vertical(self._unit_id, api_swing)
 
     @with_debounced_refresh()
     async def async_set_swing_horizontal_mode(self, swing_horizontal_mode: str) -> None:
@@ -265,18 +249,8 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             _LOGGER.warning("Invalid horizontal swing mode: %s", swing_horizontal_mode)
             return
 
-        # Get current vertical vane position from device
-        # Device returns capitalized values, normalize to lowercase
-        device = self.get_device()
-        vertical_raw = device.vane_vertical_direction if device else "Auto"
-        vertical = vertical_raw.lower() if vertical_raw else "auto"
-
-        # Convert both HA lowercase values back to API capitalized values
-        api_vertical = normalize_to_api(vertical)
         api_horizontal = normalize_to_api(swing_horizontal_mode)
-        await self.coordinator.async_set_vanes(
-            self._unit_id, api_vertical, api_horizontal
-        )
+        await self.coordinator.async_set_vane_horizontal(self._unit_id, api_horizontal)
 
     @with_debounced_refresh()
     async def async_turn_on(self) -> None:

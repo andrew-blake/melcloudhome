@@ -190,39 +190,65 @@ async def test_set_fan_speed_three(
 
 @pytest.mark.vcr()
 @pytest.mark.asyncio
-async def test_set_vanes_auto(
+async def test_set_vane_vertical_auto(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
-    """Test setting vanes to Auto."""
-    await authenticated_client.ata.set_vanes(dining_room_unit_id, "Auto", "Auto")
+    """Test setting vertical vane to Auto (horizontal untouched)."""
+    await authenticated_client.ata.set_vane_vertical(dining_room_unit_id, "Auto")
 
-    # Wait for state to propagate
     await asyncio.sleep(VCR_OPERATION_DELAY)
 
-    # Verify state changed
     context = await authenticated_client.get_user_context()
     device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
     assert device.vane_vertical_direction == "Auto"
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_set_vane_vertical_swing(
+    authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
+) -> None:
+    """Test setting vertical vane to Swing (horizontal untouched)."""
+    await authenticated_client.ata.set_vane_vertical(dining_room_unit_id, "Swing")
+
+    await asyncio.sleep(VCR_OPERATION_DELAY)
+
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
+    assert device is not None
+    assert device.vane_vertical_direction == "Swing"
+
+
+@pytest.mark.vcr()
+@pytest.mark.asyncio
+async def test_set_vane_horizontal_auto(
+    authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
+) -> None:
+    """Test setting horizontal vane to Auto (vertical untouched)."""
+    await authenticated_client.ata.set_vane_horizontal(dining_room_unit_id, "Auto")
+
+    await asyncio.sleep(VCR_OPERATION_DELAY)
+
+    context = await authenticated_client.get_user_context()
+    device = context.get_unit_by_id(dining_room_unit_id)
+    assert device is not None
     assert device.vane_horizontal_direction == "Auto"
 
 
 @pytest.mark.vcr()
 @pytest.mark.asyncio
-async def test_set_vanes_swing(
+async def test_set_vane_horizontal_swing(
     authenticated_client: "MELCloudHomeClient", dining_room_unit_id: str
 ) -> None:
-    """Test setting vanes to Swing."""
-    await authenticated_client.ata.set_vanes(dining_room_unit_id, "Swing", "Swing")
+    """Test setting horizontal vane to Swing (vertical untouched)."""
+    await authenticated_client.ata.set_vane_horizontal(dining_room_unit_id, "Swing")
 
-    # Wait for state to propagate
     await asyncio.sleep(VCR_OPERATION_DELAY)
 
-    # Verify state changed
     context = await authenticated_client.get_user_context()
     device = context.get_unit_by_id(dining_room_unit_id)
     assert device is not None
-    assert device.vane_vertical_direction == "Swing"
     assert device.vane_horizontal_direction == "Swing"
 
 

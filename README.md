@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.3.0
+## What's New in v2.3.1
 
-Migrated to the mobile BFF API with OAuth 2.0 PKCE authentication. Now available in 11 languages with Dutch, French and Turkish added. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Fixed vertical swing mode "Swing" being silently ignored on A/C units without horizontal vanes. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
