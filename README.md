@@ -174,7 +174,7 @@ These intervals balance update frequency with API rate limits.
 
 - [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
 - [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
-- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-016)
+- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions
 
 ## Support
 
