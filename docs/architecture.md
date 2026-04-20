@@ -2,7 +2,7 @@
 
 Visual architecture documentation for the MELCloud Home custom integration for Home Assistant.
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-04-20
 
 **Terminology:** This document uses **ATA** (Air-to-Air) and **ATW** (Air-to-Water) to refer to the two device types.
 
@@ -11,10 +11,12 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 ## Key Architectural Principles
 
 1. **Single Unified Client** - One `MELCloudHomeClient` handles both Air-to-Air and Air-to-Water devices
-2. **Shared Authentication** - AWS Cognito OAuth session shared across all device types
+2. **Shared Authentication** - OAuth 2.0 Authorization Code + PKCE (via IdentityServer at `auth.melcloudhome.com`, with AWS Cognito federated for credential submission). Bearer access tokens + refresh tokens shared across all device types.
 3. **Multi-Type Container** - `UserContext` holds both device types in parallel arrays
 4. **Device-Specific Methods** - Method names indicate which device type they control
 5. **Equal Device Type Support** - ATA and ATW devices have full feature parity in their respective domains
+
+**API target:** MELCloud mobile API at `https://mobile.bff.melcloudhome.com` (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)). Canonical endpoint/auth constants live in [`api/const_shared.py`](../custom_components/melcloudhome/api/const_shared.py).
 
 ---
 
@@ -37,8 +39,8 @@ graph LR
         Coordinator[Update Coordinator<br/>Polling & State Management]
 
         subgraph "Control Client Layer"
-            ControlATA[ATAControlClient<br/>Session Recovery & Dedup]
-            ControlATW[ATWControlClient<br/>Session Recovery & Dedup]
+            ControlATA[ATAControlClient<br/>Dedup, Validation & Debounce]
+            ControlATW[ATWControlClient<br/>Dedup, Validation & Debounce]
         end
 
         subgraph "Models Layer"
@@ -51,13 +53,16 @@ graph LR
         end
 
     end
-    subgraph "MELCloud API"
-        UserContextAPI["GET /api/user/context<br/>(SHARED)"]
-        ATAAPI["PUT /api/ataunit/*<br/>(ATA Control)"]
-        ATWAPI["PUT /api/atwunit/*<br/>(ATW Control)"]
+    subgraph "MELCloud Mobile API<br/>mobile.bff.melcloudhome.com"
+        UserContextAPI["GET /context<br/>(SHARED)"]
+        ATAAPI["PUT /monitor/ataunit/{id}<br/>(ATA Control)"]
+        ATWAPI["PUT /monitor/atwunit/{id}<br/>(ATW Control)"]
+        TelemetryAPI["GET /telemetry/...<br/>/report/v1/trendsummary<br/>(Energy/Telemetry)"]
     end
-    subgraph "AWS Cognito"
-        Auth[Authentication<br/>AWS Cognito OAuth]
+    subgraph "Auth (OAuth 2.0 + PKCE)"
+        IdP["IdentityServer<br/>auth.melcloudhome.com"]
+        Cognito["AWS Cognito<br/>(federated login UI)"]
+        IdP --> Cognito
     end
 
     ClimateATA --> Coordinator
@@ -71,7 +76,7 @@ graph LR
     Coordinator -->|ATW operations| ControlATW
     ControlATA --> Client
     ControlATW --> Client
-    Client --> Auth
+    Client --> IdP
     Client --> Context
 
     Context --> ATAModel
@@ -80,15 +85,17 @@ graph LR
     Client --> UserContextAPI
     Client --> ATAAPI
     Client --> ATWAPI
+    Client --> TelemetryAPI
 ```
 
 **Key Points:**
 
-- **Single coordinator** manages polling for all device types
-- **Control client layer** provides deduplication, retry logic, and session recovery
-- **Single API client** provides unified interface to MELCloud API
-- **Shared auth** handles OAuth for all endpoints
-- **UserContext** endpoint returns both device types in one response
+- **Single coordinator** drives state polling and owns session recovery (`_run_with_reauth`)
+- **Control client layer** provides deduplication, HA validation, and debounced refresh; it delegates every API call through `Coord.execute_with_retry`
+- **Single API client** provides unified interface to the MELCloud mobile API, plus proactive token refresh (60s pre-expiry buffer)
+- **Shared auth** — one OAuth session (access + refresh tokens) for all endpoints
+- **UserContext** (`/context`) returns both device types in one response
+- **Telemetry** is separate from state polling — `/telemetry/...` (30m energy, 60m flow/return) and `/report/v1/trendsummary` (30m ATA outdoor temp) each run on independent timers
 
 ---
 
@@ -218,7 +225,7 @@ All entities use UUID-based device names for stable entity IDs (format: `melclou
 
 ## Device Type Control Flow
 
-Sequence diagram showing complete flow from authentication through control operations, including the control client layer that handles retry logic and session recovery.
+Sequence diagram showing complete flow from authentication through control operations. Control clients delegate to the coordinator's `execute_with_retry` wrapper, so session recovery stays centralised on the Coordinator (`_run_with_reauth`). The API client handles proactive token refresh itself.
 
 ```mermaid
 sequenceDiagram
@@ -226,65 +233,119 @@ sequenceDiagram
     participant Coord as Coordinator
     participant CtrlClient as ControlClient<br/>(ATA/ATW)
     participant APIClient as MELCloudHomeClient
-    participant API as MELCloud API
+    participant IdP as IdentityServer<br/>auth.melcloudhome.com
+    participant Cognito as AWS Cognito
+    participant Server as MELCloud Mobile API<br/>mobile.bff.melcloudhome.com
 
-    Note over HA,API: Initial Setup
+    Note over HA,Server: Initial Login (OAuth 2.0 Authorization Code + PKCE)
     HA->>APIClient: login(user, pass)
-    APIClient->>API: OAuth flow (AWS Cognito)
-    API-->>APIClient: Session established
+    APIClient->>IdP: POST /connect/par (PAR with PKCE challenge)
+    IdP-->>APIClient: request_uri
+    APIClient->>IdP: GET /connect/authorize?client_id=homemobile&request_uri=...
+    Note over APIClient,Cognito: APIClient follows redirects automatically<br/>to the federated Cognito login page
+    APIClient->>Cognito: POST credentials (user, pass + CSRF)
+    Cognito-->>APIClient: 302 back to IdP with Cognito code
+    APIClient->>IdP: GET /connect/authorize/callback
+    IdP-->>APIClient: 302 to melcloudhome:// with auth code
+    APIClient->>IdP: POST /connect/token (grant_type=authorization_code,<br/>code + code_verifier)
+    IdP-->>APIClient: access_token (JWT, ~1h) + refresh_token
 
-    Note over HA,API: Device Discovery
+    Note over HA,Server: Device Discovery
     Coord->>APIClient: get_user_context()
-    APIClient->>API: GET /api/user/context
-    API-->>APIClient: { airToAirUnits[], airToWaterUnits[] }
+    APIClient->>Server: GET /context<br/>Authorization: Bearer {access_token}
+    Server-->>APIClient: { airToAirUnits[], airToWaterUnits[] }
     APIClient-->>Coord: UserContext (both types)
 
-    Note over HA,API: ATA Control (with retry)
+    Note over HA,Server: ATA Control (proactive token refresh + centralised re-auth)
     HA->>Coord: climate.set_temperature(ata_id, 22°C)
     Coord->>CtrlClient: control_client.async_set_temperature(ata_id, 22)
-    CtrlClient->>CtrlClient: Check if value changed<br/>(skip if duplicate)
-    CtrlClient->>APIClient: client.ata.set_temperature(ata_id, 22)
-    APIClient->>API: PUT /api/ataunit/{id}<br/>{"setTemperature": 22, ...nulls...}
-    alt Session Expired
-        API-->>APIClient: 401 Unauthorized
-        APIClient-->>CtrlClient: SessionExpiredError
-        CtrlClient->>APIClient: Re-authenticate
-        CtrlClient->>APIClient: Retry set_temperature
-        APIClient->>API: PUT /api/ataunit/{id}
+    CtrlClient->>CtrlClient: Check if value changed
+    alt Value unchanged (dedup skip)
+        CtrlClient-->>Coord: return — no API call
+    else Value changed
+        Note over Coord,CtrlClient: Control client invokes the API call through<br/>Coord.execute_with_retry (injected at construction),<br/>so session recovery stays centralised on the Coordinator.
+        CtrlClient->>Coord: execute_with_retry(λ → client.ata.set_temperature)
+        Coord->>APIClient: client.ata.set_temperature(ata_id, 22)
+        opt Access token expires within 60s
+            APIClient->>IdP: POST /connect/token<br/>(grant_type=refresh_token)
+            IdP-->>APIClient: new access_token + refresh_token
+        end
+        APIClient->>Server: PUT /monitor/ataunit/{id}<br/>{"setTemperature": 22, ...nulls...}
+        alt 401 Unauthorized (proactive refresh skipped or failed)
+            Server-->>APIClient: 401 Unauthorized
+            APIClient-->>Coord: AuthenticationError
+            Note over Coord,IdP: Coordinator re-auth ladder (under _reauth_lock):<br/>1. Retry once — another task may have re-authed<br/>2. refresh_access_token if refresh_token present<br/>3. Full OAuth login if refresh fails<br/>4. Raise ConfigEntryAuthFailed → HA repair UI if all fail
+            Coord->>APIClient: client.refresh_access_token() or client.login()
+            APIClient->>IdP: OAuth refresh or full PKCE login (as above)
+            IdP-->>APIClient: new access_token + refresh_token
+            APIClient-->>Coord: tokens refreshed
+            Coord->>APIClient: Retry client.ata.set_temperature(ata_id, 22)
+            APIClient->>Server: PUT /monitor/ataunit/{id}
+        end
+        Server-->>APIClient: 200 OK (empty)
+        APIClient-->>Coord: Success
+        Coord-->>CtrlClient: Success
+        CtrlClient->>Coord: Schedule refresh (debounced — 2s quiet period, task-backed)
     end
-    API-->>APIClient: 200 OK (empty)
-    APIClient-->>CtrlClient: Success
-    CtrlClient->>Coord: Debounced refresh (2s delay)
 
-    Note over HA,API: ATW Zone Control (similar retry logic)
+    Note over HA,Server: ATW Zone Control (same delegation + refresh semantics as ATA)
     HA->>Coord: climate.set_temperature(atw_id, 21°C)
     Coord->>CtrlClient: control_client.async_set_temperature_zone1(atw_id, 21)
-    CtrlClient->>APIClient: client.atw.set_temperature_zone1(atw_id, 21)
-    APIClient->>API: PUT /api/atwunit/{id}<br/>{"setTemperatureZone1": 21, ...nulls...}
-    API-->>APIClient: 200 OK (empty)
+    CtrlClient->>Coord: execute_with_retry(λ → client.atw.set_temperature_zone1)
+    Coord->>APIClient: client.atw.set_temperature_zone1(atw_id, 21)
+    APIClient->>Server: PUT /monitor/atwunit/{id}<br/>{"setTemperatureZone1": 21, ...nulls...}
+    Server-->>APIClient: 200 OK (empty)
+    APIClient-->>Coord: Success
+    Coord-->>CtrlClient: Success
 
-    Note over HA,API: Periodic State Update
+    Note over HA,Server: Periodic State Polling (UPDATE_INTERVAL = 60s)
     loop Every 60 seconds
         Coord->>APIClient: get_user_context()
-        APIClient->>API: GET /api/user/context
-        API-->>APIClient: Current state (all devices)
-        APIClient-->>Coord: Updated state
-        Coord->>HA: Update all entities
+        APIClient->>Server: GET /context
+        Server-->>APIClient: Current state (all devices)
+        APIClient-->>Coord: UserContext
+        Coord->>HA: Update state-backed entities
+    end
+
+    Note over HA,Server: Independent telemetry timers (separate from state polling)
+    loop Every 30 min — ATW energy
+        APIClient->>Server: GET /telemetry/telemetry/energy/{id}
+        Server-->>APIClient: energy counters
+    end
+    loop Every 30 min — ATA outdoor temp
+        APIClient->>Server: GET /report/v1/trendsummary
+        Server-->>APIClient: outdoor temperature
+    end
+    loop Every 60 min — ATW flow / return telemetry
+        APIClient->>Server: GET /telemetry/telemetry/actual/{id}
+        Server-->>APIClient: flow + return temperatures
     end
 ```
 
-**Control Client Responsibilities:**
+**API Client Responsibilities (`MELCloudHomeClient`):**
 
-- **Session recovery**: Automatically re-authenticates and retries on 401 errors
-- **Deduplication**: Skips API calls when value hasn't changed
-- **Debounced refresh**: Coordinates state refresh with 2-second delay for rapid calls
-- **HA-specific validation**: Checks zone availability, temperature ranges, capability support
+- **Proactive token refresh**: Before each request, refreshes the access token if it expires within 60 seconds. A shared lock prevents concurrent refreshes from burning single-use refresh tokens.
+- **Bearer injection**: Adds `Authorization: Bearer {access_token}` and the mobile `User-Agent` to every MELCloud API call.
+- **401 → `AuthenticationError`**: If a request still returns 401 (e.g. refresh unavailable or failed), the API client raises `AuthenticationError`. It does not attempt re-login itself.
+
+**Control Client Responsibilities (`control_client_{ata,atw}.py`):**
+
+- **Deduplication**: Skips API calls when the requested value already matches current device state.
+- **HA-specific validation**: Checks zone availability, temperature ranges, capability support before hitting the API.
+- **Debounced refresh**: Coalesces rapid consecutive changes into a single follow-up state fetch after a 2-second quiet period (see `control_client_base.py`).
+- **Delegation to the coordinator's retry wrapper**: Every API call is invoked through `execute_with_retry` (a callback injected from the coordinator at construction), so session recovery is owned in one place.
+
+**Coordinator Responsibilities (`MELCloudHomeCoordinator`):**
+
+- **State polling**: Drives the 60-second `/context` refresh loop; dispatches updates to all platforms.
+- **Independent telemetry timers**: Separate 30-minute energy timer, 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), and 60-minute ATW flow/return telemetry timer.
+- **Re-auth ladder** (`_run_with_reauth`, guarded by `_reauth_lock`): retry-once → refresh_token → full login → `ConfigEntryAuthFailed` (triggers HA repair UI) if all fail. This is the single place in the integration that runs re-login on auth failure.
 
 ---
 
 ## Integration Layer Architecture
 
-Shows the control client layer that sits between the coordinator and API client, providing session recovery and HA-specific logic.
+Shows the control client layer that sits between the coordinator and API client, providing deduplication, HA-specific validation, and debounced refresh. Session recovery lives on the coordinator (`_run_with_reauth`) — see the Device Type Control Flow sequence diagram above.
 
 ```mermaid
 graph TD
@@ -306,9 +367,11 @@ graph TD
     style ControlATW fill:#f0ffe1,stroke:#7cb342
     style APIClient fill:#e1f5ff,stroke:#039be5
 
-    note1[Control Layer:<br/>- Session retry<br/>- Deduplication<br/>- Validation]
-    note2[API Layer:<br/>- HTTP/auth<br/>- Device facades]
+    note0["Coordinator:<br/>- State polling (60s)<br/>- Telemetry timers (30m / 60m)<br/>- Re-auth ladder via _run_with_reauth"]
+    note1["Control Layer:<br/>- Deduplication<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
+    note2["API Layer:<br/>- HTTP/Bearer auth<br/>- Proactive token refresh<br/>- Device facades"]
 
+    Coordinator -.-> note0
     ControlATA -.-> note1
     ControlATW -.-> note1
     APIClient -.-> note2
@@ -316,10 +379,11 @@ graph TD
 
 **Key Points:**
 
-- **Two separate control client files**: `control_client_ata.py` and `control_client_atw.py`
-- **Integration-level concerns**: Session recovery, retry logic, state deduplication
-- **API-level concerns**: HTTP communication, authentication, device-type facades
-- **Coordinator delegates**: All control operations go through control clients, never directly to API client
+- **Two separate control client files**: `control_client_ata.py` and `control_client_atw.py`.
+- **Coordinator owns session recovery + retry**: the re-auth ladder is in `_run_with_reauth` on the coordinator; control clients never catch `AuthenticationError` themselves.
+- **Control clients own dedup + validation + debouncing**: they skip API calls when state already matches, validate HA-side preconditions, and coalesce rapid refreshes.
+- **API client owns HTTP/auth/facades**: Bearer injection, proactive token refresh, and the `client.ata.*` / `client.atw.*` device facades.
+- **All operations flow Coord → CtrlClient → Coord.execute_with_retry → APIClient**: control clients never call the API client directly.
 
 ---
 
@@ -427,8 +491,8 @@ classDiagram
 
 - **Facade Pattern:** `MELCloudHomeClient` composes `ATAControlClient` and `ATWControlClient` facades
 - **Unified Entry Point:** Single client import, device-specific methods via `client.ata.*` and `client.atw.*`
-- **Multi-Type Container:** `UserContext` holds both device types discovered from `/api/user/context`
-- **Shared Authentication:** Single OAuth session serves all device types
+- **Multi-Type Container:** `UserContext` holds both device types discovered from `/context`
+- **Shared Authentication:** Single OAuth session (access + refresh tokens) serves all device types
 - **Capabilities-Driven:** Each device has capabilities object defining valid operations/ranges
 
 ---
@@ -544,7 +608,7 @@ Available on devices with both capability flags enabled:
 - ERSC-VM2D controllers: Full energy monitoring support
 - EHSCVM2D controllers: No energy monitoring (capability flags false)
 
-Energy data is polled from the MELCloud API alongside other device state and updated every 60 seconds.
+Energy data is polled on its own 30-minute timer (`UPDATE_INTERVAL_ENERGY`), independent of the main 60-second `/context` state poll. Energy counters change slowly, so a faster cadence would waste API calls without giving users more resolution.
 
 ---
 
@@ -553,7 +617,8 @@ Energy data is polled from the MELCloud API alongside other device state and upd
 - **ADR-011:** [Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md)
 - **ADR-012:** [ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
 - **ADR-016:** [ATW Energy Monitoring Implementation](decisions/016-implement-atw-energy-monitoring.md)
+- **ADR-017:** [Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) (supersedes ADR-002)
 - **ATA API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
 - **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)
-- **OpenAPI Spec:** [../openapi.yaml](../openapi.yaml)
+- **Mobile API Capture Notes:** [research/mobile-bff-captures/README.md](research/mobile-bff-captures/README.md)
