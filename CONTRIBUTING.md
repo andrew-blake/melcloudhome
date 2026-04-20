@@ -50,7 +50,7 @@ Open an issue to discuss new features before starting work. This helps ensure th
 # Install dependencies
 uv sync
 
-# Install pre-commit hooks
+# Install pre-commit hooks (commit-stage checks + pre-push block on main)
 uv run pre-commit install
 
 # Run all checks
