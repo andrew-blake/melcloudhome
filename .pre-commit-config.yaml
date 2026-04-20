@@ -1,7 +1,21 @@
 # Pre-commit hooks for code quality
 # See https://pre-commit.com for more information
 
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
+  - repo: local
+    hooks:
+      - id: block-push-to-main
+        name: Block direct push to main
+        description: Refuses pushes targeting refs/heads/main (use a feature branch).
+        entry: scripts/pre-push-block-main.sh
+        language: script
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9
     hooks:

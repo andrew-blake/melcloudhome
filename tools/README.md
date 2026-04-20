@@ -202,35 +202,28 @@ See also:
 
 ## API Reverse Engineering Tools
 
-**Purpose:** Understand MELCloud Home API behavior by observing the official web application without needing physical hardware.
+**Purpose:** Capture and understand traffic between the official MELCloud Home mobile app and the MELCloud mobile API (`mobile.bff.melcloudhome.com`) — the only surface the integration talks to.
 
-**Location:** `reverse-engineering/`
+**Location:** [`mitmproxy/`](mitmproxy/)
 
 **Key capabilities:**
-- Capture API responses from users with different hardware
-- Inject captured data into official web app to observe behavior
-- Test control commands without affecting real devices
+- Capture real mobile app ↔ MELCloud API traffic for device-support requests
+- Inspect OAuth 2.0 PKCE auth flow (`auth.melcloudhome.com` + federated Cognito)
+- Replay captures against a mock server for regression testing
 - Contribute device support without owning the hardware
 
 **Quick start:**
 ```bash
-# Chrome Local Overrides: Inject API data
-# See: reverse-engineering/README.md
-
-# Request Proxying: Capture commands
-# 1. make dev-up (start mock server)
-# 2. Paste reverse-engineering/proxy_mutations.js in Chrome console
-# 3. Run: blockMutations()
+uv sync --group reverse-engineering              # installs mitmdump
+uv run mitmdump -s tools/mitmproxy/capture.py    # filter + save MELCloud traffic
 ```
 
-**Full documentation:**
-- Quick start: [reverse-engineering/README.md](reverse-engineering/README.md)
-- Comprehensive guide: [../docs/research/REVERSE_ENGINEERING.md](../docs/research/REVERSE_ENGINEERING.md)
+See [`mitmproxy/README.md`](mitmproxy/README.md) for the iOS setup (proxy + CA certificate installation) and [`../docs/research/REVERSE_ENGINEERING.md`](../docs/research/REVERSE_ENGINEERING.md) for the full device-support workflow.
 
 **Use cases:**
-- User reports unsupported Ecodan → Use their HAR to implement support
-- Need to know exact API payload format → Proxy requests to mock server
-- Test different device configurations → Mock server + Chrome overrides
+- User reports unsupported controller → Ask for an anonymised mitmproxy capture, replay it through the mock server.
+- Silent payload drop (200 OK, no state change) → Capture the official app sending the same control and compare schemas.
+- Debugging live integration issues → Point the dev HA through mitmproxy and watch what the integration actually sends.
 
 ---
 
@@ -315,7 +308,7 @@ Testing climate.melcloud_0efc_76db...
 
 ### `test_mobile_api.py`
 
-Tests the full OAuth PKCE auth flow and mobile BFF API access. Useful for verifying credentials work and checking API response shapes.
+Tests the full OAuth PKCE auth flow and mobile API access. Useful for verifying credentials work and checking API response shapes.
 
 ```bash
 source .env
@@ -324,7 +317,7 @@ python tools/test_mobile_api.py
 
 ### `dump_device_state.py`
 
-Dumps current state of all MELCloud devices via the mobile BFF API. Supports filtering by unit ID and JSON output for before/after comparison.
+Dumps current state of all MELCloud devices via the mobile API. Supports filtering by unit ID and JSON output for before/after comparison.
 
 ```bash
 source .env
