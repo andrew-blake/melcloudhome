@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Σύνδεση στο MELCloud Home",
+        "description": "Εισάγετε τα διαπιστευτήριά σας MELCloud Home",
+        "data": {
+          "email": "Email",
+          "password": "Κωδικός πρόσβασης",
+          "debug_mode": "Σύνδεση σε Mock Server"
+        },
+        "data_description": {
+          "debug_mode": "Μόνο για ανάπτυξη - συνδέεται σε τοπικό mock server αντί του API παραγωγής MELCloud"
+        }
+      },
+      "reconfigure": {
+        "title": "Επαναδιαμόρφωση",
+        "description": "Ενημέρωση διαπιστευτηρίων για {email}",
+        "data": {
+          "password": "Κωδικός πρόσβασης"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Μη έγκυρο email ή κωδικός πρόσβασης",
+      "cannot_connect": "Αδυναμία σύνδεσης στο MELCloud Home. Ελέγξτε τη σύνδεσή σας στο διαδίκτυο και δοκιμάστε ξανά.",
+      "service_unavailable": "Η υπηρεσία MELCloud δεν είναι διαθέσιμη αυτήν τη στιγμή. Αυτό είναι πρόβλημα στον διακομιστή — δοκιμάστε ξανά αργότερα.",
+      "unknown": "Παρουσιάστηκε απρόσμενο σφάλμα. Δοκιμάστε ξανά."
+    },
+    "abort": {
+      "already_configured": "Αυτός ο λογαριασμός έχει ήδη διαμορφωθεί",
+      "reconfigure_successful": "Τα διαπιστευτήρια ενημερώθηκαν επιτυχώς"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Δωμάτιο",
+              "flow": "Ροή",
+              "curve": "Καμπύλη"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Αυτόματο",
+              "one": "Ανεμιστήρας 1",
+              "two": "Ανεμιστήρας 2",
+              "three": "Ανεμιστήρας 3",
+              "four": "Ανεμιστήρας 4",
+              "five": "Ανεμιστήρας 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Αυτόματο",
+              "swing": "Ταλάντωση",
+              "one": "Ταλάντωση 1",
+              "two": "Ταλάντωση 2",
+              "three": "Ταλάντωση 3",
+              "four": "Ταλάντωση 4",
+              "five": "Ταλάντωση 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Αυτόματο",
+              "swing": "Ταλάντωση",
+              "left": "Αριστερά",
+              "leftcentre": "Αριστερά Κέντρο",
+              "centre": "Κέντρο",
+              "rightcentre": "Δεξιά Κέντρο",
+              "right": "Δεξιά"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Θερμοκρασία δωματίου"
+      },
+      "wifi_signal": {
+        "name": "Σήμα WiFi"
+      },
+      "energy": {
+        "name": "Ενέργεια"
+      },
+      "outdoor_temperature": {
+        "name": "Εξωτερική θερμοκρασία"
+      },
+      "zone_1_temperature": {
+        "name": "Θερμοκρασία ζώνης 1"
+      },
+      "zone_2_temperature": {
+        "name": "Θερμοκρασία ζώνης 2"
+      },
+      "tank_temperature": {
+        "name": "Θερμοκρασία δεξαμενής"
+      },
+      "operation_status": {
+        "name": "Κατάσταση λειτουργίας"
+      },
+      "flow_temperature": {
+        "name": "Θερμοκρασία ροής"
+      },
+      "return_temperature": {
+        "name": "Θερμοκρασία επιστροφής"
+      },
+      "flow_temperature_zone1": {
+        "name": "Θερμοκρασία ροής ζώνης 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Θερμοκρασία επιστροφής ζώνης 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Θερμοκρασία ροής ζώνης 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Θερμοκρασία επιστροφής ζώνης 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Θερμοκρασία ροής λέβητα"
+      },
+      "return_temperature_boiler": {
+        "name": "Θερμοκρασία επιστροφής λέβητα"
+      },
+      "energy_consumed": {
+        "name": "Ενέργεια που καταναλώθηκε"
+      },
+      "energy_produced": {
+        "name": "Ενέργεια που παράχθηκε"
+      },
+      "cop": {
+        "name": "Συντελεστής απόδοσης"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Κατάσταση σφάλματος"
+      },
+      "connection_state": {
+        "name": "Κατάσταση σύνδεσης"
+      },
+      "forced_dhw_active": {
+        "name": "Αναγκαστική ΖΝΧ ενεργή"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Αναγκαστική ανανέωση",
+      "description": "Άμεση ανανέωση δεδομένων συσκευής από τους διακομιστές MELCloud (για δοκιμές/ανάπτυξη)"
+    }
+  }
+}
