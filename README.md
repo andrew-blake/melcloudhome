@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.3.1
+## What's New in v2.3.2
 
-Fixed vertical swing mode "Swing" being silently ignored on A/C units without horizontal vanes. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Added Greek (el) translations (thanks @h-ram). See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
