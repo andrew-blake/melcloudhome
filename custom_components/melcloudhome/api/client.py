@@ -325,8 +325,9 @@ class MELCloudHomeClient:
     async def get_outdoor_temperature(self, unit_id: str) -> float | None:
         """Get latest outdoor temperature for an ATA unit.
 
-        Queries trendsummary endpoint for last hour, extracts most recent
-        outdoor temperature from the OUTDOOR_TEMPERATURE dataset.
+        Queries trendsummary endpoint with Daily period. The API ignores the
+        from/to range for Daily and returns all available historical data, so
+        the most recent datapoint is always as fresh as the last time the unit ran.
 
         Args:
             unit_id: ATA unit UUID
@@ -334,14 +335,15 @@ class MELCloudHomeClient:
         Returns:
             Outdoor temperature in Celsius, or None if not available
         """
-        # Build time range: last 1 hour
+        # Build time range: last 24 hours. Daily period covers units idle for up to
+        # 24 hours; Hourly silently drops outdoor temp for units inactive > ~1 hour.
         now = datetime.now(UTC)
-        from_time = now - timedelta(hours=1)
+        from_time = now - timedelta(hours=24)
 
         # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
         params = {
             "unitId": unit_id,
-            "period": "Hourly",
+            "period": "Daily",
             "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
             "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
         }

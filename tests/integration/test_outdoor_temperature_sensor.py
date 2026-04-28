@@ -281,10 +281,12 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
             side_effect=mock_get_outdoor_temp_updated
         )
 
-        # Advance time past the polling interval
-        freezer.move_to("2026-02-07 12:31:00")
-
+        # Simulate the polling interval having elapsed. freezer.move_to does not
+        # reliably affect datetime.now() inside coordinator with real_asyncio=True,
+        # so directly clear the poll records — semantically equivalent to +31 min.
         coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        coordinator._last_outdoor_temp_poll.clear()
+
         await coordinator.async_request_refresh()
         await hass.async_block_till_done()
 
@@ -297,4 +299,72 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         )
         assert state_study.state == "1.0", (
             f"Study stuck at {state_study.state}, expected 1.0"
+        )
+
+
+async def test_idle_unit_reprobed_after_polling_interval(
+    hass: HomeAssistant,
+):
+    """Test that a unit with no outdoor sensor found is re-probed after 30 min.
+
+    Regression: if the initial probe returns None (unit idle at HA startup),
+    the integration permanently marks the sensor absent for the session with no
+    recovery path. The fix re-probes every 30 min so the sensor recovers the
+    next time the AC runs, without needing an HA restart.
+    """
+    # Unit starts with no outdoor sensor flag (default — matches real coordinator
+    # after HA restart; no pre-seeded capability)
+    living_room = create_mock_unit(
+        LIVING_ROOM_ID, "Living Room AC", has_outdoor_sensor=False
+    )
+    mock_context = create_mock_user_context([create_mock_building([living_room])])
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        # Initial probe returns None — unit was idle at startup
+        mock_client.get_outdoor_temperature = AsyncMock(return_value=None)
+
+        mock_client.ata = MagicMock()
+        mock_client.ata.set_power = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+        # Confirm initial state: no outdoor sensor data found
+        unit = coordinator.get_ata_device(LIVING_ROOM_ID)
+        assert unit is not None
+        assert unit.has_outdoor_temp_sensor is False
+        assert unit.outdoor_temperature is None
+
+        # Unit becomes active — next probe will return a value
+        mock_client.get_outdoor_temperature = AsyncMock(return_value=15.0)
+
+        # Simulate the polling interval having elapsed. freezer.move_to does not
+        # reliably affect datetime.now() inside coordinator with real_asyncio=True,
+        # so directly clear the poll records — semantically equivalent to +31 min.
+        coordinator._last_outdoor_temp_poll.clear()
+
+        await coordinator.async_request_refresh()
+        await hass.async_block_till_done()
+
+        # After re-probe the unit should now have outdoor sensor data
+        unit = coordinator.get_ata_device(LIVING_ROOM_ID)
+        assert unit.has_outdoor_temp_sensor is True, (
+            "Unit should have outdoor sensor flag set after re-probe"
+        )
+        assert unit.outdoor_temperature == 15.0, (
+            f"Expected 15.0°C after re-probe, got {unit.outdoor_temperature}"
         )

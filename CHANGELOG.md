@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.3.3] - 2026-04-28
+
+### Fixed
+
+- Outdoor temperature sensor stuck `unavailable` for mostly-idle units. The integration now uses the `Daily` report period instead of `Hourly` — the hourly window silently drops data for units inactive for more than ~1 hour. Units idle at startup are also re-probed every 30 minutes so the sensor recovers automatically when the AC next runs, without needing an HA restart. ([#110](https://github.com/andrew-blake/melcloudhome/issues/110))
+
+
 ## [2.3.2] - 2026-04-22
 
 ### Added
