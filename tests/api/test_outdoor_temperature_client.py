@@ -1,8 +1,10 @@
 """Tests for outdoor temperature API client methods."""
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
@@ -93,9 +95,10 @@ class TestParseOutdoorTemp:
         assert result is None
 
 
+@freeze_time("2026-02-03 12:30:00", real_asyncio=True)
 @pytest.mark.asyncio
 async def test_get_outdoor_temperature_calls_api_correctly(mocker):
-    """Test that get_outdoor_temperature calls API with correct parameters."""
+    """Test that get_outdoor_temperature calls API with Daily period and 24h window."""
     client = MELCloudHomeClient()
 
     # Mock _api_request to capture params
@@ -122,10 +125,20 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
 
     params = call_args[1]["params"]
     assert params["unitId"] == "test-unit-id"
-    assert params["period"] == "Hourly"
+    assert params["period"] == "Daily"
     # Verify timestamp format (7 zeros for nanoseconds)
     assert params["from"].endswith(".0000000")
     assert params["to"].endswith(".0000000")
+    # Verify 24-hour window
+    now = datetime(2026, 2, 3, 12, 30, 0, tzinfo=UTC)
+    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+        tzinfo=UTC
+    )
+    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+        tzinfo=UTC
+    )
+    assert to_dt == now
+    assert to_dt - from_dt == timedelta(hours=24)
 
     # Verify result
     assert result == 12.0

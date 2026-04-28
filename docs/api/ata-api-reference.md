@@ -554,13 +554,16 @@ Returns historical temperature data for chart display. Used by integration to fe
 
 **Query Parameters:**
 - `unitId` - Device UUID
+- `period` - Report period: `Hourly` or `Daily`
 - `from` - Start datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
 - `to` - End datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
+
+**Note:** With `period=Daily` the API ignores `from`/`to` and returns all available historical data (observed: 200+ datapoints spanning several weeks). With `period=Hourly` the API only includes data for the requested window, so idle units that haven't run recently return an empty dataset.
 
 **Example Request:**
 
 ```
-GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=2026-02-03T11:00:00.0000000&to=2026-02-03T12:00:00.0000000
+GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=Daily&from=2026-02-02T12:30:00.0000000&to=2026-02-03T12:30:00.0000000
 ```
 
 **Response:**
@@ -596,19 +599,18 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&from=202
 
 **Integration Usage:**
 
-- Polled every 30 minutes for devices with outdoor sensors
-- Extracts latest outdoor temperature value from OUTDOOR_TEMPERATURE dataset
-- Not all devices have outdoor sensors (capability auto-detected)
-- Dataset may be absent if device lacks outdoor temperature sensor
-- Real API returns ~60 datapoints per hour (one per minute)
-- Integration uses latest value (last array element)
+- Polled every 30 minutes (initial probe on startup, then periodic updates)
+- Uses `period=Daily` — returns all available historical data regardless of `from`/`to`
+- Extracts latest outdoor temperature value from OUTDOOR_TEMPERATURE dataset (last array element)
+- Not all devices have outdoor sensors (capability auto-detected at runtime)
+- Dataset absent for devices without outdoor sensor; `Hourly` period also returns empty dataset for idle units
 
 **Notes:**
 
 - Response includes chart styling metadata (colors, borders, etc.)
 - Multiple temperature datasets returned in single call
 - Used by MELCloud web UI for temperature graphs
-- Time range typically last 1 hour for current temperature
+- Integration sends a 24-hour `from`/`to` window but Daily period ignores it and returns all historical data
 
 ---
 
