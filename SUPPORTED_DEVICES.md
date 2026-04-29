@@ -41,6 +41,8 @@ Air-to-Air systems are air conditioning units (wall-mounted, ducted, or console)
 | MSZ-AY35VKGP | MAC-577 | Wall split | |
 | MSZ-AY42VKGP | MAC-577 | Wall split | |
 | MSZ-AY50VGK | MAC-587 | Wall split | Energy tracking works |
+| MSZ-HR25VFK2 | MAC-597 | Wall split | |
+| MSZ-HR35VFK | MAC-577 | Wall split | |
 | MSZ-LN25VGWRAC | MAC-587 | Wall split | Multi-split |
 | MSZ-LN35VG2B | MAC-597 | Wall split | |
 | MFZ-KT50VG | MAC-587 | Console | |
