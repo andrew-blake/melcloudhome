@@ -164,14 +164,15 @@ jobs:
           NEEDS_VALIDATE_OUTPUTS_BASE_VERSION: ${{ needs.validate.outputs.base_version }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
-        with:
-          body_path: release_notes.txt
-          draft: false
-          prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
-          generate_release_notes: false
+        run: |
+          if [ "${NEEDS_VALIDATE_OUTPUTS_PRERELEASE}" == "true" ]; then
+            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt --prerelease
+          else
+            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt
+          fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEEDS_VALIDATE_OUTPUTS_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
 
       - name: Release summary
         run: |
