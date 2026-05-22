@@ -38,6 +38,7 @@ make format                      # Format with ruff
 make lint                        # Lint with ruff
 make type-check                  # Type check with mypy
 make pre-commit                  # Run all pre-commit checks
+make zizmor                      # Security scan workflows (run before pushing workflow changes)
 
 # Testing
 make test-build                  # Build Docker test images (after dep changes)
