@@ -129,6 +129,7 @@ dev = [
     "vcrpy>=7.0.0",
     "voluptuous>=0.15.0",
     "freezegun>=1.5.5",
+    "zizmor>=1.0.0",
 ]
 reverse-engineering = [
     "mitmproxy>=12.2.2",
