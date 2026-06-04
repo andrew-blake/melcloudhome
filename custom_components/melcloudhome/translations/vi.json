@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kết nối với MELCloud Home",
+        "description": "Nhập thông tin đăng nhập MELCloud Home của bạn",
+        "data": {
+          "email": "Email",
+          "password": "Mật khẩu",
+          "debug_mode": "Kết nối với máy chủ giả lập"
+        },
+        "data_description": {
+          "debug_mode": "Chỉ dành cho phát triển, kết nối với máy chủ giả lập cục bộ thay API của MELCloud"
+        }
+      },
+      "reconfigure": {
+        "title": "Cấu hình lại",
+        "description": "Cập nhật thông tin đăng nhập cho {email}",
+        "data": {
+          "password": "Mật khẩu"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Email hoặc mật khẩu không hợp lệ",
+      "cannot_connect": "Không thể kết nối với MELCloud Home. Vui lòng kiểm tra kết nối internet và thử lại.",
+      "service_unavailable": "Dịch vụ MELCloud hiện không khả dụng. Đây là sự cố phía máy chủ, vui lòng thử lại sau.",
+      "unknown": "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại."
+    },
+    "abort": {
+      "already_configured": "Tài khoản này đã được cấu hình",
+      "reconfigure_successful": "Cập nhật thông tin đăng nhập thành công"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Phòng",
+              "flow": "Cấp",
+              "curve": "Đường cong"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Tự động",
+              "one": "Quạt 1",
+              "two": "Quạt 2",
+              "three": "Quạt 3",
+              "four": "Quạt 4",
+              "five": "Quạt 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Tự động",
+              "swing": "Quay",
+              "one": "Vị trí 1",
+              "two": "Vị trí 2",
+              "three": "Vị trí 3",
+              "four": "Vị trí 4",
+              "five": "Vị trí 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Tự động",
+              "swing": "Quay",
+              "left": "Trái",
+              "leftcentre": "Trái giữa",
+              "centre": "Giữa",
+              "rightcentre": "Phải giữa",
+              "right": "Phải"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Nhiệt độ phòng"
+      },
+      "wifi_signal": {
+        "name": "Tín hiệu WiFi"
+      },
+      "energy": {
+        "name": "Năng lượng"
+      },
+      "outdoor_temperature": {
+        "name": "Nhiệt độ ngoài trời"
+      },
+      "zone_1_temperature": {
+        "name": "Nhiệt độ vùng 1"
+      },
+      "zone_2_temperature": {
+        "name": "Nhiệt độ vùng 2"
+      },
+      "tank_temperature": {
+        "name": "Nhiệt độ bể"
+      },
+      "operation_status": {
+        "name": "Trạng thái hoạt động"
+      },
+      "flow_temperature": {
+        "name": "Nhiệt độ cấp"
+      },
+      "return_temperature": {
+        "name": "Nhiệt độ hồi"
+      },
+      "flow_temperature_zone1": {
+        "name": "Nhiệt độ cấp vùng 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Nhiệt độ hồi vùng 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Nhiệt độ cấp vùng 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Nhiệt độ hồi vùng 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Nhiệt độ cấp nồi hơi"
+      },
+      "return_temperature_boiler": {
+        "name": "Nhiệt độ hồi nồi hơi"
+      },
+      "energy_consumed": {
+        "name": "Năng lượng tiêu thụ"
+      },
+      "energy_produced": {
+        "name": "Năng lượng sản xuất"
+      },
+      "cop": {
+        "name": "Hệ số hiệu suất"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Trạng thái lỗi"
+      },
+      "connection_state": {
+        "name": "Trạng thái kết nối"
+      },
+      "forced_dhw_active": {
+        "name": "DHW bắt buộc đang hoạt động"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Làm mới ngay",
+      "description": "Làm mới dữ liệu thiết bị ngay lập tức từ máy chủ MELCloud (để kiểm tra hoặc phát triển)"
+    }
+  }
+}
