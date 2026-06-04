@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.3.3] - 2026-04-28
+## [2.3.3] - 2026-06-04
+
+### Added
+
+- Vietnamese (vi) translations (thanks @0jar)
+- Confirmed support for MSZ-HR25VFK2 and MSZ-HR35VFK indoor units (thanks @FerranMartin and @HansOtten)
 
 ### Fixed
 
