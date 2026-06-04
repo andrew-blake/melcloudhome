@@ -12,7 +12,7 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.3.3
 
-Fixed outdoor temperature sensor stuck `unavailable` for mostly-idle units. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Fixed outdoor temperature sensor stuck `unavailable` for mostly-idle units. Vietnamese translations added. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
