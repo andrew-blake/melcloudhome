@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Vietnamese (vi) translations (thanks @0jar)
+- Confirmed support for MSZ-HR25VFK2 and MSZ-HR35VFK indoor units (thanks @FerranMartin and @HansOtten)
 
 ### Fixed
 
