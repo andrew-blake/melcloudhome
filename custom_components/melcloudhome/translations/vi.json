@@ -39,7 +39,7 @@
           "preset_mode": {
             "state": {
               "room": "Phòng",
-              "flow": "Lưu lượng",
+              "flow": "Cấp",
               "curve": "Đường cong"
             }
           },
@@ -57,11 +57,11 @@
             "state": {
               "auto": "Tự động",
               "swing": "Quay",
-              "one": "Quay mức 1",
-              "two": "Quay mức 2",
-              "three": "Quay mức 3",
-              "four": "Quay mức 4",
-              "five": "Quay mức 5"
+              "one": "Vị trí 1",
+              "two": "Vị trí 2",
+              "three": "Vị trí 3",
+              "four": "Vị trí 4",
+              "five": "Vị trí 5"
             }
           },
           "swing_horizontal_mode": {
@@ -104,25 +104,25 @@
         "name": "Trạng thái hoạt động"
       },
       "flow_temperature": {
-        "name": "Nhiệt độ lưu lượng"
+        "name": "Nhiệt độ cấp"
       },
       "return_temperature": {
         "name": "Nhiệt độ hồi"
       },
       "flow_temperature_zone1": {
-        "name": "Nhiệt độ lưu lượng vùng 1"
+        "name": "Nhiệt độ cấp vùng 1"
       },
       "return_temperature_zone1": {
         "name": "Nhiệt độ hồi vùng 1"
       },
       "flow_temperature_zone2": {
-        "name": "Nhiệt độ lưu lượng vùng 2"
+        "name": "Nhiệt độ cấp vùng 2"
       },
       "return_temperature_zone2": {
         "name": "Nhiệt độ hồi vùng 2"
       },
       "flow_temperature_boiler": {
-        "name": "Nhiệt độ lưu lượng nồi hơi"
+        "name": "Nhiệt độ cấp nồi hơi"
       },
       "return_temperature_boiler": {
         "name": "Nhiệt độ hồi nồi hơi"
@@ -145,7 +145,7 @@
         "name": "Trạng thái kết nối"
       },
       "forced_dhw_active": {
-        "name": "DHW cưỡng bức đang hoạt động"
+        "name": "DHW bắt buộc đang hoạt động"
       }
     }
   },
