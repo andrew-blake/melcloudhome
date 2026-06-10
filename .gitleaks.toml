@@ -1,0 +1,9 @@
+[extend]
+  useDefault = true
+
+[allowlist]
+  description = "Known false positives in test fixtures and dev config"
+  paths = [
+    "tests/api/cassettes",
+    "dev-config-template"
+  ]
