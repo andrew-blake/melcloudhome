@@ -81,6 +81,7 @@ When using this integration:
 - All API communication uses HTTPS
 - Credentials are stored in Home Assistant's config entry storage on the local filesystem — securing the host machine is important
 - No user data is collected or transmitted beyond what's required for MELCloud API communication
+- Diagnostics downloads from the integration are automatically redacted — your credentials and account email are never included
 
 ## Questions?
 

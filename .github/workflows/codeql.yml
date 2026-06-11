@@ -1,4 +1,4 @@
-name: GitHub Actions Security Analysis
+name: CodeQL
 
 on:
   push:
@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 0 * * 1"  # Weekly on Monday
-  workflow_dispatch:
+    - cron: "30 7 * * 1"
 
 permissions: {}
 
@@ -16,18 +15,18 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  zizmor:
-    name: Run zizmor
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write  # upload SARIF to GitHub Security tab
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
-
-      - name: Run zizmor
-        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
+      - uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
-          gh-token: ${{ secrets.GITHUB_TOKEN }}
+          languages: python
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2

@@ -117,8 +117,8 @@ test-ha:  ## Deprecated - use 'make test' instead
 pre-commit:  ## Run all pre-commit hooks
 	uv run pre-commit run --all-files
 
-zizmor:  ## Run zizmor security scan on GitHub Actions workflows
-	uv run zizmor .
+zizmor:  ## Run zizmor security scan on GitHub Actions workflows (auditor persona, requires gh auth)
+	GH_TOKEN=$$(gh auth token) uv run zizmor --persona auditor .
 
 clean:  ## Clean up cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

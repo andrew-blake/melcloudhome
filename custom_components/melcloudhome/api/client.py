@@ -243,7 +243,7 @@ class MELCloudHomeClient:
             ApiError: If API request fails
         """
         data = await self._api_request("GET", API_USER_CONTEXT)
-        assert data is not None, "UserContext should never return None"
+        assert data is not None, "UserContext should never return None"  # noqa: S101 # assert guards internal invariant, not a security boundary
         self._user_context = UserContext.from_dict(data)
         return self._user_context
 

@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a problem with the MELCloud Home integration
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Please use the diagnostics download below instead of
+        pasting raw logs** — raw debug logs can contain your email address and tokens.
+        Diagnostics are automatically redacted.
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      description: Settings → Devices & Services → MELCloud Home → version shown below the integration name
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: Settings → About → Core
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How do you trigger the problem? Step-by-step if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Settings → Devices & Services → MELCloud Home → three-dot menu →
+        "Download diagnostics". Drag the file here. This is automatically redacted.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log snippet (optional)
+      description: |
+        If you must paste logs, check them first — remove anything that looks like
+        an email address or a long random token string.
+      render: text

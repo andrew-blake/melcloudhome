@@ -114,6 +114,13 @@ make test                        # All tests with coverage
 
 - NEVER work around pre-commit hooks - they are important code quality checks
 
+## Security Practices
+
+- Run `/security-review` on substantive PRs (new code paths, auth/API changes,
+  workflow changes) before merge.
+- Never commit cassettes/captures without confirming VCR scrubbing covered them
+  (gitleaks pre-commit hook is a backstop, not the primary control).
+
 ---
 
 ## About This File

@@ -245,8 +245,8 @@ async def authenticated_client(request_pacer) -> AsyncIterator[MELCloudHomeClien
     # Cleanup
     try:
         await client.logout()
-    except Exception:
-        pass  # Best effort cleanup
+    except Exception:  # noqa: S110 # best-effort logout in test fixture teardown
+        pass
     finally:
         await client.close()
 

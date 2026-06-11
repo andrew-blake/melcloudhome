@@ -834,7 +834,7 @@ reverse-engineering = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = ">=3.13.2" },
+    { name = "aiohttp", specifier = ">=3.13.2,<3.15" },
     { name = "aiohttp-cors", specifier = ">=0.8.1" },
     { name = "playwright", specifier = ">=1.56.0" },
 ]

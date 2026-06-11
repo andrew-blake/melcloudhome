@@ -7,6 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
+import json
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -257,3 +258,41 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         assert units[1]["set_temperature"] == 19.0
         assert units[1]["room_temperature"] == 21.0
         assert units[1]["has_energy_consumed_meter"] is False
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
+    """Regression test: access_token, refresh_token, token_expiry must not appear in diagnostics output."""
+    mock_context = create_mock_user_context()
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={
+                CONF_EMAIL: "test@example.com",
+                CONF_PASSWORD: "secret_password",
+                "access_token": "mock-access-token-abc123",
+                "refresh_token": "mock-refresh-token-xyz789",
+                "token_expiry": 9999999999.0,
+            },
+            unique_id="test@example.com",
+            title="MELCloud Home",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+        blob = json.dumps(diagnostics)
+
+        # Token values must not survive redaction
+        assert "mock-access-token-abc123" not in blob
+        assert "mock-refresh-token-xyz789" not in blob
+        # token_expiry is a float — check its distinctive value is gone
+        assert "9999999999.0" not in blob

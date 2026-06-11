@@ -1,0 +1,13 @@
+[extend]
+  useDefault = true
+
+# tests/api/cassettes: XSRF-TOKEN UUIDs in VCR cassette response headers —
+# ASP.NET antiforgery cookies, not secrets. 210 hits per full-history scan.
+# dev-config-template: HA local dev-env JWT signing keys and refresh tokens
+# committed intentionally (dev/dev credentials, localhost-only Docker scope). See F-03.
+[allowlist]
+  description = "Known false positives in test fixtures and dev config"
+  paths = [
+    '''(?i)^tests/api/cassettes/''',
+    '''(?i)^dev-config-template/''',
+  ]
