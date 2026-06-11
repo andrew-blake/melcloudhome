@@ -20,9 +20,9 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - name: Export lockfile
-        run: uv export --format requirements-txt --no-hashes --no-emit-project --all-groups > "$GITHUB_WORKSPACE/req.txt"
+        run: uv export --format requirements-txt --no-hashes --no-emit-project --all-groups > "$GITHUB_WORKSPACE/requirements.txt"
       - uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
         with:
           scan-args: |-
             -r
-            --lockfile=/github/workspace/req.txt
+            --lockfile=/github/workspace/requirements.txt
