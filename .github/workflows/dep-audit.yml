@@ -9,8 +9,13 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   osv-scan:
+    name: OSV Scan
     runs-on: ubuntu-latest
     permissions:
       contents: read

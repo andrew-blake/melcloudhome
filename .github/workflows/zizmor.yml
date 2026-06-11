@@ -11,12 +11,16 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   zizmor:
     name: Run zizmor
     runs-on: ubuntu-latest
     permissions:
-      security-events: write
+      security-events: write  # upload SARIF to GitHub Security tab
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
