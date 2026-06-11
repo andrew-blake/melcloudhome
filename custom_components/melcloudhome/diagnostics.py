@@ -34,15 +34,17 @@ async def async_get_config_entry_diagnostics(
     entity_data = {}
     for entity in entities:
         if state := hass.states.get(entity.entity_id):
+            attrs = dict(state.attributes)
+            attrs.pop("friendly_name", None)
             entity_data[entity.entity_id] = {
                 "state": state.state,
-                "attributes": dict(state.attributes),
+                "attributes": attrs,
             }
 
     # Build diagnostic data
     diagnostics_data = {
         "entry": {
-            "title": entry.title,
+            "title": "***REDACTED***",
             "data": async_redact_data(entry.data, TO_REDACT),
             "version": entry.version,
         },
