@@ -8,6 +8,6 @@
 [allowlist]
   description = "Known false positives in test fixtures and dev config"
   paths = [
-    "tests/api/cassettes",
-    "dev-config-template",
+    '''(?i)^tests/api/cassettes/''',
+    '''(?i)^dev-config-template/''',
   ]
