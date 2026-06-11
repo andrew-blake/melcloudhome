@@ -61,7 +61,7 @@ async def async_get_config_entry_diagnostics(
             "buildings": [
                 {
                     "id": building.id,
-                    "name": building.name,
+                    "name": f"Building-{i + 1}",
                     "ata_unit_count": len(building.air_to_air_units),
                     "atw_unit_count": len(building.air_to_water_units),
                     "ata_units": [
@@ -71,7 +71,7 @@ async def async_get_config_entry_diagnostics(
                         serialize_atw_unit(unit) for unit in building.air_to_water_units
                     ],
                 }
-                for building in coordinator.data.buildings
+                for i, building in enumerate(coordinator.data.buildings)
             ],
         }
 
