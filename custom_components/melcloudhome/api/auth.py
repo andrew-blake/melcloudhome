@@ -30,6 +30,17 @@ from .exceptions import AuthenticationError, ServiceUnavailableError
 _LOGGER = logging.getLogger(__name__)
 
 
+def _mask_email(email: str) -> str:
+    if "@" not in email:
+        return "***"
+    local, domain = email.split("@", 1)
+    return f"{local[:1]}***@{domain[:1]}***"
+
+
+def _redact_url(url: Any) -> str:
+    return re.sub(r"([?&])(code|state)=[^&]*", r"\1\2=***REDACTED***", str(url))
+
+
 class MELCloudHomeAuth:
     """Handle MELCloud Home authentication via OAuth 2.0 PKCE."""
 
@@ -146,7 +157,7 @@ class MELCloudHomeAuth:
             trace_config_ctx: Any,
             params: TraceRequestStartParams,
         ) -> None:
-            _LOGGER.debug("→ Request: %s %s", params.method, params.url)
+            _LOGGER.debug("→ Request: %s %s", params.method, _redact_url(params.url))
             if params.headers:
                 safe_headers = {
                     k: (
@@ -166,7 +177,7 @@ class MELCloudHomeAuth:
             _LOGGER.debug(
                 "← Response: %s %s [%d]",
                 params.method,
-                params.url,
+                _redact_url(params.url),
                 params.response.status,
             )
 
@@ -226,7 +237,9 @@ class MELCloudHomeAuth:
             AuthenticationError: If authentication fails
             ServiceUnavailableError: If server returns 5xx
         """
-        _LOGGER.debug("Starting authentication flow for user: %s", username)
+        _LOGGER.debug(
+            "Starting authentication flow for user: %s", _mask_email(username)
+        )
 
         if self._debug_mode:
             return await self._login_mock(username, password)
@@ -411,7 +424,7 @@ class MELCloudHomeAuth:
                     session, callback_match.group(1)
                 )
 
-            _LOGGER.debug("Got auth code: %s...", auth_code[:20])
+            _LOGGER.debug("Got auth code")
 
             # Step 6: Exchange code for tokens
             return await self._exchange_code_for_tokens(

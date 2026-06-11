@@ -131,6 +131,18 @@ def scrub_body_string(body_string: str | bytes) -> str | bytes:
         '"givenDisplayName":"***REDACTED_DEVICE***"',
         body_string,
     )
+    # Scrub hardware identifiers (MAC addresses, EUI-64 interface IDs)
+    body_string = re.sub(
+        r'"connectedInterfaceIdentifier":"[^"]+?"',
+        '"connectedInterfaceIdentifier":"***REDACTED_MAC***"',
+        body_string,
+    )
+    body_string = re.sub(
+        r'"macAddress":"[^"]+?"',
+        '"macAddress":"***REDACTED_MAC***"',
+        body_string,
+    )
+
     # Scrub username field from form data (login request)
     body_string = re.sub(
         r"username=[^&]+", "username=***REDACTED_EMAIL***", body_string

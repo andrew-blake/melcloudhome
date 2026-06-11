@@ -18,7 +18,7 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
     """
     return {
         "id": unit.id,
-        "name": unit.name,
+        "name": "***REDACTED***",
         "power": unit.power,
         "in_standby_mode": unit.in_standby_mode,
         "operation_status": unit.operation_status,

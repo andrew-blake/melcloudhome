@@ -118,7 +118,7 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
         assert "user_context" in diagnostics
 
         # Verify entry data
-        assert diagnostics["entry"]["title"] == "MELCloud Home"
+        assert diagnostics["entry"]["title"] == "***REDACTED***"
         assert diagnostics["entry"]["version"] == 2
 
         # Verify credentials are redacted
@@ -233,7 +233,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         building_data = user_context["buildings"][0]
         assert building_data["id"] == "building-1"
-        assert building_data["name"] == "Home"
+        assert building_data["name"] == "Building-1"
         assert building_data["ata_unit_count"] == 2
         assert building_data["atw_unit_count"] == 0
 
@@ -243,7 +243,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         # Check unit 1
         assert units[0]["id"] == "unit-1"
-        assert units[0]["name"] == "Living Room"
+        assert units[0]["name"] == "***REDACTED***"
         assert units[0]["power"] is True
         assert units[0]["operation_mode"] == "Heat"
         assert units[0]["set_temperature"] == 22.0
@@ -252,7 +252,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         # Check unit 2
         assert units[1]["id"] == "unit-2"
-        assert units[1]["name"] == "Bedroom"
+        assert units[1]["name"] == "***REDACTED***"
         assert units[1]["power"] is False
         assert units[1]["operation_mode"] == "Cool"
         assert units[1]["set_temperature"] == 19.0

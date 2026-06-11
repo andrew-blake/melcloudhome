@@ -18,7 +18,7 @@ def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
     """
     return {
         "id": unit.id,
-        "name": unit.name,
+        "name": "***REDACTED***",
         "power": unit.power,
         "operation_mode": unit.operation_mode,
         "set_temperature": unit.set_temperature,
