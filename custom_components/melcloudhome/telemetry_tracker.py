@@ -97,7 +97,7 @@ class TelemetryTracker:
 
                         # Inter-device jitter (except last device)
                         if i < len(building.air_to_water_units) - 1:
-                            jitter = random.uniform(  # noqa: S311 # non-security timing jitter; OAuth/PKCE uses secrets module
+                            jitter = random.uniform(
                                 TELEMETRY_INTER_DEVICE_JITTER_MIN,
                                 TELEMETRY_INTER_DEVICE_JITTER_MAX,
                             )
@@ -140,7 +140,7 @@ class TelemetryTracker:
 
                 # Jitter between measures (except last one)
                 if i < len(measures) - 1:
-                    jitter = random.uniform(  # noqa: S311 # non-security timing jitter; OAuth/PKCE uses secrets module
+                    jitter = random.uniform(
                         TELEMETRY_INTER_MEASURE_JITTER_MIN,
                         TELEMETRY_INTER_MEASURE_JITTER_MAX,
                     )
