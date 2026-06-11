@@ -25,4 +25,5 @@ jobs:
         with:
           scan-args: |-
             -r
+            --config=/github/workspace/osv-scanner.toml
             --lockfile=/github/workspace/requirements.txt
