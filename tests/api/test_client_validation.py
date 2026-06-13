@@ -167,6 +167,50 @@ class TestModeValidation:
             await client.ata.set_mode("unit-id", "Fan")
 
 
+class TestPowerAndModeValidation:
+    """Test set_power_and_mode parameter validation."""
+
+    @pytest.mark.asyncio
+    async def test_invalid_mode_raises(self) -> None:
+        """Invalid mode should raise ValueError before hitting the API."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(ValueError, match=r"Invalid mode.*Must be one of"):
+            await client.ata.set_power_and_mode("unit-id", True, "InvalidMode")
+
+    @pytest.mark.asyncio
+    async def test_lowercase_mode_raises(self) -> None:
+        """Lowercase mode should raise ValueError (case-sensitive)."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(ValueError, match="Invalid mode"):
+            await client.ata.set_power_and_mode("unit-id", True, "heat")
+
+    @pytest.mark.asyncio
+    async def test_valid_mode_heat_passes_validation(self) -> None:
+        """Valid mode 'Heat' should pass validation (fail on auth, not ValueError)."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_power_and_mode("unit-id", True, "Heat")
+
+    @pytest.mark.asyncio
+    async def test_valid_mode_cool_passes_validation(self) -> None:
+        """Valid mode 'Cool' should pass validation."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_power_and_mode("unit-id", True, "Cool")
+
+    @pytest.mark.asyncio
+    async def test_power_off_with_valid_mode(self) -> None:
+        """Power=False with valid mode should pass validation."""
+        client = MELCloudHomeClient()
+
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await client.ata.set_power_and_mode("unit-id", False, "Heat")
+
+
 class TestFanSpeedValidation:
     """Test fan speed parameter validation."""
 
