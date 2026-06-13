@@ -254,7 +254,13 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     @with_debounced_refresh()
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
-        await self.coordinator.async_set_power(self._unit_id, True)
+        device = self.get_device()
+        if device and device.operation_mode:
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, device.operation_mode
+            )
+        else:
+            await self.coordinator.async_set_power(self._unit_id, True)
 
     @with_debounced_refresh()
     async def async_turn_off(self) -> None:

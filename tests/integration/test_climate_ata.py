@@ -219,6 +219,55 @@ async def test_set_hvac_mode_noop_when_already_matches(
 
 
 @pytest.mark.asyncio
+async def test_turn_on_uses_atomic_power_and_mode(
+    hass: HomeAssistant,
+) -> None:
+    """Test that turn_on sends power+mode atomically, not power alone.
+
+    Sending power=True without operationMode triggers the multi-zone outdoor
+    unit fault. async_turn_on must use set_power_and_mode with the current mode.
+    """
+    mock_unit = create_mock_unit(power=False, operation_mode="Heat")
+    mock_context = create_mock_user_context([create_mock_building(units=[mock_unit])])
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_client.ata = MagicMock()
+        mock_client.ata.set_power = AsyncMock()
+        mock_client.ata.set_mode = AsyncMock()
+        mock_client.ata.set_power_and_mode = AsyncMock()
+        mock_client.ata.set_temperature = AsyncMock()
+        mock_client.ata.set_fan_speed = AsyncMock()
+        mock_client.ata.set_vane_vertical = AsyncMock()
+        mock_client.ata.set_vane_horizontal = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        await hass.services.async_call(
+            "climate",
+            "turn_on",
+            {"entity_id": "climate.melcloudhome_0efc_9abc_climate"},
+            blocking=True,
+        )
+
+        # Must use set_power_and_mode, not bare set_power
+        mock_client.ata.set_power_and_mode.assert_called_once()
+        mock_client.ata.set_power.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_set_hvac_mode_off_turns_device_off(
     hass: HomeAssistant, setup_integration: MockConfigEntry
 ) -> None:
