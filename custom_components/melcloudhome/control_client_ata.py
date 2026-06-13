@@ -48,6 +48,33 @@ class ATAControlClient(ControlClientBase):
         self._get_device = get_device
         self._async_request_refresh = async_request_refresh
 
+    async def async_set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str
+    ) -> None:
+        """Set power state and operation mode atomically in a single API call.
+
+        Use this instead of separate async_set_power + async_set_mode when turning
+        a unit on to a specific mode, to avoid the operationMode=null window that
+        can trigger a mode-conflict fault on multi-zone outdoor units.
+        """
+        device = self._get_device(unit_id)
+        if device and device.power == power and device.operation_mode == mode:
+            _LOGGER.debug(
+                "Power already %s and mode already %s for %s, skipping API call",
+                power,
+                mode,
+                unit_id[-8:],
+            )
+            return
+
+        _LOGGER.info(
+            "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
+        )
+        await self._execute_with_retry(
+            lambda: self._client.ata.set_power_and_mode(unit_id, power, mode),
+            f"set_power_and_mode({unit_id}, {power}, {mode})",
+        )
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
 

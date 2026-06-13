@@ -203,13 +203,12 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
         if hvac_mode == HVACMode.OFF:
-            # Turn off the device
             await self.coordinator.async_set_power(self._unit_id, False)
         else:
-            # Turn on and set mode
-            await self.coordinator.async_set_power(self._unit_id, True)
             melcloud_mode = HA_HVAC_MODE_TO_ATA[hvac_mode]
-            await self.coordinator.async_set_mode(self._unit_id, melcloud_mode)
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, melcloud_mode
+            )
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -255,7 +254,13 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     @with_debounced_refresh()
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
-        await self.coordinator.async_set_power(self._unit_id, True)
+        device = self.get_device()
+        if device and device.operation_mode:
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, device.operation_mode
+            )
+        else:
+            await self.coordinator.async_set_power(self._unit_id, True)
 
     @with_debounced_refresh()
     async def async_turn_off(self) -> None:

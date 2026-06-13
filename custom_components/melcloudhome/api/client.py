@@ -184,6 +184,8 @@ class MELCloudHomeClient:
                 url = f"{self._base_url}{endpoint}"
 
                 _LOGGER.debug("API Request: %s %s", method, endpoint)
+                if kwargs.get("json") is not None:
+                    _LOGGER.debug("API Request payload: %s", kwargs["json"])
 
                 async with session.request(
                     method, url, headers=headers, **kwargs
