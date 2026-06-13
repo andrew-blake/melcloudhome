@@ -552,6 +552,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     # Air-to-Air (A2A) Control Methods - Delegate to ATAControlClient
     # =================================================================
 
+    async def async_set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str
+    ) -> None:
+        """Set power state and operation mode atomically."""
+        return await self.control_client_ata.async_set_power_and_mode(
+            unit_id, power, mode
+        )
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery."""
         return await self.control_client_ata.async_set_power(unit_id, power)
