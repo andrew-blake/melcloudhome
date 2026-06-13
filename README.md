@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.3.3
+## What's New in v2.3.4
 
-Fixed outdoor temperature sensor stuck `unavailable` for mostly-idle units. Vietnamese translations added. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Fixes intermittent flashing/faults on multi-zone systems when turning on via HA, and a security fix preventing sensitive data appearing in diagnostic reports and log files. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 

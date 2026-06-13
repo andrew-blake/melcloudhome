@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.3.4] - 2026-06-13
+
+### Fixed
+
+- Indoor units on multi-zone systems occasionally flash or fault when turned on via HA (#132)
+
+### Security
+
+- Sensitive data (email addresses, IP addresses) could appear in diagnostic reports and log files (#130)
+
+
 ## [2.3.3] - 2026-06-04
 
 ### Added
