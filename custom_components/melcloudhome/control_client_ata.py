@@ -57,6 +57,16 @@ class ATAControlClient(ControlClientBase):
         a unit on to a specific mode, to avoid the operationMode=null window that
         can trigger a mode-conflict fault on multi-zone outdoor units.
         """
+        device = self._get_device(unit_id)
+        if device and device.power == power and device.operation_mode == mode:
+            _LOGGER.debug(
+                "Power already %s and mode already %s for %s, skipping API call",
+                power,
+                mode,
+                unit_id[-8:],
+            )
+            return
+
         _LOGGER.info(
             "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
         )
