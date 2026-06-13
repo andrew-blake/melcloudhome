@@ -59,6 +59,12 @@ class ATAControlClient:
         payload.update(updates)
         return payload
 
+    def _validate_mode(self, mode: str) -> None:
+        """Raise ValueError if mode is not a valid OPERATION_MODES entry."""
+        valid_modes = set(OPERATION_MODES)
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+
     async def set_power(self, unit_id: str, power: bool) -> None:
         """
         Turn device on or off.
@@ -97,9 +103,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If mode is invalid
         """
-        valid_modes = set(OPERATION_MODES)
-        if mode not in valid_modes:
-            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+        self._validate_mode(mode)
 
         payload = self._build_ata_control_payload(power=power, operationMode=mode)
 
@@ -152,9 +156,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If mode is invalid
         """
-        valid_modes = set(OPERATION_MODES)
-        if mode not in valid_modes:
-            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+        self._validate_mode(mode)
 
         payload = self._build_ata_control_payload(operationMode=mode)
 
