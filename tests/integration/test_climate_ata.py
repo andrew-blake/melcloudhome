@@ -103,6 +103,7 @@ async def setup_integration(hass: HomeAssistant) -> MockConfigEntry:
         mock_client.ata = MagicMock()
         mock_client.ata.set_power = AsyncMock()
         mock_client.ata.set_mode = AsyncMock()
+        mock_client.ata.set_power_and_mode = AsyncMock()
         mock_client.ata.set_temperature = AsyncMock()
         mock_client.ata.set_fan_speed = AsyncMock()
         mock_client.ata.set_vane_vertical = AsyncMock()
