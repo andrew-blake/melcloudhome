@@ -17,7 +17,7 @@ Releases follow GitHub Flow with branch protection. All changes must go through 
 # 2. Create release branch from main
 git checkout main
 git pull
-git checkout -b release/v1.3.4
+git checkout -b chore/release-v1.3.4
 
 # 3. Bump version (updates manifest.json and adds CHANGELOG template)
 make version-patch   # 1.3.3 → 1.3.4 (bug fixes, security)
@@ -38,7 +38,7 @@ make version-major   # 1.4.0 → 2.0.0 (breaking changes)
 # 6. Commit the version bump
 git add CHANGELOG.md README.md custom_components/melcloudhome/manifest.json
 git commit -m "chore: prepare v1.3.4 release"
-git push -u origin release/v1.3.4
+git push -u origin chore/release-v1.3.4
 
 # 7. Create and merge release PR
 gh pr create --title "Release v1.3.4" --body "Prepare v1.3.4 release"
@@ -148,7 +148,7 @@ The release workflow strips the suffix from the tag (`sed 's/-.*//'`) to get `BA
 ```bash
 # 1. Create release branch from main
 git checkout main && git pull
-git checkout -b release/v2.3.1-beta.1
+git checkout -b chore/release-v2.3.1-beta.1
 
 # 2. Bump manifest.json to base version (no suffix)
 make version-patch   # or version-minor / version-major
@@ -163,7 +163,7 @@ make version-patch   # or version-minor / version-major
 # 5. Commit, push, open PR
 git add custom_components/melcloudhome/manifest.json CHANGELOG.md README.md
 git commit -m "chore: prepare v2.3.1-beta.1 release"
-git push -u origin release/v2.3.1-beta.1
+git push -u origin chore/release-v2.3.1-beta.1
 gh pr create --title "Release v2.3.1-beta.1" --body "Beta release for community testing"
 gh pr merge --squash
 
@@ -195,7 +195,7 @@ Once the beta has shipped long enough to feel safe (typically 3-7 days with acti
 ```bash
 # 1. Create a graduation branch
 git checkout main && git pull
-git checkout -b release/v2.3.1-stable
+git checkout -b chore/release-v2.3.1
 
 # 2. Update CHANGELOG.md
 #    - Change the date from the beta-cut date to today's date
@@ -211,7 +211,7 @@ git checkout -b release/v2.3.1-stable
 # 4. Commit, push, open PR
 git add CHANGELOG.md README.md
 git commit -m "chore: update CHANGELOG and README for v2.3.1 stable release"
-git push -u origin release/v2.3.1-stable
+git push -u origin chore/release-v2.3.1
 gh pr create --title "Release v2.3.1" --body "Graduate beta to stable"
 gh pr merge --squash
 
