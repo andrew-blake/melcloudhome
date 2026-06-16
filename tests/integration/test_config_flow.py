@@ -16,7 +16,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.exceptions import AuthenticationError
+from custom_components.melcloudhome.api.exceptions import (
+    AuthenticationError,
+    ServiceUnavailableError,
+)
 from custom_components.melcloudhome.const import CONF_DEBUG_MODE, DOMAIN
 
 
@@ -87,6 +90,34 @@ async def test_reconfigure_flow_invalid_auth(
     assert result["errors"] == {"base": "invalid_auth"}
     # Ensure password wasn't updated
     assert entry.data[CONF_PASSWORD] == "old_password"
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_flow_service_unavailable(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test reconfigure flow shows service unavailable on 5xx server error."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = ServiceUnavailableError(503)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "new_password"},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "service_unavailable"}
 
 
 @pytest.mark.asyncio
@@ -212,6 +243,27 @@ async def test_user_flow_duplicate_account(
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+@pytest.mark.asyncio
+async def test_user_flow_service_unavailable(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test user flow shows service unavailable on 5xx server error."""
+    mock_melcloud_client.login.side_effect = ServiceUnavailableError(503)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "user"},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password123"},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "service_unavailable"}
 
 
 @pytest.mark.asyncio
@@ -361,6 +413,39 @@ async def test_reauth_flow_invalid_auth(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_auth"}
+
+
+@pytest.mark.asyncio
+async def test_reauth_flow_service_unavailable(
+    hass: HomeAssistant,
+    mock_melcloud_client: MagicMock,
+) -> None:
+    """Test reauth flow shows service unavailable on 5xx server error."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "old_password"},
+        unique_id="test@example.com",
+    )
+    entry.add_to_hass(hass)
+
+    mock_melcloud_client.login.side_effect = ServiceUnavailableError(503)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": SOURCE_REAUTH,
+            "entry_id": entry.entry_id,
+            "unique_id": entry.unique_id,
+        },
+        data=entry.data,
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_PASSWORD: "new_password"},
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "service_unavailable"}
 
 
 @pytest.mark.asyncio
@@ -584,3 +669,28 @@ async def test_reconfigure_flow_closes_session_on_connection_error(
 
     # Verify close() was called even though connection failed
     mock_melcloud_client.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_config_entry_migration_v1_to_v2(hass: HomeAssistant) -> None:
+    """Test v1 config entries get token fields added."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "password",
+            CONF_DEBUG_MODE: False,
+        },
+        unique_id="test@example.com",
+        version=1,
+    )
+    entry.add_to_hass(hass)
+
+    from custom_components.melcloudhome import async_migrate_entry
+
+    result = await async_migrate_entry(hass, entry)
+    assert result is True
+    assert entry.version == 2
+    assert entry.data.get("access_token") is None
+    assert entry.data.get("refresh_token") is None
+    assert entry.data.get("token_expiry") == 0.0

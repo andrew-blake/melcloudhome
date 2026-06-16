@@ -1,17 +1,22 @@
 """Tests for MELCloud Home authentication.
 
-These tests verify the authentication flow, session management, and error handling.
-Uses VCR to record/replay OAuth interactions with AWS Cognito.
+Tests the OAuth 2.0 PKCE authentication flow, token management,
+and session handling. All tests use mocked HTTP (not VCR).
 """
 
 import contextlib
+import time
 from collections.abc import AsyncIterator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 
 from custom_components.melcloudhome.api.auth import MELCloudHomeAuth
-from custom_components.melcloudhome.api.exceptions import AuthenticationError
+from custom_components.melcloudhome.api.exceptions import (
+    AuthenticationError,
+    ServiceUnavailableError,
+)
 
 
 @pytest_asyncio.fixture
@@ -19,9 +24,113 @@ async def auth(request_pacer) -> AsyncIterator[MELCloudHomeAuth]:
     """Provide a fresh (unauthenticated) auth instance."""
     auth_instance = MELCloudHomeAuth(request_pacer=request_pacer)
     yield auth_instance
-    # Cleanup
     with contextlib.suppress(Exception):
         await auth_instance.close()
+
+
+class TestOAuthPKCE:
+    """Test OAuth PKCE code generation."""
+
+    def test_pkce_verifier_length(self) -> None:
+        """PKCE verifier should be a base64url string of sufficient length."""
+        verifier, _challenge = MELCloudHomeAuth._generate_pkce()
+        assert 43 <= len(verifier) <= 128
+        assert all(
+            c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+            for c in verifier
+        )
+
+    def test_pkce_challenge_matches_verifier(self) -> None:
+        """PKCE challenge should be S256 hash of verifier."""
+        import base64
+        import hashlib
+
+        verifier, challenge = MELCloudHomeAuth._generate_pkce()
+        expected = (
+            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+            .rstrip(b"=")
+            .decode()
+        )
+        assert challenge == expected
+
+    def test_pkce_generates_unique_values(self) -> None:
+        """Each call should generate unique verifier/challenge pairs."""
+        v1, c1 = MELCloudHomeAuth._generate_pkce()
+        v2, c2 = MELCloudHomeAuth._generate_pkce()
+        assert v1 != v2
+        assert c1 != c2
+
+
+class TestTokenManagement:
+    """Test token expiry and storage."""
+
+    @pytest.mark.asyncio
+    async def test_is_token_expired_when_no_token(self, request_pacer) -> None:
+        """No token means expired."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            assert auth.is_token_expired is True
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_is_token_expired_with_valid_token(self, request_pacer) -> None:
+        """Valid token with future expiry should not be expired."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            auth.restore_tokens("fake-token", "fake-refresh", time.time() + 3600)
+            assert auth.is_token_expired is False
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_is_token_expired_with_buffer(self, request_pacer) -> None:
+        """Token expiring within 60s buffer should be considered expired."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            auth.restore_tokens("fake-token", "fake-refresh", time.time() + 30)
+            assert auth.is_token_expired is True
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_restore_and_snapshot_roundtrip(self, request_pacer) -> None:
+        """Restore/snapshot should roundtrip correctly."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            expiry = time.time() + 3600
+            auth.restore_tokens("access-123", "refresh-456", expiry)
+            snapshot = auth.get_token_snapshot()
+            assert snapshot == {
+                "access_token": "access-123",
+                "refresh_token": "refresh-456",
+                "token_expiry": expiry,
+            }
+            assert auth.is_authenticated is True
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_access_token_property(self, request_pacer) -> None:
+        """access_token property should return stored token."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            assert auth.access_token is None
+            auth.restore_tokens("my-token", "my-refresh", time.time() + 3600)
+            assert auth.access_token == "my-token"
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_refresh_token_property(self, request_pacer) -> None:
+        """refresh_token property should return stored token."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            assert auth.refresh_token is None
+            auth.restore_tokens("my-token", "my-refresh", time.time() + 3600)
+            assert auth.refresh_token == "my-refresh"
+        finally:
+            await auth.close()
 
 
 class TestAuthenticationState:
@@ -34,156 +143,243 @@ class TestAuthenticationState:
         """New auth instance should not be authenticated."""
         assert not auth.is_authenticated
 
-    @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_authenticated_after_login(
-        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
-    ) -> None:
-        """Auth instance should be authenticated after successful login."""
-        username, password = credentials
-        await auth.login(username, password)
-        assert auth.is_authenticated
-
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_not_authenticated_after_logout(
-        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
-    ) -> None:
-        """Auth instance should not be authenticated after logout."""
-        username, password = credentials
-        await auth.login(username, password)
-        assert auth.is_authenticated
-
-        await auth.logout()
-        assert not auth.is_authenticated
+    async def test_is_authenticated_requires_valid_token(self, request_pacer) -> None:
+        """is_authenticated should be False with expired tokens."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            # Set authenticated but with expired token
+            auth._authenticated = True
+            auth._access_token = "expired"
+            auth._token_expiry = time.time() - 100
+            assert auth.is_authenticated is False
+        finally:
+            await auth.close()
 
 
-class TestLoginSuccess:
-    """Test successful login scenarios."""
-
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_login_with_valid_credentials(
-        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
-    ) -> None:
-        """Login should succeed with valid credentials."""
-        username, password = credentials
-        result = await auth.login(username, password)
-        assert result is True
-        assert auth.is_authenticated
-
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_login_returns_true(
-        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
-    ) -> None:
-        """Login should return True on success."""
-        username, password = credentials
-        result = await auth.login(username, password)
-        assert result is True
-
-
-class TestLoginFailure:
-    """Test login failure scenarios.
-
-    Note: These tests are skipped by default as they require live API
-    calls with invalid credentials. VCR cassettes cannot properly
-    capture auth failures without triggering rate limiting.
-    """
-
-    @pytest.mark.skip(reason="Requires live bad-credential testing")
-    @pytest.mark.asyncio
-    async def test_login_with_invalid_credentials(self, auth: MELCloudHomeAuth) -> None:
-        """Login should fail with invalid credentials."""
-        # Use obviously wrong credentials
-        with pytest.raises(
-            AuthenticationError,
-            match=r"Authentication failed|Invalid username or password",
-        ):
-            await auth.login("wrong@example.com", "wrongpassword")
-
-    @pytest.mark.skip(reason="Requires live bad-credential testing")
-    @pytest.mark.asyncio
-    async def test_login_with_empty_username(self, auth: MELCloudHomeAuth) -> None:
-        """Login should fail with empty username."""
-        with pytest.raises(AuthenticationError):
-            await auth.login("", "password")
-
-    @pytest.mark.skip(reason="Requires live bad-credential testing")
-    @pytest.mark.asyncio
-    async def test_login_with_empty_password(
-        self, auth: MELCloudHomeAuth, credentials: tuple[str, str]
-    ) -> None:
-        """Login should fail with empty password."""
-        username, _ = credentials
-        with pytest.raises(AuthenticationError):
-            await auth.login(username, "")
+class TestMockLogin:
+    """Test mock server login flow."""
 
     @pytest.mark.asyncio
-    async def test_login_failure_leaves_unauthenticated(
-        self, auth: MELCloudHomeAuth
-    ) -> None:
-        """Failed login should leave auth state as not authenticated."""
-        # This test doesn't need VCR - we're testing the state without API call
-        assert not auth.is_authenticated
+    async def test_login_mock_populates_tokens(self, request_pacer) -> None:
+        """_login_mock should populate token fields from response."""
+        auth = MELCloudHomeAuth(debug_mode=True, request_pacer=request_pacer)
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={
+                "access_token": "mock-access-token",
+                "refresh_token": "mock-refresh-token",
+                "expires_in": 3600,
+                "token_type": "Bearer",
+            }
+        )
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with patch.object(auth, "_ensure_session", return_value=mock_session):
+                result = await auth.login("test@example.com", "password")
+
+            assert result is True
+            assert auth.is_authenticated is True
+            assert auth.access_token == "mock-access-token"
+            assert auth.refresh_token == "mock-refresh-token"
+            assert auth._token_expiry > time.time()
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_login_mock_rejects_bad_credentials(self, request_pacer) -> None:
+        """_login_mock should raise on 401."""
+        auth = MELCloudHomeAuth(debug_mode=True, request_pacer=request_pacer)
+
+        mock_response = MagicMock()
+        mock_response.status = 401
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with (
+                patch.object(auth, "_ensure_session", return_value=mock_session),
+                pytest.raises(AuthenticationError, match="Invalid credentials"),
+            ):
+                await auth.login("test@example.com", "WRONG_PASSWORD")
+        finally:
+            await auth.close()
+
+
+class TestTokenRefresh:
+    """Test token refresh flow."""
+
+    @pytest.mark.asyncio
+    async def test_refresh_success(self, request_pacer) -> None:
+        """Successful refresh should update tokens."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        auth.restore_tokens("old-access", "old-refresh", time.time() + 3600)
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={
+                "access_token": "new-access",
+                "refresh_token": "new-refresh",
+                "expires_in": 3600,
+            }
+        )
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with patch.object(auth, "_ensure_session", return_value=mock_session):
+                result = await auth.refresh_access_token()
+
+            assert result is True
+            assert auth.access_token == "new-access"
+            assert auth.refresh_token == "new-refresh"
+            assert auth.is_authenticated is True
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_refresh_rejected(self, request_pacer) -> None:
+        """Rejected refresh should clear auth state and raise."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        auth.restore_tokens("old-access", "old-refresh", time.time() + 3600)
+
+        mock_response = MagicMock()
+        mock_response.status = 400
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with (
+                patch.object(auth, "_ensure_session", return_value=mock_session),
+                pytest.raises(AuthenticationError, match="Refresh token rejected"),
+            ):
+                await auth.refresh_access_token()
+
+            assert auth.access_token is None
+            assert auth.refresh_token is None
+            assert auth.is_authenticated is False
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_refresh_without_token_raises(self, request_pacer) -> None:
+        """Refresh without stored refresh token should raise."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        try:
+            with pytest.raises(AuthenticationError, match="No refresh token"):
+                await auth.refresh_access_token()
+        finally:
+            await auth.close()
+
+
+class TestPARRequest:
+    """Test PAR (Pushed Authorization Request) step."""
+
+    @pytest.mark.asyncio
+    async def test_par_failure_raises(self, request_pacer) -> None:
+        """PAR returning non-201 should raise AuthenticationError."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        mock_response = MagicMock()
+        mock_response.status = 400
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with (
+                patch.object(auth, "_ensure_session", return_value=mock_session),
+                pytest.raises(AuthenticationError, match="PAR request failed"),
+            ):
+                await auth.login("test@example.com", "password")
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_par_5xx_raises_service_unavailable(self, request_pacer) -> None:
+        """PAR returning 5xx should raise ServiceUnavailableError."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        mock_response = MagicMock()
+        mock_response.status = 503
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(return_value=mock_response)
+
+        try:
+            with (
+                patch.object(auth, "_ensure_session", return_value=mock_session),
+                pytest.raises(ServiceUnavailableError),
+            ):
+                await auth.login("test@example.com", "password")
+        finally:
+            await auth.close()
 
 
 class TestSessionManagement:
     """Test session creation and management."""
 
-    @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_get_session_after_login(
-        self, authenticated_auth: MELCloudHomeAuth
+    async def test_get_session_when_not_authenticated(
+        self, auth: MELCloudHomeAuth
     ) -> None:
-        """get_session should return session after login."""
-        session = await authenticated_auth.get_session()
-        assert session is not None
-        assert not session.closed
+        """get_session should raise when not authenticated."""
+        with pytest.raises(AuthenticationError, match="Not authenticated"):
+            await auth.get_session()
 
-    @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_session_persists_across_calls(
-        self, authenticated_auth: MELCloudHomeAuth
-    ) -> None:
-        """Same session should be returned across multiple get_session calls."""
-        session1 = await authenticated_auth.get_session()
-        session2 = await authenticated_auth.get_session()
-        assert session1 is session2  # Same instance
-
-    @pytest.mark.vcr()
-    @pytest.mark.asyncio
-    async def test_close_closes_session(
-        self, authenticated_auth: MELCloudHomeAuth
-    ) -> None:
+    async def test_close_closes_session(self, request_pacer) -> None:
         """close() should close the session."""
-        session = await authenticated_auth.get_session()
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        auth.restore_tokens("token", "refresh", time.time() + 3600)
+
+        session = await auth.get_session()
         assert not session.closed
 
-        await authenticated_auth.close()
+        await auth.close()
         assert session.closed
 
 
 class TestLogout:
     """Test logout functionality."""
 
-    @pytest.mark.vcr()
     @pytest.mark.asyncio
-    async def test_logout_after_login(
-        self, authenticated_auth: MELCloudHomeAuth
-    ) -> None:
-        """Logout should succeed after login."""
-        assert authenticated_auth.is_authenticated
+    async def test_logout_clears_tokens(self, request_pacer) -> None:
+        """Logout should clear all token state."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+        auth.restore_tokens("token", "refresh", time.time() + 3600)
+        assert auth.is_authenticated is True
 
-        # Logout should not raise
-        await authenticated_auth.logout()
-        assert not authenticated_auth.is_authenticated
+        await auth.logout()
+        assert auth.is_authenticated is False
+        assert auth.access_token is None
+        assert auth.refresh_token is None
 
     @pytest.mark.asyncio
     async def test_logout_when_not_authenticated(self, auth: MELCloudHomeAuth) -> None:
         """Logout should not raise even when not authenticated."""
         assert not auth.is_authenticated
-        # Should not raise
         await auth.logout()
         assert not auth.is_authenticated
 
@@ -220,26 +416,176 @@ class TestCSRFTokenExtraction:
         assert token is None
 
 
-class TestErrorMessageExtraction:
-    """Test error message extraction from HTML."""
+class TestExistingSessionLogin:
+    """Test login when auth server already has a session.
+
+    When the auth server has a valid session from a previous login,
+    it skips Cognito and redirects straight to the callback with an
+    auth code. The login flow must handle this fast path.
+    """
 
     @pytest.mark.asyncio
-    async def test_extract_error_message_from_html(
-        self, auth: MELCloudHomeAuth
+    async def test_login_with_existing_session_redirect_page(
+        self, request_pacer
     ) -> None:
-        """_extract_error_message should extract error from HTML."""
-        html = '<div class="error-message">Invalid credentials</div>'
-        error = auth._extract_error_message(html)
-        # Implementation may vary, just check it doesn't crash
-        assert error is None or isinstance(error, str)
+        """Auth server returns Redirect page with callback URL in body."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        # Step 1: PAR response
+        par_response = MagicMock()
+        par_response.status = 201
+        par_response.json = AsyncMock(
+            return_value={"request_uri": "urn:ietf:params:oauth:request_uri:TEST123"}
+        )
+        par_response.__aenter__ = AsyncMock(return_value=par_response)
+        par_response.__aexit__ = AsyncMock(return_value=None)
+
+        # Step 2: Authorize returns Redirect page (existing session)
+        redirect_page = MagicMock()
+        redirect_page.status = 200
+        redirect_page.url = "https://auth.melcloudhome.com/Redirect?RedirectUri=/connect/authorize/callback"
+        redirect_page.text = AsyncMock(
+            return_value='<script>window.location="/connect/authorize/callback?request_uri=TEST&client_id=homemobile"</script>'
+        )
+        redirect_page.__aenter__ = AsyncMock(return_value=redirect_page)
+        redirect_page.__aexit__ = AsyncMock(return_value=None)
+
+        # Step 5 (callback follow): Returns melcloudhome:// with code
+        callback_response = MagicMock()
+        callback_response.status = 302
+        callback_response.headers = {
+            "Location": "melcloudhome://?code=AUTH_CODE_123&state=test"
+        }
+        callback_response.__aenter__ = AsyncMock(return_value=callback_response)
+        callback_response.__aexit__ = AsyncMock(return_value=None)
+
+        # Step 6: Token exchange
+        token_response = MagicMock()
+        token_response.status = 200
+        token_response.json = AsyncMock(
+            return_value={
+                "access_token": "new-access-token",
+                "refresh_token": "new-refresh-token",
+                "expires_in": 3600,
+            }
+        )
+        token_response.__aenter__ = AsyncMock(return_value=token_response)
+        token_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(side_effect=[par_response, token_response])
+        mock_session.get = MagicMock(side_effect=[redirect_page, callback_response])
+
+        try:
+            with patch.object(auth, "_ensure_session", return_value=mock_session):
+                result = await auth.login("test@example.com", "password")
+
+            assert result is True
+            assert auth.is_authenticated
+            assert auth.access_token == "new-access-token"
+            assert auth.refresh_token == "new-refresh-token"
+        finally:
+            await auth.close()
 
     @pytest.mark.asyncio
-    async def test_extract_error_message_from_empty_html(
-        self, auth: MELCloudHomeAuth
+    async def test_login_with_existing_session_code_in_url(self, request_pacer) -> None:
+        """Auth server redirects to page with code directly in URL."""
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        par_response = MagicMock()
+        par_response.status = 201
+        par_response.json = AsyncMock(
+            return_value={"request_uri": "urn:ietf:params:oauth:request_uri:TEST123"}
+        )
+        par_response.__aenter__ = AsyncMock(return_value=par_response)
+        par_response.__aexit__ = AsyncMock(return_value=None)
+
+        # Authorize lands on a URL with code= parameter
+        redirect_with_code = MagicMock()
+        redirect_with_code.status = 200
+        redirect_with_code.url = (
+            "https://auth.melcloudhome.com/Redirect?code=DIRECT_CODE_456&state=test"
+        )
+        redirect_with_code.text = AsyncMock(return_value="<html></html>")
+        redirect_with_code.__aenter__ = AsyncMock(return_value=redirect_with_code)
+        redirect_with_code.__aexit__ = AsyncMock(return_value=None)
+
+        token_response = MagicMock()
+        token_response.status = 200
+        token_response.json = AsyncMock(
+            return_value={
+                "access_token": "new-access-token",
+                "refresh_token": "new-refresh-token",
+                "expires_in": 3600,
+            }
+        )
+        token_response.__aenter__ = AsyncMock(return_value=token_response)
+        token_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(side_effect=[par_response, token_response])
+        mock_session.get = MagicMock(return_value=redirect_with_code)
+
+        try:
+            with patch.object(auth, "_ensure_session", return_value=mock_session):
+                result = await auth.login("test@example.com", "password")
+
+            assert result is True
+            assert auth.is_authenticated
+            assert auth.access_token == "new-access-token"
+        finally:
+            await auth.close()
+
+    @pytest.mark.asyncio
+    async def test_login_with_non_http_redirect_extracts_code(
+        self, request_pacer
     ) -> None:
-        """_extract_error_message should handle empty HTML."""
-        error = auth._extract_error_message("")
-        assert error is None or isinstance(error, str)
+        """aiohttp throws NonHttpUrlRedirectClientError for melcloudhome:// redirect."""
+        import aiohttp
+
+        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+
+        par_response = MagicMock()
+        par_response.status = 201
+        par_response.json = AsyncMock(
+            return_value={"request_uri": "urn:ietf:params:oauth:request_uri:TEST123"}
+        )
+        par_response.__aenter__ = AsyncMock(return_value=par_response)
+        par_response.__aexit__ = AsyncMock(return_value=None)
+
+        # Authorize throws because aiohttp tries to follow melcloudhome://
+        authorize_error = aiohttp.NonHttpUrlRedirectClientError(
+            "melcloudhome://?code=REDIRECT_CODE_789&state=test&session_state=abc"
+        )
+        authorize_response = MagicMock()
+        authorize_response.__aenter__ = AsyncMock(side_effect=authorize_error)
+        authorize_response.__aexit__ = AsyncMock(return_value=None)
+
+        token_response = MagicMock()
+        token_response.status = 200
+        token_response.json = AsyncMock(
+            return_value={
+                "access_token": "new-access-token",
+                "refresh_token": "new-refresh-token",
+                "expires_in": 3600,
+            }
+        )
+        token_response.__aenter__ = AsyncMock(return_value=token_response)
+        token_response.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = AsyncMock()
+        mock_session.post = MagicMock(side_effect=[par_response, token_response])
+        mock_session.get = MagicMock(return_value=authorize_response)
+
+        try:
+            with patch.object(auth, "_ensure_session", return_value=mock_session):
+                result = await auth.login("test@example.com", "password")
+
+            assert result is True
+            assert auth.is_authenticated
+            assert auth.access_token == "new-access-token"
+        finally:
+            await auth.close()
 
 
 class TestMultipleAuthInstances:
@@ -248,7 +594,6 @@ class TestMultipleAuthInstances:
     @pytest.mark.asyncio
     async def test_multiple_instances_independent(self, request_pacer) -> None:
         """Multiple auth instances should be independent."""
-        # Each instance gets its own pacer (no-op for VCR tests)
         from tests.conftest import NoOpRequestPacer
 
         auth1 = MELCloudHomeAuth(request_pacer=NoOpRequestPacer())

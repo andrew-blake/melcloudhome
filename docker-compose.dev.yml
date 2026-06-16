@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Mock MELCloud API Server
   melcloud-mock:

@@ -15,7 +15,7 @@ from .coordinator import MELCloudHomeCoordinator
 from .diagnostics_ata import serialize_ata_unit
 from .diagnostics_atw import serialize_atw_unit
 
-TO_REDACT = {CONF_EMAIL, CONF_PASSWORD}
+TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "access_token", "refresh_token", "token_expiry"}
 
 
 async def async_get_config_entry_diagnostics(
@@ -34,15 +34,17 @@ async def async_get_config_entry_diagnostics(
     entity_data = {}
     for entity in entities:
         if state := hass.states.get(entity.entity_id):
+            attrs = dict(state.attributes)
+            attrs.pop("friendly_name", None)
             entity_data[entity.entity_id] = {
                 "state": state.state,
-                "attributes": dict(state.attributes),
+                "attributes": attrs,
             }
 
     # Build diagnostic data
     diagnostics_data = {
         "entry": {
-            "title": entry.title,
+            "title": "***REDACTED***",
             "data": async_redact_data(entry.data, TO_REDACT),
             "version": entry.version,
         },
@@ -61,7 +63,7 @@ async def async_get_config_entry_diagnostics(
             "buildings": [
                 {
                     "id": building.id,
-                    "name": building.name,
+                    "name": f"Building-{i + 1}",
                     "ata_unit_count": len(building.air_to_air_units),
                     "atw_unit_count": len(building.air_to_water_units),
                     "ata_units": [
@@ -71,7 +73,7 @@ async def async_get_config_entry_diagnostics(
                         serialize_atw_unit(unit) for unit in building.air_to_water_units
                     ],
                 }
-                for building in coordinator.data.buildings
+                for i, building in enumerate(coordinator.data.buildings)
             ],
         }
 

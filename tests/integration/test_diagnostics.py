@@ -7,6 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
+import json
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -117,8 +118,8 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
         assert "user_context" in diagnostics
 
         # Verify entry data
-        assert diagnostics["entry"]["title"] == "MELCloud Home"
-        assert diagnostics["entry"]["version"] == 1
+        assert diagnostics["entry"]["title"] == "***REDACTED***"
+        assert diagnostics["entry"]["version"] == 2
 
         # Verify credentials are redacted
         assert diagnostics["entry"]["data"][CONF_EMAIL] == "**REDACTED**"
@@ -232,7 +233,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         building_data = user_context["buildings"][0]
         assert building_data["id"] == "building-1"
-        assert building_data["name"] == "Home"
+        assert building_data["name"] == "Building-1"
         assert building_data["ata_unit_count"] == 2
         assert building_data["atw_unit_count"] == 0
 
@@ -242,7 +243,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         # Check unit 1
         assert units[0]["id"] == "unit-1"
-        assert units[0]["name"] == "Living Room"
+        assert units[0]["name"] == "***REDACTED***"
         assert units[0]["power"] is True
         assert units[0]["operation_mode"] == "Heat"
         assert units[0]["set_temperature"] == 22.0
@@ -251,9 +252,47 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
 
         # Check unit 2
         assert units[1]["id"] == "unit-2"
-        assert units[1]["name"] == "Bedroom"
+        assert units[1]["name"] == "***REDACTED***"
         assert units[1]["power"] is False
         assert units[1]["operation_mode"] == "Cool"
         assert units[1]["set_temperature"] == 19.0
         assert units[1]["room_temperature"] == 21.0
         assert units[1]["has_energy_consumed_meter"] is False
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
+    """Regression test: access_token, refresh_token, token_expiry must not appear in diagnostics output."""
+    mock_context = create_mock_user_context()
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={
+                CONF_EMAIL: "test@example.com",
+                CONF_PASSWORD: "secret_password",
+                "access_token": "mock-access-token-abc123",
+                "refresh_token": "mock-refresh-token-xyz789",
+                "token_expiry": 9999999999.0,
+            },
+            unique_id="test@example.com",
+            title="MELCloud Home",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+        blob = json.dumps(diagnostics)
+
+        # Token values must not survive redaction
+        assert "mock-access-token-abc123" not in blob
+        assert "mock-refresh-token-xyz789" not in blob
+        # token_expiry is a float — check its distinctive value is gone
+        assert "9999999999.0" not in blob

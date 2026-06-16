@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.3.4] - 2026-06-13
+
+### Fixed
+
+- Indoor units on multi-zone systems occasionally flash or fault when turned on via HA (#132)
+
+### Security
+
+- Sensitive data (email addresses, IP addresses) could appear in diagnostic reports and log files (#130)
+
+
+## [2.3.3] - 2026-06-04
+
+### Added
+
+- Vietnamese (vi) translations (thanks @0jar)
+- Confirmed support for MSZ-HR25VFK2 and MSZ-HR35VFK indoor units (thanks @FerranMartin and @HansOtten)
+
+### Fixed
+
+- Outdoor temperature sensor stuck `unavailable` for mostly-idle units. The integration now uses the `Daily` report period instead of `Hourly` — the hourly window silently drops data for units inactive for more than ~1 hour. Units idle at startup are also re-probed every 30 minutes so the sensor recovers automatically when the AC next runs, without needing an HA restart. ([#110](https://github.com/andrew-blake/melcloudhome/issues/110))
+
+
+## [2.3.2] - 2026-04-22
+
+### Added
+
+- Greek (el) translations (thanks @h-ram)
+
+
+## [2.3.1] - 2026-04-20
+
+### Fixed
+
+- Vertical swing mode "Swing" silently ignored on A/C units without horizontal vanes (e.g. MSZ-HR25VFK2). The integration now sends vane commands per axis — matching the official MELCloud app — instead of always sending both axes together. ([#100](https://github.com/andrew-blake/melcloudhome/issues/100))
+
+
+## [2.3.0] - 2026-04-16
+
+### Added
+
+- Dutch (nl) translations (thanks @yw13931835525-cyber)
+- French (fr) translations (thanks @pfauchet)
+- Turkish (tr) translations (thanks @freedomwarriorx86)
+- Clear error messages when MELCloud servers are unavailable
+
+### Changed
+
+- Migrated from web BFF to mobile BFF API with OAuth 2.0 PKCE authentication
+
 ## [2.2.5] - 2026-04-04
 
 ### Added

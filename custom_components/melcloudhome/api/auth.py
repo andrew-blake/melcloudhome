@@ -1,8 +1,15 @@
-"""Authentication handling for MELCloud Home API."""
+"""Authentication handling for MELCloud Home API.
 
-import asyncio
+Implements OAuth 2.0 Authorization Code + PKCE flow via IdentityServer
+and AWS Cognito federated login.
+"""
+
+import base64
+import hashlib
 import logging
 import re
+import secrets
+import time
 from typing import Any
 from urllib.parse import urlparse
 
@@ -11,31 +18,37 @@ from aiohttp import TraceConfig, TraceRequestEndParams, TraceRequestStartParams
 
 from .const_shared import (
     AUTH_BASE_URL,
-    BASE_URL,
-    COGNITO_BASE_URL,
     COGNITO_DOMAIN_SUFFIX,
     MOCK_BASE_URL,
+    OAUTH_CLIENT_ID,
+    OAUTH_REDIRECT_URI,
+    OAUTH_SCOPES,
     USER_AGENT,
 )
-from .exceptions import AuthenticationError
+from .exceptions import AuthenticationError, ServiceUnavailableError
 
 _LOGGER = logging.getLogger(__name__)
 
-# Authentication session initialization delay
-# Testing revealed via Chrome DevTools that the session is ready immediately
-# after OAuth redirect. The Blazor WASM app successfully calls /api/user/context
-# without any delay. The original 3-second sleep was unnecessary.
-AUTH_SESSION_INIT_DELAY = 0
+
+def _mask_email(email: str) -> str:
+    if "@" not in email:
+        return "***"
+    local, domain = email.split("@", 1)
+    return f"{local[:1]}***@{domain[:1]}***"
+
+
+def _redact_url(url: Any) -> str:
+    return re.sub(r"([?&])(code|state)=[^&]*", r"\1\2=***REDACTED***", str(url))
 
 
 class MELCloudHomeAuth:
-    """Handle MELCloud Home authentication via AWS Cognito OAuth."""
+    """Handle MELCloud Home authentication via OAuth 2.0 PKCE."""
 
     def __init__(self, debug_mode: bool = False, request_pacer: Any = None) -> None:
         """Initialize authenticator.
 
         Args:
-            debug_mode: If True, use simple mock auth instead of Cognito OAuth
+            debug_mode: If True, use simple mock auth instead of OAuth PKCE
             request_pacer: RequestPacer to prevent rate limiting (required)
         """
         if request_pacer is None:
@@ -44,34 +57,77 @@ class MELCloudHomeAuth:
         self._session: aiohttp.ClientSession | None = None
         self._authenticated = False
         self._debug_mode = debug_mode
-        self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
+        self._base_url = MOCK_BASE_URL if debug_mode else ""
         self._request_pacer = request_pacer
 
-        # AWS Cognito OAuth configuration (from discovery docs)
-        # Not used in debug mode
-        self._cognito_base = COGNITO_BASE_URL
-        self._auth_base = AUTH_BASE_URL
+        # OAuth configuration — use mock server for token endpoint in debug mode
+        self._auth_base = MOCK_BASE_URL if debug_mode else AUTH_BASE_URL
+
+        # OAuth token state
+        self._access_token: str | None = None
+        self._refresh_token: str | None = None
+        self._token_expiry: float = 0.0  # Unix timestamp
+
+    @staticmethod
+    def _generate_pkce() -> tuple[str, str]:
+        """Generate PKCE code verifier and challenge (S256)."""
+        verifier = (
+            base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode()
+        )
+        digest = hashlib.sha256(verifier.encode()).digest()
+        challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+        return verifier, challenge
+
+    @property
+    def access_token(self) -> str | None:
+        """Get current access token."""
+        return self._access_token
+
+    @property
+    def refresh_token(self) -> str | None:
+        """Get current refresh token."""
+        return self._refresh_token
+
+    @property
+    def is_token_expired(self) -> bool:
+        """Check if access token is expired or about to expire (60s buffer)."""
+        if not self._access_token:
+            return True
+        return time.time() >= (self._token_expiry - 60)
+
+    @property
+    def is_authenticated(self) -> bool:
+        """Check if currently authenticated with valid tokens."""
+        return self._authenticated and not self.is_token_expired
+
+    def restore_tokens(
+        self, access_token: str | None, refresh_token: str | None, token_expiry: float
+    ) -> None:
+        """Restore token state from persisted storage."""
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._token_expiry = token_expiry
+        if access_token and refresh_token:
+            self._authenticated = True
+
+    def get_token_snapshot(self) -> dict[str, Any]:
+        """Return current token state for persistence."""
+        return {
+            "access_token": self._access_token,
+            "refresh_token": self._refresh_token,
+            "token_expiry": self._token_expiry,
+        }
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Ensure aiohttp session exists."""
         if self._session is None or self._session.closed:
-            # Create session with proper headers for browser impersonation
-            # CRITICAL: User-Agent must match Chrome to avoid bot detection
             headers = {
                 "User-Agent": USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"macOS"',
+                "Accept": "application/json",
             }
 
-            # Cookie jar to maintain session across requests
-            # Note: NOT using unsafe=True as it can interfere with __Secure- cookie handling
+            # Cookie jar needed for Cognito login step
             jar = aiohttp.CookieJar()
-
-            # Timeout configuration
             timeout = aiohttp.ClientTimeout(total=30)
 
             # Add request/response tracing for debug logging
@@ -87,13 +143,9 @@ class MELCloudHomeAuth:
         return self._session
 
     def _create_trace_config(self) -> TraceConfig | None:
-        """
-        Create trace config for request/response logging.
+        """Create trace config for request/response logging.
 
         Only enabled when logger is at DEBUG level.
-
-        Returns:
-            TraceConfig if debug enabled, None otherwise
         """
         if not _LOGGER.isEnabledFor(logging.DEBUG):
             return None
@@ -105,62 +157,29 @@ class MELCloudHomeAuth:
             trace_config_ctx: Any,
             params: TraceRequestStartParams,
         ) -> None:
-            """Log request start."""
-            _LOGGER.debug(
-                "→ Request: %s %s",
-                params.method,
-                params.url,
-            )
+            _LOGGER.debug("→ Request: %s %s", params.method, _redact_url(params.url))
             if params.headers:
-                # Log headers but redact sensitive ones
                 safe_headers = {
                     k: (
                         "***REDACTED***"
-                        if k.lower() in ["cookie", "authorization", "x-csrf"]
+                        if k.lower() in ["cookie", "authorization"]
                         else v
                     )
                     for k, v in params.headers.items()
                 }
                 _LOGGER.debug("  Headers: %s", safe_headers)
 
-                # Log if Cookie header is present
-                if "cookie" in (k.lower() for k in params.headers):
-                    cookie_count = len(params.headers.get("Cookie", "").split(";"))
-                    _LOGGER.debug("  Sending %d cookie(s) with request", cookie_count)
-                else:
-                    _LOGGER.debug("  ⚠️ No Cookie header in request!")
-
         async def on_request_end(
             session: aiohttp.ClientSession,
             trace_config_ctx: Any,
             params: TraceRequestEndParams,
         ) -> None:
-            """Log request end."""
             _LOGGER.debug(
                 "← Response: %s %s [%d]",
                 params.method,
-                params.url,
+                _redact_url(params.url),
                 params.response.status,
             )
-            # Log set-cookie headers (redacted) to track session
-            if params.response.headers and "set-cookie" in params.response.headers:
-                cookies = params.response.headers.getall("set-cookie")
-                _LOGGER.debug("  Set-Cookie: %d cookie(s) set", len(cookies))
-
-            # Log current cookies in jar
-            if session.cookie_jar:
-                melcloud_cookies = [
-                    c
-                    for c in session.cookie_jar
-                    if c["domain"] == "melcloudhome.com"
-                    or c["domain"] == ".melcloudhome.com"
-                    or c["domain"].endswith(".melcloudhome.com")
-                ]
-                if melcloud_cookies:
-                    _LOGGER.debug(
-                        "  Cookie jar has %d melcloudhome.com cookie(s)",
-                        len(melcloud_cookies),
-                    )
 
         trace_config.on_request_start.append(on_request_start)
         trace_config.on_request_end.append(on_request_end)
@@ -168,25 +187,15 @@ class MELCloudHomeAuth:
         return trace_config
 
     async def _login_mock(self, username: str, password: str) -> bool:
+        """Authenticate with mock server (simple POST /api/login).
+
+        Populates token fields from mock response so is_authenticated works.
         """
-        Authenticate with mock server (simple POST /api/login).
-
-        Args:
-            username: Email address
-            password: Password
-
-        Returns:
-            True if authentication successful
-
-        Raises:
-            AuthenticationError: If authentication fails
-        """
-        _LOGGER.debug("🔧 Debug mode: Using simple mock auth flow")
+        _LOGGER.debug("Debug mode: Using simple mock auth flow")
 
         try:
             session = await self._ensure_session()
 
-            # Simple POST to /api/login (no Cognito) - use RequestPacer to prevent 429
             async with self._request_pacer:  # noqa: SIM117
                 async with session.post(
                     f"{self._base_url}/api/login",
@@ -203,12 +212,10 @@ class MELCloudHomeAuth:
                             f"Mock server returned unexpected status: {resp.status}"
                         )
 
-                    # Mock server returns OAuth-like tokens (but we don't validate them)
                     data = await resp.json()
-                    _LOGGER.debug(
-                        "Mock auth successful: %s", data.get("token_type", "Bearer")
-                    )
-
+                    self._access_token = data.get("access_token")
+                    self._refresh_token = data.get("refresh_token")
+                    self._token_expiry = time.time() + data.get("expires_in", 3600)
                     self._authenticated = True
                     return True
 
@@ -217,8 +224,7 @@ class MELCloudHomeAuth:
             raise AuthenticationError(f"Cannot connect to mock server: {err}") from err
 
     async def login(self, username: str, password: str) -> bool:
-        """
-        Authenticate with MELCloud Home via AWS Cognito OAuth.
+        """Authenticate with MELCloud Home via OAuth 2.0 PKCE.
 
         Args:
             username: Email address
@@ -229,129 +235,167 @@ class MELCloudHomeAuth:
 
         Raises:
             AuthenticationError: If authentication fails
+            ServiceUnavailableError: If server returns 5xx
         """
-        _LOGGER.debug("Starting authentication flow for user: %s", username)
+        _LOGGER.debug(
+            "Starting authentication flow for user: %s", _mask_email(username)
+        )
 
-        # Debug mode: Use simple mock auth flow
         if self._debug_mode:
             return await self._login_mock(username, password)
 
-        # Production mode: Use complex Cognito OAuth flow
         try:
             session = await self._ensure_session()
+            code_verifier, code_challenge = self._generate_pkce()
+            state = (
+                base64.urlsafe_b64encode(secrets.token_bytes(16)).rstrip(b"=").decode()
+            )
 
-            # Step 1: Initiate login flow
-            _LOGGER.debug("Step 1: Initiating login flow")
-            async with self._request_pacer:  # noqa: SIM117
-                async with session.get(
-                    f"{self._base_url}/bff/login",
-                    params={"returnUrl": "/dashboard"},
-                    allow_redirects=True,
-                ) as resp:
-                    # Follow redirects to Cognito login page
-                    final_url = str(resp.url)
-                    _LOGGER.debug("Redirected to: %s", final_url)
-
-                    parsed = urlparse(final_url)
-
-                    # Check if already authenticated (redirected to dashboard)
-                    # This happens when auth cookies are still valid
-                    if (
-                        parsed.hostname
-                        and (
-                            parsed.hostname == "melcloudhome.com"
-                            or parsed.hostname.endswith(".melcloudhome.com")
-                        )
-                        and "/dashboard" in parsed.path
-                    ):
-                        _LOGGER.info(
-                            "Already authenticated - session cookies still valid"
-                        )
-                        self._authenticated = True
-                        return True
-
-                    # Expect redirect to Cognito login page
-                    if not (
-                        parsed.hostname
-                        and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
-                        and "/login" in parsed.path
-                    ):
-                        raise AuthenticationError(
-                            f"Unexpected redirect URL: {final_url}"
-                        )
-
-                    # Extract CSRF token from login page HTML
-                    html = await resp.text()
-                    csrf_token = self._extract_csrf_token(html)
-                    if not csrf_token:
-                        raise AuthenticationError(
-                            "Failed to extract CSRF token from login page"
-                        )
-
-                    _LOGGER.debug("Extracted CSRF token: %s...", csrf_token[:10])
-
-            # Step 2: Submit credentials to Cognito
-            _LOGGER.debug("Step 2: Submitting credentials")
-
-            login_data = {
-                "_csrf": csrf_token,
-                "username": username,
-                "password": password,
-                "cognitoAsfData": "",  # Can be empty - not strictly required
-            }
-
-            # POST to Cognito login endpoint
+            # Step 1: Pushed Authorization Request (PAR)
+            _LOGGER.debug("Step 1: PAR request")
             async with self._request_pacer:  # noqa: SIM117
                 async with session.post(
-                    final_url,  # Use the full URL with query params from step 1
-                    data=login_data,
+                    f"{self._auth_base}/connect/par",
+                    data={
+                        "response_type": "code",
+                        "state": state,
+                        "code_challenge": code_challenge,
+                        "code_challenge_method": "S256",
+                        "client_id": OAUTH_CLIENT_ID,
+                        "scope": OAUTH_SCOPES,
+                        "redirect_uri": OAUTH_REDIRECT_URI,
+                    },
+                    headers={"User-Agent": USER_AGENT},
+                ) as resp:
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
+                    if resp.status != 201:
+                        raise AuthenticationError(
+                            f"PAR request failed: HTTP {resp.status}"
+                        )
+                    par_data = await resp.json()
+                    request_uri = par_data["request_uri"]
+                    _LOGGER.debug("PAR OK: request_uri=%s...", request_uri[:50])
+
+            # Step 2: Authorize — follow redirects to Cognito login page
+            # If the auth server already has a session (e.g. re-login after token
+            # expiry), it may skip Cognito and redirect straight to the callback
+            # with an auth code. We handle both paths.
+            _LOGGER.debug("Step 2: Authorize redirect to Cognito")
+            authorize_url = (
+                f"{self._auth_base}/connect/authorize"
+                f"?client_id={OAUTH_CLIENT_ID}&request_uri={request_uri}"
+            )
+            auth_code: str | None = None
+            async with self._request_pacer:
+                try:
+                    async with session.get(
+                        authorize_url,
+                        headers={"User-Agent": USER_AGENT},
+                        allow_redirects=True,
+                    ) as resp:
+                        final_url = str(resp.url)
+
+                        if resp.status >= 500:
+                            raise ServiceUnavailableError(resp.status)
+
+                        parsed = urlparse(final_url)
+
+                        # Happy path: landed on Cognito login page
+                        if (
+                            parsed.hostname
+                            and parsed.hostname.endswith(COGNITO_DOMAIN_SUFFIX)
+                            and "/login" in parsed.path
+                        ):
+                            html = await resp.text()
+                            csrf_token = self._extract_csrf_token(html)
+                            if not csrf_token:
+                                raise AuthenticationError(
+                                    "Failed to extract CSRF token from Cognito login page"
+                                )
+                            cognito_login_url = final_url
+                            _LOGGER.debug("Cognito login page OK")
+
+                        # Fast path: auth server has existing session, landed on
+                        # Redirect page or callback with auth code
+                        else:
+                            body = await resp.text()
+                            code_match = re.search(
+                                r"code=([^&\"' ]+)", final_url
+                            ) or re.search(r"code=([^&\"' ]+)", body)
+                            if code_match:
+                                auth_code = code_match.group(1)
+                                _LOGGER.info(
+                                    "Existing session detected, got auth code directly"
+                                )
+                            else:
+                                # Check for callback URL in the page body
+                                callback_match = re.search(
+                                    r"/connect/authorize/callback\?([^\"' ]+)", body
+                                )
+                                if callback_match:
+                                    auth_code = await self._follow_callback_for_code(
+                                        session, callback_match.group(1)
+                                    )
+                                    _LOGGER.info(
+                                        "Existing session: followed callback for code"
+                                    )
+                                else:
+                                    raise AuthenticationError(
+                                        f"Unexpected auth response: {final_url}"
+                                    )
+
+                except aiohttp.NonHttpUrlRedirectClientError as err:
+                    # aiohttp throws this when following melcloudhome:// redirect
+                    code_match = re.search(r"code=([^&]+)", str(err))
+                    if code_match:
+                        auth_code = code_match.group(1)
+                        _LOGGER.info(
+                            "Existing session: extracted code from redirect URI"
+                        )
+                    else:
+                        raise AuthenticationError(
+                            f"Unexpected redirect: {err}"
+                        ) from err
+
+            # Skip credential submission if we already have a code
+            if auth_code:
+                _LOGGER.info("Re-login with existing session (skipping credentials)")
+                # Jump to step 6 (token exchange)
+                return await self._exchange_code_for_tokens(
+                    session, auth_code, code_verifier
+                )
+
+            # Step 3: Submit credentials to Cognito
+            _LOGGER.debug("Step 3: Submit credentials to Cognito")
+            async with self._request_pacer:  # noqa: SIM117
+                async with session.post(
+                    cognito_login_url,
+                    data={
+                        "_csrf": csrf_token,
+                        "username": username,
+                        "password": password,
+                        "cognitoAsfData": "",
+                    },
                     headers={
+                        "User-Agent": (
+                            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) "
+                            "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/22F76"
+                        ),
                         "Content-Type": "application/x-www-form-urlencoded",
-                        "Origin": self._cognito_base,
-                        "Referer": final_url,
+                        "Origin": f"https://{urlparse(cognito_login_url).hostname}",
+                        "Referer": cognito_login_url,
                     },
                     allow_redirects=True,
                 ) as resp:
-                    # Successful login should redirect back to melcloudhome.com/dashboard
                     final_url = str(resp.url)
-                    _LOGGER.debug("After login redirect: %s", final_url)
 
-                    # Check if we ended up on the dashboard (success)
-                    parsed = urlparse(final_url)
-                    if (
-                        parsed.hostname
-                        and (
-                            parsed.hostname == "melcloudhome.com"
-                            or parsed.hostname.endswith(".melcloudhome.com")
-                        )
-                        and "/error" not in final_url.lower()
-                    ):
-                        _LOGGER.info(
-                            "Authentication successful - reached %s", final_url
-                        )
-                        self._authenticated = True
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
 
-                        # CRITICAL: Wait for session to fully initialize
-                        # The OAuth flow completes but Blazor WASM needs time to initialize
-                        # the session before API endpoints will work
-                        if AUTH_SESSION_INIT_DELAY > 0:
-                            _LOGGER.debug(
-                                "Waiting for session initialization (%s seconds)",
-                                AUTH_SESSION_INIT_DELAY,
-                            )
-                        await asyncio.sleep(AUTH_SESSION_INIT_DELAY)
+                    body = await resp.text()
 
-                        return True
-
-                    # Check for error in URL or response
-                    if "/error" in final_url.lower() or resp.status >= 400:
-                        error_html = await resp.text()
-                        error_msg = self._extract_error_message(error_html)
-                        raise AuthenticationError(
-                            f"Authentication failed: {error_msg or 'Invalid credentials'}"
-                        )
-
-                    # If we're still on Cognito, credentials were wrong
+                    # Check for auth errors
                     parsed = urlparse(final_url)
                     if parsed.hostname and parsed.hostname.endswith(
                         COGNITO_DOMAIN_SUFFIX
@@ -360,69 +404,161 @@ class MELCloudHomeAuth:
                             "Authentication failed: Invalid username or password"
                         )
 
-                    # Unexpected state
+            # Step 4: Extract callback URL or auth code from redirect page
+            _LOGGER.debug("Step 4: Extract callback URL")
+            callback_match = re.search(r"/connect/authorize/callback\?([^\"' ]+)", body)
+            if not callback_match:
+                # Check if code is directly in URL or body
+                code_match = re.search(r"code=([^&\"' ]+)", final_url) or re.search(
+                    r"code=([^&\"' ]+)", body
+                )
+                if not code_match:
                     raise AuthenticationError(
-                        f"Authentication failed: Unexpected redirect to {final_url}"
+                        "Failed to extract auth code or callback URL"
                     )
+                auth_code = code_match.group(1)
+            else:
+                # Step 5: Follow callback to get melcloudhome:// redirect with auth code
+                _LOGGER.debug("Step 5: Follow callback for auth code")
+                auth_code = await self._follow_callback_for_code(
+                    session, callback_match.group(1)
+                )
+
+            _LOGGER.debug("Got auth code")
+
+            # Step 6: Exchange code for tokens
+            return await self._exchange_code_for_tokens(
+                session, auth_code, code_verifier
+            )
 
         except aiohttp.ClientError as err:
             raise AuthenticationError(
                 f"Network error during authentication: {err}"
             ) from err
         except Exception as err:
-            if isinstance(err, AuthenticationError):
+            if isinstance(err, (AuthenticationError, ServiceUnavailableError)):
                 raise
             raise AuthenticationError(
                 f"Unexpected error during authentication: {err}"
             ) from err
 
-    async def check_session(self) -> bool:
-        """
-        Check if current session is valid.
+    async def _exchange_code_for_tokens(
+        self,
+        session: aiohttp.ClientSession,
+        auth_code: str,
+        code_verifier: str,
+    ) -> bool:
+        """Exchange authorization code for access and refresh tokens."""
+        _LOGGER.debug("Step 6: Token exchange")
+        async with self._request_pacer:  # noqa: SIM117
+            async with session.post(
+                f"{self._auth_base}/connect/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "redirect_uri": OAUTH_REDIRECT_URI,
+                    "code_verifier": code_verifier,
+                    "client_id": OAUTH_CLIENT_ID,
+                },
+                headers={"User-Agent": USER_AGENT},
+            ) as resp:
+                if resp.status >= 500:
+                    raise ServiceUnavailableError(resp.status)
+                if resp.status != 200:
+                    raise AuthenticationError(
+                        f"Token exchange failed: HTTP {resp.status}"
+                    )
+
+                token_data = await resp.json()
+                self._access_token = token_data["access_token"]
+                self._refresh_token = token_data.get("refresh_token")
+                self._token_expiry = time.time() + token_data.get("expires_in", 3600)
+                self._authenticated = True
+
+                _LOGGER.info("Authentication successful")
+                return True
+
+    async def _follow_callback_for_code(
+        self, session: aiohttp.ClientSession, callback_qs: str
+    ) -> str:
+        """Follow the authorize callback to extract the auth code."""
+        callback_qs = callback_qs.replace("&amp;", "&")
+        callback_url = f"{self._auth_base}/connect/authorize/callback?{callback_qs}"
+
+        async with self._request_pacer:  # noqa: SIM117
+            async with session.get(
+                callback_url,
+                headers={"User-Agent": USER_AGENT},
+                allow_redirects=False,
+            ) as cb_resp:
+                location = cb_resp.headers.get("Location", "")
+
+        if location.startswith("melcloudhome://"):
+            code_match = re.search(r"code=([^&]+)", location)
+            if code_match:
+                return code_match.group(1)
+
+        if not location or location == "/":
+            raise AuthenticationError("Callback returned empty or root redirect")
+
+        # Follow one more redirect hop
+        redirect_url = (
+            location if location.startswith("http") else f"{self._auth_base}{location}"
+        )
+        async with self._request_pacer:  # noqa: SIM117
+            async with session.get(
+                redirect_url,
+                headers={"User-Agent": USER_AGENT},
+                allow_redirects=False,
+            ) as cb_resp2:
+                location = cb_resp2.headers.get("Location", "")
+
+        code_match = re.search(r"code=([^&]+)", location)
+        if not code_match:
+            raise AuthenticationError("Failed to extract auth code from redirect")
+        return code_match.group(1)
+
+    async def refresh_access_token(self) -> bool:
+        """Refresh the access token using the stored refresh token.
 
         Returns:
-            True if session is valid, False otherwise
+            True if refresh successful
+
+        Raises:
+            AuthenticationError: If no refresh token or refresh rejected
         """
-        if not self._authenticated:
-            return False
+        if not self._refresh_token:
+            raise AuthenticationError("No refresh token available")
 
-        try:
-            session = await self._ensure_session()
+        session = await self._ensure_session()
 
-            # Check session by calling main API endpoint
-            # MUST include x-csrf: 1 and referer headers for API calls to work
-            async with self._request_pacer:  # noqa: SIM117
-                async with session.get(
-                    f"{self._base_url}/api/user/context",
-                    headers={
-                        "Accept": "application/json",
-                        "x-csrf": "1",
-                        "referer": f"{self._base_url}/dashboard",
-                    },
-                ) as resp:
-                    if resp.status == 200:
-                        _LOGGER.debug("Session is valid (API returned 200)")
-                        return True
+        async with (
+            self._request_pacer,
+            session.post(
+                f"{self._auth_base}/connect/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": self._refresh_token,
+                    "client_id": OAUTH_CLIENT_ID,
+                },
+                headers={"User-Agent": USER_AGENT},
+            ) as resp,
+        ):
+            if resp.status != 200:
+                self._authenticated = False
+                self._access_token = None
+                self._refresh_token = None
+                raise AuthenticationError("Refresh token rejected")
 
-                    # 401 = session expired
-                    if resp.status == 401:
-                        _LOGGER.debug("Session expired (401)")
-                        self._authenticated = False
-                        return False
-
-                    # Other errors - assume invalid
-                    _LOGGER.warning(
-                        "Unexpected status checking session: %d", resp.status
-                    )
-                    return False
-
-        except Exception as err:
-            _LOGGER.error("Error checking session: %s", err)
-            return False
+            token_data = await resp.json()
+            self._access_token = token_data["access_token"]
+            self._refresh_token = token_data.get("refresh_token", self._refresh_token)
+            self._token_expiry = time.time() + token_data.get("expires_in", 3600)
+            self._authenticated = True
+            return True
 
     async def get_session(self) -> aiohttp.ClientSession:
-        """
-        Get authenticated session.
+        """Get authenticated session.
 
         Returns:
             Authenticated aiohttp ClientSession
@@ -436,20 +572,11 @@ class MELCloudHomeAuth:
         return await self._ensure_session()
 
     async def logout(self) -> None:
-        """Logout and clean up session."""
-        if self._session and not self._session.closed:
-            try:
-                # Call logout endpoint (skip in debug mode - mock server doesn't have this)
-                if not self._debug_mode:
-                    async with self._request_pacer:
-                        await self._session.get(f"{self._base_url}/bff/logout")
-            except Exception as err:
-                _LOGGER.debug("Error during logout: %s", err)
-            finally:
-                await self._session.close()
-
-        self._session = None
+        """Clear token state."""
         self._authenticated = False
+        self._access_token = None
+        self._refresh_token = None
+        self._token_expiry = 0.0
 
     async def close(self) -> None:
         """Close session without logout."""
@@ -459,72 +586,18 @@ class MELCloudHomeAuth:
         self._authenticated = False
 
     def _extract_csrf_token(self, html: str) -> str | None:
-        """
-        Extract CSRF token from Cognito login page HTML.
-
-        Args:
-            html: HTML content of login page
-
-        Returns:
-            CSRF token or None if not found
-        """
-        # Look for hidden input with name="_csrf"
-        # Pattern: <input type="hidden" name="_csrf" value="TOKEN" />
+        """Extract CSRF token from Cognito login page HTML."""
         match = re.search(r'<input[^>]+name="_csrf"[^>]+value="([^"]+)"', html)
         if match:
             return match.group(1)
 
-        # Try alternate pattern
         match = re.search(r'<input[^>]+value="([^"]+)"[^>]+name="_csrf"', html)
         if match:
             return match.group(1)
 
-        return None
-
-    def _extract_error_message(self, html: str) -> str | None:
-        """
-        Extract error message from error page HTML.
-
-        Args:
-            html: HTML content of error page
-
-        Returns:
-            Error message or None if not found
-        """
-        # Look for error message in HTML
-        # Common patterns in Cognito error pages
-        patterns = [
-            r'<div[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</div>',
-            r'<span[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</span>',
-            r'<p[^>]*class="[^"]*error[^"]*"[^>]*>([^<]+)</p>',
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, html, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
+        # Also try the PoC pattern (name then value without input prefix)
+        match = re.search(r'name="_csrf"\s+value="([^"]+)"', html)
+        if match:
+            return match.group(1)
 
         return None
-
-    def _generate_cognito_asf_data(self) -> str:
-        """
-        Generate cognitoAsfData for AWS Advanced Security Features.
-
-        AWS Cognito uses this for device fingerprinting and bot detection.
-        This is a complex JSON structure that includes browser/device info.
-
-        For now, we return an empty/minimal value and rely on proper User-Agent.
-        If authentication fails due to missing ASF data, this needs enhancement.
-
-        Returns:
-            ASF data string (base64-encoded JSON)
-        """
-        # TODO: Implement proper ASF data generation if needed
-        # For now, return empty string - server may accept without it
-        # or we rely on User-Agent being sufficient
-        return ""
-
-    @property
-    def is_authenticated(self) -> bool:
-        """Check if currently authenticated."""
-        return self._authenticated

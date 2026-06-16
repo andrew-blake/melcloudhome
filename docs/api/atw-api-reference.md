@@ -52,7 +52,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 
 ## Quick Reference: All Parameters
 
-### Control Parameters (PUT /api/atwunit/{unitId})
+### Control Parameters (PUT /monitor/atwunit/{unitId})
 
 | Parameter | Type | Valid Values | Notes |
 |-----------|------|--------------|-------|
@@ -68,7 +68,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 | `setHeatFlowTemperatureZone2` | number | null | Zone 2 flow control |
 | `setCoolFlowTemperatureZone2` | number | null | Not used |
 
-### Status Fields (GET /api/user/context)
+### Status Fields (GET /context)
 
 | Field | Type | Meaning |
 |-------|------|---------|
@@ -92,14 +92,13 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 
 ### Base URL
 ```
-https://melcloudhome.com
+https://mobile.bff.melcloudhome.com
 ```
 
 ### Authentication
-- Uses OAuth 2.0 + AWS Cognito (same as ATA)
-- Session cookies managed automatically
-- Session expires ~8 hours
-- **CRITICAL:** All requests require `x-csrf: 1` header
+- Uses OAuth 2.0 PKCE + AWS Cognito (same as ATA)
+- Bearer token authentication
+- User-Agent: `MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0`
 
 ---
 
@@ -107,17 +106,16 @@ https://melcloudhome.com
 
 ### Endpoint
 ```
-PUT /api/atwunit/{unitId}
+PUT /monitor/atwunit/{unitId}
 ```
 
 Updates device settings. Supports **partial updates** - only send changed fields, set others to `null`.
 
 ### Headers
 ```http
-x-csrf: 1
+authorization: Bearer {access_token}
 content-type: application/json; charset=utf-8
-referer: https://melcloudhome.com/dashboard
-user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36...
+user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 ### Request Body Structure
@@ -217,7 +215,7 @@ Empty response body indicates success.
 
 ### Endpoint
 ```
-GET /api/user/context
+GET /context
 ```
 
 Returns complete user context including all buildings, devices, current states, and capabilities.
@@ -396,7 +394,7 @@ It indicates what the 3-way valve is currently doing:
 ### Control Example
 
 ```json
-PUT /api/atwunit/{unitId}
+PUT /monitor/atwunit/{unitId}
 {
   "operationModeZone1": "CoolRoomTemperature",
   "setTemperatureZone1": 22.0
@@ -411,7 +409,7 @@ PUT /api/atwunit/{unitId}
 
 ### Create/Update Schedule
 ```
-POST /api/atwcloudschedule/{unitId}
+POST /monitor/atwcloudschedule/{unitId}
 ```
 
 **Request Body:**
@@ -441,7 +439,7 @@ POST /api/atwcloudschedule/{unitId}
 
 ### Enable/Disable Schedules
 ```
-PUT /api/atwcloudschedule/{unitId}/enabled
+PUT /monitor/atwcloudschedule/{unitId}/enabled
 ```
 
 **Request Body:**
@@ -453,7 +451,7 @@ PUT /api/atwcloudschedule/{unitId}/enabled
 
 ### Delete Schedule
 ```
-DELETE /api/atwcloudschedule/{unitId}/{scheduleId}
+DELETE /monitor/atwcloudschedule/{unitId}/{scheduleId}
 ```
 
 ---
@@ -515,7 +513,7 @@ POST /api/protection/frost
 ### Real-Time Telemetry (Actual Values)
 
 ```
-GET /api/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:00&measure=flow_temperature
+GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:00&measure=flow_temperature
 ```
 
 **Supported Measures:**
@@ -567,7 +565,7 @@ GET /api/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:00&mea
 ### Energy Consumption & Production
 
 ```
-GET /api/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&interval=Hour&measure=interval_energy_consumed
+GET /telemetry/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&interval=Hour&measure=interval_energy_consumed
 ```
 
 **Supported Measures:**
@@ -650,7 +648,7 @@ GET /api/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&int
 ## 10. Error Log
 
 ```
-GET /api/atwunit/{unitId}/errorlog
+GET /monitor/atwunit/{unitId}/errorlog
 ```
 
 **Response:**
@@ -784,36 +782,36 @@ Based on analysis of 110 API calls over testing session:
 ### Observed Web App Behavior
 
 **High-frequency polling (telemetry):**
-- `/api/telemetry/actual/{unitId}`: Polled every few seconds
+- `/telemetry/telemetry/actual/{unitId}`: Polled every few seconds
 - Purpose: Real-time UI updates for graphs
 - 51 calls in session (~46% of traffic)
 
 **Medium-frequency polling (state):**
-- `/api/user/context`: Polled periodically
+- `/context`: Polled periodically
 - 12 calls in session (~11% of traffic)
 - Returns complete state for all devices
 
 **Low-frequency polling (system):**
-- `/api/user/systeminvites`: Same frequency as context
+- `/systeminvites`: Same frequency as context
 - 12 calls in session (~11% of traffic)
 
 **On-demand only:**
-- `/api/atwunit/{unitId}/errorlog`: 2 calls (manual refresh)
-- `/api/telemetry/energy/{unitId}`: 8 calls (view changes)
+- `/monitor/atwunit/{unitId}/errorlog`: 2 calls (manual refresh)
+- `/telemetry/telemetry/energy/{unitId}`: 8 calls (view changes)
 
 ### Recommendations for Home Assistant Integration
 
 **Primary state updates:**
 ```
 Interval: 60 seconds minimum
-Endpoint: GET /api/user/context
+Endpoint: GET /context
 Purpose: Device discovery and state
 ```
 
 **Error monitoring:**
 ```
 Interval: Periodic (5-15 minutes) or on state change
-Endpoint: GET /api/atwunit/{unitId}/errorlog
+Endpoint: GET /monitor/atwunit/{unitId}/errorlog
 Purpose: Error detection and notifications
 ```
 
@@ -833,9 +831,9 @@ Purpose: Error detection and notifications
 - **Recommendation:** Use safe hardcoded defaults, don't trust API capabilities blindly
 
 ### String vs Integer Enums
-- **Control API (PUT /api/atwunit):** Uses STRINGS
+- **Control API (PUT /monitor/atwunit):** Uses STRINGS
   - `"HeatRoomTemperature"`, `"HeatFlowTemperature"`, `"HeatCurve"`
-- **Schedule API (POST /api/atwcloudschedule):** Uses INTEGERS
+- **Schedule API (POST /monitor/atwcloudschedule):** Uses INTEGERS
   - `0` = `"HeatRoomTemperature"` (Thermostat mode)
   - `1` = `"HeatFlowTemperature"` (Flow temperature mode)
   - `2` = `"HeatCurve"` (Weather compensation)

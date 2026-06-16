@@ -38,6 +38,7 @@ select = [
     "C4",     # flake8-comprehensions
     "SIM",    # flake8-simplify
     "RUF",    # ruff-specific rules
+    "S",      # flake8-bandit (security)
 ]
 
 # Ignore specific rules
@@ -47,6 +48,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**" = ["S101", "S105", "S106"]  # asserts and dummy credentials are fine in tests
+"tools/**" = ["S104", "S105", "S311", "S501", "S603", "S607"]  # dev/mock tools: bind-all, fixture passwords, mock random, local verify=False, subprocess
+"custom_components/melcloudhome/telemetry_tracker.py" = ["S311"]  # random used for non-security timing jitter only; OAuth/PKCE uses secrets module
 
 [tool.ruff.lint.isort]
 known-first-party = ["custom_components.melcloudhome"]
@@ -121,7 +125,7 @@ dev = [
     "mypy>=1.18.2",
     "pre-commit>=4.4.0",
     "pytest-recording>=0.13.4",
-    "pytest>=9.0.1",
+    "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
@@ -129,6 +133,10 @@ dev = [
     "vcrpy>=7.0.0",
     "voluptuous>=0.15.0",
     "freezegun>=1.5.5",
+    "zizmor>=1.0.0",
+]
+reverse-engineering = [
+    "mitmproxy>=12.2.2",
 ]
 
 [tool.coverage.paths]

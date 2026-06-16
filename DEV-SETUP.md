@@ -218,15 +218,15 @@ All devices are stateful - changes persist across API calls.
 
 ```bash
 # Get all devices
-curl http://localhost:8080/api/user/context | jq
+curl http://localhost:8080/context | jq
 
 # Control ATA device
-curl -X PUT http://localhost:8080/api/ataunit/ata-living-room \
+curl -X PUT http://localhost:8080/monitor/ataunit/ata-living-room \
   -H "Content-Type: application/json" \
   -d '{"operationMode": "Cool", "setTemperature": 22.5}'
 
 # Control ATW device
-curl -X PUT http://localhost:8080/api/atwunit/atw-house-heatpump \
+curl -X PUT http://localhost:8080/monitor/atwunit/atw-house-heatpump \
   -H "Content-Type: application/json" \
   -d '{"setTemperatureZone1": 21.0, "forcedHotWaterMode": true}'
 ```

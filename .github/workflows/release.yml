@@ -7,7 +7,11 @@ on:
       - 'v*.*.*-*'  # Match pre-release tags (e.g., v2.0.0-beta.1)
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # never cancel an in-progress release
 
 jobs:
   validate:
@@ -15,9 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      base_version: ${{ steps.base-version.outputs.base }}
       prerelease: ${{ steps.detect-prerelease.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Get version from tag
         id: get-version
@@ -26,49 +33,65 @@ jobs:
           echo "version=$TAG" >> $GITHUB_OUTPUT
           echo "Tag version: $TAG"
 
+      - name: Get base version (strip pre-release suffix)
+        id: base-version
+        run: |
+          TAG_VERSION="${STEPS_GET_VERSION_OUTPUTS_VERSION}"
+          BASE_VERSION=$(echo "$TAG_VERSION" | sed 's/-.*//')
+          echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Base version: $BASE_VERSION (from tag: $TAG_VERSION)"
+        env:
+          STEPS_GET_VERSION_OUTPUTS_VERSION: ${{ steps.get-version.outputs.version }}
+
       - name: Validate manifest version
         run: |
           MANIFEST_VERSION=$(jq -r '.version' custom_components/melcloudhome/manifest.json)
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          BASE_VERSION="${STEPS_BASE_VERSION_OUTPUTS_BASE}"
           echo "Manifest version: $MANIFEST_VERSION"
-          echo "Tag version: $TAG_VERSION"
-          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
+          echo "Expected version: $BASE_VERSION"
+          if [ "$MANIFEST_VERSION" != "$BASE_VERSION" ]; then
             echo "❌ Version mismatch!"
-            echo "Manifest version ($MANIFEST_VERSION) does not match tag ($TAG_VERSION)"
+            echo "Manifest version ($MANIFEST_VERSION) does not match expected ($BASE_VERSION)"
             exit 1
           fi
           echo "✅ Versions match!"
+        env:
+          STEPS_BASE_VERSION_OUTPUTS_BASE: ${{ steps.base-version.outputs.base }}
 
       - name: Validate CHANGELOG entry
         run: |
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
-          if ! grep -q "\[$TAG_VERSION\]" CHANGELOG.md; then
-            echo "❌ No CHANGELOG entry found for version $TAG_VERSION"
+          BASE_VERSION="${STEPS_BASE_VERSION_OUTPUTS_BASE}"
+          if ! grep -q "\[$BASE_VERSION\]" CHANGELOG.md; then
+            echo "❌ No CHANGELOG entry found for version $BASE_VERSION"
             exit 1
           fi
           echo "✅ CHANGELOG entry found!"
+        env:
+          STEPS_BASE_VERSION_OUTPUTS_BASE: ${{ steps.base-version.outputs.base }}
 
       - name: Validate README "What's New" version
         run: |
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          BASE_VERSION="${STEPS_BASE_VERSION_OUTPUTS_BASE}"
           README_VERSION=$(grep "## What's New in v" README.md | sed -n 's/## What'\''s New in v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
           echo "README 'What's New' version: $README_VERSION"
-          echo "Tag version: $TAG_VERSION"
+          echo "Expected version: $BASE_VERSION"
           if [ -z "$README_VERSION" ]; then
             echo "❌ No 'What's New' version found in README.md"
             exit 1
           fi
-          if [ "$README_VERSION" != "$TAG_VERSION" ]; then
+          if [ "$README_VERSION" != "$BASE_VERSION" ]; then
             echo "❌ Version mismatch!"
-            echo "README 'What's New' version ($README_VERSION) does not match tag ($TAG_VERSION)"
+            echo "README 'What's New' version ($README_VERSION) does not match expected ($BASE_VERSION)"
             exit 1
           fi
           echo "✅ README version matches!"
+        env:
+          STEPS_BASE_VERSION_OUTPUTS_BASE: ${{ steps.base-version.outputs.base }}
 
       - name: Detect pre-release
         id: detect-prerelease
         run: |
-          TAG_VERSION="${{ steps.get-version.outputs.version }}"
+          TAG_VERSION="${STEPS_GET_VERSION_OUTPUTS_VERSION}"
           if echo "$TAG_VERSION" | grep -qE '\-(alpha|beta|rc)\.'; then
             echo "prerelease=true" >> $GITHUB_OUTPUT
             echo "✅ Pre-release detected: $TAG_VERSION"
@@ -76,16 +99,22 @@ jobs:
             echo "prerelease=false" >> $GITHUB_OUTPUT
             echo "✅ Stable release detected: $TAG_VERSION"
           fi
+        env:
+          STEPS_GET_VERSION_OUTPUTS_VERSION: ${{ steps.get-version.outputs.version }}
 
   test:
     name: Run Full Test Suite
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: false
 
       - name: Set up Python
         run: uv python install 3.12
@@ -109,13 +138,17 @@ jobs:
     name: Create GitHub Release
     needs: [validate, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the GitHub release
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Extract release notes
         id: extract-notes
         run: |
-          VERSION="${{ needs.validate.outputs.version }}"
+          VERSION="${NEEDS_VALIDATE_OUTPUTS_BASE_VERSION}"
 
           # Extract section between current version and next version heading
           # Using sed for better portability across awk implementations
@@ -131,25 +164,31 @@ jobs:
 
           echo "Release notes extracted:"
           cat release_notes.txt
+        env:
+          NEEDS_VALIDATE_OUTPUTS_BASE_VERSION: ${{ needs.validate.outputs.base_version }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.6.1
-        with:
-          body_path: release_notes.txt
-          draft: false
-          prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
-          generate_release_notes: false
+        run: |
+          if [ "${NEEDS_VALIDATE_OUTPUTS_PRERELEASE}" == "true" ]; then
+            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt --prerelease
+          else
+            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt
+          fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEEDS_VALIDATE_OUTPUTS_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
 
       - name: Release summary
         run: |
-          if [ "${{ needs.validate.outputs.prerelease }}" == "true" ]; then
+          if [ "${NEEDS_VALIDATE_OUTPUTS_PRERELEASE}" == "true" ]; then
             RELEASE_TYPE="Pre-release"
           else
             RELEASE_TYPE="Stable Release"
           fi
-          echo "## 🚀 $RELEASE_TYPE ${{ needs.validate.outputs.version }} Published!" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 $RELEASE_TYPE ${NEEDS_VALIDATE_OUTPUTS_VERSION} Published!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Notes" >> $GITHUB_STEP_SUMMARY
           cat release_notes.txt >> $GITHUB_STEP_SUMMARY
+        env:
+          NEEDS_VALIDATE_OUTPUTS_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+          NEEDS_VALIDATE_OUTPUTS_VERSION: ${{ needs.validate.outputs.version }}

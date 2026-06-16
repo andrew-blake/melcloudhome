@@ -6,7 +6,9 @@ Provides unified API access using the Facade pattern:
 - Shared energy tracking and user context methods
 """
 
+import asyncio
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -19,12 +21,15 @@ from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_REPORT_TRENDSUMMARY,
+    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
     MOCK_BASE_URL,
+    USER_AGENT,
 )
-from .exceptions import ApiError, AuthenticationError
+from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
 from .pacing import RequestPacer
 
@@ -48,6 +53,8 @@ class MELCloudHomeClient:
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
         self._user_context: UserContext | None = None
+        self._on_tokens_refreshed: Callable[[], None] | None = None
+        self._refresh_lock = asyncio.Lock()
 
         # Request pacing to prevent rate limiting (shared across all requests)
         self._request_pacer = request_pacer or RequestPacer()
@@ -95,18 +102,43 @@ class MELCloudHomeClient:
         """Check if client is authenticated."""
         return self._auth.is_authenticated
 
+    def restore_tokens(
+        self,
+        access_token: str | None,
+        refresh_token: str | None,
+        token_expiry: float,
+    ) -> None:
+        """Restore persisted token state."""
+        self._auth.restore_tokens(access_token, refresh_token, token_expiry)
+
+    def get_token_snapshot(self) -> dict[str, Any]:
+        """Return current token state for persistence."""
+        return self._auth.get_token_snapshot()
+
+    @property
+    def has_refresh_token(self) -> bool:
+        """Check if a refresh token is available."""
+        return self._auth.refresh_token is not None
+
+    def set_on_tokens_refreshed(self, callback: Callable[[], None]) -> None:
+        """Register callback for when tokens are refreshed proactively."""
+        self._on_tokens_refreshed = callback
+
+    async def refresh_access_token(self) -> bool:
+        """Refresh the access token using stored refresh token."""
+        return await self._auth.refresh_access_token()
+
     async def _api_request(
         self,
         method: str,
         endpoint: str,
         **kwargs: Any,
     ) -> dict[str, Any] | None:
-        """
-        Make an API request.
+        """Make an API request.
 
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
-            endpoint: API endpoint path (e.g., "/api/user/context")
+            endpoint: API endpoint path (e.g., "/context")
             **kwargs: Additional arguments to pass to aiohttp request
 
         Returns:
@@ -116,6 +148,25 @@ class MELCloudHomeClient:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
         """
+        # Proactive token refresh BEFORE acquiring pacer — refresh_access_token
+        # also acquires the pacer, so nesting would deadlock (asyncio.Lock is
+        # not reentrant). Lock prevents concurrent refreshes from racing on
+        # single-use refresh tokens.
+        if self._auth.is_token_expired and self._auth.refresh_token:
+            async with self._refresh_lock:
+                # Double-check after acquiring lock — another request may have
+                # already refreshed while we waited
+                if self._auth.is_token_expired:
+                    try:
+                        await self._auth.refresh_access_token()
+                        _LOGGER.debug("Proactive token refresh successful")
+                        if self._on_tokens_refreshed:
+                            self._on_tokens_refreshed()
+                    except AuthenticationError:
+                        _LOGGER.warning(
+                            "Proactive token refresh failed, will retry via login"
+                        )
+
         async with self._request_pacer:
             if not self._auth.is_authenticated:
                 raise AuthenticationError("Not authenticated - call login() first")
@@ -123,16 +174,18 @@ class MELCloudHomeClient:
             try:
                 session = await self._auth.get_session()
 
-                # CRITICAL: All API requests require these headers
-                # User-Agent inherited from session (set in auth.py)
+                # Bearer auth headers (no CSRF, no referer needed)
                 headers = kwargs.pop("headers", {})
                 headers.setdefault("Accept", "application/json")
-                headers.setdefault("x-csrf", "1")
-                headers.setdefault("referer", f"{self._base_url}/dashboard")
+                headers.setdefault("User-Agent", USER_AGENT)
+                if self._auth.access_token:
+                    headers["Authorization"] = f"Bearer {self._auth.access_token}"
 
                 url = f"{self._base_url}{endpoint}"
 
                 _LOGGER.debug("API Request: %s %s", method, endpoint)
+                if kwargs.get("json") is not None:
+                    _LOGGER.debug("API Request payload: %s", kwargs["json"])
 
                 async with session.request(
                     method, url, headers=headers, **kwargs
@@ -152,10 +205,14 @@ class MELCloudHomeClient:
                             "Session expired - please login again"
                         )
 
-                    # Handle other errors
+                    # Handle server errors (MELCloud outage)
+                    if resp.status >= 500:
+                        raise ServiceUnavailableError(resp.status)
+
+                    # Handle other client errors
                     if resp.status >= 400:
                         try:
-                            error_data = await resp.json()
+                            error_data = await resp.json(content_type=None)
                             error_msg = error_data.get("message", f"HTTP {resp.status}")
                         except Exception:
                             error_msg = f"HTTP {resp.status}"
@@ -167,7 +224,8 @@ class MELCloudHomeClient:
                     if resp.content_length == 0 or resp.content_type == "":
                         return {}
 
-                    result: dict[str, Any] = await resp.json()
+                    # content_type=None because mobile BFF returns text/plain
+                    result: dict[str, Any] = await resp.json(content_type=None)
                     return result
 
             except aiohttp.ClientError as err:
@@ -187,7 +245,7 @@ class MELCloudHomeClient:
             ApiError: If API request fails
         """
         data = await self._api_request("GET", API_USER_CONTEXT)
-        assert data is not None, "UserContext should never return None"
+        assert data is not None, "UserContext should never return None"  # noqa: S101 # assert guards internal invariant, not a security boundary
         self._user_context = UserContext.from_dict(data)
         return self._user_context
 
@@ -232,26 +290,30 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _parse_outdoor_temp(self, response: dict[str, Any]) -> float | None:
+    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> float | None:
         """Extract outdoor temperature from trendsummary response.
 
-        Response format:
-        {
-          "datasets": [
-            {
-              "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
-              "data": [{"x": "2026-01-12T20:00:00", "y": 11}, ...]
-            }
-          ]
-        }
+        Response format (mobile BFF wraps in a list):
+        [
+          {
+            "datasets": [
+              {
+                "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+                "data": [{"x": "2026-01-12T20:00:00", "y": 11}, ...]
+              }
+            ]
+          }
+        ]
 
         Args:
-            response: Trendsummary API response
+            response: Trendsummary API response (list or dict)
 
         Returns:
             Outdoor temperature in Celsius, or None if not available
         """
-        datasets = response.get("datasets", [])
+        # Mobile BFF wraps the report in a list
+        report = response[0] if isinstance(response, list) and response else response
+        datasets = report.get("datasets", []) if isinstance(report, dict) else []
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
@@ -265,8 +327,9 @@ class MELCloudHomeClient:
     async def get_outdoor_temperature(self, unit_id: str) -> float | None:
         """Get latest outdoor temperature for an ATA unit.
 
-        Queries trendsummary endpoint for last hour, extracts most recent
-        outdoor temperature from the OUTDOOR_TEMPERATURE dataset.
+        Queries trendsummary endpoint with Daily period. The API ignores the
+        from/to range for Daily and returns all available historical data, so
+        the most recent datapoint is always as fresh as the last time the unit ran.
 
         Args:
             unit_id: ATA unit UUID
@@ -274,20 +337,22 @@ class MELCloudHomeClient:
         Returns:
             Outdoor temperature in Celsius, or None if not available
         """
-        # Build time range: last 1 hour
+        # Build time range: last 24 hours. Daily period covers units idle for up to
+        # 24 hours; Hourly silently drops outdoor temp for units inactive > ~1 hour.
         now = datetime.now(UTC)
-        from_time = now - timedelta(hours=1)
+        from_time = now - timedelta(hours=24)
 
         # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
         params = {
             "unitId": unit_id,
+            "period": "Daily",
             "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
             "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
         }
 
         try:
             response = await self._api_request(
-                "GET", "/api/report/trendsummary", params=params
+                "GET", API_REPORT_TRENDSUMMARY, params=params
             )
             if response is None:
                 _LOGGER.debug(
@@ -297,18 +362,6 @@ class MELCloudHomeClient:
                     params["to"],
                 )
                 return None
-            # Log raw response to diagnose 1-hour window behavior
-            outdoor_dataset = None
-            for ds in response.get("datasets", []):
-                if "OUTDOOR_TEMPERATURE" in ds.get("label", ""):
-                    outdoor_dataset = ds.get("data", [])
-                    break
-            _LOGGER.debug(
-                "Trendsummary outdoor data for unit %s: %d points, raw=%s",
-                unit_id,
-                len(outdoor_dataset) if outdoor_dataset is not None else 0,
-                outdoor_dataset,
-            )
             return self._parse_outdoor_temp(response)
         except Exception:
             # Log at debug level - outdoor temp is nice-to-have, not critical
@@ -362,7 +415,7 @@ class MELCloudHomeClient:
 
         return await self._api_request(
             "GET",
-            f"/api/telemetry/actual/{unit_id}",
+            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
             params=params,
         )
 

@@ -243,6 +243,18 @@ async def _restore_device_names(
         _LOGGER.info("Set friendly names on %d new device(s)", migrated_count)
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entry to new version."""
+    if entry.version == 1:
+        _LOGGER.info("Migrating config entry from v1 to v2 (adding token storage)")
+        new_data = {**entry.data}
+        new_data.setdefault("access_token", None)
+        new_data.setdefault("refresh_token", None)
+        new_data.setdefault("token_expiry", 0.0)
+        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MELCloud Home from a config entry."""
     # Lazy imports - see module docstring for explanation
@@ -267,7 +279,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create API client and coordinator
     # Note: Coordinator will handle authentication on first refresh
     client = MELCloudHomeClient(debug_mode=debug_mode)
-    coordinator = MELCloudHomeCoordinator(hass, client, email, password)
+
+    # Restore tokens from config entry (survives HA restarts)
+    client.restore_tokens(
+        access_token=entry.data.get("access_token"),
+        refresh_token=entry.data.get("refresh_token"),
+        token_expiry=entry.data.get("token_expiry", 0.0),
+    )
+
+    coordinator = MELCloudHomeCoordinator(hass, client, email, password, entry)
 
     # Fetch initial data (coordinator handles login automatically)
     try:

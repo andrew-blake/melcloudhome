@@ -16,6 +16,8 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    cooldown:
+      default-days: 7
 
   # Python dependencies (pyproject.toml)
   - package-ecosystem: "pip"
@@ -47,3 +49,5 @@ updates:
         update-types: ["version-update:semver-major"]
     # Keep development tools up to date more aggressively
     versioning-strategy: increase-if-necessary
+    cooldown:
+      default-days: 7

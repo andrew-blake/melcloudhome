@@ -24,6 +24,7 @@
     "error": {
       "invalid_auth": "Email ou palavra-passe inválidos",
       "cannot_connect": "Não foi possível ligar a MELCloud Home. Verifique a sua ligação à internet e tente novamente.",
+      "service_unavailable": "O serviço MELCloud está indisponível de momento. Trata-se de um problema no servidor — tente novamente mais tarde.",
       "unknown": "Ocorreu um erro inesperado. Tente novamente."
     },
     "abort": {

@@ -38,8 +38,10 @@ make format                      # Format with ruff
 make lint                        # Lint with ruff
 make type-check                  # Type check with mypy
 make pre-commit                  # Run all pre-commit checks
+make zizmor                      # Security scan workflows (run before pushing workflow changes)
 
 # Testing
+make test-build                  # Build Docker test images (after dep changes)
 make test-api                    # API unit tests (VCR, no Docker)
 make test-integration            # Integration tests (Docker, mocked API)
 make test-e2e                    # E2E tests (Docker, mock server)
@@ -66,7 +68,6 @@ make test                        # All tests with coverage
 - **ATA (Air-to-Air) API:** `docs/api/ata-api-reference.md`
 - **ATW (Air-to-Water) API:** `docs/api/atw-api-reference.md`
 - **Device comparison:** `docs/api/device-type-comparison.md`
-- **OpenAPI spec:** `openapi.yaml` (root directory)
 
 ### Development Guides
 
@@ -112,6 +113,13 @@ make test                        # All tests with coverage
 **Why:** Pre-commit hooks only check staged files during commit. If you run `make pre-commit`, then edit files, then commit - the commit hooks will catch unformatted code and fail.
 
 - NEVER work around pre-commit hooks - they are important code quality checks
+
+## Security Practices
+
+- Run `/security-review` on substantive PRs (new code paths, auth/API changes,
+  workflow changes) before merge.
+- Never commit cassettes/captures without confirming VCR scrubbing covered them
+  (gitleaks pre-commit hook is a backstop, not the primary control).
 
 ---
 

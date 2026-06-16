@@ -1,12 +1,26 @@
 # Pre-commit hooks for code quality
 # See https://pre-commit.com for more information
 
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
+  - repo: local
+    hooks:
+      - id: block-push-to-main
+        name: Block direct push to main
+        description: Refuses pushes targeting refs/heads/main (use a feature branch).
+        entry: scripts/pre-push-block-main.sh
+        language: script
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9
     hooks:
       # Run the linter
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       # Run the formatter
       - id: ruff-format
@@ -29,9 +43,15 @@ repos:
         args: [--ignore-missing-imports, --explicit-package-bases]
         additional_dependencies:
           - types-requests
+          - types-PyYAML
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
       - id: codespell
         args: [--ignore-words-list=hass]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

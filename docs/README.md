@@ -5,7 +5,7 @@
 Key architectural decisions for the MELCloud Home integration:
 
 - [ADR-001: Bundled API Client Architecture](decisions/001-bundled-api-client.md) - Why we bundle the API client instead of separate package
-- [ADR-002: Authentication Refresh Strategy](decisions/002-authentication-refresh-strategy.md) - Session management approach
+- [ADR-002: Authentication Refresh Strategy](decisions/002-authentication-refresh-strategy.md) - Session management approach (SUPERSEDED by ADR-017)
 - [ADR-003: Entity Naming Strategy](decisions/003-entity-naming-strategy.md) - Stable entity ID generation
 - [ADR-004: Integration Refactoring](decisions/004-integration-refactoring.md) - Separation of concerns
 - [ADR-005: Divergence from Official MELCloud](decisions/005-divergence-from-official-melcloud.md) - Why we target different API
@@ -20,6 +20,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-014: ATW Telemetry Sensors](decisions/014-atw-telemetry-sensors.md) - Flow/return temperature sensors implementation
 - [ADR-015: Skip ATW Energy Monitoring](decisions/015-skip-atw-energy-monitoring.md) - Initial decision to skip energy (SUPERSEDED by ADR-016)
 - [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
+- [ADR-017: Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) - Move from the legacy web API to the mobile API (`mobile.bff.melcloudhome.com`), with OAuth 2.0 + PKCE at `auth.melcloudhome.com` (supersedes ADR-002)
 
 ## Architecture
 
@@ -29,7 +30,3 @@ Key architectural decisions for the MELCloud Home integration:
 
 - [Integration Review](integration-review.md) - Best practices compliance assessment
 - [Testing Strategy](testing-strategy.md) - Testing approach and philosophy
-
-## OpenAPI Specification
-
-- [openapi.yaml](../openapi.yaml) - Complete OpenAPI 3.0.3 specification for MELCloud Home API

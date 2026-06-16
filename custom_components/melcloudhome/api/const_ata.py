@@ -4,7 +4,7 @@
 API_FIELD_AIR_TO_AIR_UNITS = "airToAirUnits"
 
 # API Endpoints - ATA
-API_CONTROL_UNIT = "/api/ataunit/{unit_id}"
+API_CONTROL_UNIT = "/monitor/ataunit/{unit_id}"
 
 # Operation Modes (Control API - Strings)
 # CRITICAL: AUTO mode is "Automatic" NOT "Auto"!
@@ -63,8 +63,6 @@ VANE_NUMERIC_TO_WORD = {
     "7": "Swing",
 }
 
-VANE_WORD_TO_NUMERIC = {v: k for k, v in VANE_NUMERIC_TO_WORD.items()}
-
 # Fan Speed Mappings (Control API numeric strings <-> word strings)
 # Used for normalization when API returns "0"-"5" but we use "Auto", "One"-"Five"
 FAN_SPEED_NUMERIC_TO_WORD = {
@@ -108,5 +106,4 @@ __all__ = [
     "VANE_HORIZONTAL_DIRECTIONS",
     "VANE_NUMERIC_TO_WORD",
     "VANE_VERTICAL_DIRECTIONS",
-    "VANE_WORD_TO_NUMERIC",
 ]

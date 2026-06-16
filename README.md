@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.2.5
+## What's New in v2.3.4
 
-Now available in 8 languages with Swedish added. Prepared for HACS default repository submission. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Fixes intermittent flashing/faults on multi-zone systems when turning on via HA, and a security fix preventing sensitive data appearing in diagnostic reports and log files. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
@@ -174,7 +174,7 @@ These intervals balance update frequency with API rate limits.
 
 - [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
 - [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
-- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions (ADR-001 through ADR-016)
+- [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions
 
 ## Support
 

@@ -24,6 +24,7 @@
     "error": {
       "invalid_auth": "Virheellinen sähköposti tai salasana",
       "cannot_connect": "Kirjautuminen MELCloud Home -palveluun epäonnistunut. Tarkista internet-yhteys ja yritä uudelleen.",
+      "service_unavailable": "MELCloud-palvelu ei ole tällä hetkellä käytettävissä. Kyseessä on palvelinpuolen ongelma — yritä myöhemmin uudelleen.",
       "unknown": "Odottamaton virhe. Yritä uudelleen."
     },
     "abort": {

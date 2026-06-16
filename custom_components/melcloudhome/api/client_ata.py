@@ -11,7 +11,6 @@ from .const_ata import (
     TEMP_MIN_HEAT,
     VANE_HORIZONTAL_DIRECTIONS,
     VANE_VERTICAL_DIRECTIONS,
-    VANE_WORD_TO_NUMERIC,
 )
 
 if TYPE_CHECKING:
@@ -60,6 +59,12 @@ class ATAControlClient:
         payload.update(updates)
         return payload
 
+    def _validate_mode(self, mode: str) -> None:
+        """Raise ValueError if mode is not a valid OPERATION_MODES entry."""
+        valid_modes = set(OPERATION_MODES)
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+
     async def set_power(self, unit_id: str, power: bool) -> None:
         """
         Turn device on or off.
@@ -73,6 +78,34 @@ class ATAControlClient:
             ApiError: If API request fails
         """
         payload = self._build_ata_control_payload(power=power)
+
+        await self._client._api_request(
+            "PUT",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
+            json=payload,
+        )
+
+    async def set_power_and_mode(self, unit_id: str, power: bool, mode: str) -> None:
+        """
+        Turn device on/off and set operation mode in a single atomic API call.
+
+        Sending power and mode together avoids the window where a power-on with
+        operationMode=null can be misinterpreted by the outdoor unit as a mode
+        conflict, which causes fault/flashing on multi-zone systems.
+
+        Args:
+            unit_id: Device ID (UUID)
+            power: True to turn on, False to turn off
+            mode: Operation mode - "Heat", "Cool", "Automatic", "Dry", or "Fan"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If mode is invalid
+        """
+        self._validate_mode(mode)
+
+        payload = self._build_ata_control_payload(power=power, operationMode=mode)
 
         await self._client._api_request(
             "PUT",
@@ -123,9 +156,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If mode is invalid
         """
-        valid_modes = set(OPERATION_MODES)
-        if mode not in valid_modes:
-            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+        self._validate_mode(mode)
 
         payload = self._build_ata_control_payload(operationMode=mode)
 
@@ -162,48 +193,64 @@ class ATAControlClient:
             json=payload,
         )
 
-    async def set_vanes(self, unit_id: str, vertical: str, horizontal: str) -> None:
+    async def set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """
-        Set vane directions.
+        Set vertical vane direction only. Sends null for the horizontal axis.
+
+        Decoupling the two axes matches the official MELCloud app's behavior
+        and avoids server-side cross-axis validation silently dropping the
+        request on units without horizontal vanes (issue #100).
 
         Args:
             unit_id: Device ID (UUID)
             vertical: Vertical direction - "Auto", "Swing", "One", "Two", "Three",
                       "Four", or "Five"
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If vertical is invalid
+        """
+        if vertical not in set(VANE_VERTICAL_DIRECTIONS):
+            raise ValueError(
+                f"Invalid vertical direction: {vertical}. "
+                f"Must be one of {set(VANE_VERTICAL_DIRECTIONS)}"
+            )
+
+        payload = self._build_ata_control_payload(
+            vaneVerticalDirection=vertical,
+        )
+
+        await self._client._api_request(
+            "PUT",
+            API_CONTROL_UNIT.format(unit_id=unit_id),
+            json=payload,
+        )
+
+    async def set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """
+        Set horizontal vane direction only. Sends null for the vertical axis.
+
+        See set_vane_vertical for rationale (issue #100).
+
+        Args:
+            unit_id: Device ID (UUID)
             horizontal: Horizontal direction - "Auto", "Swing", "Left", "LeftCentre",
                         "Centre", "RightCentre", or "Right" (British spelling)
 
         Raises:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
-            ValueError: If vertical or horizontal is invalid
+            ValueError: If horizontal is invalid
         """
-        valid_vertical = set(VANE_VERTICAL_DIRECTIONS)
-        # Horizontal uses British-spelled named positions (official API format)
-        valid_horizontal = set(VANE_HORIZONTAL_DIRECTIONS)
-
-        if vertical not in valid_vertical:
-            raise ValueError(
-                f"Invalid vertical direction: {vertical}. "
-                f"Must be one of {valid_vertical}"
-            )
-
-        if horizontal not in valid_horizontal:
+        if horizontal not in set(VANE_HORIZONTAL_DIRECTIONS):
             raise ValueError(
                 f"Invalid horizontal direction: {horizontal}. "
-                f"Must be one of {valid_horizontal}"
+                f"Must be one of {set(VANE_HORIZONTAL_DIRECTIONS)}"
             )
 
-        # Denormalize VERTICAL vane direction: convert word strings back to numeric
-        # strings that the API expects (API returns "0", "1", etc. which we normalize
-        # to "Auto", "One", etc. for HA, but need to convert back when sending)
-        vertical_numeric = VANE_WORD_TO_NUMERIC.get(vertical, vertical)
-        # Horizontal uses named strings (British spelling) - send as-is
-        horizontal_string = horizontal
-
         payload = self._build_ata_control_payload(
-            vaneVerticalDirection=vertical_numeric,
-            vaneHorizontalDirection=horizontal_string,
+            vaneHorizontalDirection=horizontal,
         )
 
         await self._client._api_request(

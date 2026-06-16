@@ -25,9 +25,7 @@ async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str) -> N
     for position in positions:
         print(f"\nTesting vertical position: {position}")
         try:
-            await client.ata.set_vanes(
-                unit_id, vertical=position, horizontal=horizontal
-            )
+            await client.ata.set_vane_vertical(unit_id, position)
             print(f"  ✓ SUCCESS: {position}")
             await asyncio.sleep(1)
         except ApiError as e:
@@ -35,11 +33,12 @@ async def test_vertical_positions(client: MELCloudHomeClient, unit_id: str) -> N
         except Exception as e:
             print(f"  ✗ ERROR: {position} - {type(e).__name__}: {e}")
 
+    _ = horizontal  # no longer used; axes are decoupled
+
 
 async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str) -> None:
     """Test all horizontal vane positions."""
     positions = ["Auto", "Swing", "One", "Two", "Three", "Four", "Five"]
-    vertical = "Auto"  # Keep vertical constant
 
     print("\n" + "=" * 60)
     print("Testing HORIZONTAL vane positions")
@@ -48,7 +47,7 @@ async def test_horizontal_positions(client: MELCloudHomeClient, unit_id: str) ->
     for position in positions:
         print(f"\nTesting horizontal position: {position}")
         try:
-            await client.ata.set_vanes(unit_id, vertical=vertical, horizontal=position)
+            await client.ata.set_vane_horizontal(unit_id, position)
             print(f"  ✓ SUCCESS: {position}")
             await asyncio.sleep(1)
         except ApiError as e:
@@ -98,7 +97,8 @@ async def main() -> None:
         print("\n" + "=" * 60)
         print("Resetting to Auto/Auto")
         print("=" * 60)
-        await client.ata.set_vanes(unit_id, vertical="Auto", horizontal="Auto")
+        await client.ata.set_vane_vertical(unit_id, "Auto")
+        await client.ata.set_vane_horizontal(unit_id, "Auto")
         print("  ✓ Reset complete")
 
     except Exception as e:

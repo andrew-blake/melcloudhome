@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api.client import MELCloudHomeClient
-from .api.exceptions import ApiError, AuthenticationError
+from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .const import (
     DOMAIN,
@@ -44,6 +44,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         client: MELCloudHomeClient,
         email: str,
         password: str,
+        config_entry: Any = None,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -55,6 +56,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self.client = client
         self._email = email
         self._password = password
+        self._config_entry = config_entry
         # Caches for O(1) lookups
         self._unit_to_building: dict[str, Building] = {}
         self._units: dict[str, AirToAirUnit] = {}
@@ -92,9 +94,16 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             get_coordinator_data=lambda: self.data,
         )
 
+        # Persist tokens when client refreshes proactively
+        client.set_on_tokens_refreshed(self._persist_tokens)
+
+        # Outage backoff: tracks consecutive 5xx failures for retry spacing
+        self._outage_retry_count: int = 0
+
         # Outdoor temperature tracking for ATA devices
-        self._last_outdoor_temp_poll: dict[str, float] = {}  # Per-unit poll timestamps
-        self._outdoor_temp_checked: set[str] = set()  # Track which units we've probed
+        self._last_outdoor_temp_poll: dict[
+            str, datetime
+        ] = {}  # Per-unit last poll time
 
         # Initialize ATA control client
         self.control_client_ata = ATAControlClient(
@@ -114,18 +123,33 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             async_request_refresh=self.async_request_refresh,
         )
 
+    def _persist_tokens(self) -> None:
+        """Persist current token state to config entry."""
+        if self._config_entry is None:
+            return
+        self.hass.config_entries.async_update_entry(
+            self._config_entry,
+            data={**self._config_entry.data, **self.client.get_token_snapshot()},
+        )
+
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
-        # If not authenticated yet, login first
-        if not self.client.is_authenticated:
-            _LOGGER.debug("Not authenticated, logging in")
-            await self.client.login(self._email, self._password)
+        try:
+            # Auth handled transparently by _api_request (proactive refresh)
+            # and _execute_with_retry (401 recovery with refresh → login fallback)
+            context: UserContext = await self._execute_with_retry(
+                self.client.get_user_context,
+                "coordinator_update",
+            )
+        except ServiceUnavailableError as err:
+            self._outage_retry_count += 1
+            retry_after = min(120 * 2 ** (self._outage_retry_count - 1), 900)
+            _LOGGER.warning(
+                "MELCloud service unavailable, retrying in %ds", retry_after
+            )
+            raise UpdateFailed(str(err), retry_after=retry_after) from err
 
-        # Use retry helper for consistency
-        context: UserContext = await self._execute_with_retry(
-            self.client.get_user_context,
-            "coordinator_update",
-        )
+        self._outage_retry_count = 0
 
         # Debug logging: Log verbose device states (controlled by HA logger config)
         for building in context.buildings:
@@ -191,56 +215,34 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 ) -> float | None:
                     return await self.client.get_outdoor_temperature(uid)
 
-                # Runtime capability discovery - probe once per device
-                if unit_id not in self._outdoor_temp_checked:
+                # Poll outdoor temp if: never polled, or interval elapsed.
+                # Runs for both known-sensor and no-sensor units so idle-at-startup
+                # units recover automatically when the AC next runs.
+                if self._should_poll_outdoor_temp(unit_id):
                     try:
                         temp = await self._execute_with_retry(
                             get_outdoor_temp,
-                            "outdoor temperature check",
+                            "outdoor temperature",
                         )
-                        self._outdoor_temp_checked.add(unit_id)
+                        self._record_outdoor_temp_poll(unit_id)
 
                         if temp is not None:
                             unit.has_outdoor_temp_sensor = True
                             unit.outdoor_temperature = temp
                             _LOGGER.debug(
-                                "Device %s has outdoor temperature sensor: %.1f°C",
+                                "Outdoor temp for %s: %.1f°C",
                                 unit.name,
                                 temp,
                             )
                         else:
                             _LOGGER.debug(
-                                "Device %s has no outdoor temperature sensor",
+                                "No outdoor temp data for %s",
                                 unit.name,
                             )
                     except Exception:
-                        _LOGGER.debug(
-                            "Failed to check outdoor temp for %s",
-                            unit.name,
-                            exc_info=True,
-                        )
-                        self._outdoor_temp_checked.add(unit_id)
-
-                # Ongoing polling for devices with sensors
-                elif unit.has_outdoor_temp_sensor and self._should_poll_outdoor_temp(
-                    unit_id
-                ):
-                    try:
-                        temp = await self._execute_with_retry(
-                            get_outdoor_temp,
-                            "outdoor temperature update",
-                        )
                         self._record_outdoor_temp_poll(unit_id)
-                        if temp is not None:
-                            unit.outdoor_temperature = temp
-                            _LOGGER.debug(
-                                "Updated outdoor temp for %s: %.1f°C",
-                                unit.name,
-                                temp,
-                            )
-                    except Exception:
-                        _LOGGER.warning(
-                            "Failed to update outdoor temp for %s",
+                        _LOGGER.debug(
+                            "Failed to fetch outdoor temp for %s",
                             unit.name,
                             exc_info=True,
                         )
@@ -491,30 +493,45 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     )
                     return await operation()
                 except AuthenticationError:
-                    # Still expired, re-authenticate
-                    _LOGGER.info(
-                        "Session still expired, attempting re-authentication for %s",
-                        operation_name,
-                    )
+                    pass
+
+                # Try token refresh first (cheaper than full re-login)
+                if self.client.has_refresh_token:
                     try:
-                        await self.client.login(self._email, self._password)
-                        _LOGGER.info("Re-authentication successful")
-                    except AuthenticationError as err:
-                        _LOGGER.error("Re-authentication failed: %s", err)
-                        raise ConfigEntryAuthFailed(
-                            "Re-authentication failed. Please reconfigure the integration."
-                        ) from err
+                        await self.client.refresh_access_token()
+                        self._persist_tokens()
+                        return await operation()
+                    except AuthenticationError:
+                        _LOGGER.debug(
+                            "Token refresh failed, falling back to full re-login"
+                        )
+
+                # Full re-login
+                _LOGGER.debug("Re-authenticating with full login")
+                try:
+                    await self.client.login(self._email, self._password)
+                    self._persist_tokens()
+                except AuthenticationError as err:
+                    raise ConfigEntryAuthFailed(
+                        "Re-authentication failed. Please reconfigure the integration."
+                    ) from err
 
             # Retry operation after successful re-auth (outside lock)
-            _LOGGER.debug("Retrying %s after successful re-auth", operation_name)
             try:
                 return await operation()
             except AuthenticationError as err:
-                # Still failing after re-auth - credentials are invalid
-                _LOGGER.error("%s failed even after re-auth", operation_name)
                 raise ConfigEntryAuthFailed(
                     "Authentication failed after re-auth. Please reconfigure."
                 ) from err
+
+        except ServiceUnavailableError:
+            # Don't retry or re-auth on server outage — let it propagate
+            # so _async_update_data can raise UpdateFailed for backoff
+            _LOGGER.warning(
+                "MELCloud service unavailable during %s, backing off",
+                operation_name,
+            )
+            raise
 
         except ApiError as err:
             _LOGGER.error("API error during %s: %s", operation_name, err)
@@ -522,18 +539,26 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
         """Check if outdoor temp should be polled for a specific unit."""
-        now = time.time()
-        interval_seconds = UPDATE_INTERVAL_OUTDOOR_TEMP.total_seconds()
-        last_poll = self._last_outdoor_temp_poll.get(unit_id, 0.0)
-        return now - last_poll > interval_seconds
+        last_poll = self._last_outdoor_temp_poll.get(unit_id)
+        if last_poll is None:
+            return True
+        return datetime.now(UTC) - last_poll > UPDATE_INTERVAL_OUTDOOR_TEMP
 
     def _record_outdoor_temp_poll(self, unit_id: str) -> None:
-        """Record that outdoor temp was successfully polled for a unit."""
-        self._last_outdoor_temp_poll[unit_id] = time.time()
+        """Record that outdoor temp was polled for a unit."""
+        self._last_outdoor_temp_poll[unit_id] = datetime.now(UTC)
 
     # =================================================================
     # Air-to-Air (A2A) Control Methods - Delegate to ATAControlClient
     # =================================================================
+
+    async def async_set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str
+    ) -> None:
+        """Set power state and operation mode atomically."""
+        return await self.control_client_ata.async_set_power_and_mode(
+            unit_id, power, mode
+        )
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery."""
@@ -551,15 +576,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Set fan speed with automatic session recovery."""
         return await self.control_client_ata.async_set_fan_speed(unit_id, fan_speed)
 
-    async def async_set_vanes(
-        self,
-        unit_id: str,
-        vertical: str,
-        horizontal: str,
-    ) -> None:
-        """Set vane positions with automatic session recovery."""
-        return await self.control_client_ata.async_set_vanes(
-            unit_id, vertical, horizontal
+    async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
+        """Set vertical vane position (horizontal axis untouched)."""
+        return await self.control_client_ata.async_set_vane_vertical(unit_id, vertical)
+
+    async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """Set horizontal vane position (vertical axis untouched)."""
+        return await self.control_client_ata.async_set_vane_horizontal(
+            unit_id, horizontal
         )
 
     # =================================================================

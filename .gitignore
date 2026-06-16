@@ -68,3 +68,9 @@ dev-config-snapshots/
 RESUME*.md
 MOCK_SERVER_VALIDATION.md
 .worktrees/
+
+# mitmproxy captures and certificates (may contain credentials/tokens)
+tools/mitmproxy/captures/
+tools/mitmproxy/*.pem
+tools/mitmproxy/*.cer
+tools/mitmproxy/*.p12

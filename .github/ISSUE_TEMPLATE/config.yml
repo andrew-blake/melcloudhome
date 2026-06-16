@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/andrew-blake/melcloudhome/security/advisories
+    about: Please report security issues privately here, not as public issues.
+  - name: Questions & ideas
+    url: https://github.com/andrew-blake/melcloudhome/discussions
+    about: Ask questions and discuss features in Discussions.

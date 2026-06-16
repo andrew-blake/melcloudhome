@@ -106,6 +106,18 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
+    async def async_set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str
+    ) -> None:
+        """Set power state and operation mode atomically for ATA unit.
+
+        Args:
+            unit_id: ATA unit ID
+            power: True to turn on, False to turn off
+            mode: Operation mode (e.g., "Heat", "Cool", "Automatic", "Dry", "Fan")
+        """
+        ...
+
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature for ATA unit.
 
@@ -124,17 +136,20 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
-    async def async_set_vanes(
-        self,
-        unit_id: str,
-        vertical: str,
-        horizontal: str,
-    ) -> None:
-        """Set vane positions for ATA unit.
+    async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
+        """Set vertical vane position for ATA unit (horizontal axis untouched).
 
         Args:
             unit_id: ATA unit ID
             vertical: Vertical vane position
+        """
+        ...
+
+    async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
+        """Set horizontal vane position for ATA unit (vertical axis untouched).
+
+        Args:
+            unit_id: ATA unit ID
             horizontal: Horizontal vane position
         """
         ...
