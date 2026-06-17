@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.api.models import Building, UserContext
+    from custom_components.melcloudhome.api.models_ata import AirToAirUnit
     from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 
 # Import fixtures from pytest-homeassistant-custom-component
@@ -251,11 +252,11 @@ async def setup_atw_integration_custom(
     mock_context: Any,
     *,
     configure_client: Callable[..., None] | None = None,
-) -> "MockConfigEntry":
+) -> "tuple[MockConfigEntry, Any]":
     """Set up ATW integration with a custom mock context.
 
-    Use this when tests need specific unit data. Pass configure_client to
-    add mock methods (e.g., energy API) before setup completes.
+    Returns (entry, mock_client). Capture mock_client to configure mocks or
+    assert on calls after setup. Use configure_client for pre-setup mock wiring.
     """
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
     from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -281,4 +282,117 @@ async def setup_atw_integration_custom(
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-        return entry
+        return entry, mock_client
+
+
+# =============================================================================
+# ATA (Air-to-Air) test helpers
+# =============================================================================
+
+# Same UUID as ATW constants — safe because each test loads only one device type
+TEST_ATA_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
+TEST_ATA_BUILDING_ID = "building-test-id"
+
+
+def create_mock_ata_unit(
+    unit_id: str = TEST_ATA_UNIT_ID,
+    name: str = "Test Unit",
+    power: bool = True,
+    operation_mode: str = "Heat",
+    set_temperature: float | None = 21.0,
+    room_temperature: float | None = 20.0,
+    set_fan_speed: str | None = "Auto",
+    vane_vertical: str | None = "Auto",
+    vane_horizontal: str | None = "Auto",
+    in_standby_mode: bool = False,
+    is_in_error: bool = False,
+    rssi: int | None = -50,
+    has_energy_meter: bool = False,
+    energy_consumed: float | None = None,
+    has_outdoor_sensor: bool = False,
+    outdoor_temperature: float | None = None,
+) -> "AirToAirUnit":
+    """Create a mock AirToAirUnit for testing."""
+    from custom_components.melcloudhome.api.models_ata import (
+        AirToAirCapabilities,
+        AirToAirUnit,
+    )
+
+    return AirToAirUnit(
+        id=unit_id,
+        name=name,
+        power=power,
+        operation_mode=operation_mode,
+        set_temperature=set_temperature,
+        room_temperature=room_temperature,
+        set_fan_speed=set_fan_speed,
+        vane_vertical_direction=vane_vertical,
+        vane_horizontal_direction=vane_horizontal,
+        in_standby_mode=in_standby_mode,
+        is_in_error=is_in_error,
+        rssi=rssi,
+        capabilities=AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter),
+        energy_consumed=energy_consumed,
+        has_outdoor_temp_sensor=has_outdoor_sensor,
+        outdoor_temperature=outdoor_temperature,
+    )
+
+
+def create_mock_ata_building(
+    building_id: str = TEST_ATA_BUILDING_ID,
+    name: str = "Test Building",
+    units: list | None = None,
+) -> "Building":
+    """Create a mock Building with ATA units for testing."""
+    from custom_components.melcloudhome.api.models import Building
+
+    if units is None:
+        units = [create_mock_ata_unit()]
+    return Building(id=building_id, name=name, air_to_air_units=units)
+
+
+def create_mock_ata_user_context(buildings: list | None = None) -> "UserContext":
+    """Create a mock UserContext with ATA buildings for testing."""
+    from custom_components.melcloudhome.api.models import UserContext
+
+    if buildings is None:
+        buildings = [create_mock_ata_building()]
+    return UserContext(buildings=buildings)
+
+
+async def setup_ata_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    """Set up ATA integration with a custom mock context.
+
+    Returns (entry, mock_client). Capture mock_client to configure mocks or
+    assert on calls after setup. Use configure_client for pre-setup mock wiring.
+    """
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        if configure_client is not None:
+            configure_client(mock_client)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        return entry, mock_client
