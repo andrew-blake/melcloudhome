@@ -101,6 +101,7 @@ def create_mock_atw_unit(
     energy_consumed: float | None = None,
     energy_produced: float | None = None,
     cop: float | None = None,
+    outdoor_temperature: float | None = 15.0,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
 
@@ -143,6 +144,7 @@ def create_mock_atw_unit(
         energy_consumed=energy_consumed,
         energy_produced=energy_produced,
         cop=cop,
+        outdoor_temperature=outdoor_temperature,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
             has_heat_zone2=has_zone2,

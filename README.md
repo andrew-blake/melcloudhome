@@ -12,7 +12,7 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.3.4
 
-Fixes intermittent flashing/faults on multi-zone systems when turning on via HA, and a security fix preventing sensitive data appearing in diagnostic reports and log files. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Outdoor temperature sensor for ATW heat pump devices, fixes intermittent flashing/faults on multi-zone systems when turning on via HA, and a security fix preventing sensitive data appearing in diagnostic reports. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 

@@ -163,6 +163,7 @@ ATW_UNIT_IDLE = {
         {"name": "ForcedHotWaterMode", "value": "False"},
         {"name": "IsInError", "value": "False"},
         {"name": "ErrorCode", "value": ""},
+        {"name": "OutdoorTemperature", "value": "18"},
     ],
     "schedule": [],
     "scheduleEnabled": False,

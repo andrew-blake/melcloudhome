@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.3.4] - 2026-06-13
 
+### Added
+
+- Outdoor temperature sensor for ATW heat pump devices (Ecodan, Hydrobox). The sensor reads directly from the regular polling response — no additional API calls needed. (#143)
+
 ### Fixed
 
 - Indoor units on multi-zone systems occasionally flash or fault when turned on via HA (#132)
