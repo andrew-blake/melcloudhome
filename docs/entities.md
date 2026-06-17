@@ -79,7 +79,7 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 3. Select the energy sensor for each unit
 4. Energy data accumulates over time and persists across restarts
 
-**Outdoor Temperature Sensor:**
+**Outdoor Temperature Sensor (ATA):**
 
 - Only created for devices with outdoor temperature sensors
 - Automatically detected during integration setup
@@ -124,6 +124,9 @@ For each heat pump system, the following entities are created:
 - **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
 - **Zone 2 Temperature**: `sensor.melcloudhome_{short_id}_zone_2_temperature` (if device supports Zone 2)
 - **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
+- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
+  - Ambient temperature from the outdoor unit
+  - Available on all connected ATW devices; read from the regular polling response
 
 **Operation Status:**
 

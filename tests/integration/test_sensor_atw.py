@@ -508,6 +508,68 @@ async def test_atw_energy_sensors_have_correct_device_class(
 
 
 @pytest.mark.asyncio
+async def test_atw_outdoor_temperature_sensor_created(hass: HomeAssistant) -> None:
+    """Test ATW outdoor temperature sensor is created from settings response."""
+    mock_unit = create_mock_atw_unit(outdoor_temperature=12.5)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.melcloudhome_0efc_9abc_outdoor_temperature")
+        assert state is not None
+        assert float(state.state) == 12.5
+        assert state.attributes["unit_of_measurement"] == "°C"
+        assert state.attributes["device_class"] == "temperature"
+
+
+@pytest.mark.asyncio
+async def test_atw_outdoor_temperature_not_created_when_none(
+    hass: HomeAssistant,
+) -> None:
+    """Test ATW outdoor temperature sensor is not created when field absent from API."""
+    mock_unit = create_mock_atw_unit(outdoor_temperature=None)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Entity should not exist at all — not permanently unavailable
+        state = hass.states.get("sensor.melcloudhome_0efc_9abc_outdoor_temperature")
+        assert state is None
+
+
+@pytest.mark.asyncio
 async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
     """Test ATW WiFi signal (RSSI) sensor is created (starts unavailable until telemetry fetched)."""
     mock_unit = create_mock_atw_unit()

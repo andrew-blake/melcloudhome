@@ -177,6 +177,9 @@ class AirToWaterUnit:
     set_temperature_zone2: float | None = None
     room_temperature_zone2: float | None = None
 
+    # Outdoor temperature (from settings response)
+    outdoor_temperature: float | None = None  # °C
+
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False
     frost_protection_enabled: bool = False
@@ -303,6 +306,8 @@ class AirToWaterUnit:
             ftc_model=int(settings.get("FTCModel", "3")),
             # Capabilities
             capabilities=capabilities,
+            # Outdoor temperature (included in settings response)
+            outdoor_temperature=_parse_float(settings.get("OutdoorTemperature")),
             # Holiday Mode & Frost Protection
             holiday_mode_enabled=holiday_enabled,
             frost_protection_enabled=frost_enabled,

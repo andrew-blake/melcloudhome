@@ -424,6 +424,22 @@ class TestEdgeCases:
         assert unit.power is False  # Default
         assert unit.operation_status == "Stop"  # Default
 
+    def test_outdoor_temperature_parsed_from_settings(self) -> None:
+        """Test outdoor temperature is parsed from settings array."""
+        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
+        assert unit.outdoor_temperature == 18.0
+
+    def test_outdoor_temperature_none_when_missing(self) -> None:
+        """Test outdoor temperature defaults to None when not in settings."""
+        unit_data = {
+            "id": "unit-no-outdoor",
+            "givenDisplayName": "No Outdoor",
+            "settings": [],
+            "capabilities": {},
+        }
+        unit = AirToWaterUnit.from_dict(unit_data)
+        assert unit.outdoor_temperature is None
+
     def test_empty_string_converts_to_none(self) -> None:
         """Test that empty strings are converted to None."""
         # ErrorCode is empty string in IDLE fixture

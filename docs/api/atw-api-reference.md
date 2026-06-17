@@ -278,7 +278,8 @@ Settings are returned as name-value pairs:
   {"name": "HasZone2", "value": "0"},  // "0" = no Zone 2, "2" = has Zone 2
   {"name": "HasCoolingMode", "value": "False"},
   {"name": "IsInError", "value": "False"},
-  {"name": "ErrorCode", "value": ""}
+  {"name": "ErrorCode", "value": ""},
+  {"name": "OutdoorTemperature", "value": "18"}
 ]
 ```
 

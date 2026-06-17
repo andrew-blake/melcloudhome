@@ -98,6 +98,18 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.tank_water_temperature is not None,
     ),
+    # Outdoor temperature (from settings response)
+    # Only created if the first API response includes the field — not all hardware exposes it
+    ATWSensorEntityDescription(
+        key="outdoor_temperature",
+        translation_key="outdoor_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.outdoor_temperature,
+        should_create_fn=lambda unit: unit.outdoor_temperature is not None,
+        available_fn=lambda unit: unit.outdoor_temperature is not None,
+    ),
     # Operation status (3-way valve position - raw API values)
     ATWSensorEntityDescription(
         key="operation_status",

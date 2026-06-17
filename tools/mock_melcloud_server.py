@@ -170,6 +170,7 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 4,  # API internal value, mapping to physical FTC controller unknown
+                "outdoor_temperature": 7.5,
             },
             "aed2afac-01a5-4c4c-8d58-95989aa1c71e": {
                 "name": "Dual Zone Heat Pump",
@@ -188,6 +189,7 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 5,
+                "outdoor_temperature": 3.0,
             },
         }
 
@@ -1161,6 +1163,7 @@ class MockMELCloudServer:
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
             {"name": "FTCModel", "value": str(state["ftc_model"])},
+            {"name": "OutdoorTemperature", "value": str(state["outdoor_temperature"])},
         ]
 
         # Zone 2 settings (only if device has zone 2)
