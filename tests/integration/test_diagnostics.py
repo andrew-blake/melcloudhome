@@ -15,92 +15,36 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import Building, UserContext
-from custom_components.melcloudhome.api.models_ata import (
-    AirToAirCapabilities,
-    AirToAirUnit,
-)
 from custom_components.melcloudhome.const import DOMAIN
 from custom_components.melcloudhome.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 
-# Mock at API boundary (NOT coordinator or diagnostics internals)
-MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-
-# Test device identifiers
-TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
-TEST_BUILDING_ID = "building-test-id"
-
-
-def create_mock_unit(
-    unit_id: str = TEST_UNIT_ID,
-    name: str = "Test Unit",
-    power: bool = True,
-    operation_mode: str = "Heat",
-    set_temperature: float = 21.0,
-    room_temperature: float = 20.0,
-    has_energy_meter: bool = False,
-) -> AirToAirUnit:
-    """Create a mock AirToAirUnit for diagnostics testing."""
-    capabilities = AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter)
-
-    return AirToAirUnit(
-        id=unit_id,
-        name=name,
-        power=power,
-        operation_mode=operation_mode,
-        set_temperature=set_temperature,
-        room_temperature=room_temperature,
-        set_fan_speed="Auto",
-        vane_vertical_direction="Auto",
-        vane_horizontal_direction="Auto",
-        in_standby_mode=False,
-        is_in_error=False,
-        rssi=-50,
-        capabilities=capabilities,
-        energy_consumed=None,
-    )
-
-
-def create_mock_building(
-    building_id: str = TEST_BUILDING_ID,
-    name: str = "Test Building",
-    units: list[AirToAirUnit] | None = None,
-) -> Building:
-    """Create a mock Building for diagnostics testing."""
-    if units is None:
-        units = [create_mock_unit()]
-    return Building(id=building_id, name=name, air_to_air_units=units)
-
-
-def create_mock_user_context(buildings: list[Building] | None = None) -> UserContext:
-    """Create a mock UserContext for diagnostics testing."""
-    if buildings is None:
-        buildings = [create_mock_building()]
-    return UserContext(buildings=buildings)
+from .conftest import (
+    MOCK_CLIENT_PATH,
+    create_mock_ata_building,
+    create_mock_ata_unit,
+    create_mock_ata_user_context,
+    setup_ata_integration_custom,
+)
 
 
 @pytest.mark.asyncio
 async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
     """Test diagnostics returns correct basic structure with redacted credentials."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
 
+    # Non-standard entry: title + non-default password — keep inline
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
-        # Create and setup config entry
         entry = MockConfigEntry(
             domain=DOMAIN,
-            data={
-                CONF_EMAIL: "test@example.com",
-                CONF_PASSWORD: "secret_password",
-            },
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "secret_password"},
             unique_id="test@example.com",
             title="MELCloud Home",
         )
@@ -108,24 +52,18 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-        # Get diagnostics data
         diagnostics = await async_get_config_entry_diagnostics(hass, entry)
 
-        # Verify basic structure
         assert "entry" in diagnostics
         assert "coordinator" in diagnostics
         assert "entities" in diagnostics
         assert "user_context" in diagnostics
 
-        # Verify entry data
         assert diagnostics["entry"]["title"] == "***REDACTED***"
         assert diagnostics["entry"]["version"] == 2
-
-        # Verify credentials are redacted
         assert diagnostics["entry"]["data"][CONF_EMAIL] == "**REDACTED**"
         assert diagnostics["entry"]["data"][CONF_PASSWORD] == "**REDACTED**"
 
-        # Verify coordinator data
         assert diagnostics["coordinator"]["last_update_success"] is True
         assert diagnostics["coordinator"]["update_interval"] == 60.0
 
@@ -133,50 +71,28 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
     """Test diagnostics includes entity states for climate and sensors."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    assert "entities" in diagnostics
+    entities = diagnostics["entities"]
 
-        # Get diagnostics data
-        diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    climate_entity_id = "climate.melcloudhome_a1b2_9abc_climate"
+    assert climate_entity_id in entities
+    assert entities[climate_entity_id]["state"] == "heat"
+    assert "attributes" in entities[climate_entity_id]
 
-        # Verify entities section exists and has data
-        assert "entities" in diagnostics
-        entities = diagnostics["entities"]
-
-        # Should have climate entity (entity ID derived from UUID: 0efc1234-...9abc)
-        climate_entity_id = "climate.melcloudhome_0efc_9abc_climate"
-        assert climate_entity_id in entities
-        assert entities[climate_entity_id]["state"] == "heat"
-        assert "attributes" in entities[climate_entity_id]
-
-        # Should have sensor entities
-        temp_sensor_id = "sensor.melcloudhome_0efc_9abc_room_temperature"
-        assert temp_sensor_id in entities
-        assert entities[temp_sensor_id]["state"] == "20.0"
+    temp_sensor_id = "sensor.melcloudhome_a1b2_9abc_room_temperature"
+    assert temp_sensor_id in entities
+    assert entities[temp_sensor_id]["state"] == "20.0"
 
 
 @pytest.mark.asyncio
 async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> None:
     """Test diagnostics includes detailed user context with buildings and units."""
-    # Create mock data with multiple units
-    unit1 = create_mock_unit(
+    unit1 = create_mock_ata_unit(
         unit_id="unit-1",
         name="Living Room",
         power=True,
@@ -185,7 +101,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         room_temperature=20.5,
         has_energy_meter=True,
     )
-    unit2 = create_mock_unit(
+    unit2 = create_mock_ata_unit(
         unit_id="unit-2",
         name="Bedroom",
         power=False,
@@ -194,77 +110,55 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         room_temperature=21.0,
         has_energy_meter=False,
     )
-
-    building = create_mock_building(
-        building_id="building-1",
-        name="Home",
-        units=[unit1, unit2],
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-1", name="Home", units=[unit1, unit2]
+            )
+        ]
     )
-    mock_context = create_mock_user_context(buildings=[building])
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    assert "user_context" in diagnostics
+    user_context = diagnostics["user_context"]
 
-        # Get diagnostics data
-        diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    assert "buildings" in user_context
+    assert len(user_context["buildings"]) == 1
 
-        # Verify user_context structure
-        assert "user_context" in diagnostics
-        user_context = diagnostics["user_context"]
+    building_data = user_context["buildings"][0]
+    assert building_data["id"] == "building-1"
+    assert building_data["name"] == "Building-1"
+    assert building_data["ata_unit_count"] == 2
+    assert building_data["atw_unit_count"] == 0
 
-        # Verify buildings
-        assert "buildings" in user_context
-        assert len(user_context["buildings"]) == 1
+    units = building_data["ata_units"]
+    assert len(units) == 2
 
-        building_data = user_context["buildings"][0]
-        assert building_data["id"] == "building-1"
-        assert building_data["name"] == "Building-1"
-        assert building_data["ata_unit_count"] == 2
-        assert building_data["atw_unit_count"] == 0
+    assert units[0]["id"] == "unit-1"
+    assert units[0]["name"] == "***REDACTED***"
+    assert units[0]["power"] is True
+    assert units[0]["operation_mode"] == "Heat"
+    assert units[0]["set_temperature"] == 22.0
+    assert units[0]["room_temperature"] == 20.5
+    assert units[0]["has_energy_consumed_meter"] is True
 
-        # Verify units
-        units = building_data["ata_units"]
-        assert len(units) == 2
-
-        # Check unit 1
-        assert units[0]["id"] == "unit-1"
-        assert units[0]["name"] == "***REDACTED***"
-        assert units[0]["power"] is True
-        assert units[0]["operation_mode"] == "Heat"
-        assert units[0]["set_temperature"] == 22.0
-        assert units[0]["room_temperature"] == 20.5
-        assert units[0]["has_energy_consumed_meter"] is True
-
-        # Check unit 2
-        assert units[1]["id"] == "unit-2"
-        assert units[1]["name"] == "***REDACTED***"
-        assert units[1]["power"] is False
-        assert units[1]["operation_mode"] == "Cool"
-        assert units[1]["set_temperature"] == 19.0
-        assert units[1]["room_temperature"] == 21.0
-        assert units[1]["has_energy_consumed_meter"] is False
+    assert units[1]["id"] == "unit-2"
+    assert units[1]["name"] == "***REDACTED***"
+    assert units[1]["power"] is False
+    assert units[1]["operation_mode"] == "Cool"
+    assert units[1]["set_temperature"] == 19.0
+    assert units[1]["room_temperature"] == 21.0
+    assert units[1]["has_energy_consumed_meter"] is False
 
 
 @pytest.mark.asyncio
 async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
-    """Regression test: access_token, refresh_token, token_expiry must not appear in diagnostics output."""
-    mock_context = create_mock_user_context()
+    """Regression: access_token, refresh_token, token_expiry must not appear in diagnostics."""
+    mock_context = create_mock_ata_user_context()
 
+    # Non-standard entry: extra config fields — keep inline
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
@@ -291,8 +185,6 @@ async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
         diagnostics = await async_get_config_entry_diagnostics(hass, entry)
         blob = json.dumps(diagnostics)
 
-        # Token values must not survive redaction
         assert "mock-access-token-abc123" not in blob
         assert "mock-refresh-token-xyz789" not in blob
-        # token_expiry is a float — check its distinctive value is gone
         assert "9999999999.0" not in blob

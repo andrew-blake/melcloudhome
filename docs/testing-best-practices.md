@@ -197,21 +197,25 @@ See `docker-compose.test.yml` for implementation details.
 
 **Study these test files for correct patterns:**
 
-- **ATA (Air-to-Air) devices:** `tests/integration/test_climate_ata.py`
-  - Complete fixture setup with shared helpers
-  - ATA-specific device mocking (`mock_client.ata.*`)
+- **ATA (Air-to-Air) devices:** `tests/integration/test_climate_ata.py`, `tests/integration/test_sensor_ata.py`
+  - Uses `setup_ata_integration_custom()` from conftest — no inline boilerplate
+  - ATA-specific device mocking (`mock_client.ata.*`) captured from return value
   - Entity state validation through `hass.states`
   - Service call testing through `hass.services`
 
-- **ATW (Air-to-Water) devices:** `tests/integration/test_climate_atw.py`
-  - ATW-specific device mocking (`mock_client.atw.*`)
+- **ATW (Air-to-Water) devices:** `tests/integration/test_climate_atw.py`, `tests/integration/test_sensor_atw.py`
+  - Uses `setup_atw_integration_custom()` from conftest
+  - ATW-specific device mocking (`mock_client.atw.*`) captured from return value
   - Multi-zone climate entity patterns
   - Water heater entity integration
 
 - **Shared fixtures:** `tests/integration/conftest.py`
-  - Helper functions: `create_mock_atw_unit()`, `create_mock_user_context()`
-  - Reusable test constants
-  - Common mocking patterns
+  - **ATA helpers:** `create_mock_ata_unit()`, `create_mock_ata_building()`, `create_mock_ata_user_context()`, `setup_ata_integration_custom()`
+  - **ATW helpers:** `create_mock_atw_unit()`, `create_mock_atw_building()`, `create_mock_atw_user_context()`, `setup_atw_integration_custom()`
+  - Both `setup_*_integration_custom()` helpers return `(entry, mock_client)` — capture `mock_client` when you need to assert on calls or reconfigure mocks after setup
+  - Reusable test constants (`TEST_ATA_UNIT_ID`, `TEST_ATW_UNIT_ID`, entity IDs, etc.)
+
+**Critical rule:** Always check conftest for existing helpers before writing local `create_mock_*` functions or copying the `MockConfigEntry` setup block. If helpers are missing for your use case, add them to conftest rather than duplicating inline.
 
 ### Key Pattern Summary
 
@@ -509,11 +513,11 @@ When publishing to HACS, ensure:
 
 **Integration Tests:**
 
-- `tests/integration/test_climate_ata.py` - ATA device testing patterns
-- `tests/integration/test_climate_atw.py` - ATW device testing patterns
+- `tests/integration/conftest.py` - **Start here.** All shared helpers and setup factories live here.
+- `tests/integration/test_climate_ata.py` - ATA device testing patterns (uses conftest helpers)
+- `tests/integration/test_sensor_atw.py` - ATW sensor patterns (uses conftest helpers, no inline boilerplate)
 - `tests/integration/test_config_flow.py` - Config flow validation
 - `tests/integration/test_init.py` - Integration setup/teardown
-- `tests/integration/conftest.py` - Shared fixtures and helpers
 
 **API Tests:**
 
@@ -536,6 +540,9 @@ Before submitting a PR with new tests:
 - [ ] Integration tests use `hass.states` and `hass.services` exclusively
 - [ ] No assertions on internal coordinator/entity method calls
 - [ ] No direct imports of internal classes (coordinator, entity classes)
+- [ ] No local `create_mock_*` functions — use or extend conftest helpers instead
+- [ ] No local `MOCK_CLIENT_PATH` constant — import from conftest
+- [ ] No inline `MockConfigEntry` + `async_setup` block — use `setup_ata/atw_integration_custom()`
 - [ ] API tests use VCR cassettes or appropriate mocks
 - [ ] Tests follow naming convention: `test_<feature>_<scenario>`
 - [ ] Tests include docstrings explaining what's being tested
