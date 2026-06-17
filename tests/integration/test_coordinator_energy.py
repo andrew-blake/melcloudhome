@@ -20,9 +20,7 @@ from .conftest import (
     MOCK_CLIENT_PATH,
     TEST_ATA_BUILDING_ID,
     TEST_ATA_UNIT_ID,
-    create_mock_ata_building,
-    create_mock_ata_unit,
-    create_mock_ata_user_context,
+    create_mock_ata_energy_context,
 )
 
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
@@ -70,9 +68,7 @@ async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None
     Validates: First initialization behavior prevents inflating totals
     Tests through: hass.states (sensor entity state)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Mock energy response with 2 hours of historical data (should be skipped)
     mock_energy_data = create_mock_energy_response(
@@ -113,7 +109,7 @@ async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         assert state.state == "0.0"  # Should start at 0, not include historical data
         assert state.attributes["unit_of_measurement"] == "kWh"
@@ -135,9 +131,7 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
     Validates: Energy accumulation logic works correctly
     Tests through: hass.states (sensor shows accumulated total)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state: 1 hour already processed
     initial_storage = {
@@ -186,7 +180,7 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Expected: 0.5 (initial) + 0.6 (11:00) + 0.7 (12:00) = 1.8 kWh
@@ -219,9 +213,7 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
     Validates: Double-counting prevention works correctly
     Tests through: hass.states (total doesn't increase on duplicate)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state: 2 hours already processed
     initial_storage = {
@@ -270,7 +262,7 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Should still be 1.1 kWh (no new hours added)
@@ -314,9 +306,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
     Validates: GitHub issue #23 - Wrong amount of consumed energy
     Tests through: hass.states (sensor shows correct accumulated total)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state: 10.0 kWh already accumulated, no hour tracking yet
     initial_storage = {
@@ -358,7 +348,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should be 10.0 + 0.1 = 10.1 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         assert float(state.state) == pytest.approx(10.1, rel=0.01)
 
@@ -375,7 +365,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should add delta: 0.3 - 0.1 = 0.2 kWh → 10.1 + 0.2 = 10.3 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert float(state.state) == pytest.approx(10.3, rel=0.01)
         # ❌ WILL FAIL with current code: stays at 10.1 (skips "old" hour)
 
@@ -395,7 +385,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
 
         # ✅ Should add: delta 09:00 (0.1) + new 10:00 (0.1) = 0.2 kWh
         # 10.3 + 0.2 = 10.5 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert float(state.state) == pytest.approx(10.5, rel=0.01)
         # ❌ WILL FAIL with current code: would be 10.2 (skips 09:00 delta, adds 10:00)
 
@@ -428,9 +418,7 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
     Validates: Storage persistence works correctly
     Tests through: hass.states (sensor shows persisted value)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Simulated persisted data from previous session
     persisted_storage = {
@@ -478,7 +466,7 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Expected: 25.7 (persisted) + 0.9 (new hour) = 26.6 kWh
@@ -515,9 +503,7 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
     Validates: Backward compatibility migration works correctly
     Tests through: Storage format conversion and functionality
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # v1.3.4 storage format (single-measure)
     v1_3_4_storage = {
@@ -569,7 +555,7 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows migrated value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         # Expected: 15.3 (migrated from v1.3.4) + 0.7 (new hour) = 16.0 kWh
         assert float(state.state) == pytest.approx(16.0, rel=0.01)
@@ -608,9 +594,7 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
     Validates: v2.0 → v2.0 upgrade path works correctly
     Tests through: Storage format detection and loading
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # v2.0 storage format (multi-measure)
     v2_0_storage = {
@@ -670,7 +654,7 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows restored value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         # Expected: 20.5 (restored from v2.0) + 0.7 (new hour) = 21.2 kWh
         assert float(state.state) == pytest.approx(21.2, rel=0.01)
@@ -708,9 +692,7 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
     Validates: Error handling prevents integration crash
     Tests through: hass.states (sensor exists but unavailable)
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state with some accumulated energy (simulating previous session)
     initial_storage = {
@@ -747,7 +729,7 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Current behavior: sensor shows unavailable when initial fetch fails
@@ -755,7 +737,7 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         assert state.state == "unavailable"
 
         # Verify integration didn't crash - other sensors still work
-        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc_climate")
+        climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
         assert climate_state is not None
         assert climate_state.state == "heat"  # Climate entity still functional
 
@@ -773,9 +755,7 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
     Validates: Clean shutdown prevents resource leaks
     Tests through: Integration setup/teardown
     """
-    mock_context = create_mock_ata_user_context(
-        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
-    )
+    mock_context = create_mock_ata_energy_context()
 
     # Mock energy data (will only be called during initial setup)
     mock_energy_data = create_mock_energy_response([("2025-01-15T10:00:00Z", 500.0)])
@@ -808,7 +788,7 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
         await hass.async_block_till_done()
 
         # Verify sensor exists
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Reset call count after setup

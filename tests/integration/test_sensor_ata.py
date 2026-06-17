@@ -56,19 +56,19 @@ async def test_sensor_entity_creation(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        temp_state = hass.states.get("sensor.melcloudhome_0efc_9abc_room_temperature")
+        temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
         assert temp_state is not None
         assert float(temp_state.state) == 20.0
         assert temp_state.attributes["unit_of_measurement"] == "°C"
         assert temp_state.attributes["device_class"] == "temperature"
 
-        wifi_state = hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal")
+        wifi_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_wifi_signal")
         assert wifi_state is not None
         assert int(wifi_state.state) == -50
         assert wifi_state.attributes["unit_of_measurement"] == "dBm"
         assert wifi_state.attributes["device_class"] == "signal_strength"
 
-        energy_state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert energy_state is not None
         assert float(energy_state.state) == 0.0  # First init starts at 0
         assert energy_state.attributes["unit_of_measurement"] == "kWh"
@@ -143,7 +143,7 @@ async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
         hass, initial_context, configure_client=configure
     )
 
-    temp_state = hass.states.get("sensor.melcloudhome_0efc_9abc_room_temperature")
+    temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
     assert float(temp_state.state) == 20.0
 
     from custom_components.melcloudhome.const import DOMAIN
@@ -152,11 +152,11 @@ async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert (
-        float(hass.states.get("sensor.melcloudhome_0efc_9abc_room_temperature").state)
+        float(hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature").state)
         == 22.0
     )
     assert (
-        int(hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal").state) == -45
+        int(hass.states.get("sensor.melcloudhome_a1b2_9abc_wifi_signal").state) == -45
     )
 
 
@@ -181,10 +181,10 @@ async def test_energy_sensor_availability(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        energy_state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert energy_state is not None
         assert energy_state.state == "unavailable"
 
-        temp_state = hass.states.get("sensor.melcloudhome_0efc_9abc_room_temperature")
+        temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
         assert temp_state is not None
         assert float(temp_state.state) == 20.0

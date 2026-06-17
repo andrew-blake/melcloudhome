@@ -21,7 +21,7 @@ from .conftest import (
     setup_ata_integration_custom,
 )
 
-_CLIMATE_ENTITY = "climate.melcloudhome_0efc_9abc_climate"
+_CLIMATE_ENTITY = "climate.melcloudhome_a1b2_9abc_climate"
 
 
 def _configure_ata_controls(client: Any) -> None:

@@ -300,9 +300,8 @@ async def setup_atw_integration_custom(
 # ATA (Air-to-Air) test helpers
 # =============================================================================
 
-# Same UUID as ATW constants — safe because each test loads only one device type
-TEST_ATA_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
-TEST_ATA_BUILDING_ID = "building-test-id"
+TEST_ATA_UNIT_ID = "a1b2c3d4-5678-9abc-def0-123456789abc"
+TEST_ATA_BUILDING_ID = "building-ata-test-id"
 
 
 def create_mock_ata_unit(
@@ -369,6 +368,16 @@ def create_mock_ata_user_context(buildings: list | None = None) -> "UserContext"
     if buildings is None:
         buildings = [create_mock_ata_building()]
     return UserContext(buildings=buildings)
+
+
+def create_mock_ata_energy_context() -> "UserContext":
+    """Create a mock UserContext with one energy-capable ATA unit.
+
+    Convenience wrapper for the common energy coordinator test setup.
+    """
+    return create_mock_ata_user_context(
+        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
+    )
 
 
 async def setup_ata_integration_custom(

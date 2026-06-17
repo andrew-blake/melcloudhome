@@ -27,9 +27,9 @@ async def test_binary_sensor_entity_creation(hass: HomeAssistant) -> None:
     mock_context = create_mock_ata_user_context()
     await setup_ata_integration_custom(hass, mock_context)
 
-    error_state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
     connection_state = hass.states.get(
-        "binary_sensor.melcloudhome_0efc_9abc_connection_state"
+        "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
     )
 
     assert error_state is not None
@@ -48,7 +48,7 @@ async def test_error_state_sensor_reflects_unit_status(hass: HomeAssistant) -> N
     )
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    error_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_error_state"
+    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
     assert hass.states.get(error_sensor_id).state == STATE_ON  # ON = problem exists
 
     # Update to no-error state and refresh
@@ -74,7 +74,7 @@ async def test_connection_state_sensor_reflects_coordinator_status(
     mock_context = create_mock_ata_user_context()
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    connection_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
+    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
     assert hass.states.get(connection_sensor_id).state == STATE_ON  # Connected
 
     from custom_components.melcloudhome.api.exceptions import ApiError
@@ -95,7 +95,7 @@ async def test_error_sensor_unavailable_when_coordinator_fails(
     mock_context = create_mock_ata_user_context()
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    error_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_error_state"
+    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
     assert hass.states.get(error_sensor_id).state != "unavailable"
 
     from custom_components.melcloudhome.api.exceptions import ApiError
@@ -121,7 +121,7 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
-    connection_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
+    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
     connection_state = hass.states.get(connection_sensor_id)
     assert connection_state is not None
     assert connection_state.state == STATE_OFF  # Shows disconnection, not unavailable
