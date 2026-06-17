@@ -91,10 +91,7 @@ async def test_outdoor_temperature_updates_on_coordinator_refresh(
     assert state_before is not None
     assert state_before.state == "12.0"
 
-    coordinator = hass.data[DOMAIN][setup_integration_with_outdoor_temp.entry_id][
-        "coordinator"
-    ]
-    await coordinator.async_request_refresh()
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
     state_after = hass.states.get(entity_id)
@@ -191,10 +188,12 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         side_effect=mock_get_outdoor_temp_updated
     )
 
+    # _last_outdoor_temp_poll has no public reset interface; direct access is the
+    # only way to simulate the 30-minute polling interval elapsing in tests.
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     coordinator._last_outdoor_temp_poll.clear()
 
-    await coordinator.async_request_refresh()
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
     state_lr = hass.states.get(living_room_entity)
@@ -224,6 +223,11 @@ async def test_idle_unit_reprobed_after_polling_interval(
         hass, mock_context, configure_client=configure
     )
 
+    # Outdoor temp entities use should_create_fn at setup time and are not
+    # dynamically added on coordinator updates — the coordinator model is the
+    # only observable outcome of a re-probe short of an entry reload.
+    # _last_outdoor_temp_poll has no public reset API; direct access is the
+    # only way to simulate the 30-minute interval elapsing in tests.
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
     unit = coordinator.get_ata_device(LIVING_ROOM_ID)
@@ -234,7 +238,7 @@ async def test_idle_unit_reprobed_after_polling_interval(
     mock_client.get_outdoor_temperature = AsyncMock(return_value=15.0)
     coordinator._last_outdoor_temp_poll.clear()
 
-    await coordinator.async_request_refresh()
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
     unit = coordinator.get_ata_device(LIVING_ROOM_ID)

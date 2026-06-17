@@ -247,17 +247,12 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         return entry
 
 
-async def setup_atw_integration_custom(
+async def _setup_integration_custom(
     hass: "HomeAssistant",
     mock_context: Any,
     *,
     configure_client: Callable[..., None] | None = None,
 ) -> "tuple[MockConfigEntry, Any]":
-    """Set up ATW integration with a custom mock context.
-
-    Returns (entry, mock_client). Capture mock_client to configure mocks or
-    assert on calls after setup. Use configure_client for pre-setup mock wiring.
-    """
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -283,6 +278,22 @@ async def setup_atw_integration_custom(
         await hass.async_block_till_done()
 
         return entry, mock_client
+
+
+async def setup_atw_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    """Set up ATW integration with a custom mock context.
+
+    Returns (entry, mock_client). Capture mock_client to configure mocks or
+    assert on calls after setup. Use configure_client for pre-setup mock wiring.
+    """
+    return await _setup_integration_custom(
+        hass, mock_context, configure_client=configure_client
+    )
 
 
 # =============================================================================
@@ -371,28 +382,6 @@ async def setup_ata_integration_custom(
     Returns (entry, mock_client). Capture mock_client to configure mocks or
     assert on calls after setup. Use configure_client for pre-setup mock wiring.
     """
-    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-    from custom_components.melcloudhome.const import DOMAIN
-
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        if configure_client is not None:
-            configure_client(mock_client)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        return entry, mock_client
+    return await _setup_integration_custom(
+        hass, mock_context, configure_client=configure_client
+    )
