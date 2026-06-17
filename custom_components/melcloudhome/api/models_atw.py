@@ -203,18 +203,7 @@ class AirToWaterUnit:
 
         This method parses the settings array and handles type conversions.
         """
-        # DEBUG: Log raw API data for ATW unit
-        import json
-
         settings_list = data.get("settings", [])
-        unit_id = data.get("id", "unknown")
-        unit_name = data.get("givenDisplayName", "Unknown")
-        _LOGGER.debug(
-            "[ATW %s '%s'] Raw API settings: %s",
-            unit_id[:8],
-            unit_name,
-            json.dumps(settings_list, indent=2),
-        )
 
         # Parse capabilities
         capabilities_data = data.get("capabilities", {})
@@ -255,18 +244,6 @@ class AirToWaterUnit:
         )
         operation_mode_zone2 = settings.get("OperationModeZone2") if has_zone2 else None
         power = _parse_bool(settings.get("Power"))
-
-        # DEBUG: Log operation status vs zone modes when system is active
-        # This helps us understand if OperationMode contains generic values ("Heating")
-        # or zone-specific values ("HeatFlowTemperature")
-        if power and operation_status != ATW_STATUS_STOP:
-            _LOGGER.debug(
-                "[ATW %s] OperationMode='%s' | Zone1Mode='%s' | Zone2Mode='%s'",
-                data.get("id", "unknown")[:8],
-                operation_status,
-                operation_mode_zone1,
-                operation_mode_zone2,
-            )
 
         return cls(
             # Identity

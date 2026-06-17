@@ -3,7 +3,8 @@
 These fixtures require pytest-homeassistant-custom-component.
 """
 
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -232,6 +233,44 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         mock_client.atw.set_mode_zone1 = AsyncMock()
         mock_client.atw.set_dhw_temperature = AsyncMock()
         mock_client.atw.set_forced_hot_water = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        return entry
+
+
+async def setup_atw_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+) -> "MockConfigEntry":
+    """Set up ATW integration with a custom mock context.
+
+    Use this when tests need specific unit data. Pass configure_client to
+    add mock methods (e.g., energy API) before setup completes.
+    """
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        if configure_client is not None:
+            configure_client(mock_client)
 
         entry = MockConfigEntry(
             domain=DOMAIN,
