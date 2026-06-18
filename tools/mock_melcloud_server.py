@@ -39,6 +39,19 @@ from aiohttp import web
 # Configure module logger
 logger = logging.getLogger(__name__)
 
+
+def _safe_log(value: Any) -> str:
+    """Strip newlines from request-controlled values before logging.
+
+    Prevents log forging (CWE-117): without this, a value containing
+    \\r or \\n could make a single log call appear as multiple log lines.
+    Always coerces to str and replaces — no branching — since CodeQL's
+    log-injection sanitizer recognition requires an unconditional
+    replace() call to treat this as a barrier.
+    """
+    return str(value).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+
+
 # Rate limiting configuration
 ENABLE_RATE_LIMITING = True  # Set to False to disable for testing
 RATE_LIMIT_INTERVAL = 0.5  # seconds
@@ -332,8 +345,15 @@ class MockMELCloudServer:
         # Validate password (for reauth testing)
         # Accept anything EXCEPT "WRONG_PASSWORD"
         if email and password:
+            # Sanitize before logging: strip newlines so request-controlled
+            # input can't forge fake log lines (CWE-117).
+            safe_email = (
+                str(email).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+            )
             if password == "WRONG_PASSWORD":
-                logger.warning("🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", email)
+                logger.warning(
+                    "🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", safe_email
+                )
                 return web.json_response(
                     {
                         "error": "invalid_credentials",
@@ -342,7 +362,7 @@ class MockMELCloudServer:
                     status=401,
                 )
             else:
-                logger.info("🔐 Login: %s (mock - success)", email)
+                logger.info("🔐 Login: %s (mock - success)", safe_email)
                 return web.json_response(
                     {
                         "access_token": "mock-access-token-abc123",
@@ -528,7 +548,7 @@ class MockMELCloudServer:
 
         # Auto-create device if not found (permissive for testing)
         if unit_id not in self.ata_states:
-            logger.info(f"📝 Auto-creating ATA device: {unit_id}")
+            logger.info("📝 Auto-creating ATA device: %s", _safe_log(unit_id))
             self.ata_states[unit_id] = {
                 "name": f"ATA Device {len(self.ata_states) + 1}",
                 "power": False,
@@ -542,8 +562,8 @@ class MockMELCloudServer:
                 "is_in_error": False,
             }
 
-        logger.info("🌡️  ATA Control: %s", unit_id)
-        logger.debug("   Request: %s", json.dumps(body, indent=2))
+        logger.info("🌡️  ATA Control: %s", _safe_log(unit_id))
+        logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.ata_states[unit_id]
 
@@ -552,48 +572,53 @@ class MockMELCloudServer:
 
         if body.get("power") is not None:
             state["power"] = body["power"]
-            logger.info("   ✅ Power: %s", body["power"])
+            logger.info("   ✅ Power: %s", _safe_log(body["power"]))
 
         if body.get("operationMode") is not None:
             mode = body["operationMode"]
             valid_modes = ["Heat", "Cool", "Automatic", "Dry", "Fan"]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual operation mode: %s", mode)
+                logger.warning("   ⚠️  Unusual operation mode: %s", _safe_log(mode))
             state["operation_mode"] = mode
-            logger.info("   ✅ Mode: %s", mode)
+            logger.info("   ✅ Mode: %s", _safe_log(mode))
 
         if body.get("setTemperature") is not None:
             temp = body["setTemperature"]
             if temp < 10 or temp > 35:
                 logger.warning(
-                    "   ⚠️  Temperature %.1f°C outside typical range (10-35°C)", temp
+                    "   ⚠️  Temperature %s°C outside typical range (10-35°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature"] = temp
-            logger.info("   ✅ Temperature: %.1f°C", temp)
+            logger.info("   ✅ Temperature: %s°C", _safe_log(temp))
 
         if body.get("setFanSpeed") is not None:
             state["set_fan_speed"] = body["setFanSpeed"]
-            logger.info("   ✅ Fan: %s", body["setFanSpeed"])
+            logger.info("   ✅ Fan: %s", _safe_log(body["setFanSpeed"]))
 
         if body.get("vaneVerticalDirection") is not None:
             state["vane_vertical_direction"] = body["vaneVerticalDirection"]
-            logger.info("   ✅ Vertical Vane: %s", body["vaneVerticalDirection"])
+            logger.info(
+                "   ✅ Vertical Vane: %s", _safe_log(body["vaneVerticalDirection"])
+            )
 
         if body.get("vaneHorizontalDirection") is not None:
             state["vane_horizontal_direction"] = body["vaneHorizontalDirection"]
-            logger.info("   ✅ Horizontal Vane: %s", body["vaneHorizontalDirection"])
+            logger.info(
+                "   ✅ Horizontal Vane: %s", _safe_log(body["vaneHorizontalDirection"])
+            )
 
         if body.get("inStandbyMode") is not None:
             state["in_standby_mode"] = body["inStandbyMode"]
-            logger.info("   ✅ Standby: %s", body["inStandbyMode"])
+            logger.info("   ✅ Standby: %s", _safe_log(body["inStandbyMode"]))
 
         # Print summary
         logger.info(
-            "📊 State: Power=%s, Mode=%s, Target=%.1f°C, Current=%.1f°C",
-            state["power"],
-            state["operation_mode"],
-            state["set_temperature"],
-            state["room_temperature"],
+            "📊 State: Power=%s, Mode=%s, Target=%s°C, Current=%s°C",
+            _safe_log(state["power"]),
+            _safe_log(state["operation_mode"]),
+            _safe_log(state["set_temperature"]),
+            _safe_log(state["room_temperature"]),
         )
 
         # Real API returns 200 with empty body
@@ -617,7 +642,7 @@ class MockMELCloudServer:
 
         # Auto-create device if not found (permissive for testing)
         if unit_id not in self.atw_states:
-            logger.info(f"📝 Auto-creating ATW device: {unit_id}")
+            logger.info("📝 Auto-creating ATW device: %s", _safe_log(unit_id))
             self.atw_states[unit_id] = {
                 "name": f"ATW Device {len(self.atw_states) + 1}",
                 "power": True,
@@ -637,25 +662,25 @@ class MockMELCloudServer:
                 "ftc_model": 4,
             }
 
-        logger.info("♨️  ATW Control: %s", unit_id)
-        logger.debug("   Request: %s", json.dumps(body, indent=2))
+        logger.info("♨️  ATW Control: %s", _safe_log(unit_id))
+        logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.atw_states[unit_id]
 
         # Update state based on non-null values
         if body.get("power") is not None:
             state["power"] = body["power"]
-            logger.info("   ✅ Power: %s", body["power"])
+            logger.info("   ✅ Power: %s", _safe_log(body["power"]))
 
         if body.get("setTemperatureZone1") is not None:
             temp = body["setTemperatureZone1"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone temperature %.1f°C outside typical range (10-30°C)",
-                    temp,
+                    "   ⚠️  Zone temperature %s°C outside typical range (10-30°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature_zone1"] = temp
-            logger.info("   ✅ Zone 1 Target: %.1f°C", temp)
+            logger.info("   ✅ Zone 1 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone1") is not None:
             mode = body["operationModeZone1"]
@@ -667,19 +692,19 @@ class MockMELCloudServer:
                 "CoolFlowTemperature",
             ]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual zone operation mode: %s", mode)
+                logger.warning("   ⚠️  Unusual zone operation mode: %s", _safe_log(mode))
             state["operation_mode_zone1"] = mode
-            logger.info("   ✅ Zone 1 Mode: %s", mode)
+            logger.info("   ✅ Zone 1 Mode: %s", _safe_log(mode))
 
         if body.get("setTemperatureZone2") is not None:
             temp = body["setTemperatureZone2"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone 2 temperature %.1f°C outside typical range (10-30°C)",
-                    temp,
+                    "   ⚠️  Zone 2 temperature %s°C outside typical range (10-30°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature_zone2"] = temp
-            logger.info("   ✅ Zone 2 Target: %.1f°C", temp)
+            logger.info("   ✅ Zone 2 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone2") is not None:
             mode = body["operationModeZone2"]
@@ -691,22 +716,25 @@ class MockMELCloudServer:
                 "CoolFlowTemperature",
             ]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual zone 2 operation mode: %s", mode)
+                logger.warning(
+                    "   ⚠️  Unusual zone 2 operation mode: %s", _safe_log(mode)
+                )
             state["operation_mode_zone2"] = mode
-            logger.info("   ✅ Zone 2 Mode: %s", mode)
+            logger.info("   ✅ Zone 2 Mode: %s", _safe_log(mode))
 
         if body.get("setTankWaterTemperature") is not None:
             temp = body["setTankWaterTemperature"]
             if temp < 40 or temp > 60:
                 logger.warning(
-                    "   ⚠️  DHW temperature %.1f°C outside typical range (40-60°C)", temp
+                    "   ⚠️  DHW temperature %s°C outside typical range (40-60°C)",
+                    _safe_log(temp),
                 )
             state["set_tank_water_temperature"] = temp
-            logger.info("   ✅ DHW Target: %.1f°C", temp)
+            logger.info("   ✅ DHW Target: %s°C", _safe_log(temp))
 
         if body.get("forcedHotWaterMode") is not None:
             state["forced_hot_water_mode"] = body["forcedHotWaterMode"]
-            logger.info("   ✅ Forced DHW: %s", body["forcedHotWaterMode"])
+            logger.info("   ✅ Forced DHW: %s", _safe_log(body["forcedHotWaterMode"]))
 
         if body.get("inStandbyMode") is not None:
             # Real device behavior: Cannot enter standby mode when powered on
@@ -718,18 +746,18 @@ class MockMELCloudServer:
                 # Don't change state - matches real ATW device behavior
             else:
                 state["in_standby_mode"] = body["inStandbyMode"]
-                logger.info("   ✅ Standby: %s", body["inStandbyMode"])
+                logger.info("   ✅ Standby: %s", _safe_log(body["inStandbyMode"]))
 
         # Update operation_mode STATUS based on 3-way valve logic
         self._update_atw_operation_mode(unit_id)
 
         # Print summary with 3-way valve status
         logger.info(
-            "📊 State: Zone1=%.1f°C→%.1f°C, DHW=%.1f°C→%.1f°C",
-            state["room_temperature_zone1"],
-            state["set_temperature_zone1"],
-            state["tank_water_temperature"],
-            state["set_tank_water_temperature"],
+            "📊 State: Zone1=%s°C→%s°C, DHW=%s°C→%s°C",
+            _safe_log(state["room_temperature_zone1"]),
+            _safe_log(state["set_temperature_zone1"]),
+            _safe_log(state["tank_water_temperature"]),
+            _safe_log(state["set_tank_water_temperature"]),
         )
         self._log_3way_valve_status(unit_id)
 
@@ -808,7 +836,11 @@ class MockMELCloudServer:
         unit_id = request.match_info.get("unit_id")
         measure = request.rel_url.query.get("measure", "flow_temperature")
 
-        logger.info("📊 Telemetry request: unit=%s, measure=%s", unit_id, measure)
+        logger.info(
+            "📊 Telemetry request: unit=%s, measure=%s",
+            _safe_log(unit_id),
+            _safe_log(measure),
+        )
 
         # Generate 4 hours of sparse data (realistic pattern)
         values = []
@@ -848,7 +880,9 @@ class MockMELCloudServer:
                     }
                 )
 
-        logger.info("📊 Returning %d datapoints for %s", len(values), measure)
+        logger.info(
+            "📊 Returning %d datapoints for %s", len(values), _safe_log(measure)
+        )
 
         return web.Response(
             text=json.dumps(
@@ -881,7 +915,9 @@ class MockMELCloudServer:
         measure = request.rel_url.query.get("measure", "interval_energy_consumed")
 
         logger.info(
-            "⚡ Energy telemetry request: unit=%s, measure=%s", unit_id, measure
+            "⚡ Energy telemetry request: unit=%s, measure=%s",
+            _safe_log(unit_id),
+            _safe_log(measure),
         )
 
         # Generate 24 hours of hourly energy data
@@ -910,7 +946,7 @@ class MockMELCloudServer:
                 }
             )
 
-        logger.info("⚡ Returning 24 hours of data for %s", measure)
+        logger.info("⚡ Returning 24 hours of data for %s", _safe_log(measure))
 
         return web.Response(
             text=json.dumps(
@@ -1028,7 +1064,7 @@ class MockMELCloudServer:
         method = request.method
 
         if method == "GET":
-            logger.info("📅 Schedule GET: %s", unit_id)
+            logger.info("📅 Schedule GET: %s", _safe_log(unit_id))
             # Return empty schedule array
             return web.json_response([])
 
@@ -1038,8 +1074,8 @@ class MockMELCloudServer:
             except json.JSONDecodeError:
                 return web.json_response({"error": "Invalid JSON"}, status=400)
 
-            logger.info("📅 Schedule POST: %s", unit_id)
-            logger.debug("   Schedule data: %s", json.dumps(body, indent=2))
+            logger.info("📅 Schedule POST: %s", _safe_log(unit_id))
+            logger.debug("   Schedule data: %s", _safe_log(json.dumps(body)))
 
             # Real API returns 200 with empty body
             return web.Response(status=200, body=b"")
@@ -1049,7 +1085,7 @@ class MockMELCloudServer:
     async def handle_schedule_enabled_get(self, request: web.Request) -> web.Response:
         """GET /monitor/atwcloudschedule/{unit_id}/enabled - Get schedule enabled status."""
         unit_id = request.match_info.get("unit_id")
-        logger.info("📅 Schedule Enabled GET: %s", unit_id)
+        logger.info("📅 Schedule Enabled GET: %s", _safe_log(unit_id))
 
         # Return schedule enabled status (true/false)
         enabled = True  # Default to enabled
@@ -1065,7 +1101,9 @@ class MockMELCloudServer:
             return web.json_response({"error": "Invalid JSON"}, status=400)
 
         enabled = body.get("enabled", True)
-        logger.info("📅 Schedule Enabled PUT: %s -> %s", unit_id, enabled)
+        logger.info(
+            "📅 Schedule Enabled PUT: %s -> %s", _safe_log(unit_id), _safe_log(enabled)
+        )
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
@@ -1092,12 +1130,16 @@ class MockMELCloudServer:
                 logger.warning("   ⚠️  Zone 1 %s suspended", action)
         elif mode == "Heating":
             zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
-            logger.info("   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", zone_mode)
+            logger.info(
+                "   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", _safe_log(zone_mode)
+            )
         elif mode == "Cooling":
             zone_mode = state.get("operation_mode_zone1", "CoolRoomTemperature")
-            logger.info("   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", zone_mode)
+            logger.info(
+                "   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", _safe_log(zone_mode)
+            )
         else:
-            logger.info("   🔄 3-Way Valve: IDLE (%s)", mode)
+            logger.info("   🔄 3-Way Valve: IDLE (%s)", _safe_log(mode))
 
     def _build_ata_settings(self, unit_id: str) -> list[dict]:
         """Build ATA settings array from state dict.

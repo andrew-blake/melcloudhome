@@ -1,6 +1,5 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,9 +14,6 @@ from .parsing import (
     parse_bool as _parse_bool,
     parse_float as _parse_float,
 )
-
-_LOGGER = logging.getLogger(__name__)
-
 
 # ==============================================================================
 # Air-to-Air (A/C) Models

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -17,8 +16,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api.models import AirToAirUnit, Building
 from .helpers import initialize_entity_base
 from .protocols import CoordinatorProtocol
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
