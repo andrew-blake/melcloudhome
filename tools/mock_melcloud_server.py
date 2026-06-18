@@ -40,16 +40,16 @@ from aiohttp import web
 logger = logging.getLogger(__name__)
 
 
-def _safe_log(value: Any) -> Any:
-    """Strip newlines from request-controlled strings before logging.
+def _safe_log(value: Any) -> str:
+    """Strip newlines from request-controlled values before logging.
 
     Prevents log forging (CWE-117): without this, a value containing
     \\r or \\n could make a single log call appear as multiple log lines.
-    Non-string values (e.g. numbers used with %.1f) pass through unchanged.
+    Always coerces to str and replaces — no branching — since CodeQL's
+    log-injection sanitizer recognition requires an unconditional
+    replace() call to treat this as a barrier.
     """
-    if isinstance(value, str):
-        return value.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
-    return value
+    return str(value).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
 
 
 # Rate limiting configuration
@@ -586,11 +586,11 @@ class MockMELCloudServer:
             temp = body["setTemperature"]
             if temp < 10 or temp > 35:
                 logger.warning(
-                    "   ⚠️  Temperature %.1f°C outside typical range (10-35°C)",
+                    "   ⚠️  Temperature %s°C outside typical range (10-35°C)",
                     _safe_log(temp),
                 )
             state["set_temperature"] = temp
-            logger.info("   ✅ Temperature: %.1f°C", _safe_log(temp))
+            logger.info("   ✅ Temperature: %s°C", _safe_log(temp))
 
         if body.get("setFanSpeed") is not None:
             state["set_fan_speed"] = body["setFanSpeed"]
@@ -614,7 +614,7 @@ class MockMELCloudServer:
 
         # Print summary
         logger.info(
-            "📊 State: Power=%s, Mode=%s, Target=%.1f°C, Current=%.1f°C",
+            "📊 State: Power=%s, Mode=%s, Target=%s°C, Current=%s°C",
             _safe_log(state["power"]),
             _safe_log(state["operation_mode"]),
             _safe_log(state["set_temperature"]),
@@ -676,11 +676,11 @@ class MockMELCloudServer:
             temp = body["setTemperatureZone1"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone temperature %.1f°C outside typical range (10-30°C)",
+                    "   ⚠️  Zone temperature %s°C outside typical range (10-30°C)",
                     _safe_log(temp),
                 )
             state["set_temperature_zone1"] = temp
-            logger.info("   ✅ Zone 1 Target: %.1f°C", _safe_log(temp))
+            logger.info("   ✅ Zone 1 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone1") is not None:
             mode = body["operationModeZone1"]
@@ -700,11 +700,11 @@ class MockMELCloudServer:
             temp = body["setTemperatureZone2"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone 2 temperature %.1f°C outside typical range (10-30°C)",
+                    "   ⚠️  Zone 2 temperature %s°C outside typical range (10-30°C)",
                     _safe_log(temp),
                 )
             state["set_temperature_zone2"] = temp
-            logger.info("   ✅ Zone 2 Target: %.1f°C", _safe_log(temp))
+            logger.info("   ✅ Zone 2 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone2") is not None:
             mode = body["operationModeZone2"]
@@ -726,11 +726,11 @@ class MockMELCloudServer:
             temp = body["setTankWaterTemperature"]
             if temp < 40 or temp > 60:
                 logger.warning(
-                    "   ⚠️  DHW temperature %.1f°C outside typical range (40-60°C)",
+                    "   ⚠️  DHW temperature %s°C outside typical range (40-60°C)",
                     _safe_log(temp),
                 )
             state["set_tank_water_temperature"] = temp
-            logger.info("   ✅ DHW Target: %.1f°C", _safe_log(temp))
+            logger.info("   ✅ DHW Target: %s°C", _safe_log(temp))
 
         if body.get("forcedHotWaterMode") is not None:
             state["forced_hot_water_mode"] = body["forcedHotWaterMode"]
@@ -753,7 +753,7 @@ class MockMELCloudServer:
 
         # Print summary with 3-way valve status
         logger.info(
-            "📊 State: Zone1=%.1f°C→%.1f°C, DHW=%.1f°C→%.1f°C",
+            "📊 State: Zone1=%s°C→%s°C, DHW=%s°C→%s°C",
             _safe_log(state["room_temperature_zone1"]),
             _safe_log(state["set_temperature_zone1"]),
             _safe_log(state["tank_water_temperature"]),
