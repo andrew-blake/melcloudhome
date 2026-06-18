@@ -345,9 +345,14 @@ class MockMELCloudServer:
         # Validate password (for reauth testing)
         # Accept anything EXCEPT "WRONG_PASSWORD"
         if email and password:
+            # Sanitize before logging: strip newlines so request-controlled
+            # input can't forge fake log lines (CWE-117).
+            safe_email = (
+                str(email).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+            )
             if password == "WRONG_PASSWORD":
                 logger.warning(
-                    "🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", _safe_log(email)
+                    "🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", safe_email
                 )
                 return web.json_response(
                     {
@@ -357,7 +362,7 @@ class MockMELCloudServer:
                     status=401,
                 )
             else:
-                logger.info("🔐 Login: %s (mock - success)", _safe_log(email))
+                logger.info("🔐 Login: %s (mock - success)", safe_email)
                 return web.json_response(
                     {
                         "access_token": "mock-access-token-abc123",
