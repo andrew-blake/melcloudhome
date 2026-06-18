@@ -35,7 +35,9 @@ try:
 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 except ImportError:
-    pass
+    print(
+        "Note: urllib3 not installed; TLS verification warnings will not be suppressed"
+    )
 
 # ANSI colors
 GREEN = "\033[0;32m"
