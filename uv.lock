@@ -862,7 +862,7 @@ dev = [
     { name = "pytest-mock", specifier = ">=3.12.0" },
     { name = "pytest-recording", specifier = ">=0.13.4" },
     { name = "ruff", specifier = ">=0.14.5" },
-    { name = "vcrpy", specifier = ">=7.0.0" },
+    { name = "vcrpy", specifier = ">=8.2.1" },
     { name = "voluptuous", specifier = ">=0.15.0" },
     { name = "zizmor", specifier = ">=1.0.0" },
 ]
@@ -1619,15 +1619,15 @@ wheels = [
 
 [[package]]
 name = "vcrpy"
-version = "8.2.0"
+version = "8.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/28/07d5ca0e4c21114f85ee98c030a4e20ab48231ca34f643644827c2c03379/vcrpy-8.2.0.tar.gz", hash = "sha256:0315f92a397ad8ceca431b6ffa8d58fcb9bb20796127d9b576fdc389cf83ddd0", size = 88750, upload-time = "2026-06-15T21:13:49.789Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/db/08183b845b0040bb877dad2bd7e4e0976fc232bb3476d7ee369c6c4f8b5a/vcrpy-8.2.1.tar.gz", hash = "sha256:d73a6e4eb6dae8148e659764b7a00e68cc51ba29ba9e6a85e1f0790ad96b97df", size = 90511, upload-time = "2026-06-16T13:20:52.906Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/a4/cc695b7efb0b93437d0b5712942ac59a5cacb4234651eff22466388813fc/vcrpy-8.2.0-py3-none-any.whl", hash = "sha256:c566521fd2312c79919673c0cc68fb16cd4be7bb782e7d853000cb8521675eee", size = 43774, upload-time = "2026-06-15T21:13:48.495Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/7c/0e812ab83f5289404c674f3461ba783250b967d34b5ab034d361236ec042/vcrpy-8.2.1-py3-none-any.whl", hash = "sha256:7ce58c9e2792b246f79d6f4b3e9660676cc6f853be17e1547305b4437ab1ff85", size = 44925, upload-time = "2026-06-16T13:20:51.734Z" },
 ]
 
 [[package]]
