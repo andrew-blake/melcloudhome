@@ -63,6 +63,10 @@ tools/recorder.log*
 *.har
 *.zip
 
+# Diagnostic tool output (real account data, e.g. tools/outdoor_temp_inspect.py,
+# tools/spike_outdoor_temp_recorder.py)
+diagnostics/
+
 # Upgrade verification testing
 dev-config-snapshots/
 RESUME*.md
