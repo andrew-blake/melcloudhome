@@ -5,13 +5,14 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers.storage import Store
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from .const import HOUR_VALUE_RETENTION_HOURS, MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
 
+if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,6 +146,114 @@ class EnergyTrackerBase(ABC):
         else:
             _LOGGER.info("No stored energy data found, starting fresh")
 
+        # Self-heal installs that accumulated a corrupt reading before the
+        # sanity check existed, and bound storage growth (see GitHub issue
+        # #161). Persist immediately so the correction survives even if no
+        # new energy data arrives.
+        if self._clean_hour_values(datetime.now(UTC)):
+            await self._save_energy_data()
+
+    @staticmethod
+    def _parse_hour_timestamp(hour_timestamp: str) -> datetime | None:
+        """Parse a stored hour_values key into a UTC-aware datetime.
+
+        Returns None if the timestamp can't be parsed (defensive - should
+        not happen with well-formed data, but a corrupt/foreign key must
+        not crash cleanup).
+        """
+        try:
+            hour_dt = datetime.fromisoformat(hour_timestamp)
+        except ValueError:
+            return None
+        return hour_dt if hour_dt.tzinfo else hour_dt.replace(tzinfo=UTC)
+
+    def _clean_hour_values(self, now: datetime) -> bool:
+        """Purge implausible and stale entries from persisted hour_values.
+
+        Two independent, unconditionally-safe cleanup passes over the same
+        data, run on every load:
+
+        - Implausible: a corrupt cloud reading (e.g. a 16-bit counter wrap,
+          ~6553.6 kWh for one hour) could already have been added to a
+          unit's cumulative total and recorded in hour_values before the
+          sanity check in _update_cumulative_values existed. Undo it by
+          subtracting the stored value back out of cumulative and dropping
+          the entry, so a future legitimate reading for that hour is
+          accepted fresh. See GitHub issue #161.
+        - Stale: hour_values only needs to cover the API's lookback window
+          (DATA_LOOKBACK_HOURS_ENERGY) - once an hour falls outside that
+          window the API will never return it again, so the entry can
+          never be looked up again. Without pruning, this dict grows
+          without bound for the lifetime of the install.
+
+          The single most-recent plausible, parseable entry per unit +
+          measure is always kept regardless of age. Emptying hour_values
+          entirely would make _is_first_initialization() think the device
+          had never been tracked, silently absorbing the next real poll
+          as "historical" instead of counting it - worse than the
+          unbounded growth this pruning is meant to fix.
+
+        Args:
+            now: Current time (UTC), used to determine entry age for the
+                staleness check.
+
+        Returns:
+            True if any entry was changed (caller should persist).
+        """
+        cutoff = now - timedelta(hours=HOUR_VALUE_RETENTION_HOURS)
+        changed = False
+        stale_count = 0
+        for unit_id, measures in self._energy_hour_values.items():
+            for measure, hours in measures.items():
+                parsed = {
+                    hour_timestamp: self._parse_hour_timestamp(hour_timestamp)
+                    for hour_timestamp, value in hours.items()
+                    if value <= MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
+                }
+                dated = {k: v for k, v in parsed.items() if v is not None}
+                sentinel = max(dated, key=lambda k: dated[k]) if dated else None
+
+                for hour_timestamp, value in list(hours.items()):
+                    if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
+                        del hours[hour_timestamp]
+                        before = self._energy_cumulative[unit_id][measure]
+                        self._energy_cumulative[unit_id][measure] = max(
+                            0.0, before - value
+                        )
+                        changed = True
+                        _LOGGER.warning(
+                            "Energy (%s): %s - Hour %s: purging implausible "
+                            "historical value %.1f kWh from cumulative total "
+                            "(%.3f -> %.3f kWh). See GitHub issue #161.",
+                            measure,
+                            unit_id,
+                            hour_timestamp[:16],
+                            value,
+                            before,
+                            self._energy_cumulative[unit_id][measure],
+                        )
+                        continue
+
+                    if hour_timestamp == sentinel:
+                        continue
+
+                    hour_dt = parsed.get(hour_timestamp)
+                    if hour_dt is None or hour_dt >= cutoff:
+                        continue
+
+                    del hours[hour_timestamp]
+                    changed = True
+                    stale_count += 1
+
+        if stale_count:
+            _LOGGER.debug(
+                "Pruned %d stale hour_values entr%s older than %d hours",
+                stale_count,
+                "y" if stale_count == 1 else "ies",
+                HOUR_VALUE_RETENTION_HOURS,
+            )
+        return changed
+
     def _is_first_initialization(self, unit_id: str, measure: str) -> bool:
         """Check if this is first energy data for unit + measure.
 
@@ -187,6 +296,23 @@ class EnergyTrackerBase(ABC):
             raw_value = float(value_entry["value"])
             # ATW API returns kWh, ATA API returns Wh
             kwh_value = raw_value if values_in_kwh else raw_value / WH_TO_KWH_FACTOR
+
+            if kwh_value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
+                # Corrupt reading from cloud (e.g. 16-bit counter wrap) - don't
+                # seed the baseline with it, or a later legitimate value would
+                # look like a "decrease" and be ignored. See GitHub issue #161.
+                _LOGGER.warning(
+                    "Energy (%s): %s (%s) - Hour %s implausible value %.1f kWh "
+                    "exceeds sanity ceiling (%.1f kWh) - skipping",
+                    measure,
+                    unit_name,
+                    unit_id,
+                    hour_timestamp[:16],
+                    kwh_value,
+                    MAX_PLAUSIBLE_HOURLY_ENERGY_KWH,
+                )
+                continue
+
             self._energy_hour_values[unit_id][measure][hour_timestamp] = kwh_value
 
         _LOGGER.info(
@@ -224,6 +350,22 @@ class EnergyTrackerBase(ABC):
             raw_value = float(value_entry["value"])
             # ATW API returns kWh, ATA API returns Wh
             kwh_value = raw_value if values_in_kwh else raw_value / WH_TO_KWH_FACTOR
+
+            if kwh_value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
+                # Corrupt reading from cloud (e.g. 16-bit counter wrap) - reject
+                # without persisting so a later legitimate value for this hour
+                # is still accepted normally. See GitHub issue #161.
+                _LOGGER.warning(
+                    "Energy (%s): %s (%s) - Hour %s implausible value %.1f kWh "
+                    "exceeds sanity ceiling (%.1f kWh) - rejecting reading",
+                    measure,
+                    unit_name,
+                    unit_id,
+                    hour_timestamp[:16],
+                    kwh_value,
+                    MAX_PLAUSIBLE_HOURLY_ENERGY_KWH,
+                )
+                continue
 
             # Get previous value for this specific hour (default 0.0 from defaultdict)
             previous_value = self._energy_hour_values[unit_id][measure].get(
