@@ -327,3 +327,43 @@ python tools/dump_device_state.py --unit-id <uuid>    # Single device
 ```
 
 Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
+
+## Home Assistant Diagnostic Tools
+
+### `find_corrupt_energy_readings.py`
+
+Scans your Home Assistant instance's Long-Term Statistics for implausible hourly
+jumps in cumulative (`total`/`total_increasing`) energy sensors — in particular
+the corrupt ~6553.6 kWh spike described in [issue #161](https://github.com/andrew-blake/melcloudhome/issues/161),
+where the MELCloud cloud API occasionally returns a corrupt hourly value
+consistent with a 16-bit counter wrap.
+
+Upgrading the integration stops new occurrences and self-heals its own internal
+running total, but it can't rewrite Home Assistant's Long-Term Statistics (what
+the Energy Dashboard's history graph reads) — those are recorded separately by
+HA core. If a corrupt reading already made it into your history before
+upgrading, use this script to find exactly which entity and timestamp to fix,
+then correct it manually via **Developer Tools → Statistics → (find the
+entity) → Adjust a statistic**.
+
+**Read-only** — it never writes anything, and works against any recorder
+backend (SQLite/MySQL/Postgres) via Home Assistant's WebSocket API (the same
+one the History and Energy Dashboard pages use), authenticated with a normal
+long-lived access token.
+
+**Setup:**
+
+1. Home Assistant → Profile → Security → Long-Lived Access Tokens → Create Token
+2. `export HA_URL=https://homeassistant.local:8123`
+3. `export HA_TOKEN=your_long_lived_token_here`
+
+**Usage:**
+
+```bash
+uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors
+uv run tools/find_corrupt_energy_readings.py --days 1095            # scan further back (default: 730 days)
+uv run tools/find_corrupt_energy_readings.py --threshold-kwh 50     # lower the sensitivity
+uv run tools/find_corrupt_energy_readings.py --entity sensor.melcloudhome_0efc_76db_energy
+uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan every cumulative sensor, export to CSV
+uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
+```
