@@ -309,9 +309,9 @@ async def run(args: argparse.Namespace) -> int:
                                 item["timestamp"].isoformat(),
                                 round(item["gap_hours"], 2),
                                 round(item["implied_kw"], 2),
-                                item["previous_sum"],
-                                item["sum"],
-                                item["delta_kwh"],
+                                round(item["previous_sum"], 3),
+                                round(item["sum"], 3),
+                                round(item["delta_kwh"], 3),
                                 item["signature_match"],
                                 item["implied_kw"] > MAX_PLAUSIBLE_CONTINUOUS_KW,
                             ]
