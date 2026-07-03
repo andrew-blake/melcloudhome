@@ -49,6 +49,7 @@ import ssl
 import sys
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
+from pathlib import Path
 from typing import Any
 
 import aiohttp
@@ -285,7 +286,9 @@ async def run(args: argparse.Namespace) -> int:
                 all_flagged.extend((statistic_id, item) for item in flagged)
 
             if args.csv:
-                with open(args.csv, "w", newline="") as f:
+                csv_path = Path(args.csv)
+                csv_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(csv_path, "w", newline="") as f:
                     writer = csv_module.writer(f)
                     writer.writerow(
                         [
