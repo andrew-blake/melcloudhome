@@ -381,4 +381,16 @@ For each entity/timestamp the script flags:
    was (usually `0`, or a typical value for that hour). Home Assistant
    automatically shifts all later totals so your history stays consistent.
 
+**Known limitation — the entity's own history chart:** "Adjust a statistic"
+corrects the consumption series the **Energy Dashboard** reads, and that is
+the fix that matters. The *entity's* history chart (open the sensor →
+History) plots a different series — the sensor's recorded state — and will
+still show the spike after your adjustment. Recent history clears by itself
+when it ages past the recorder purge window (10 days by default). History
+older than that is drawn from hourly mean/min/max statistics that Home
+Assistant keeps forever and provides **no supported way to edit**, so a
+spike there is permanent. This is cosmetic only: nothing is computed from
+those values, and your Energy Dashboard, sensor readings, and automations
+are unaffected.
+
 **Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's *entire* history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.
