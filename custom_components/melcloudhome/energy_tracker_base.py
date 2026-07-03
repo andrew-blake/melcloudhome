@@ -174,8 +174,12 @@ class EnergyTrackerBase(ABC):
 
         - Implausible (> MAX_PLAUSIBLE_HOURLY_ENERGY_KWH): a corrupt cloud
           reading persisted before the sanity check existed (GitHub issue
-          #161) is subtracted back out of the cumulative total and dropped,
-          so a future legitimate reading for that hour is accepted fresh.
+          #161) is dropped, and the unit+measure's cumulative total is
+          reset to 0.0. Resetting (not subtracting back to the true total)
+          is deliberate: HA's total_increasing reset handling records the
+          post-revision state as new consumption, so landing on 0.0
+          records nothing while landing on the true total would record a
+          phantom consumption of that entire amount.
         - Stale (older than HOUR_VALUE_RETENTION_HOURS): the API never
           returns hours outside its lookback window again, so old entries
           are pure unbounded storage growth.
@@ -185,9 +189,8 @@ class EnergyTrackerBase(ABC):
         next real poll as "historical" instead of counting it. The most
         recent parseable entry is kept as a sentinel, preferring plausible
         entries; if every entry is implausible the sentinel is kept as a
-        0.0 placeholder (its corrupt value still subtracted) - a re-sent
-        corrupt value is rejected by the ceiling, a legitimate one counts
-        as a normal delta from 0.0.
+        0.0 placeholder - a re-sent corrupt value is rejected by the
+        ceiling, a legitimate one counts as a normal delta from 0.0.
 
         Returns:
             True if any entry was changed (caller should persist).
@@ -209,28 +212,22 @@ class EnergyTrackerBase(ABC):
                     max(plausible or dated, key=dated.__getitem__) if dated else None
                 )
 
+                purged = 0
                 for hour_timestamp, value in list(hours.items()):
                     if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
                         if hour_timestamp == sentinel:
                             hours[hour_timestamp] = 0.0
                         else:
                             del hours[hour_timestamp]
-                        before = self._energy_cumulative[unit_id][measure]
-                        self._energy_cumulative[unit_id][measure] = max(
-                            0.0, before - value
-                        )
+                        purged += 1
                         changed = True
                         _LOGGER.warning(
                             "Energy (%s): %s - Hour %s: purging implausible "
-                            "historical value %.1f kWh from cumulative total: "
-                            "%.3f kWh. Revised cumulative total: %.3f kWh. "
-                            "See GitHub issue #161.",
+                            "historical value %.1f kWh. See GitHub issue #161.",
                             measure,
                             unit_id,
                             hour_timestamp[:16],
                             value,
-                            before,
-                            self._energy_cumulative[unit_id][measure],
                         )
                         continue
 
@@ -244,6 +241,20 @@ class EnergyTrackerBase(ABC):
                     del hours[hour_timestamp]
                     changed = True
                     stale_count += 1
+
+                if purged:
+                    before = self._energy_cumulative[unit_id][measure]
+                    self._energy_cumulative[unit_id][measure] = 0.0
+                    _LOGGER.warning(
+                        "Energy (%s): %s - resetting cumulative total to 0.0 "
+                        "kWh (was %.3f) after purging %d implausible hourly "
+                        "value(s). Home Assistant records this as a meter "
+                        "reset; delta tracking continues from 0.",
+                        measure,
+                        unit_id,
+                        before,
+                        purged,
+                    )
 
         if stale_count:
             _LOGGER.debug(

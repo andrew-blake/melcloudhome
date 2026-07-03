@@ -301,8 +301,11 @@ async def test_corrupt_historical_value_self_heals_on_load(
     that hit the corrupt cloud reading before the sanity check existed have
     it permanently baked into their stored cumulative total. On upgrade,
     the tracker should detect the implausible historical hour_value entry,
-    subtract it back out of the cumulative total, and drop the entry so a
-    future legitimate reading for that hour is accepted fresh.
+    drop it, and reset the cumulative total to 0.0. Resetting (rather than
+    subtracting back to the true total) matters because HA's
+    total_increasing reset handling records the post-revision state as new
+    consumption - landing on 0.0 records nothing, while landing on the true
+    total would record a phantom consumption of that entire amount.
 
     Note: this only heals the integration's own persisted counter. Home
     Assistant's Long-Term Statistics (Energy Dashboard history) are
@@ -342,15 +345,16 @@ async def test_corrupt_historical_value_self_heals_on_load(
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
-        # Expected: 6556.4 - 6553.3 (purged) = 3.1 kWh. The 13:00 hour was
-        # already seen (same value in this poll), so no new delta is added.
-        assert float(state.state) == pytest.approx(3.1, rel=0.01)
+        # Expected: cumulative reset to 0.0 after the purge. The 12:00 and
+        # 13:00 hours were already seen (same values in this poll), so no
+        # new delta is added.
+        assert float(state.state) == pytest.approx(0.0, abs=1e-9)
 
         # The purge should have persisted immediately during async_setup,
         # before any new energy poll ran - check the earliest ATA save.
         saved_data = mock_store.async_save.call_args_list[0][0][0]
         assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
-            3.1, rel=0.01
+            0.0, abs=1e-9
         )
         assert (
             "2026-06-30T13:00:00Z"
