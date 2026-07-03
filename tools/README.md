@@ -368,4 +368,17 @@ uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan 
 uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
 ```
 
+**Fixing a flagged point:**
+
+For each entity/timestamp the script flags:
+
+1. Open **Developer Tools → Statistics** in Home Assistant
+2. Search for the entity (e.g. `sensor.melcloudhome_b657_22c6_energy`) and click
+   the **ramp icon** on its row ("Adjust a statistic")
+3. Pick the flagged hour from the list (times are shown in your local timezone —
+   the script prints UTC)
+4. Correct the value: change the corrupt hour's consumption to what it plausibly
+   was (usually `0`, or a typical value for that hour). Home Assistant
+   automatically shifts all later totals so your history stays consistent.
+
 **Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's *entire* history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.
