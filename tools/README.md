@@ -367,3 +367,5 @@ uv run tools/find_corrupt_energy_readings.py --entity sensor.melcloudhome_0efc_7
 uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan every cumulative sensor, export to CSV
 uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
 ```
+
+**Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's *entire* history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.

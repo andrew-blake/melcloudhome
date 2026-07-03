@@ -284,7 +284,7 @@ async def run(args: argparse.Namespace) -> int:
                 print_report(statistic_id, flagged)
                 all_flagged.extend((statistic_id, item) for item in flagged)
 
-            if all_flagged and args.csv:
+            if args.csv:
                 with open(args.csv, "w", newline="") as f:
                     writer = csv_module.writer(f)
                     writer.writerow(
