@@ -193,6 +193,15 @@ class EnergyTrackerBase(ABC):
           as "historical" instead of counting it - worse than the
           unbounded growth this pruning is meant to fix.
 
+          That never-empty invariant must also hold for the implausible
+          pass: if EVERY entry is implausible there is no plausible
+          sentinel, so the most recent implausible entry's timestamp is
+          kept as a 0.0 placeholder instead of being deleted (its corrupt
+          value is still subtracted from cumulative). A re-sent corrupt
+          value for that hour is rejected by the sanity ceiling before
+          the delta lookup, and a legitimate one is counted as a normal
+          delta from 0.0 - both correct.
+
         Args:
             now: Current time (UTC), used to determine entry age for the
                 staleness check.
@@ -213,9 +222,29 @@ class EnergyTrackerBase(ABC):
                 dated = {k: v for k, v in parsed.items() if v is not None}
                 sentinel = max(dated, key=lambda k: dated[k]) if dated else None
 
+                # No plausible entry can serve as the sentinel - keep the
+                # most recent implausible one as a 0.0 placeholder so the
+                # purge below can't empty hour_values entirely.
+                placeholder = None
+                if sentinel is None:
+                    implausible_dated = {
+                        hour_timestamp: hour_dt
+                        for hour_timestamp, value in hours.items()
+                        if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
+                        and (hour_dt := self._parse_hour_timestamp(hour_timestamp))
+                        is not None
+                    }
+                    if implausible_dated:
+                        placeholder = max(
+                            implausible_dated, key=lambda k: implausible_dated[k]
+                        )
+
                 for hour_timestamp, value in list(hours.items()):
                     if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
-                        del hours[hour_timestamp]
+                        if hour_timestamp == placeholder:
+                            hours[hour_timestamp] = 0.0
+                        else:
+                            del hours[hour_timestamp]
                         before = self._energy_cumulative[unit_id][measure]
                         self._energy_cumulative[unit_id][measure] = max(
                             0.0, before - value

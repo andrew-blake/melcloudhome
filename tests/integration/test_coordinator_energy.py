@@ -367,6 +367,91 @@ async def test_corrupt_historical_value_self_heals_on_load(
 
 
 @pytest.mark.asyncio
+async def test_all_corrupt_hour_values_self_heal_keeps_delta_tracking(
+    hass: HomeAssistant,
+) -> None:
+    """Test self-heal when EVERY persisted hour_values entry is corrupt.
+
+    Edge case of GitHub issue #161's self-heal: if a unit's entire persisted
+    hour_values consists of implausible entries (e.g. a device whose very
+    first tracked hour was the corrupt reading), purging them all would
+    empty the dict. _is_first_initialization() would then treat the device
+    as brand-new on the next poll, silently absorbing that poll's real
+    energy as "historical" instead of counting it.
+
+    The purge must instead keep the most recent corrupt entry's timestamp
+    as a 0.0 placeholder: the cumulative total is still fully healed, and
+    the next poll's legitimate values are counted as normal deltas.
+
+    Validates: GitHub issue #161 - self-heal must never empty hour_values
+    Tests through: hass.states (next poll's real energy is counted)
+    """
+    mock_context = create_mock_ata_energy_context()
+
+    now = datetime.now(UTC)
+    corrupt_ts = (now - timedelta(hours=3)).isoformat()
+    new_hour_1 = (now - timedelta(hours=2)).isoformat()
+    new_hour_2 = (now - timedelta(hours=1)).isoformat()
+
+    # Pre-fix install where the ONLY entry ever recorded is the corrupt one.
+    polluted_storage = {
+        "cumulative": {TEST_UNIT_ID: {"consumed": 6553.3}},
+        "hour_values": {TEST_UNIT_ID: {"consumed": {corrupt_ts: 6553.3}}},
+    }
+
+    # Next poll: API re-sends the corrupt hour (rejected by the ceiling)
+    # plus two legitimate new hours that MUST be counted.
+    mock_energy_data = create_mock_energy_response(
+        [
+            (corrupt_ts, 6553300.0),  # corrupt - rejected
+            (new_hour_1, 500.0),  # NEW - add 0.5 kWh
+            (new_hour_2, 800.0),  # NEW - add 0.8 kWh
+        ]
+    )
+
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=polluted_storage)
+        mock_store.async_save = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+
+        # Cumulative healed to 0.0, then the poll's two legitimate hours
+        # counted as normal deltas: 0.5 + 0.8 = 1.3 kWh. If hour_values had
+        # been emptied, the poll would be absorbed as first-init and the
+        # sensor would wrongly read 0.0.
+        assert float(state.state) == pytest.approx(1.3, rel=0.01)
+
+        # The self-heal save (earliest): cumulative healed, and the corrupt
+        # hour kept as a 0.0 placeholder rather than the dict going empty.
+        saved_data = mock_store.async_save.call_args_list[0][0][0]
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            0.0, abs=1e-9
+        )
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"] == {corrupt_ts: 0.0}
+
+
+@pytest.mark.asyncio
 async def test_stale_hour_values_pruned_on_load(hass: HomeAssistant) -> None:
     """Test that hour_values entries older than the retention window are pruned.
 
