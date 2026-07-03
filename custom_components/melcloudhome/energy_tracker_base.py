@@ -170,41 +170,24 @@ class EnergyTrackerBase(ABC):
     def _clean_hour_values(self, now: datetime) -> bool:
         """Purge implausible and stale entries from persisted hour_values.
 
-        Two independent, unconditionally-safe cleanup passes over the same
-        data, run on every load:
+        Runs on every load. Two passes:
 
-        - Implausible: a corrupt cloud reading (e.g. a 16-bit counter wrap,
-          ~6553.6 kWh for one hour) could already have been added to a
-          unit's cumulative total and recorded in hour_values before the
-          sanity check in _update_cumulative_values existed. Undo it by
-          subtracting the stored value back out of cumulative and dropping
-          the entry, so a future legitimate reading for that hour is
-          accepted fresh. See GitHub issue #161.
-        - Stale: hour_values only needs to cover the API's lookback window
-          (DATA_LOOKBACK_HOURS_ENERGY) - once an hour falls outside that
-          window the API will never return it again, so the entry can
-          never be looked up again. Without pruning, this dict grows
-          without bound for the lifetime of the install.
+        - Implausible (> MAX_PLAUSIBLE_HOURLY_ENERGY_KWH): a corrupt cloud
+          reading persisted before the sanity check existed (GitHub issue
+          #161) is subtracted back out of the cumulative total and dropped,
+          so a future legitimate reading for that hour is accepted fresh.
+        - Stale (older than HOUR_VALUE_RETENTION_HOURS): the API never
+          returns hours outside its lookback window again, so old entries
+          are pure unbounded storage growth.
 
-          The single most-recent plausible, parseable entry per unit +
-          measure is always kept regardless of age. Emptying hour_values
-          entirely would make _is_first_initialization() think the device
-          had never been tracked, silently absorbing the next real poll
-          as "historical" instead of counting it - worse than the
-          unbounded growth this pruning is meant to fix.
-
-          That never-empty invariant must also hold for the implausible
-          pass: if EVERY entry is implausible there is no plausible
-          sentinel, so the most recent implausible entry's timestamp is
-          kept as a 0.0 placeholder instead of being deleted (its corrupt
-          value is still subtracted from cumulative). A re-sent corrupt
-          value for that hour is rejected by the sanity ceiling before
-          the delta lookup, and a legitimate one is counted as a normal
-          delta from 0.0 - both correct.
-
-        Args:
-            now: Current time (UTC), used to determine entry age for the
-                staleness check.
+        Invariant: hour_values is never emptied for a tracked unit +
+        measure, or _is_first_initialization() would silently absorb the
+        next real poll as "historical" instead of counting it. The most
+        recent parseable entry is kept as a sentinel, preferring plausible
+        entries; if every entry is implausible the sentinel is kept as a
+        0.0 placeholder (its corrupt value still subtracted) - a re-sent
+        corrupt value is rejected by the ceiling, a legitimate one counts
+        as a normal delta from 0.0.
 
         Returns:
             True if any entry was changed (caller should persist).
@@ -214,34 +197,21 @@ class EnergyTrackerBase(ABC):
         stale_count = 0
         for unit_id, measures in self._energy_hour_values.items():
             for measure, hours in measures.items():
-                parsed = {
-                    hour_timestamp: self._parse_hour_timestamp(hour_timestamp)
-                    for hour_timestamp, value in hours.items()
-                    if value <= MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
+                dated = {
+                    ts: dt
+                    for ts in hours
+                    if (dt := self._parse_hour_timestamp(ts)) is not None
                 }
-                dated = {k: v for k, v in parsed.items() if v is not None}
-                sentinel = max(dated, key=lambda k: dated[k]) if dated else None
-
-                # No plausible entry can serve as the sentinel - keep the
-                # most recent implausible one as a 0.0 placeholder so the
-                # purge below can't empty hour_values entirely.
-                placeholder = None
-                if sentinel is None:
-                    implausible_dated = {
-                        hour_timestamp: hour_dt
-                        for hour_timestamp, value in hours.items()
-                        if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
-                        and (hour_dt := self._parse_hour_timestamp(hour_timestamp))
-                        is not None
-                    }
-                    if implausible_dated:
-                        placeholder = max(
-                            implausible_dated, key=lambda k: implausible_dated[k]
-                        )
+                plausible = [
+                    ts for ts in dated if hours[ts] <= MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
+                ]
+                sentinel = (
+                    max(plausible or dated, key=dated.__getitem__) if dated else None
+                )
 
                 for hour_timestamp, value in list(hours.items()):
                     if value > MAX_PLAUSIBLE_HOURLY_ENERGY_KWH:
-                        if hour_timestamp == placeholder:
+                        if hour_timestamp == sentinel:
                             hours[hour_timestamp] = 0.0
                         else:
                             del hours[hour_timestamp]
@@ -266,7 +236,7 @@ class EnergyTrackerBase(ABC):
                     if hour_timestamp == sentinel:
                         continue
 
-                    hour_dt = parsed.get(hour_timestamp)
+                    hour_dt = dated.get(hour_timestamp)
                     if hour_dt is None or hour_dt >= cutoff:
                         continue
 
@@ -276,9 +246,8 @@ class EnergyTrackerBase(ABC):
 
         if stale_count:
             _LOGGER.debug(
-                "Pruned %d stale hour_values entr%s older than %d hours",
+                "Pruned %d stale hour_values entries older than %d hours",
                 stale_count,
-                "y" if stale_count == 1 else "ies",
                 HOUR_VALUE_RETENTION_HOURS,
             )
         return changed

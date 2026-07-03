@@ -7,8 +7,10 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -54,6 +56,42 @@ def create_mock_energy_response(
             }
         ]
     }
+
+
+@asynccontextmanager
+async def setup_energy_entry(
+    hass: HomeAssistant, storage: dict | None, energy_data: dict
+) -> AsyncGenerator[MagicMock]:
+    """Set up the integration with mocked client and store.
+
+    Yields the store mock for save-call assertions.
+    """
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(
+            return_value=create_mock_ata_energy_context()
+        )
+        mock_client.get_energy_data = AsyncMock(return_value=energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=storage)
+        mock_store.async_save = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        yield mock_store
 
 
 @pytest.mark.asyncio
@@ -215,8 +253,6 @@ async def test_corrupt_hourly_energy_value_rejected(hass: HomeAssistant) -> None
     Validates: GitHub issue #161 - corrupt energy value accepted without check
     Tests through: hass.states (sensor total excludes the corrupt spike)
     """
-    mock_context = create_mock_ata_energy_context()
-
     # Initial state: 12:00 hour already fully processed (3100 Wh = 3.1 kWh),
     # matching the issue's reported baseline before the corrupt spike.
     initial_storage = {
@@ -233,30 +269,9 @@ async def test_corrupt_hourly_energy_value_rejected(hass: HomeAssistant) -> None
         ]
     )
 
-    with (
-        patch(MOCK_CLIENT_PATH) as mock_client_class,
-        patch(MOCK_STORE_PATH) as mock_store_class,
-    ):
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        mock_store = mock_store_class.return_value
-        mock_store.async_load = AsyncMock(return_value=initial_storage)
-        mock_store.async_save = AsyncMock()
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
+    async with setup_energy_entry(
+        hass, initial_storage, mock_energy_data
+    ) as mock_store:
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
@@ -297,8 +312,6 @@ async def test_corrupt_historical_value_self_heals_on_load(
     Validates: GitHub issue #161 - fixing already-polluted stored totals
     Tests through: hass.states (sensor total is corrected after setup)
     """
-    mock_context = create_mock_ata_energy_context()
-
     # Simulates a pre-fix install: the corrupt 13:00 spike was already
     # added in full to the cumulative total and recorded in hour_values.
     polluted_storage = {
@@ -323,30 +336,9 @@ async def test_corrupt_historical_value_self_heals_on_load(
         ]
     )
 
-    with (
-        patch(MOCK_CLIENT_PATH) as mock_client_class,
-        patch(MOCK_STORE_PATH) as mock_store_class,
-    ):
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        mock_store = mock_store_class.return_value
-        mock_store.async_load = AsyncMock(return_value=polluted_storage)
-        mock_store.async_save = AsyncMock()
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
+    async with setup_energy_entry(
+        hass, polluted_storage, mock_energy_data
+    ) as mock_store:
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
@@ -386,8 +378,6 @@ async def test_all_corrupt_hour_values_self_heal_keeps_delta_tracking(
     Validates: GitHub issue #161 - self-heal must never empty hour_values
     Tests through: hass.states (next poll's real energy is counted)
     """
-    mock_context = create_mock_ata_energy_context()
-
     now = datetime.now(UTC)
     corrupt_ts = (now - timedelta(hours=3)).isoformat()
     new_hour_1 = (now - timedelta(hours=2)).isoformat()
@@ -409,30 +399,9 @@ async def test_all_corrupt_hour_values_self_heal_keeps_delta_tracking(
         ]
     )
 
-    with (
-        patch(MOCK_CLIENT_PATH) as mock_client_class,
-        patch(MOCK_STORE_PATH) as mock_store_class,
-    ):
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        mock_store = mock_store_class.return_value
-        mock_store.async_load = AsyncMock(return_value=polluted_storage)
-        mock_store.async_save = AsyncMock()
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
+    async with setup_energy_entry(
+        hass, polluted_storage, mock_energy_data
+    ) as mock_store:
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
@@ -465,8 +434,6 @@ async def test_stale_hour_values_pruned_on_load(hass: HomeAssistant) -> None:
     Tests through: hass.states + persisted storage (stale entry removed,
     cumulative total and recent entry left untouched by pruning alone)
     """
-    mock_context = create_mock_ata_energy_context()
-
     now = datetime.now(UTC)
     stale_timestamp = (
         now - timedelta(hours=HOUR_VALUE_RETENTION_HOURS + 24)
@@ -488,30 +455,9 @@ async def test_stale_hour_values_pruned_on_load(hass: HomeAssistant) -> None:
     # Same recent hour, same value - already seen, no new delta
     mock_energy_data = create_mock_energy_response([(recent_timestamp, 500.0)])
 
-    with (
-        patch(MOCK_CLIENT_PATH) as mock_client_class,
-        patch(MOCK_STORE_PATH) as mock_store_class,
-    ):
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
-
-        mock_store = mock_store_class.return_value
-        mock_store.async_load = AsyncMock(return_value=initial_storage)
-        mock_store.async_save = AsyncMock()
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
+    async with setup_energy_entry(
+        hass, initial_storage, mock_energy_data
+    ) as mock_store:
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         # Pruning stale entries alone must not touch the cumulative total -

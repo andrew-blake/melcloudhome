@@ -45,7 +45,6 @@ import argparse
 import asyncio
 import csv as csv_module
 import os
-import ssl
 import sys
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
@@ -243,12 +242,7 @@ async def run(args: argparse.Namespace) -> int:
         + "/api/websocket"
     )
 
-    connector = None
-    if args.insecure:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        connector = aiohttp.TCPConnector(ssl=ctx)
+    connector = aiohttp.TCPConnector(ssl=False) if args.insecure else None
 
     end = datetime.now(UTC)
     start = end - timedelta(days=args.days)
