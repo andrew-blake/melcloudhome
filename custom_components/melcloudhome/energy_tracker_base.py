@@ -222,8 +222,9 @@ class EnergyTrackerBase(ABC):
                         changed = True
                         _LOGGER.warning(
                             "Energy (%s): %s - Hour %s: purging implausible "
-                            "historical value %.1f kWh from cumulative total "
-                            "(%.3f -> %.3f kWh). See GitHub issue #161.",
+                            "historical value %.1f kWh from cumulative total: "
+                            "%.3f kWh. Revised cumulative total: %.3f kWh. "
+                            "See GitHub issue #161.",
                             measure,
                             unit_id,
                             hour_timestamp[:16],
