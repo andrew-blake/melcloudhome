@@ -10,9 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.3.4
+## What's New in v2.3.5
 
-Outdoor temperature sensor for ATW heat pump devices, fixes intermittent flashing/faults on multi-zone systems when turning on via HA, and a security fix preventing sensitive data appearing in diagnostic reports. See [CHANGELOG.md](CHANGELOG.md) for full history.
+Fixes corrupt energy readings from the MELCloud cloud that could permanently inflate energy sensors and corrupt the Energy Dashboard - bad readings are now rejected, and inflated sensor totals are reset automatically on upgrade. Spikes already recorded in Energy Dashboard history need a one-time manual fix; a new diagnostic tool finds them for you. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
