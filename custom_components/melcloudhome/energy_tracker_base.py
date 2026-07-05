@@ -81,6 +81,12 @@ class EnergyTrackerBase(ABC):
             str, defaultdict[str, defaultdict[str, float]]
         ] = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
+        # Rejected (unit, measure, hour) keys already warned about - the cloud
+        # re-sends the same corrupt hour every poll for days, so only the
+        # first rejection warns. Per-runtime; a restart warns once more.
+        # ponytail: unbounded set, but corrupt hours are rare (~50 B each)
+        self._warned_rejections: set[tuple[str, str, str]] = set()
+
         # Persistent storage
         self._store: Store = Store(hass, STORAGE_VERSION, storage_key)
 
@@ -365,16 +371,20 @@ class EnergyTrackerBase(ABC):
                 # Corrupt reading from cloud (e.g. 16-bit counter wrap) - reject
                 # without persisting so a later legitimate value for this hour
                 # is still accepted normally. See GitHub issue #161.
-                _LOGGER.warning(
-                    "Energy (%s): %s (%s) - Hour %s implausible value %.1f kWh "
-                    "exceeds sanity ceiling (%.1f kWh) - rejecting reading",
-                    measure,
-                    unit_name,
-                    unit_id,
-                    hour_timestamp[:16],
-                    kwh_value,
-                    MAX_PLAUSIBLE_HOURLY_ENERGY_KWH,
-                )
+                key = (unit_id, measure, hour_timestamp)
+                if key not in self._warned_rejections:
+                    self._warned_rejections.add(key)
+                    _LOGGER.warning(
+                        "Energy (%s): %s (%s) - Hour %s implausible value "
+                        "%.1f kWh exceeds sanity ceiling (%.1f kWh) - "
+                        "rejecting reading",
+                        measure,
+                        unit_name,
+                        unit_id,
+                        hour_timestamp[:16],
+                        kwh_value,
+                        MAX_PLAUSIBLE_HOURLY_ENERGY_KWH,
+                    )
                 continue
 
             # Get previous value for this specific hour (default 0.0 from defaultdict)

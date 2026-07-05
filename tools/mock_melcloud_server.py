@@ -939,6 +939,13 @@ class MockMELCloudServer:
             else:
                 value = 0
 
+            # Known cloud quirk (issue #161): the real API re-sends a corrupt
+            # 16-bit-wrapped reading (65536 * 100 Wh) for the same hour on
+            # every poll, for days. Reproduce it at today's 00:00 UTC so the
+            # hour key is stable across polls within a day.
+            if timestamp == now.replace(hour=0, minute=0, second=0, microsecond=0):
+                value = 6553600
+
             values.append(
                 {
                     "time": timestamp.strftime("%Y-%m-%d %H:%M:%S"),

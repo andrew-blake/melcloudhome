@@ -15,7 +15,11 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.melcloudhome.const import DOMAIN, HOUR_VALUE_RETENTION_HOURS
 
@@ -289,6 +293,42 @@ async def test_corrupt_hourly_energy_value_rejected(hass: HomeAssistant) -> None
             "2026-06-30T13:00:00Z"
             not in saved_data["hour_values"][TEST_UNIT_ID]["consumed"]
         )
+
+
+@pytest.mark.asyncio
+async def test_corrupt_reading_rejection_warns_only_once(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that a re-sent corrupt reading is only warned about once.
+
+    The cloud re-sends the same corrupt hour on every poll (observed for
+    days after the event), which produced an identical WARNING every 30
+    minutes. The first rejection must warn; repeats of the same
+    (unit, measure, hour) must stay silent.
+
+    Validates: GitHub issue #161 follow-up - rejection log spam
+    Tests through: caplog (log output is the observable behavior here)
+    """
+    initial_storage = {
+        "cumulative": {TEST_UNIT_ID: 3.1},
+        "hour_values": {TEST_UNIT_ID: {"2026-06-30T12:00:00Z": 3.1}},
+    }
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 3100.0),  # Already processed - skip
+            ("2026-06-30T13:00:00Z", 6553300.0),  # CORRUPT - rejected every poll
+        ]
+    )
+
+    async with setup_energy_entry(hass, initial_storage, mock_energy_data):
+        assert caplog.text.count("exceeds sanity ceiling") == 1
+
+        # Advance past the energy update interval - the mock re-sends the
+        # same corrupt hour, mirroring observed cloud behavior.
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+        await hass.async_block_till_done()
+
+        assert caplog.text.count("exceeds sanity ceiling") == 1
 
 
 @pytest.mark.asyncio
