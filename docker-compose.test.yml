@@ -1,3 +1,8 @@
+# Distinct project name so test runs never clobber the dev environment's
+# containers (both files define a melcloud-mock service; without this they
+# share the directory-derived project name and steal each other's container).
+name: melcloudhome-test
+
 services:
   # Mock MELCloud API Server (rate limiting disabled for CI tests)
   melcloud-mock:
