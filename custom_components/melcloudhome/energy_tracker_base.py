@@ -331,6 +331,15 @@ class EnergyTrackerBase(ABC):
 
             self._energy_hour_values[unit_id][measure][hour_timestamp] = kwh_value
 
+        if values and not self._energy_hour_values[unit_id][measure]:
+            # Every reading was implausible - keep the newest hour as a 0.0
+            # placeholder so initialization completes instead of re-running
+            # (and re-warning) every poll. Mirrors the all-corrupt self-heal
+            # strategy: a re-sent corrupt value hits the rejection ceiling,
+            # a legitimate one counts as a normal delta from 0.0.
+            newest = max(v["time"] for v in values)
+            self._energy_hour_values[unit_id][measure][newest] = 0.0
+
         _LOGGER.info(
             "Initializing %s tracking for %s (%s) at 0.0 kWh "
             "(marked %d hour(s) as seen, will track deltas from next update)",
