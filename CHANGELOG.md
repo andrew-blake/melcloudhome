@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrupt hourly energy readings from the MELCloud cloud (~6,553 kWh for a single hour) are now rejected instead of being added to the energy sensor, which permanently inflated totals and corrupted the Energy Dashboard. (#161)
 - Installs that already accumulated a corrupt reading have the affected energy sensor reset to 0 automatically on upgrade, and it counts normally from there. Note this does not repair Energy Dashboard history: spikes already recorded there need a one-time manual fix (see `tools/README.md`). (#161)
 - The "rejecting reading" warning now appears once per corrupt reading instead of repeating every 30 minutes while the cloud keeps re-sending the same corrupt hour. (#161)
+- Energy tracking now starts correctly when every reading in the initial data window is corrupt; previously initialization retried (and re-warned) on every poll without ever starting. (#161)
 
 
 ## [2.3.4] - 2026-06-18

@@ -332,6 +332,45 @@ async def test_corrupt_reading_rejection_warns_only_once(
 
 
 @pytest.mark.asyncio
+async def test_all_corrupt_first_init_completes_and_does_not_loop(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that first init with only implausible readings completes.
+
+    If every reading in the lookback window is corrupt, nothing was stored,
+    so the tracker re-ran first initialization on every poll - re-warning
+    for every hour, forever, and never starting delta tracking. Init must
+    complete by keeping a 0.0 placeholder (mirroring the all-corrupt
+    self-heal strategy), so the next poll takes the throttled rejection
+    path instead of re-initializing.
+
+    Validates: GitHub issue #161 follow-up - all-corrupt first init loop
+    Tests through: hass.states + caplog (init must not repeat)
+    """
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 6553300.0),  # CORRUPT
+            ("2026-06-30T13:00:00Z", 6553400.0),  # CORRUPT
+        ]
+    )
+
+    async with setup_energy_entry(hass, None, mock_energy_data):
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        assert float(state.state) == 0.0
+        assert caplog.text.count("Initializing consumed tracking") == 1
+
+        # Second poll re-sends the same all-corrupt window.
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+        await hass.async_block_till_done()
+
+        # Init must not run again, and the re-sent corrupt hours must go
+        # through the warn-once rejection path, not the init path.
+        assert caplog.text.count("Initializing consumed tracking") == 1
+        assert caplog.text.count("- skipping") == 2  # once per hour, init only
+
+
+@pytest.mark.asyncio
 async def test_corrupt_historical_value_self_heals_on_load(
     hass: HomeAssistant,
 ) -> None:
