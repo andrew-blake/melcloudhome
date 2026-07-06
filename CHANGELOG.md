@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.3.5] - 2026-07-06
+
+### Added
+
+- Diagnostic tool `tools/find_corrupt_energy_readings.py` that scans your Home Assistant statistics for energy spikes caused by corrupt cloud readings and tells you exactly which entity and timestamp to fix. See `tools/README.md` for setup and step-by-step fix instructions. (#161)
+
+### Fixed
+
+- Corrupt hourly energy readings from the MELCloud cloud (~6,553 kWh for a single hour) are now rejected instead of being added to the energy sensor, which could permanently inflate totals and corrupt the Energy Dashboard. A warning is logged once per rejected reading. (#161)
+- Installs that already accumulated a corrupt reading have the affected energy sensor reset to 0 automatically on upgrade, and it counts normally from there. Note this does not repair Energy Dashboard history: spikes already recorded there need a one-time manual fix (see `tools/README.md`). (#161)
+
+
 ## [2.3.4] - 2026-06-18
 
 ### Added

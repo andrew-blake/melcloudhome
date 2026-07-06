@@ -930,14 +930,23 @@ class MockMELCloudServer:
                 minute=0, second=0, microsecond=0
             )
 
+            # ATW interval_energy_* values are kWh (the real API contract);
+            # anything else (ATA cumulative measures) is Wh.
             if measure == "interval_energy_consumed":
-                # Consumed: 2000-4000 Wh per hour (2-4 kWh)
-                value = random.randint(2000, 4000)
+                # Consumed: 2-4 kWh per hour
+                value: float = random.randint(2000, 4000) / 1000
             elif measure == "interval_energy_produced":
-                # Produced: 6000-12000 Wh per hour (6-12 kWh, COP ~3)
-                value = random.randint(6000, 12000)
+                # Produced: 6-12 kWh per hour (COP ~3)
+                value = random.randint(6000, 12000) / 1000
             else:
                 value = 0
+
+            # Known cloud quirk (issue #161): the real API re-sends a corrupt
+            # 16-bit-wrapped reading (65536 * 100 Wh = 6553.6 kWh) for the
+            # same hour on every poll, for days. Reproduce it at today's
+            # 00:00 UTC so the hour key is stable across polls within a day.
+            if timestamp == now.replace(hour=0, minute=0, second=0, microsecond=0):
+                value = 6553.6 if measure.startswith("interval_energy") else 6553600
 
             values.append(
                 {

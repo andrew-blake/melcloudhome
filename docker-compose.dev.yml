@@ -1,3 +1,7 @@
+# Distinct project name so test runs never clobber the dev environment's
+# containers (see docker-compose.test.yml).
+name: melcloudhome-dev
+
 services:
   # Mock MELCloud API Server
   melcloud-mock:

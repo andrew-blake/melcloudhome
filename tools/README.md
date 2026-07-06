@@ -327,3 +327,70 @@ python tools/dump_device_state.py --unit-id <uuid>    # Single device
 ```
 
 Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
+
+## Home Assistant Diagnostic Tools
+
+### `find_corrupt_energy_readings.py`
+
+Scans your Home Assistant instance's Long-Term Statistics for implausible hourly
+jumps in cumulative (`total`/`total_increasing`) energy sensors — in particular
+the corrupt ~6553.6 kWh spike described in [issue #161](https://github.com/andrew-blake/melcloudhome/issues/161),
+where the MELCloud cloud API occasionally returns a corrupt hourly value
+consistent with a 16-bit counter wrap.
+
+Upgrading the integration stops new occurrences and self-heals its own internal
+running total, but it can't rewrite Home Assistant's Long-Term Statistics (what
+the Energy Dashboard's history graph reads) — those are recorded separately by
+HA core. If a corrupt reading already made it into your history before
+upgrading, use this script to find exactly which entity and timestamp to fix,
+then correct it manually via **Developer Tools → Statistics → (find the
+entity) → Adjust a statistic**.
+
+**Read-only** — it never writes anything, and works against any recorder
+backend (SQLite/MySQL/Postgres) via Home Assistant's WebSocket API (the same
+one the History and Energy Dashboard pages use), authenticated with a normal
+long-lived access token.
+
+**Setup:**
+
+1. Home Assistant → Profile → Security → Long-Lived Access Tokens → Create Token
+2. `export HA_URL=https://homeassistant.local:8123`
+3. `export HA_TOKEN=your_long_lived_token_here`
+
+**Usage:**
+
+```bash
+uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors
+uv run tools/find_corrupt_energy_readings.py --days 1095            # scan further back (default: 730 days)
+uv run tools/find_corrupt_energy_readings.py --threshold-kwh 50     # lower the sensitivity
+uv run tools/find_corrupt_energy_readings.py --entity sensor.melcloudhome_0efc_76db_energy
+uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan every cumulative sensor, export to CSV
+uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
+```
+
+**Fixing a flagged point:**
+
+For each entity/timestamp the script flags:
+
+1. Open **Developer Tools → Statistics** in Home Assistant
+2. Search for the entity (e.g. `sensor.melcloudhome_b657_22c6_energy`) and click
+   the **ramp icon** on its row ("Adjust a statistic")
+3. Pick the flagged hour from the list (times are shown in your local timezone —
+   the script prints UTC)
+4. Correct the value: change the corrupt hour's consumption to what it plausibly
+   was (usually `0`, or a typical value for that hour). Home Assistant
+   automatically shifts all later totals so your history stays consistent.
+
+**Known limitation — the entity's own history chart:** "Adjust a statistic"
+corrects the consumption series the **Energy Dashboard** reads, and that is
+the fix that matters. The *entity's* history chart (open the sensor →
+History) plots a different series — the sensor's recorded state — and will
+still show the spike after your adjustment. Recent history clears by itself
+when it ages past the recorder purge window (10 days by default). History
+older than that is drawn from hourly mean/min/max statistics that Home
+Assistant keeps forever and provides **no supported way to edit**, so a
+spike there is permanent. This is cosmetic only: nothing is computed from
+those values, and your Energy Dashboard, sensor readings, and automations
+are unaffected.
+
+**Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's *entire* history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.
