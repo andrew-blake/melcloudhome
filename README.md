@@ -191,7 +191,7 @@ This is an unofficial integration and is not affiliated with, endorsed by, or co
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=andrew-blake/melcloudhome&type=timeline&legend=bottom-right)](https://www.star-history.com/#andrew-blake/melcloudhome&type=timeline&legend=bottom-right)
+[![Star History Chart](https://api.star-history.com/chart?repos=andrew-blake/melcloudhome&type=date&legend=top-left&sealed_token=IAuAe8mdYc94qeHiZD79IobZ9omvLsbIxKrgaa_Sp0bMwhd3sqbSuK_Ki8JpoCMHwKLtc9ez_yXHig6m6fxdvXpPhZJ_a6DrUP0W1EMsUkfdk5w24LZQdrnrxS8jaEVk4NZEOtT53xek28PfTPgZeKiplyoGGlZeSYMGfJVnxx3NWJXZLQLKCcfsqmCG)](https://www.star-history.com/?repos=andrew-blake%2Fmelcloudhome&type=date&legend=top-left)
 
 ## Credits
 
