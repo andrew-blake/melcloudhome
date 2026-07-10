@@ -100,6 +100,9 @@ class AirToAirUnit:
     # Outdoor temperature monitoring (set by coordinator via trendsummary API)
     outdoor_temperature: float | None = None  # °C
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
+    # When the value was actually recorded by the unit. Idle units stop
+    # uploading outdoor temperature, so this can lag hours behind (issue #171)
+    outdoor_temp_recorded_at: str | None = None  # ISO timestamp
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":

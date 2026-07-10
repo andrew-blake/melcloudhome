@@ -87,6 +87,10 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 - Shows ambient temperature from outdoor unit
 - Useful for efficiency monitoring and automations
 - Not all devices have outdoor sensors (runtime discovery determines availability)
+- Attribute `last_reading`: timestamp of when the unit actually recorded the value.
+  Units stop uploading outdoor temperature while idle, so the value can lag hours
+  behind (MELCloud server-side behavior, see issues #152/#171) — use this attribute
+  to detect stale data in automations
 
 ---
 

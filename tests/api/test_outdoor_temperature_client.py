@@ -33,7 +33,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == 12.0  # Latest value
+        assert result == (12.0, "2026-02-03T12:00:00")  # Latest value
 
     def test_parse_outdoor_temperature_missing_dataset(self):
         """Test when outdoor temperature dataset is missing."""
@@ -49,7 +49,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result is None
+        assert result == (None, None)
 
     def test_parse_outdoor_temperature_empty_data(self):
         """Test when outdoor temperature dataset exists but data array empty."""
@@ -65,7 +65,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result is None
+        assert result == (None, None)
 
     def test_parse_outdoor_temperature_list_wrapped(self):
         """Test parsing when mobile BFF wraps response in a list."""
@@ -83,7 +83,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == 14.5
+        assert result == (14.5, "2026-04-12T20:00:00")
 
     def test_parse_outdoor_temperature_malformed(self):
         """Test with malformed response structure."""
@@ -92,7 +92,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result is None
+        assert result == (None, None)
 
 
 @freeze_time("2026-02-03 12:30:00", real_asyncio=True)
@@ -141,7 +141,7 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
     assert to_dt - from_dt == timedelta(hours=24)
 
     # Verify result
-    assert result == 12.0
+    assert result == (12.0, "2026-02-03T12:00:00")
 
 
 @pytest.mark.asyncio
@@ -154,7 +154,7 @@ async def test_get_outdoor_temperature_api_returns_none(mocker):
 
     result = await client.get_outdoor_temperature("test-unit-id")
 
-    assert result is None
+    assert result == (None, None)
 
 
 @pytest.mark.asyncio
@@ -167,5 +167,5 @@ async def test_get_outdoor_temperature_exception_handling(mocker):
 
     result = await client.get_outdoor_temperature("test-unit-id")
 
-    # Should return None on exception, not raise
-    assert result is None
+    # Should return (None, None) on exception, not raise
+    assert result == (None, None)
