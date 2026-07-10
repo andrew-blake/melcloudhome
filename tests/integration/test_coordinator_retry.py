@@ -333,6 +333,7 @@ async def test_deduplication_skips_same_value(coordinator):
         vane_horizontal_direction="Centre",
         in_standby_mode=False,
         is_in_error=False,
+        error_code=None,
         rssi=-50,
         capabilities=AirToAirCapabilities(),
     )
@@ -367,6 +368,7 @@ async def test_deduplication_sends_different_value(coordinator):
         vane_horizontal_direction="Centre",
         in_standby_mode=False,
         is_in_error=False,
+        error_code=None,
         rssi=-50,
         capabilities=AirToAirCapabilities(),
     )
