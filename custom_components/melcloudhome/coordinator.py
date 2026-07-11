@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -16,7 +17,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
+from .api.websocket import MELCloudHomeWebSocket
 from .const import (
+    CONF_DEBUG_MODE,
+    CONF_ENABLE_WEBSOCKET,
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
@@ -67,6 +71,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
+        # Real-time WebSocket listener (opt-in accelerator — issue #174)
+        self._websocket: MELCloudHomeWebSocket | None = None
+        self._ws_task: asyncio.Task[None] | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
@@ -400,6 +407,36 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
+        # Start the real-time WebSocket listener if opted in
+        self._async_setup_websocket()
+
+    def _websocket_enabled(self) -> bool:
+        """Whether the opt-in WebSocket accelerator should run.
+
+        Disabled in debug/mock mode (the mock server has no WS endpoint).
+        """
+        if self._config_entry is None:
+            return False
+        if self._config_entry.data.get(CONF_DEBUG_MODE, False):
+            return False
+        return bool(self._config_entry.options.get(CONF_ENABLE_WEBSOCKET, False))
+
+    def _async_setup_websocket(self) -> None:
+        """Launch the WebSocket listener as a background task if enabled."""
+        if not self._websocket_enabled():
+            return
+
+        self._websocket = MELCloudHomeWebSocket(self.client, on_delta=self._on_ws_delta)
+        self._ws_task = self.hass.async_create_background_task(
+            self._websocket.run(), name=f"{DOMAIN}-websocket"
+        )
+        _LOGGER.info("Real-time WebSocket listener started")
+
+    async def _on_ws_delta(self, unit_id: str, changed: list[str]) -> None:
+        """Handle a pushed per-unit state change by refreshing (debounced)."""
+        _LOGGER.debug("WebSocket delta for %s: %s", unit_id, changed)
+        await self.async_request_refresh_debounced()
+
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).
 
@@ -417,6 +454,13 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._cancel_energy_updates()
         if self._cancel_telemetry_updates:
             self._cancel_telemetry_updates()
+        if self._websocket is not None:
+            self._websocket.stop()
+        if self._ws_task is not None:
+            self._ws_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._ws_task
+            self._ws_task = None
         await self.client.close()
 
     def get_ata_device(self, unit_id: str) -> AirToAirUnit | None:

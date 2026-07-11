@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home options",
+        "data": {
+          "enable_websocket": "Enable real-time updates (experimental)"
+        },
+        "data_description": {
+          "enable_websocket": "Receive out-of-band changes (physical remote, MELCloud app, another Home Assistant) in near real time over a WebSocket, in addition to periodic polling. Falls back to polling automatically if the connection is unavailable."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
