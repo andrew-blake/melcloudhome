@@ -95,6 +95,56 @@ Two different ways to obtain the credential, but the **same document shape and
 the same socket**. The integration authenticates as the mobile client, so it
 uses the Lambda path.
 
+### Open question: shared-auth token contention (dogfooding, 2026-07-12)
+
+Enabling the opt-in WebSocket in a live instance surfaced a design question that
+should be settled in the WebSocket implementation PR / ADR **before** the code
+ships — not patched over.
+
+**Observation.** With the WebSocket on, the integration logged two *transient*
+authentication failures in one day (`ConfigEntryAuthFailed`,
+"Authentication failed after re-auth. Please reconfigure."), each self-recovering
+on the next poll. None appeared in the pre-WebSocket logs — they showed up only
+after the WebSocket was enabled. The socket itself stays connected; this is about
+the auth token, not the WS transport.
+
+**Mechanism (plausible, to confirm with debug logs).** The WebSocket listener
+shares the REST client's auth state (`_auth` — one access token and one
+*single-use, rotating* refresh token). But token mutation happens through two
+locks that do **not** exclude each other:
+
+- `client.async_get_ws_hash()` refreshes under `client._refresh_lock`;
+- the coordinator's full re-login (`_execute_with_reauth`) runs under a separate
+  `_reauth_lock` and calls `client.login()`.
+
+So a WebSocket-triggered refresh can rotate the refresh token (or otherwise
+mutate `_auth`) *while* the coordinator is mid re-login and retry, invalidating
+the token the coordinator just obtained. That matches the symptom: a fresh
+`login()` succeeds, yet the very next request still gets a 401. A secondary
+contributor may be extra API pressure (the hash fetch plus delta-triggered
+coordinator refreshes) nudging the account toward rate limits.
+
+**Design directions to evaluate (not decided).** The goal is a principled fix
+that keeps a single owner of auth state, consistent with this listener's
+"best-effort, REST is the source of truth" contract:
+
+- *Preferred — WebSocket as a pure reader.* The WS credential path never
+  refreshes or logs in itself. It reads the current token; if it is expired, it
+  defers the (re)connect and lets the coordinator's normal refresh cycle run,
+  then connects. One writer of auth state, zero cross-flow rotation.
+- *Alternative — unify the locks.* Route every token mutation (REST refresh,
+  REST re-login, WS refresh) through one shared serialization so no two flows
+  ever rotate the refresh token concurrently.
+
+A fully separate auth session for the WebSocket is explicitly **not** preferred:
+it decouples the flows but doubles login/refresh load, worsening the rate-limit
+angle.
+
+Status: under investigation. Debug logging (`api.websocket`, `coordinator`,
+`api.auth`) has been enabled on the dogfood instance to confirm whether a WS
+refresh coincides with the coordinator's auth failure before choosing a
+direction.
+
 ### Web BFF endpoint catalog (observed)
 
 | Endpoint | Method(s) | Purpose |
