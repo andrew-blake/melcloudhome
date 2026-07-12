@@ -62,7 +62,8 @@ GET /dashboard                              (melcloudhome.com)      200
    { "hash": "<uuid>", "userId": "<uuid>" }
    ```
 
-   In this capture `hash == userId` (the two fields held the same UUID).
+   In this capture the two fields held the **same** UUID (`hash == userId`); the
+   anonymized HAR preserves that by giving both the same placeholder.
 
 2. **Open the socket** — `wss://ws.melcloudhome.com/?hash=<hash>` → HTTP `101`
    Switching Protocols. The upgrade is authenticated **only** by the `hash`
@@ -97,51 +98,64 @@ uses the Lambda path.
 
 ### Root cause found: token persistence reloads the whole entry (dogfooding, 2026-07-12)
 
+> **Scope note.** This section describes the **unmerged opt-in WebSocket feature
+> branch**, not code on `main`. The names below (`async_get_ws_hash`, the
+> WebSocket listener, the options-reload listener) live on that branch; `main`
+> does not have them yet.
+
 Dogfooding the opt-in WebSocket surfaced *transient* auth failures
 (`ConfigEntryAuthFailed`, "Authentication failed after re-auth. Please
 reconfigure."), each self-recovering on the next poll. Debug logging on the live
-instance traced it to a pre-existing bug that the WebSocket amplifies — this
-should be fixed **before** the WS code ships, not worked around.
+instance traced it to a regression **introduced by the WebSocket branch itself**
+— it should be fixed before the WS code ships, not worked around.
 
-**What the debug logs showed.** `async_setup` (energy + telemetry timers + the
-WS listener) ran **three times in ~2h**, at exactly the token-refresh moments
-(14:35 startup, then 15:22 and 16:22). Each run re-started the WS listener and
-re-scheduled the timers. At 16:22 a proactive refresh got HTTP **400** (the
-rotating refresh token was rejected), the client fell back to a full re-login
-(200), and recovered.
+**What the debug logs showed.** The coordinator's setup (energy + telemetry
+timers + the WS listener) ran **three times in ~2h**, at exactly the
+token-refresh moments (14:35 startup, then 15:22 and 16:22). Each run re-started
+the WS listener and re-scheduled the timers. At 16:22 a proactive refresh got
+HTTP **400** (the rotating refresh token was rejected), the client fell back to a
+full re-login (200), and recovered.
 
 **Root cause — a token refresh reloads the entire config entry.**
 
 1. Every token refresh calls the `on_tokens_refreshed` callback →
    `coordinator._persist_tokens()`, which writes the new tokens with
-   `hass.config_entries.async_update_entry(entry, data=...)`.
-2. `__init__.py` registers `entry.add_update_listener(_async_options_updated)`
-   to reload when **options** change (e.g. toggling the WebSocket). But HA fires
-   that listener on **any** entry update, including the `data` write above.
+   `hass.config_entries.async_update_entry(entry, data=...)`. (`_persist_tokens`
+   already exists on `main`; on its own it is harmless.)
+2. The WS branch adds `entry.add_update_listener(_async_options_updated)` in
+   `__init__.py` so the integration reloads when the **WebSocket toggle** option
+   changes. But HA fires that listener on **any** entry update — including the
+   `data` write in step 1.
 3. `_async_options_updated` calls `async_reload(entry)` unconditionally → the
-   integration is torn down and set up again → `async_setup` re-runs.
+   integration is torn down and set up again.
 
-So **every refresh reloads the integration.** MELCloud refresh tokens are
-single-use/rotating; the reload re-initialises the client and restores tokens
-from `entry.data` while other flows are mid-refresh, so the rotating token
-occasionally desyncs → the 400 and the transient `ConfigEntryAuthFailed`.
+So on this branch **every token refresh reloads the integration.** MELCloud
+refresh tokens are single-use/rotating; the reload re-initialises the client and
+restores tokens from `entry.data` while other flows are mid-refresh, so the
+rotating token occasionally desyncs → the 400 and the transient
+`ConfigEntryAuthFailed`.
 
-**Why it only showed up with the WebSocket on.** The reload-on-refresh exists
-without the WS, but the WS adds more refresh/persist triggers
-(`async_get_ws_hash` also fires `on_tokens_refreshed`; delta-driven debounced
-refreshes increase REST volume), so reloads happen more often and the rotating
-token desyncs often enough to surface.
+**Not a pre-existing `main` bug.** On `main`, `_persist_tokens` writes
+`entry.data` but there is no update listener, so nothing reloads. The reload only
+appears once the WS branch adds the options listener. The WS also adds more
+refresh triggers (`async_get_ws_hash` fires `on_tokens_refreshed` too;
+delta-driven debounced refreshes raise REST volume), which is why the desync
+surfaces in practice rather than staying theoretical.
 
-**Sensible fix (not a workaround).** Stop letting token persistence trigger a
-reload:
+**Sensible fix (not a workaround).** The chosen fix is to make the options
+listener react to *option* changes only, so a token-only `data` write no longer
+reloads: `_async_options_updated` compares the entry's options against the
+last-seen snapshot and returns early when they are unchanged. (A more thorough
+alternative — keeping rotating tokens out of `entry.data` entirely, in a
+`helpers.storage.Store`, so persistence never touches the config entry — was
+considered but is heavier and needs a data migration; the targeted guard is
+enough here since the reload is the WS branch's own new listener.) Separately,
+the WS listener need not be recycled on every refresh at all: the `hash` is
+user-scoped (≈ `userId`) and the socket is valid until the 2-hour cap.
 
-- *Preferred* — keep the rotating tokens out of `entry.data` entirely (a
-  dedicated `helpers.storage.Store` or `entry.runtime_data`), so
-  `_persist_tokens` never touches the config entry and never fires the update
-  listener.
-- *Alternative* — make `_async_options_updated` reload only when `entry.options`
-  actually changed (compare against the last-seen options), leaving `data`
-  writes inert.
+The token-contention question here is a **debug-log** finding, not a HAR one —
+it was confirmed from the `api.websocket` / `coordinator` / `api.auth` logs on
+the live instance, not from a capture.
 
 This is a coordinator/`__init__` fix that benefits the whole integration; the WS
 work depends on it. Separately, consider not tearing the WS listener down on
