@@ -320,6 +320,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "known_device_ids": known_device_ids,
+        # Snapshot of options so the update listener can tell an actual options
+        # change (e.g. toggling the WebSocket) from a token-only data write.
+        "options": dict(entry.options),
     }
 
     # Register force refresh service (domain-level, refreshes all coordinators)
@@ -367,7 +370,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the config entry when its options change."""
+    """Reload the config entry only when its options actually changed.
+
+    Home Assistant fires update listeners on *any* entry change, including the
+    ``data`` writes made when refreshed auth tokens are persisted
+    (``coordinator._persist_tokens``). Reloading on those would tear the whole
+    integration down on every token refresh, so we compare the entry's options
+    against the snapshot taken at setup and reload only on a real options change
+    (e.g. toggling the real-time WebSocket).
+    """
+    from .const import DOMAIN
+
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if entry_data is not None:
+        if entry_data.get("options") == dict(entry.options):
+            return
+        entry_data["options"] = dict(entry.options)
     await hass.config_entries.async_reload(entry.entry_id)
 
 
