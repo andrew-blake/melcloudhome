@@ -173,5 +173,6 @@ The MELCloud mobile API controls real HVAC equipment. Before any real-hardware t
 
 - [`tools/mitmproxy/README.md`](../../tools/mitmproxy/README.md) — mitmproxy + iOS setup mechanics
 - [`docs/research/mobile-bff-captures/README.md`](mobile-bff-captures/README.md) — endpoint mapping, OAuth PKCE flow, prior captures
+- [`docs/research/web-bff-websocket-capture/README.md`](web-bff-websocket-capture/README.md) — web BFF login, real-time WebSocket protocol (issue #174)
 - [ADR-017](../decisions/017-migrate-to-mobile-bff.md) — decision to migrate from the legacy web API to the mobile API
 - [`docs/api/ata-api-reference.md`](../api/ata-api-reference.md) / [`docs/api/atw-api-reference.md`](../api/atw-api-reference.md) — schemas derived from prior captures
