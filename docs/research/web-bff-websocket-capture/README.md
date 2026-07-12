@@ -84,6 +84,46 @@ GET /dashboard                              (melcloudhome.com)      200
    then `Power: false`) — confirming out-of-band changes are pushed live. This
    is exactly the shape the WebSocket listener parses.
 
+### Multi-device routing (one socket serves all units)
+
+Confirmed against a 3-ATA-unit account: with a **single** socket open, each unit's
+out-of-band change produced a delta for **that unit only** (matched by its `id`),
+with no cross-talk. All three units are served on the one socket. (Verified from
+the integration's own delta logs while toggling each unit in turn.)
+
+### WebSocket setting value types
+
+Captured frames while changing each setting type — see
+[`web-bff-websocket_settings_anonymized.har`](web-bff-websocket_settings_anonymized.har)
+(WS entries only, unit IDs anonymized). One setting per frame, `name` in
+PascalCase; the **values are natively typed / enum-ints**, unlike the REST
+`/context` document which stringifies everything:
+
+| Setting (`name`) | WebSocket `value` | Type | REST `/context` gives |
+|---|---|---|---|
+| `SetTemperature` | `24`, `24.5`, `26` | number (int **or** float; 0.5 steps) | string `"26"` |
+| `RoomTemperature` | `25`, `25.5` | number (int or float) | string `"28"` |
+| `OperationMode` | `3` = Cool, `4` = Fan | int (enum) | string `"Cool"` |
+| `SetFanSpeed` | `0` = Auto, `2` = fixed | int (enum) | string `"Auto"` |
+| `ActualFanSpeed` | `"1"`, `"2"`, `"3"` | **string** | string `"Off"` |
+| `VaneVerticalDirection` | `6` = swing | int (enum) | string |
+| `VaneHorizontalDirection` | `7` = swing | int (enum) | string |
+| `Power` | `true` / `false` | boolean | string `"False"` |
+
+Two gotchas for a parser: (1) the socket sends **typed** values but REST sends
+**strings**, so the two paths need different coercion; (2) the socket is even
+inconsistent with itself — `SetFanSpeed` is an int but `ActualFanSpeed` is a
+string, and temperatures may be int or float.
+
+**Socket lifecycle:** across the capture there were **no client→server frames**
+— no subscribe/handshake message; the client just opens `?hash=<hash>` and
+receives. The upgrade negotiates the `permessage-deflate` extension (compressed
+frames) and no subprotocol. Ping/pong keepalive and the server's close frame are
+**not** observable here (Chrome does not surface WS control frames; a mitmproxy
+relay destabilises this socket — see the reverse-engineering guide). The
+integration drives its own keepalive via aiohttp `heartbeat=30s` and treats any
+close as reconnect-with-backoff, so those details don't affect the client.
+
 ### Mobile vs web: same WebSocket, two credential fronts
 
 | | Mobile app | Web app |
@@ -94,7 +134,12 @@ GET /dashboard                              (melcloudhome.com)      200
 
 Two different ways to obtain the credential, but the **same document shape and
 the same socket**. The integration authenticates as the mobile client, so it
-uses the Lambda path.
+uses the Lambda path. Confirmed with a mitmproxy capture of the mobile app: its
+Lambda fetch returns `{"hash": "<uuid>", "userId": "<uuid>"}` with `hash ==
+userId`, and the value is the **same** hash the integration itself obtains — so
+mobile, web, and the integration share one per-user credential (≈ the userId).
+(iOS routes HTTP through a manual proxy but **not** the raw `wss` socket, so the
+mobile socket frames themselves must be read another way — see the RE guide.)
 
 ### Root cause found: token persistence reloads the whole entry (dogfooding, 2026-07-12)
 
