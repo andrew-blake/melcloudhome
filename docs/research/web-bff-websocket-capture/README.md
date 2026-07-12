@@ -95,55 +95,59 @@ Two different ways to obtain the credential, but the **same document shape and
 the same socket**. The integration authenticates as the mobile client, so it
 uses the Lambda path.
 
-### Open question: shared-auth token contention (dogfooding, 2026-07-12)
+### Root cause found: token persistence reloads the whole entry (dogfooding, 2026-07-12)
 
-Enabling the opt-in WebSocket in a live instance surfaced a design question that
-should be settled in the WebSocket implementation PR / ADR **before** the code
-ships — not patched over.
+Dogfooding the opt-in WebSocket surfaced *transient* auth failures
+(`ConfigEntryAuthFailed`, "Authentication failed after re-auth. Please
+reconfigure."), each self-recovering on the next poll. Debug logging on the live
+instance traced it to a pre-existing bug that the WebSocket amplifies — this
+should be fixed **before** the WS code ships, not worked around.
 
-**Observation.** With the WebSocket on, the integration logged two *transient*
-authentication failures in one day (`ConfigEntryAuthFailed`,
-"Authentication failed after re-auth. Please reconfigure."), each self-recovering
-on the next poll. None appeared in the pre-WebSocket logs — they showed up only
-after the WebSocket was enabled. The socket itself stays connected; this is about
-the auth token, not the WS transport.
+**What the debug logs showed.** `async_setup` (energy + telemetry timers + the
+WS listener) ran **three times in ~2h**, at exactly the token-refresh moments
+(14:35 startup, then 15:22 and 16:22). Each run re-started the WS listener and
+re-scheduled the timers. At 16:22 a proactive refresh got HTTP **400** (the
+rotating refresh token was rejected), the client fell back to a full re-login
+(200), and recovered.
 
-**Mechanism (plausible, to confirm with debug logs).** The WebSocket listener
-shares the REST client's auth state (`_auth` — one access token and one
-*single-use, rotating* refresh token). But token mutation happens through two
-locks that do **not** exclude each other:
+**Root cause — a token refresh reloads the entire config entry.**
 
-- `client.async_get_ws_hash()` refreshes under `client._refresh_lock`;
-- the coordinator's full re-login (`_execute_with_reauth`) runs under a separate
-  `_reauth_lock` and calls `client.login()`.
+1. Every token refresh calls the `on_tokens_refreshed` callback →
+   `coordinator._persist_tokens()`, which writes the new tokens with
+   `hass.config_entries.async_update_entry(entry, data=...)`.
+2. `__init__.py` registers `entry.add_update_listener(_async_options_updated)`
+   to reload when **options** change (e.g. toggling the WebSocket). But HA fires
+   that listener on **any** entry update, including the `data` write above.
+3. `_async_options_updated` calls `async_reload(entry)` unconditionally → the
+   integration is torn down and set up again → `async_setup` re-runs.
 
-So a WebSocket-triggered refresh can rotate the refresh token (or otherwise
-mutate `_auth`) *while* the coordinator is mid re-login and retry, invalidating
-the token the coordinator just obtained. That matches the symptom: a fresh
-`login()` succeeds, yet the very next request still gets a 401. A secondary
-contributor may be extra API pressure (the hash fetch plus delta-triggered
-coordinator refreshes) nudging the account toward rate limits.
+So **every refresh reloads the integration.** MELCloud refresh tokens are
+single-use/rotating; the reload re-initialises the client and restores tokens
+from `entry.data` while other flows are mid-refresh, so the rotating token
+occasionally desyncs → the 400 and the transient `ConfigEntryAuthFailed`.
 
-**Design directions to evaluate (not decided).** The goal is a principled fix
-that keeps a single owner of auth state, consistent with this listener's
-"best-effort, REST is the source of truth" contract:
+**Why it only showed up with the WebSocket on.** The reload-on-refresh exists
+without the WS, but the WS adds more refresh/persist triggers
+(`async_get_ws_hash` also fires `on_tokens_refreshed`; delta-driven debounced
+refreshes increase REST volume), so reloads happen more often and the rotating
+token desyncs often enough to surface.
 
-- *Preferred — WebSocket as a pure reader.* The WS credential path never
-  refreshes or logs in itself. It reads the current token; if it is expired, it
-  defers the (re)connect and lets the coordinator's normal refresh cycle run,
-  then connects. One writer of auth state, zero cross-flow rotation.
-- *Alternative — unify the locks.* Route every token mutation (REST refresh,
-  REST re-login, WS refresh) through one shared serialization so no two flows
-  ever rotate the refresh token concurrently.
+**Sensible fix (not a workaround).** Stop letting token persistence trigger a
+reload:
 
-A fully separate auth session for the WebSocket is explicitly **not** preferred:
-it decouples the flows but doubles login/refresh load, worsening the rate-limit
-angle.
+- *Preferred* — keep the rotating tokens out of `entry.data` entirely (a
+  dedicated `helpers.storage.Store` or `entry.runtime_data`), so
+  `_persist_tokens` never touches the config entry and never fires the update
+  listener.
+- *Alternative* — make `_async_options_updated` reload only when `entry.options`
+  actually changed (compare against the last-seen options), leaving `data`
+  writes inert.
 
-Status: under investigation. Debug logging (`api.websocket`, `coordinator`,
-`api.auth`) has been enabled on the dogfood instance to confirm whether a WS
-refresh coincides with the coordinator's auth failure before choosing a
-direction.
+This is a coordinator/`__init__` fix that benefits the whole integration; the WS
+work depends on it. Separately, consider not tearing the WS listener down on
+every refresh at all — the `hash` is user-scoped (≈ `userId`) and the socket is
+valid until the 2-hour cap, so it need not be recycled when the REST token
+rotates.
 
 ### Web BFF endpoint catalog (observed)
 
