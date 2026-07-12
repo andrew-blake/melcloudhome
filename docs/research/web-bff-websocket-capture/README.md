@@ -109,12 +109,33 @@ uses the Lambda path.
 | `/api/cloudschedule/{id}/enabled` | PUT | Enable/disable a schedule |
 | `/api/ataunit/{id}` | PUT | Send ATA control commands |
 
-## Raw Capture
+## Capture File
 
-The raw `.har` contains a real `userId`, session artifacts, and PII. `*.har` is
-gitignored and is **not** committed to the repository. Keep raw captures outside
-the repo (see [mobile-bff-captures](../mobile-bff-captures/README.md) for the
-convention).
+[`web-bff-websocket_anonymized.har`](web-bff-websocket_anonymized.har) is a
+**curated, anonymized** slice of the original capture, safe to commit and
+replay. `*.har` is gitignored by default; a scoped `.gitignore` exception
+(`!docs/research/**/*_anonymized.har`) allows scrubbed capture files like this
+one.
+
+How it was produced from the raw browser HAR:
+
+1. `tools/anonymize_har.py` — replaces UUIDs (user, building, device, system),
+   emails, names, MAC/IP addresses, and tokens with stable placeholders so
+   cross-request references still line up.
+2. Manual curation (the anonymizer is not sufficient on its own — always review):
+   - **Dropped the Cognito credential POST entirely** (it carried the username,
+     password, and `cognitoAsfData` device fingerprint).
+   - Dropped static assets (Blazor/`_framework`, `_content`, CSS, fonts, CDN
+     libraries) and de-duplicated repeated polling calls.
+   - Stripped `Cookie`/`Set-Cookie`/`Authorization`/`x-csrf` headers, HTML
+     response bodies, and noisy `_initiator` stacks.
+   - Redacted OIDC `code`/`state`/`session_state`, the BFF `sid`/session_state,
+     and residual name claims in `/bff/user` (whose `{type,value}` claim shape
+     the field-name anonymizer misses).
+
+The **raw** `.har` contains a real `userId`, session artifacts, credentials, and
+PII — it is **not** committed. Keep raw captures outside the repo (see
+[mobile-bff-captures](../mobile-bff-captures/README.md) for the convention).
 
 ## Related
 

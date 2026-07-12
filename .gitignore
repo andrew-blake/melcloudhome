@@ -61,6 +61,9 @@ env/
 tools/energy_recording_*.json
 tools/recorder.log*
 *.har
+# Exception: curated, anonymized capture HARs under docs/ are PII-scrubbed and
+# safe to commit (see tools/anonymize_har.py + manual review before committing).
+!docs/research/**/*_anonymized.har
 *.zip
 
 # Diagnostic tool output (real account data, e.g. tools/outdoor_temp_inspect.py,
