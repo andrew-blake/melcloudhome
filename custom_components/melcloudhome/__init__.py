@@ -320,9 +320,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "known_device_ids": known_device_ids,
-        # Snapshot of options so the update listener can tell an actual options
-        # change (e.g. toggling the WebSocket) from a token-only data write.
-        "options": dict(entry.options),
     }
 
     # Register force refresh service (domain-level, refreshes all coordinators)
@@ -363,30 +360,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.async_add_listener(_create_discovery_listener(hass, entry))
     )
 
-    # Reload when options change (e.g. toggling the real-time WebSocket)
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    # Options changes (e.g. toggling the real-time WebSocket) reload the entry
+    # via OptionsFlowWithReload in config_flow.py — no update listener here, so
+    # token-only ``entry.data`` writes never tear the integration down.
 
     return True
-
-
-async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the config entry only when its options actually changed.
-
-    Home Assistant fires update listeners on *any* entry change, including the
-    ``data`` writes made when refreshed auth tokens are persisted
-    (``coordinator._persist_tokens``). Reloading on those would tear the whole
-    integration down on every token refresh, so we compare the entry's options
-    against the snapshot taken at setup and reload only on a real options change
-    (e.g. toggling the real-time WebSocket).
-    """
-    from .const import DOMAIN
-
-    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-    if entry_data is not None:
-        if entry_data.get("options") == dict(entry.options):
-            return
-        entry_data["options"] = dict(entry.options)
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

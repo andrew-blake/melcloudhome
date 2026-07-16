@@ -193,8 +193,13 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
         )
 
 
-class MELCloudHomeOptionsFlow(config_entries.OptionsFlow):
-    """Handle MELCloud Home options (real-time WebSocket toggle)."""
+class MELCloudHomeOptionsFlow(config_entries.OptionsFlowWithReload):
+    """Handle MELCloud Home options (real-time WebSocket toggle).
+
+    ``OptionsFlowWithReload`` reloads the entry automatically when options
+    change, without an update listener (which would also fire on the ``data``
+    writes made when refreshed auth tokens are persisted).
+    """
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
