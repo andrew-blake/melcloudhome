@@ -44,6 +44,13 @@ COGNITO_DOMAIN_SUFFIX = ".amazoncognito.com"
 WS_HASH_URL = "https://6x2dgdulg7omjsxalnhmo4ynba0dcgwk.lambda-url.eu-west-1.on.aws/"
 WS_HOST = "wss://ws.melcloudhome.com"
 
+# Debug-mode equivalents — the mock server serves the hash at /ws/token and
+# the socket at /ws on the same host/port as REST. Derived from MOCK_BASE_URL
+# so the Docker env var override carries through. Zero prod contact in debug
+# mode is a hard project rule.
+MOCK_WS_HASH_URL = MOCK_BASE_URL + "/ws/token"
+MOCK_WS_HOST = MOCK_BASE_URL.replace("http", "ws", 1) + "/ws"
+
 __all__ = [
     "API_FIELD_BUILDINGS",
     "API_FIELD_MEASURE_DATA",
@@ -58,6 +65,8 @@ __all__ = [
     "COGNITO_BASE_URL",
     "COGNITO_DOMAIN_SUFFIX",
     "MOCK_BASE_URL",
+    "MOCK_WS_HASH_URL",
+    "MOCK_WS_HOST",
     "OAUTH_CLIENT_ID",
     "OAUTH_REDIRECT_URI",
     "OAUTH_SCOPES",

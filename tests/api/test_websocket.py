@@ -474,3 +474,30 @@ class TestAsyncWsSession:
         client, auth, session = _client_with_auth()
         assert await client.async_ws_session() is session
         auth.get_session.assert_awaited_once()
+
+
+# --------------------------------------------------------------------------- #
+# Debug-mode URL selection
+# --------------------------------------------------------------------------- #
+class TestDebugModeUrls:
+    """Hard principle: debug mode must have ZERO contact with prod services."""
+
+    def test_debug_mode_uses_mock_ws_urls(self):
+        from custom_components.melcloudhome.api.const_shared import MOCK_BASE_URL
+
+        client = MELCloudHomeClient(debug_mode=True)
+        assert client.ws_host.startswith("ws://")
+        assert client.ws_host == MOCK_BASE_URL.replace("http", "ws", 1) + "/ws"
+        assert client._ws_hash_url == MOCK_BASE_URL + "/ws/token"
+        assert "lambda-url" not in client._ws_hash_url
+        assert "melcloudhome.com" not in client.ws_host
+
+    def test_prod_mode_uses_real_ws_urls(self):
+        from custom_components.melcloudhome.api.const_shared import (
+            WS_HASH_URL,
+            WS_HOST,
+        )
+
+        client = MELCloudHomeClient(debug_mode=False)
+        assert client.ws_host == WS_HOST
+        assert client._ws_hash_url == WS_HASH_URL

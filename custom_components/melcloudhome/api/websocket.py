@@ -27,8 +27,6 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 
-from .const_shared import WS_HOST
-
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
 
@@ -105,7 +103,7 @@ class MELCloudHomeWebSocket:
         ws_hash = await self._client.async_get_ws_hash()
         session = await self._client.async_ws_session()
         async with session.ws_connect(
-            f"{WS_HOST}/?hash={ws_hash}",
+            f"{self._client.ws_host}/?hash={ws_hash}",
             heartbeat=_HEARTBEAT,
         ) as ws:
             _LOGGER.info(
