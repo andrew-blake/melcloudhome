@@ -88,8 +88,21 @@ async def rate_limit_middleware(request, handler):
     return await handler(request)
 
 
+# Fixed WS credential — the real Lambda issues a per-user uuid where
+# hash == userId (#175 capture); one constant is all the mock needs.
+MOCK_WS_HASH = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
 # Paths that don't require Bearer auth
-AUTH_EXEMPT_PATHS = {"/api/login", "/api/auth/login", "/connect/token"}
+# /ws is hash-in-URL auth (the real client sends no Authorization header on
+# the upgrade — matching prod). Both spellings: the client builds
+# "{host}/?hash=", so the mock's path arrives as "/ws/" (trailing slash).
+AUTH_EXEMPT_PATHS = {
+    "/api/login",
+    "/api/auth/login",
+    "/connect/token",
+    "/ws",
+    "/ws/",
+}
 
 
 @web.middleware
@@ -116,12 +129,13 @@ async def bearer_auth_middleware(request, handler):
 class MockMELCloudServer:
     """Mock MELCloud Home API server supporting ATA and ATW devices."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock server with default device states."""
         self.ata_states = self._init_ata_devices()
         self.atw_states = self._init_atw_devices()
         self.buildings = self._init_buildings()
         self.guest_buildings = self._init_guest_buildings()
+        self.ws_clients: set[web.WebSocketResponse] = set()
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -303,6 +317,11 @@ class MockMELCloudServer:
             "/report/v1/trendsummary", self.get_trend_summary
         )
 
+        # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
+        app.router.add_get("/ws/token", self.handle_ws_token)
+        app.router.add_get("/ws", self.handle_ws_upgrade)
+        app.router.add_get("/ws/", self.handle_ws_upgrade)
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -322,6 +341,26 @@ class MockMELCloudServer:
             cors.add(route)
 
         return app
+
+    async def handle_ws_token(self, request: web.Request) -> web.Response:
+        """GET /ws/token - WS credential (bearer-checked by middleware)."""
+        return web.json_response({"hash": MOCK_WS_HASH, "userId": MOCK_WS_HASH})
+
+    async def handle_ws_upgrade(self, request: web.Request) -> web.WebSocketResponse:
+        """GET /ws?hash= - upgrade; server-push only, inbound is discarded."""
+        if request.query.get("hash") != MOCK_WS_HASH:
+            raise web.HTTPForbidden(reason="bad hash")
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        self.ws_clients.add(ws)
+        logger.info("🔌 WS client connected (%d total)", len(self.ws_clients))
+        try:
+            async for _msg in ws:
+                pass  # real clients send nothing, not even a subscribe
+        finally:
+            self.ws_clients.discard(ws)
+            logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
+        return ws
 
     async def handle_login(self, request: web.Request) -> web.Response:
         """Mock OAuth login endpoint.
