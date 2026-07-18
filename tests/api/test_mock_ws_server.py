@@ -144,3 +144,60 @@ async def test_atw_put_emits_assumed_shape_delta(mock_client):
     by_name = {s["name"]: s["value"] for s in frame[0]["Data"]["settings"]}
     assert by_name["SetTankWaterTemperature"] == 52.0
     await ws.close()
+
+
+async def test_control_reject_hash(mock_client):
+    client, _ = mock_client
+    await client.post("/_mock/ws", json={"action": "reject-hash"})
+    with pytest.raises(aiohttp.WSServerHandshakeError) as err:
+        await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    assert err.value.status == 403
+    await client.post("/_mock/ws", json={"action": "clear"})
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")  # works again
+    await ws.close()
+
+
+async def test_control_accept_then_close(mock_client):
+    client, _ = mock_client
+    await client.post("/_mock/ws", json={"action": "accept-then-close"})
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")  # 101 succeeds...
+    msg = await ws.receive(timeout=2)  # ...then server closes immediately
+    assert msg.type == aiohttp.WSMsgType.CLOSE
+    await client.post("/_mock/ws", json={"action": "clear"})
+
+
+async def test_control_close_now(mock_client):
+    client, server = mock_client
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    await client.post("/_mock/ws", json={"action": "close-now"})
+    msg = await ws.receive(timeout=2)
+    assert msg.type == aiohttp.WSMsgType.CLOSE
+    assert server.ws_clients == set()
+
+
+async def test_control_emit_delta_passive_push(mock_client):
+    client, _ = mock_client
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    # Canonical passive push observed on prod: RoomTemperature + ActualFanSpeed
+    await client.post(
+        "/_mock/ws",
+        json={
+            "action": "emit-delta",
+            "unit_id": ATA_ID,
+            "settings": [
+                {"name": "RoomTemperature", "value": 22.5},
+                {"name": "ActualFanSpeed", "value": "2"},  # string, per capture
+            ],
+        },
+    )
+    frame = await ws.receive_json(timeout=2)
+    by_name = {s["name"]: s["value"] for s in frame[0]["Data"]["settings"]}
+    assert by_name["RoomTemperature"] == 22.5
+    assert by_name["ActualFanSpeed"] == "2"
+    await ws.close()
+
+
+async def test_control_unknown_action_400(mock_client):
+    client, _ = mock_client
+    resp = await client.post("/_mock/ws", json={"action": "explode"})
+    assert resp.status == 400

@@ -135,6 +135,7 @@ AUTH_EXEMPT_PATHS = {
     "/connect/token",
     "/ws",
     "/ws/",
+    "/_mock/ws",
 }
 
 
@@ -169,6 +170,8 @@ class MockMELCloudServer:
         self.buildings = self._init_buildings()
         self.guest_buildings = self._init_guest_buildings()
         self.ws_clients: set[web.WebSocketResponse] = set()
+        self.ws_accept_then_close = False
+        self.ws_reject_hash = False
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -355,6 +358,9 @@ class MockMELCloudServer:
         app.router.add_get("/ws", self.handle_ws_upgrade)
         app.router.add_get("/ws/", self.handle_ws_upgrade)
 
+        # Test-only fault-injection control (not added to CORS)
+        app.router.add_post("/_mock/ws", self.handle_ws_control)
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -381,10 +387,13 @@ class MockMELCloudServer:
 
     async def handle_ws_upgrade(self, request: web.Request) -> web.WebSocketResponse:
         """GET /ws?hash= - upgrade; server-push only, inbound is discarded."""
-        if request.query.get("hash") != MOCK_WS_HASH:
+        if self.ws_reject_hash or request.query.get("hash") != MOCK_WS_HASH:
             raise web.HTTPForbidden(reason="bad hash")
         ws = web.WebSocketResponse()
         await ws.prepare(request)
+        if self.ws_accept_then_close:
+            await ws.close()  # churn scenario: 101 then instant close
+            return ws
         self.ws_clients.add(ws)
         logger.info("🔌 WS client connected (%d total)", len(self.ws_clients))
         try:
@@ -394,6 +403,41 @@ class MockMELCloudServer:
             self.ws_clients.discard(ws)
             logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
         return ws
+
+    async def handle_ws_control(self, request: web.Request) -> web.Response:
+        """POST /_mock/ws - test-only fault injection (auth-exempt)."""
+        body = await request.json()
+        action = body.get("action")
+        if action == "close-now":
+            for ws in set(self.ws_clients):
+                await ws.close()
+            self.ws_clients.clear()
+        elif action == "accept-then-close":
+            self.ws_accept_then_close = True
+        elif action == "reject-hash":
+            self.ws_reject_hash = True
+        elif action == "clear":
+            self.ws_accept_then_close = False
+            self.ws_reject_hash = False
+        elif action == "emit-delta":
+            frame = [
+                {
+                    "messageType": "unitStateChanged",
+                    "Data": {
+                        "id": body["unit_id"],
+                        "settings": body["settings"],
+                    },
+                }
+            ]
+            for ws in set(self.ws_clients):
+                try:
+                    await ws.send_json(frame)
+                except (ConnectionResetError, RuntimeError):
+                    self.ws_clients.discard(ws)
+        else:
+            return web.json_response({"error": f"unknown action {action}"}, status=400)
+        logger.info("🎛️  WS control: %s", _safe_log(action))
+        return web.json_response({"ok": True})
 
     async def _broadcast_delta(self, unit_id, changed, wire_map=None):
         """Push one unitStateChanged frame for `changed` to every socket.
