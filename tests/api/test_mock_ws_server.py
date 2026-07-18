@@ -1,5 +1,7 @@
 """In-process tests for the mock server's WebSocket support (no Docker)."""
 
+import asyncio
+
 import aiohttp
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
@@ -63,3 +65,66 @@ async def test_ws_inbound_frames_ignored_and_disconnect_cleans_up(mock_client):
     await ws.send_str("garbage the real client never sends")
     await ws.close()
     assert server.ws_clients == set()
+
+
+ATA_ID = "0efc1234-5678-9abc-def0-123456787db"  # Living Room AC (seeded)
+
+
+async def test_put_emits_typed_delta_to_all_sockets(mock_client):
+    client, _ = mock_client
+    ws1 = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    ws2 = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+
+    # Living Room AC seeds power=True (see _init_ata_devices), so power=False
+    # here is the field that actually changes — power=True would be a noop
+    # and (correctly, per test_noop_put_emits_nothing) emit no delta for it.
+    resp = await client.put(
+        f"/monitor/ataunit/{ATA_ID}",
+        json={"power": False, "setTemperature": 21.5, "operationMode": "Cool"},
+        headers=BEARER,
+    )
+    assert resp.status == 200
+
+    for ws in (ws1, ws2):
+        frame = await ws.receive_json(timeout=2)
+        assert isinstance(frame, list) and len(frame) == 1
+        assert frame[0]["messageType"] == "unitStateChanged"
+        data = frame[0]["Data"]
+        assert data["id"] == ATA_ID
+        by_name = {s["name"]: s["value"] for s in data["settings"]}
+        # Typed values, per #175 capture — NOT the stringified REST forms
+        assert by_name["Power"] is False
+        assert by_name["SetTemperature"] == 21.5
+        assert by_name["OperationMode"] == 3  # int enum: 3=Cool (captured)
+    await ws1.close()
+    await ws2.close()
+
+
+async def test_noop_put_emits_nothing(mock_client):
+    client, _ = mock_client
+    # Set a known value, then re-send the identical value: no delta.
+    await client.put(
+        f"/monitor/ataunit/{ATA_ID}", json={"setTemperature": 22.0}, headers=BEARER
+    )
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    await client.put(
+        f"/monitor/ataunit/{ATA_ID}", json={"setTemperature": 22.0}, headers=BEARER
+    )
+    with pytest.raises(asyncio.TimeoutError):
+        await ws.receive_json(timeout=0.5)
+    await ws.close()
+
+
+async def test_atw_put_emits_assumed_shape_delta(mock_client):
+    client, _ = mock_client
+    atw_id = "bf2d256c-42ac-4799-a6d8-c6ab433e5666"  # House Heat Pump (seeded)
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    await client.put(
+        f"/monitor/atwunit/{atw_id}",
+        json={"setTankWaterTemperature": 52.0},
+        headers=BEARER,
+    )
+    frame = await ws.receive_json(timeout=2)
+    by_name = {s["name"]: s["value"] for s in frame[0]["Data"]["settings"]}
+    assert by_name["SetTankWaterTemperature"] == 52.0
+    await ws.close()

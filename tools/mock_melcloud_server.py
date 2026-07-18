@@ -92,6 +92,42 @@ async def rate_limit_middleware(request, handler):
 # hash == userId (#175 capture); one constant is all the mock needs.
 MOCK_WS_HASH = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
+# Wire-format mapping for ATA deltas, per the #175 captures: the socket sends
+# NATIVELY TYPED values (int enums, bools, floats) even though REST /context
+# stringifies everything. The integration only reads setting NAMES (values
+# trigger a refresh, never parsed), so unlisted enum ints are plausible
+# placeholders — only 3=Cool, 4=Fan, 0=Auto(fan) were captured.
+_ATA_OPERATION_MODE_ENUM = {"Heat": 1, "Dry": 2, "Cool": 3, "Fan": 4, "Automatic": 8}
+_ATA_VANE_ENUM = {"Auto": 0, "Swing": 7}  # 6/7 = swing captured; rest plausible
+
+
+def _fan_speed_enum(value):
+    return 0 if value == "Auto" else int(value)
+
+
+ATA_WIRE_MAP = {
+    "power": ("Power", bool),
+    "set_temperature": ("SetTemperature", float),
+    "operation_mode": ("OperationMode", lambda v: _ATA_OPERATION_MODE_ENUM.get(v, 1)),
+    "set_fan_speed": ("SetFanSpeed", _fan_speed_enum),
+    "vane_vertical_direction": (
+        "VaneVerticalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "vane_horizontal_direction": (
+        "VaneHorizontalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "in_standby_mode": ("InStandbyMode", bool),
+}
+
+
+def _atw_wire_name(key: str) -> str:
+    """snake_case -> PascalCase. ASSUMPTION: no ATW frame has ever been
+    captured; verify against Andrew's prod soak (backlog) and correct here."""
+    return "".join(part.capitalize() for part in key.split("_"))
+
+
 # Paths that don't require Bearer auth
 # /ws is hash-in-URL auth (the real client sends no Authorization header on
 # the upgrade — matching prod). Both spellings: the client builds
@@ -362,6 +398,38 @@ class MockMELCloudServer:
             logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
         return ws
 
+    async def _broadcast_delta(self, unit_id, changed, wire_map=None):
+        """Push one unitStateChanged frame for `changed` to every socket.
+
+        wire_map maps internal keys -> (WireName, coercer); keys absent from
+        the map fall back to PascalCase name + raw value (the ATW path).
+        """
+        settings = []
+        for key, value in changed.items():
+            if wire_map and key in wire_map:
+                name, coerce = wire_map[key]
+                settings.append({"name": name, "value": coerce(value)})
+            else:
+                settings.append({"name": _atw_wire_name(key), "value": value})
+        if not settings or not self.ws_clients:
+            return
+        frame = [
+            {
+                "messageType": "unitStateChanged",
+                "Data": {"id": unit_id, "settings": settings},
+            }
+        ]
+        for ws in set(self.ws_clients):
+            try:
+                await ws.send_json(frame)
+            except (ConnectionResetError, RuntimeError):
+                self.ws_clients.discard(ws)
+        logger.info(
+            "📡 WS delta for %s: %s",
+            _safe_log(unit_id),
+            _safe_log([s["name"] for s in settings]),
+        )
+
     async def handle_login(self, request: web.Request) -> web.Response:
         """Mock OAuth login endpoint.
 
@@ -605,6 +673,7 @@ class MockMELCloudServer:
         logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.ata_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values (sparse update pattern)
         # Permissive: Accept all values, warn if suspicious
@@ -660,6 +729,9 @@ class MockMELCloudServer:
             _safe_log(state["room_temperature"]),
         )
 
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed, ATA_WIRE_MAP)
+
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
 
@@ -705,6 +777,7 @@ class MockMELCloudServer:
         logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.atw_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values
         if body.get("power") is not None:
@@ -799,6 +872,9 @@ class MockMELCloudServer:
             _safe_log(state["set_tank_water_temperature"]),
         )
         self._log_3way_valve_status(unit_id)
+
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed)
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
