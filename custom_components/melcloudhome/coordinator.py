@@ -18,7 +18,6 @@ from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableErr
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .api.websocket import MELCloudHomeWebSocket
 from .const import (
-    CONF_DEBUG_MODE,
     CONF_ENABLE_WEBSOCKET,
     DOMAIN,
     UPDATE_INTERVAL,
@@ -410,13 +409,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._async_setup_websocket()
 
     def _websocket_enabled(self) -> bool:
-        """Whether the opt-in WebSocket accelerator should run.
-
-        Disabled in debug/mock mode (the mock server has no WS endpoint).
-        """
+        """Whether the opt-in WebSocket accelerator should run."""
         if self._config_entry is None:
-            return False
-        if self._config_entry.data.get(CONF_DEBUG_MODE, False):
             return False
         return bool(self._config_entry.options.get(CONF_ENABLE_WEBSOCKET, False))
 
