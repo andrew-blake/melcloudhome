@@ -99,17 +99,14 @@ MOCK_WS_HASH = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 # placeholders — only 3=Cool, 4=Fan, 0=Auto(fan) were captured.
 _ATA_OPERATION_MODE_ENUM = {"Heat": 1, "Dry": 2, "Cool": 3, "Fan": 4, "Automatic": 8}
 _ATA_VANE_ENUM = {"Auto": 0, "Swing": 7}  # 6/7 = swing captured; rest plausible
-
-
-def _fan_speed_enum(value):
-    return 0 if value == "Auto" else int(value)
-
+# Only 0=Auto confirmed from capture; 1-5 for One..Five are plausible placeholders.
+_ATA_FAN_SPEED_ENUM = {"Auto": 0, "One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 ATA_WIRE_MAP = {
     "power": ("Power", bool),
     "set_temperature": ("SetTemperature", float),
     "operation_mode": ("OperationMode", lambda v: _ATA_OPERATION_MODE_ENUM.get(v, 1)),
-    "set_fan_speed": ("SetFanSpeed", _fan_speed_enum),
+    "set_fan_speed": ("SetFanSpeed", lambda v: _ATA_FAN_SPEED_ENUM.get(v, 0)),
     "vane_vertical_direction": (
         "VaneVerticalDirection",
         lambda v: _ATA_VANE_ENUM.get(v, 0),

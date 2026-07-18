@@ -115,6 +115,22 @@ async def test_noop_put_emits_nothing(mock_client):
     await ws.close()
 
 
+async def test_put_fan_speed_word_value_emits_typed_int(mock_client):
+    # Regression: fan speed is a word ("Auto".."Five"), not a numeric string.
+    # int("Three") used to raise ValueError inside _broadcast_delta after the
+    # PUT had already mutated state, 500ing the whole request.
+    client, _ = mock_client
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    resp = await client.put(
+        f"/monitor/ataunit/{ATA_ID}", json={"setFanSpeed": "Three"}, headers=BEARER
+    )
+    assert resp.status == 200
+    frame = await ws.receive_json(timeout=2)
+    by_name = {s["name"]: s["value"] for s in frame[0]["Data"]["settings"]}
+    assert by_name["SetFanSpeed"] == 3
+    await ws.close()
+
+
 async def test_atw_put_emits_assumed_shape_delta(mock_client):
     client, _ = mock_client
     atw_id = "bf2d256c-42ac-4799-a6d8-c6ab433e5666"  # House Heat Pump (seeded)
