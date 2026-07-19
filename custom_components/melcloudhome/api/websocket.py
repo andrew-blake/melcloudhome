@@ -77,6 +77,7 @@ class MELCloudHomeWebSocket:
                 # Best-effort listener: any failure just backs off and retries.
                 _LOGGER.debug("WebSocket session ended: %s", err)
 
+            was_connected = self._connected
             if self._connected:
                 self._connected = False
                 if not self._closing:
@@ -85,10 +86,11 @@ class MELCloudHomeWebSocket:
                         " (polling continues meanwhile)"
                     )
 
-            # Reset only after a session that actually survived — a clean
-            # return from an accept-then-immediately-close server must keep
-            # escalating.
-            if time.monotonic() - started >= _STABLE_SESSION_SECS:
+            # Reset only after a session that actually connected and survived.
+            # A clean return from an accept-then-immediately-close server must
+            # keep escalating, and so must a hash endpoint that hangs past the
+            # threshold before failing — elapsed time alone proves nothing.
+            if was_connected and time.monotonic() - started >= _STABLE_SESSION_SECS:
                 backoff = _INITIAL_BACKOFF
 
             if self._closing:

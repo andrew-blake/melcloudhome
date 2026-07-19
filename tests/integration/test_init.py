@@ -160,7 +160,7 @@ async def test_options_flow_change_reloads_entry(
             hass.config_entries, "async_reload", new=AsyncMock()
         ) as mock_reload:
             result = await hass.config_entries.options.async_init(entry.entry_id)
-            result = await hass.config_entries.options.async_configure(
+            await hass.config_entries.options.async_configure(
                 result["flow_id"], user_input={CONF_ENABLE_WEBSOCKET: True}
             )
             await hass.async_block_till_done()

@@ -94,7 +94,8 @@ It is disabled in debug/mock mode.
   the debounce delay plus one REST poll — which also defuses the dedup
   command-drop scenario in practice. ADR-018's limitation still applies to
   the default (off) configuration.
-- The integration requires HA ≥ 2025.8.0 (entry-scoped background tasks).
+- The integration requires HA ≥ 2025.8.0 (`OptionsFlowWithReload`, new in
+  2025.8; entry-scoped background tasks have been available since ~2023.4).
 - One extra long-lived connection and a hash fetch per (re)connect; steady
   state adds no REST traffic beyond the refreshes that real changes trigger.
 - The mock server does not yet expose a WS endpoint; local dev/e2e coverage
