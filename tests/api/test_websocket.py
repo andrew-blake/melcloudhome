@@ -22,6 +22,7 @@ from custom_components.melcloudhome.api.exceptions import (
 )
 from custom_components.melcloudhome.api.websocket import (
     _INITIAL_BACKOFF,
+    _STABLE_SESSION_SECS,
     MELCloudHomeWebSocket,
 )
 
@@ -216,6 +217,21 @@ class TestConnectOnce:
         # BINARY ignored, TEXT dispatched, ERROR ends the session.
         on_delta.assert_awaited_once_with("unit-9", ["Power"])
 
+    async def test_logs_connected_then_restored_at_info(self, caplog) -> None:
+        client, _ = self._client_with_ws([_msg(aiohttp.WSMsgType.CLOSE)])
+        ws = MELCloudHomeWebSocket(client, AsyncMock())
+
+        with caplog.at_level("INFO"):
+            await ws._connect_once()  # first session
+            await ws._connect_once()  # session after a drop
+
+        infos = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelname == "INFO" and "WebSocket" in r.getMessage()
+        ]
+        assert infos == ["WebSocket connected", "WebSocket connection restored"]
+
 
 # --------------------------------------------------------------------------- #
 # Reconnect loop (run / stop)
@@ -245,6 +261,7 @@ class TestRunLoop:
 
     async def test_error_backs_off_and_retries_until_stopped(self, mocker) -> None:
         sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        mocker.patch("random.uniform", return_value=1.0)
         ws, _ = _make_ws()
         attempts: list[int] = []
 
@@ -262,16 +279,21 @@ class TestRunLoop:
         waited = [c.args[0] for c in sleep.await_args_list]
         assert waited == [_INITIAL_BACKOFF, _INITIAL_BACKOFF * 2]
 
-    async def test_backoff_resets_after_a_clean_session(self, mocker) -> None:
+    async def test_short_clean_session_keeps_escalating(self, mocker) -> None:
+        """Accept-then-immediately-close must not reset the backoff.
+
+        A server that completes the 101 handshake and closes right away
+        (expired/revoked hash, throttling) makes every cycle end "cleanly";
+        resetting on that would mean reconnecting at the initial backoff
+        forever, with a hash fetch per cycle.
+        """
         sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        mocker.patch("random.uniform", return_value=1.0)
         ws, _ = _make_ws()
         attempts: list[int] = []
 
-        async def fake_connect() -> None:
+        async def fake_connect() -> None:  # returns instantly and cleanly
             attempts.append(1)
-            # fail, clean (resets backoff), fail, then stop
-            if len(attempts) in (1, 3):
-                raise RuntimeError("boom")
             if len(attempts) >= 4:
                 ws.stop()
 
@@ -279,10 +301,90 @@ class TestRunLoop:
         await ws.run()
 
         waited = [c.args[0] for c in sleep.await_args_list]
-        # attempt1 fails -> 5s (backoff now 10); attempt2 is clean and resets
-        # backoff, so its sleep is 5s again (not 10s — this is the reset);
-        # attempt3 fails -> 10s.
-        assert waited == [_INITIAL_BACKOFF, _INITIAL_BACKOFF, _INITIAL_BACKOFF * 2]
+        assert waited == [
+            _INITIAL_BACKOFF,
+            _INITIAL_BACKOFF * 2,
+            _INITIAL_BACKOFF * 4,
+        ]
+
+    async def test_backoff_resets_only_after_surviving_session(self, mocker) -> None:
+        sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        mocker.patch("random.uniform", return_value=1.0)
+        clock = {"now": 0.0}
+        mocker.patch(
+            "custom_components.melcloudhome.api.websocket.time.monotonic",
+            side_effect=lambda: clock["now"],
+        )
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:
+            attempts.append(1)
+            if len(attempts) == 3:
+                # This session survives past the stability threshold.
+                clock["now"] += _STABLE_SESSION_SECS
+                return
+            if len(attempts) >= 4:
+                ws.stop()
+                return
+            raise RuntimeError("boom")
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        await ws.run()
+
+        waited = [c.args[0] for c in sleep.await_args_list]
+        # attempt1 fails -> 5s (backoff now 10); attempt2 fails -> 10s
+        # (backoff now 20); attempt3 survives >60s -> reset -> 5s.
+        assert waited == [
+            _INITIAL_BACKOFF,
+            _INITIAL_BACKOFF * 2,
+            _INITIAL_BACKOFF,
+        ]
+
+    async def test_reconnect_sleep_is_jittered(self, mocker) -> None:
+        sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        uniform = mocker.patch("random.uniform", return_value=0.9)
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:
+            attempts.append(1)
+            if len(attempts) >= 2:
+                ws.stop()
+                return
+            raise RuntimeError("boom")
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        await ws.run()
+
+        uniform.assert_called_with(0.8, 1.2)
+        waited = [c.args[0] for c in sleep.await_args_list]
+        assert waited == [_INITIAL_BACKOFF * 0.9]
+
+    async def test_logs_info_on_connection_lost(self, mocker, caplog) -> None:
+        """An established session that drops logs one INFO, retries stay DEBUG."""
+        mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        mocker.patch("random.uniform", return_value=1.0)
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:
+            attempts.append(1)
+            if len(attempts) == 1:
+                ws._connected = True  # handshake succeeded, then dropped
+                raise RuntimeError("dropped")
+            if len(attempts) >= 3:
+                ws.stop()
+                return
+            raise RuntimeError("still down")  # retry failure: no INFO
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        with caplog.at_level("INFO"):
+            await ws.run()
+
+        lost = [r for r in caplog.records if "connection lost" in r.getMessage()]
+        assert len(lost) == 1
+        assert lost[0].levelname == "INFO"
 
     async def test_cancellation_propagates(self) -> None:
         ws, _ = _make_ws()

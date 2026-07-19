@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from contextlib import suppress
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -423,12 +422,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     def _async_setup_websocket(self) -> None:
         """Launch the WebSocket listener as a background task if enabled."""
-        if not self._websocket_enabled():
+        if not self._websocket_enabled() or self._config_entry is None:
             return
 
         self._websocket = MELCloudHomeWebSocket(self.client, on_delta=self._on_ws_delta)
-        self._ws_task = self.hass.async_create_background_task(
-            self._websocket.run(), name=f"{DOMAIN}-websocket"
+        # Entry-scoped: HA cancels the task on entry unload/reload, so
+        # shutdown needs no manual cancel bookkeeping.
+        self._ws_task = self._config_entry.async_create_background_task(
+            self.hass, self._websocket.run(), name=f"{DOMAIN}-websocket"
         )
         _LOGGER.info("Real-time WebSocket listener started")
 
@@ -455,11 +456,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         if self._cancel_telemetry_updates:
             self._cancel_telemetry_updates()
         if self._websocket is not None:
+            # The entry-scoped background task is cancelled by HA on entry
+            # unload; stop() just makes the run loop exit cleanly if the
+            # socket errors out first (e.g. when the client closes below).
             self._websocket.stop()
-        if self._ws_task is not None:
-            self._ws_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self._ws_task
             self._ws_task = None
         await self.client.close()
 
