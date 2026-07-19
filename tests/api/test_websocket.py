@@ -321,7 +321,8 @@ class TestRunLoop:
         async def fake_connect() -> None:
             attempts.append(1)
             if len(attempts) == 3:
-                # This session survives past the stability threshold.
+                # This session connects and survives past the threshold.
+                ws._connected = True
                 clock["now"] += _STABLE_SESSION_SECS
                 return
             if len(attempts) >= 4:
@@ -340,6 +341,39 @@ class TestRunLoop:
             _INITIAL_BACKOFF * 2,
             _INITIAL_BACKOFF,
         ]
+
+    async def test_slow_failure_without_connecting_keeps_escalating(
+        self, mocker
+    ) -> None:
+        """A hash fetch that hangs past the threshold must not reset the backoff.
+
+        Elapsed time alone doesn't prove a healthy session: an endpoint that
+        hangs >60s per attempt and then fails would otherwise reset every
+        cycle and never escalate past the initial backoff.
+        """
+        sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        mocker.patch("random.uniform", return_value=1.0)
+        clock = {"now": 0.0}
+        mocker.patch(
+            "custom_components.melcloudhome.api.websocket.time.monotonic",
+            side_effect=lambda: clock["now"],
+        )
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:  # hangs past the threshold, never connects
+            attempts.append(1)
+            if len(attempts) >= 3:
+                ws.stop()
+                return
+            clock["now"] += _STABLE_SESSION_SECS
+            raise RuntimeError("timed out")
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        await ws.run()
+
+        waited = [c.args[0] for c in sleep.await_args_list]
+        assert waited == [_INITIAL_BACKOFF, _INITIAL_BACKOFF * 2]
 
     async def test_reconnect_sleep_is_jittered(self, mocker) -> None:
         sleep = mocker.patch("asyncio.sleep", new_callable=AsyncMock)
@@ -474,3 +508,30 @@ class TestAsyncWsSession:
         client, auth, session = _client_with_auth()
         assert await client.async_ws_session() is session
         auth.get_session.assert_awaited_once()
+
+
+# --------------------------------------------------------------------------- #
+# Debug-mode URL selection
+# --------------------------------------------------------------------------- #
+class TestDebugModeUrls:
+    """Hard principle: debug mode must have ZERO contact with prod services."""
+
+    def test_debug_mode_uses_mock_ws_urls(self):
+        from custom_components.melcloudhome.api.const_shared import MOCK_BASE_URL
+
+        client = MELCloudHomeClient(debug_mode=True)
+        assert client.ws_host.startswith("ws://")
+        assert client.ws_host == MOCK_BASE_URL.replace("http", "ws", 1) + "/ws"
+        assert client._ws_hash_url == MOCK_BASE_URL + "/ws/token"
+        assert "lambda-url" not in client._ws_hash_url
+        assert "melcloudhome.com" not in client.ws_host
+
+    def test_prod_mode_uses_real_ws_urls(self):
+        from custom_components.melcloudhome.api.const_shared import (
+            WS_HASH_URL,
+            WS_HOST,
+        )
+
+        client = MELCloudHomeClient(debug_mode=False)
+        assert client.ws_host == WS_HOST
+        assert client._ws_hash_url == WS_HASH_URL
