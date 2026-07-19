@@ -204,6 +204,22 @@ async def test_control_unknown_action_400(mock_client):
     assert resp.status == 400
 
 
+async def test_control_emit_delta_missing_fields_400(mock_client):
+    client, _ = mock_client
+    resp = await client.post("/_mock/ws", json={"action": "emit-delta"})
+    assert resp.status == 400
+
+
+async def test_control_status_reports_client_count(mock_client):
+    client, _ = mock_client
+    resp = await client.post("/_mock/ws", json={"action": "status"})
+    assert (await resp.json())["clients"] == 0
+    ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
+    resp = await client.post("/_mock/ws", json={"action": "status"})
+    assert (await resp.json())["clients"] == 1
+    await ws.close()
+
+
 async def test_ws_paths_exempt_from_rate_limiting(mock_client, monkeypatch):
     """Regression: with the limiter live, the client hits /ws/token then
     immediately opens /ws — <50ms apart. Without the exemption this

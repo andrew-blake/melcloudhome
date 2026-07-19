@@ -128,6 +128,16 @@ ATA_WIRE_MAP = {
 }
 
 
+def _delta_frame(unit_id: str, settings: list) -> list:
+    """One unitStateChanged frame in the wire shape the socket sends."""
+    return [
+        {
+            "messageType": "unitStateChanged",
+            "Data": {"id": unit_id, "settings": settings},
+        }
+    ]
+
+
 def _atw_wire_name(key: str) -> str:
     """snake_case -> PascalCase. ASSUMPTION: no ATW frame has ever been
     captured; verify against Andrew's prod soak (backlog) and correct here."""
@@ -413,6 +423,14 @@ class MockMELCloudServer:
             logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
         return ws
 
+    async def _send_frame(self, frame: list) -> None:
+        """Send one frame to every connected socket, dropping dead ones."""
+        for ws in set(self.ws_clients):
+            try:
+                await ws.send_json(frame)
+            except (ConnectionResetError, RuntimeError):
+                self.ws_clients.discard(ws)
+
     async def handle_ws_control(self, request: web.Request) -> web.Response:
         """POST /_mock/ws - test-only fault injection (auth-exempt)."""
         body = await request.json()
@@ -429,20 +447,13 @@ class MockMELCloudServer:
             self.ws_accept_then_close = False
             self.ws_reject_hash = False
         elif action == "emit-delta":
-            frame = [
-                {
-                    "messageType": "unitStateChanged",
-                    "Data": {
-                        "id": body["unit_id"],
-                        "settings": body["settings"],
-                    },
-                }
-            ]
-            for ws in set(self.ws_clients):
-                try:
-                    await ws.send_json(frame)
-                except (ConnectionResetError, RuntimeError):
-                    self.ws_clients.discard(ws)
+            if "unit_id" not in body or "settings" not in body:
+                return web.json_response(
+                    {"error": "emit-delta requires unit_id and settings"}, status=400
+                )
+            await self._send_frame(_delta_frame(body["unit_id"], body["settings"]))
+        elif action == "status":
+            return web.json_response({"clients": len(self.ws_clients)})
         else:
             return web.json_response({"error": f"unknown action {action}"}, status=400)
         logger.info("🎛️  WS control: %s", _safe_log(action))
@@ -463,17 +474,7 @@ class MockMELCloudServer:
                 settings.append({"name": _atw_wire_name(key), "value": value})
         if not settings or not self.ws_clients:
             return
-        frame = [
-            {
-                "messageType": "unitStateChanged",
-                "Data": {"id": unit_id, "settings": settings},
-            }
-        ]
-        for ws in set(self.ws_clients):
-            try:
-                await ws.send_json(frame)
-            except (ConnectionResetError, RuntimeError):
-                self.ws_clients.discard(ws)
+        await self._send_frame(_delta_frame(unit_id, settings))
         logger.info(
             "📡 WS delta for %s: %s",
             _safe_log(unit_id),

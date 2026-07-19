@@ -26,6 +26,24 @@ async def _ws_control(action: str) -> None:
         assert resp.status == 200
 
 
+async def _ws_client_count() -> int:
+    async with (
+        aiohttp.ClientSession() as session,
+        session.post(f"{MOCK_BASE_URL}/_mock/ws", json={"action": "status"}) as resp,
+    ):
+        return int((await resp.json())["clients"])
+
+
+async def _wait_for_new_ws_client(baseline: int, timeout: float = 10.0) -> None:
+    """Block until the mock reports more sockets than `baseline`."""
+
+    async def poll() -> None:
+        while await _ws_client_count() <= baseline:
+            await asyncio.sleep(0.1)
+
+    await asyncio.wait_for(poll(), timeout=timeout)
+
+
 class TestWebSocketE2E:
     @pytest.mark.e2e
     @pytest.mark.asyncio
@@ -48,10 +66,12 @@ class TestWebSocketE2E:
             # production ordering (coordinator starts the WS task only after
             # the client is already authenticated).
             await client.login("test@example.com", "password")
+            baseline = await _ws_client_count()
             task = asyncio.create_task(listener.run())
             context = await client.get_user_context()
             unit = context.buildings[0].air_to_air_units[0]
-            await asyncio.sleep(1)  # let the socket connect before the PUT
+            # Deterministic connect wait — a fixed sleep raced slow runners.
+            await _wait_for_new_ws_client(baseline)
 
             await client.ata.set_temperature(unit.id, 23.5)
 
