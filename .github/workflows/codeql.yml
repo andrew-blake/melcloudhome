@@ -16,8 +16,12 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
     permissions:
       contents: read
       security-events: write  # upload SARIF to GitHub Security tab
@@ -27,6 +31,8 @@ jobs:
           persist-credentials: false
       - uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
         with:
-          languages: python
+          languages: ${{ matrix.language }}
           queries: security-and-quality
       - uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          category: "/language:${{ matrix.language }}"
