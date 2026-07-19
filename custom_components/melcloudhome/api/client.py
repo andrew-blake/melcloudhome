@@ -28,6 +28,7 @@ from .const_shared import (
     BASE_URL,
     MOCK_BASE_URL,
     USER_AGENT,
+    WS_HASH_URL,
 )
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
@@ -127,6 +128,49 @@ class MELCloudHomeClient:
     async def refresh_access_token(self) -> bool:
         """Refresh the access token using stored refresh token."""
         return await self._auth.refresh_access_token()
+
+    async def async_ws_session(self) -> Any:
+        """Return the authenticated aiohttp session (for the WebSocket).
+
+        Shares the same session (and User-Agent) as REST requests.
+        """
+        return await self._auth.get_session()
+
+    async def async_get_ws_hash(self) -> str:
+        """Fetch a real-time WebSocket credential ("hash") for this account.
+
+        Exchanges the mobile-BFF bearer for a ``{"hash", "userId"}`` document
+        at the Lambda token endpoint, mirroring what the official app does.
+        Refreshes the access token first if it is expired, so callers don't
+        need to. Returns the ``hash`` used to open ``WS_HOST/?hash=<hash>``.
+
+        Raises:
+            AuthenticationError: if the endpoint rejects the bearer (401/403).
+            ApiError: for any other non-200 response.
+        """
+        # Proactive refresh — same pattern as _api_request.
+        if self._auth.is_token_expired and self._auth.refresh_token:
+            async with self._refresh_lock:
+                if self._auth.is_token_expired:
+                    await self._auth.refresh_access_token()
+                    if self._on_tokens_refreshed:
+                        self._on_tokens_refreshed()
+
+        session = await self._auth.get_session()
+        headers = {"Authorization": f"Bearer {self._auth.access_token}"}
+        async with session.get(WS_HASH_URL, headers=headers) as resp:
+            if resp.status in (401, 403):
+                raise AuthenticationError(
+                    f"WebSocket token endpoint rejected credentials ({resp.status})"
+                )
+            if resp.status != 200:
+                raise ApiError(f"WebSocket token endpoint returned {resp.status}")
+            data = await resp.json()
+
+        ws_hash = data.get("hash")
+        if not ws_hash:
+            raise ApiError("WebSocket token response missing 'hash'")
+        return str(ws_hash)
 
     async def _api_request(
         self,

@@ -16,7 +16,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
+from .api.websocket import MELCloudHomeWebSocket
 from .const import (
+    CONF_DEBUG_MODE,
+    CONF_ENABLE_WEBSOCKET,
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
@@ -67,6 +70,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
+        # Real-time WebSocket listener (opt-in accelerator — issue #174)
+        self._websocket: MELCloudHomeWebSocket | None = None
+        self._ws_task: asyncio.Task[None] | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
@@ -400,6 +406,38 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
+        # Start the real-time WebSocket listener if opted in
+        self._async_setup_websocket()
+
+    def _websocket_enabled(self) -> bool:
+        """Whether the opt-in WebSocket accelerator should run.
+
+        Disabled in debug/mock mode (the mock server has no WS endpoint).
+        """
+        if self._config_entry is None:
+            return False
+        if self._config_entry.data.get(CONF_DEBUG_MODE, False):
+            return False
+        return bool(self._config_entry.options.get(CONF_ENABLE_WEBSOCKET, False))
+
+    def _async_setup_websocket(self) -> None:
+        """Launch the WebSocket listener as a background task if enabled."""
+        if not self._websocket_enabled() or self._config_entry is None:
+            return
+
+        self._websocket = MELCloudHomeWebSocket(self.client, on_delta=self._on_ws_delta)
+        # Entry-scoped: HA cancels the task on entry unload/reload, so
+        # shutdown needs no manual cancel bookkeeping.
+        self._ws_task = self._config_entry.async_create_background_task(
+            self.hass, self._websocket.run(), name=f"{DOMAIN}-websocket"
+        )
+        _LOGGER.info("Real-time WebSocket listener started")
+
+    async def _on_ws_delta(self, unit_id: str, changed: list[str]) -> None:
+        """Handle a pushed per-unit state change by refreshing (debounced)."""
+        _LOGGER.debug("WebSocket delta for %s: %s", unit_id, changed)
+        await self.async_request_refresh_debounced()
+
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).
 
@@ -417,6 +455,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._cancel_energy_updates()
         if self._cancel_telemetry_updates:
             self._cancel_telemetry_updates()
+        if self._websocket is not None:
+            # The entry-scoped background task is cancelled by HA on entry
+            # unload; stop() just makes the run loop exit cleanly if the
+            # socket errors out first (e.g. when the client closes below).
+            self._websocket.stop()
+            self._ws_task = None
         await self.client.close()
 
     def get_ata_device(self, unit_id: str) -> AirToAirUnit | None:

@@ -85,6 +85,90 @@ async def test_force_refresh_service_unregistered_on_last_unload(
         assert not hass.services.has_service(DOMAIN, "force_refresh")
 
 
+@pytest.mark.asyncio
+async def test_token_only_data_updates_do_not_reload(
+    hass: HomeAssistant,
+) -> None:
+    """A token-only data write must not reload the entry.
+
+    Regression guard: an update listener fires on any entry change, so
+    persisting refreshed tokens (``_persist_tokens`` writes ``entry.data``) used
+    to reload the whole integration on every token refresh. The integration
+    must not register update listeners (options reloads go through
+    ``OptionsFlowWithReload`` instead).
+    """
+    from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
+
+    with patch(MOCK_CLIENT_PATH) as mock_client:
+        client = mock_client.return_value
+        client.login = AsyncMock()
+        client.close = AsyncMock()
+        client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
+        type(client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            options={CONF_ENABLE_WEBSOCKET: False},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # No update listener may be registered: HA fires them on data writes
+        # too, and OptionsFlowWithReload refuses to work alongside them.
+        assert not entry.update_listeners
+
+        with patch.object(
+            hass.config_entries, "async_reload", new=AsyncMock()
+        ) as mock_reload:
+            # Simulate _persist_tokens: options unchanged, only data changes.
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, "access_token": "rotated"}
+            )
+            await hass.async_block_till_done()
+
+            mock_reload.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_options_flow_change_reloads_entry(
+    hass: HomeAssistant,
+) -> None:
+    """Completing the options flow with a change must reload the entry."""
+    from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
+
+    with patch(MOCK_CLIENT_PATH) as mock_client:
+        client = mock_client.return_value
+        client.login = AsyncMock()
+        client.close = AsyncMock()
+        client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
+        type(client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            options={CONF_ENABLE_WEBSOCKET: False},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        with patch.object(
+            hass.config_entries, "async_reload", new=AsyncMock()
+        ) as mock_reload:
+            result = await hass.config_entries.options.async_init(entry.entry_id)
+            result = await hass.config_entries.options.async_configure(
+                result["flow_id"], user_input={CONF_ENABLE_WEBSOCKET: True}
+            )
+            await hass.async_block_till_done()
+
+            assert entry.options == {CONF_ENABLE_WEBSOCKET: True}
+            mock_reload.assert_called_once_with(entry.entry_id)
+
+
 def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
     """Create a mock ATA unit."""
     unit = MagicMock()

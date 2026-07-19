@@ -21,6 +21,10 @@ PLATFORMS = ["climate"]
 # Configuration keys
 CONF_DEBUG_MODE = "debug_mode"
 
+# Options keys
+# Opt-in real-time WebSocket updates (accelerator over polling — issue #174).
+CONF_ENABLE_WEBSOCKET = "enable_websocket"
+
 # Energy polling configuration
 UPDATE_INTERVAL_ENERGY = timedelta(minutes=30)
 DATA_LOOKBACK_HOURS_ENERGY = 48
@@ -72,6 +76,7 @@ __all__ = [
     "ATW_TELEMETRY_MEASURES",
     "ATW_TELEMETRY_MEASURES_ZONE2",
     "CONF_DEBUG_MODE",
+    "CONF_ENABLE_WEBSOCKET",
     "DATA_LOOKBACK_HOURS_ENERGY",
     "DATA_LOOKBACK_HOURS_TELEMETRY",
     "DOMAIN",
