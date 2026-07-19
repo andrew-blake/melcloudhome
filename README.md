@@ -20,8 +20,8 @@ Fixes corrupt energy readings from the MELCloud cloud that could permanently inf
 
 - Full climate control (power, temperature, modes, fan speeds, vane directions)
 - Energy monitoring with Home Assistant Energy Dashboard support
-- Real-time sensors (room temperature, outdoor temperature*, WiFi signal, connection status)
-- 60-second polling for climate updates, 30-minute for outdoor temperature
+- Sensors (room temperature, outdoor temperature*, WiFi signal, connection status)
+- [Real-time updates](#real-time-updates) via WebSocket push, plus 60-second polling (30-minute for outdoor temperature)
 
 *Auto-detected from device capabilities - not all units have outdoor temperature sensors
 
@@ -33,12 +33,13 @@ Fixes corrupt energy readings from the MELCloud cloud that could permanently inf
 - Multiple sensors (temperatures, operation status, 6 telemetry sensors)
 - Energy monitoring* (consumed, produced, COP - Energy Dashboard compatible)
 - Cooling mode* (Cool Room/Cool Flow presets)
+- [Real-time updates](#real-time-updates) via WebSocket push
 
 *Auto-detected from device capabilities - see [docs/entities.md](docs/entities.md) for details
 
 ## Requirements
 
-- Home Assistant 2024.11.0 or newer
+- Home Assistant 2025.8.0 or newer
 - MELCloud Home account with configured devices
 - Internet connection for cloud API access
 
@@ -89,6 +90,20 @@ Or manually: **Settings** → **Devices & Services** → **Add Integration** →
 
 Enter your MELCloud Home credentials (email and password). Your devices will be automatically discovered and added.
 
+## Real-Time Updates
+
+Changes made outside Home Assistant — the physical remote, the MELCloud Home app, a schedule — normally take up to 60 seconds to appear (the polling interval). Real-time updates shrink that to a couple of seconds: the integration listens on a MELCloud WebSocket and refreshes a device as soon as the cloud reports a change.
+
+**On by default.** There is nothing to set up. It is safe by design:
+
+- The socket is receive-only — all control commands use the same cloud API as before
+- If the connection drops, the integration falls back to normal 60-second polling automatically; your devices keep working and never show as unavailable because of it
+- Reconnection is automatic (the MELCloud server routinely recycles connections about every 2 hours — this is normal)
+
+**How to tell it's working:** changes made on the remote or in the MELCloud app show up in Home Assistant within a few seconds. The log (Settings → System → Logs) shows `WebSocket connected` when it starts and `WebSocket connection lost; reconnecting (polling continues meanwhile)` if it drops.
+
+**How to turn it off:** Settings → Devices & Services → MELCloud Home → Configure → switch off "Real-time updates (WebSocket)" → Submit. The integration then uses 60-second polling only.
+
 ## Important Notes
 
 ### Stable Entity IDs
@@ -137,6 +152,14 @@ The integration creates the following entities for each device:
 - Verify MELCloud Home service is accessible
 - Review the integration logs for API errors
 
+### Out-of-Band Changes Slow to Appear
+
+If changes made with the remote or MELCloud app take up to a minute to show in Home Assistant, real-time updates may not be connected:
+
+- Check the logs for `WebSocket connected` / `WebSocket connection lost` messages
+- Verify the toggle is on: Settings → Devices & Services → MELCloud Home → Configure
+- Updates still arrive via 60-second polling even when the WebSocket is down
+
 ### Energy Sensor Unavailable
 
 - Some devices may not report energy data
@@ -158,7 +181,7 @@ The integration uses conservative polling intervals to respect API limits:
 - **Energy Data**: 30 minutes
 - **Outdoor Temperature**: 30 minutes
 
-These intervals balance update frequency with API rate limits.
+These intervals balance update frequency with API rate limits. Real-time updates don't add polling load — the WebSocket is a single long-lived connection, and it only triggers an extra state refresh when a device actually changes.
 
 ## Development & Code Quality
 

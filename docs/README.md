@@ -10,7 +10,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-004: Integration Refactoring](decisions/004-integration-refactoring.md) - Separation of concerns
 - [ADR-005: Divergence from Official MELCloud](decisions/005-divergence-from-official-melcloud.md) - Why we target different API
 - [ADR-006: Entity Description Pattern](decisions/006-entity-description-pattern.md) - Sensor/binary_sensor implementation
-- [ADR-007: Defer WebSocket Implementation](decisions/007-defer-websocket-implementation.md) - Real-time updates deferral
+- [ADR-007: Defer WebSocket Implementation](decisions/007-defer-websocket-implementation.md) - Real-time updates deferral (SUPERSEDED by ADR-019)
 - [ADR-008: Energy Monitoring Architecture](decisions/008-energy-monitoring-architecture.md) - Energy tracking with persistence
 - [ADR-009: Reconfigure Password-Only](decisions/009-reconfigure-password-only.md) - Config flow password updates
 - [ADR-010: Entity ID Prefix Change](decisions/010-entity-id-prefix-change.md) - Breaking change for stable IDs
@@ -21,6 +21,8 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-015: Skip ATW Energy Monitoring](decisions/015-skip-atw-energy-monitoring.md) - Initial decision to skip energy (SUPERSEDED by ADR-016)
 - [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
 - [ADR-017: Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) - Move from the legacy web API to the mobile API (`mobile.bff.melcloudhome.com`), with OAuth 2.0 + PKCE at `auth.melcloudhome.com` (supersedes ADR-002)
+- [ADR-018: Out-of-Band State Sync Limitation](decisions/018-out-of-band-state-sync-limitation.md) - The ≤60s stale window for changes made outside HA (resolved by ADR-019's WebSocket, default on)
+- [ADR-019: Real-Time WebSocket Updates](decisions/019-opt-in-websocket-realtime-updates.md) - Receive-only WebSocket deltas trigger debounced REST refresh; default on since v2.4.0 (supersedes ADR-007)
 
 ## Architecture
 
