@@ -141,7 +141,7 @@ dev-up:  ## Start dev environment (mock API + Home Assistant)
 dev-down:  ## Stop dev environment
 	docker compose -f docker-compose.dev.yml down
 
-dev-restart:  ## Restart Home Assistant (quick reload after code changes)
+dev-restart:  ## Restart HA (reloads integration code only — mock server changes need dev-rebuild)
 	docker compose -f docker-compose.dev.yml restart homeassistant
 	@echo "✅ Home Assistant restarted - code changes loaded"
 
@@ -201,7 +201,7 @@ dev-restore-snapshot:  ## Restore dev environment from snapshot (SNAPSHOT=path/t
 dev-logs:  ## View Home Assistant logs (Ctrl+C to exit)
 	docker compose -f docker-compose.dev.yml logs -f homeassistant
 
-dev-rebuild:  ## Rebuild mock server image (after updating mock server code)
+dev-rebuild:  ## Rebuild mock server image (required for mock server code changes — image has no volume mount)
 	docker compose -f docker-compose.dev.yml down
 	docker compose -f docker-compose.dev.yml build --no-cache melcloud-mock
 	docker compose -f docker-compose.dev.yml up -d
