@@ -75,13 +75,14 @@ class MELCloudWSCapture:
         ]
 
     def _match(self, flow: http.HTTPFlow) -> bool:
-        return any(d in flow.request.pretty_host for d in DOMAINS)
+        host = flow.request.pretty_host
+        return any(host == d or host.endswith("." + d) for d in DOMAINS)
 
     def request(self, flow: http.HTTPFlow) -> None:
         # Strip the permessage-deflate offer on the WS upgrade: mitmproxy is
         # unreliable relaying compressed frames (the socket dies with a 1006
         # abnormal close), so force an uncompressed socket we can capture.
-        if "ws.melcloudhome.com" in flow.request.pretty_host:
+        if flow.request.pretty_host == "ws.melcloudhome.com":
             flow.request.headers.pop("Sec-WebSocket-Extensions", None)
 
     def response(self, flow: http.HTTPFlow) -> None:
