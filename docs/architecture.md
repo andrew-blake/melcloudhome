@@ -612,12 +612,41 @@ Energy data is polled on its own 30-minute timer (`UPDATE_INTERVAL_ENERGY`), ind
 
 ---
 
+## Real-Time WebSocket Updates (Opt-In)
+
+An opt-in accelerator over REST polling (options toggle `enable_websocket`, default off, experimental). It surfaces out-of-band changes — physical remote, MELCloud app, another HA instance — in seconds instead of waiting for the next 60-second poll. See [ADR-019](decisions/019-opt-in-websocket-realtime-updates.md) for the full rationale.
+
+```mermaid
+sequenceDiagram
+    participant Coord as Coordinator
+    participant WS as MELCloudHomeWebSocket<br/>(api/websocket.py)
+    participant Cloud as MELCloud
+
+    Coord->>WS: entry.async_create_background_task(run())
+    WS->>Cloud: GET WS_HASH_URL (Bearer) → {hash, userId}
+    WS->>Cloud: wss://ws.melcloudhome.com/?hash=...
+    Cloud-->>WS: unitStateChanged delta (changed settings only)
+    WS->>Coord: on_delta(unit_id, changed)
+    Coord->>Coord: debounced refresh (~2s)
+    Coord->>Cloud: GET /context (REST — source of truth)
+```
+
+**Key points:**
+
+- **REST stays the source of truth.** Delta frames are never applied to entity state — they only trigger the existing debounced coordinator refresh. Frames are partial and inconsistently typed, so entity state always comes from the proven REST parser (ADR-019).
+- **Best-effort by design.** Polling continues regardless of socket health; entities never go unavailable because of WebSocket state. Failures back off exponentially (5s → 300s, jittered, reset only after a session that survived ≥60s) and the integration degrades to plain polling.
+- **Normal churn:** the server drops every connection at a hard 2-hour AWS API Gateway cap; reconnection is routine. Lost/restored transitions log at INFO.
+- **Lifecycle:** the listener is HA-agnostic; the coordinator launches it as an entry-scoped background task, so HA cancels it on entry unload/reload. Disabled in debug/mock mode.
+
+---
+
 ## Related Documentation
 
 - **ADR-011:** [Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md)
 - **ADR-012:** [ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
 - **ADR-016:** [ATW Energy Monitoring Implementation](decisions/016-implement-atw-energy-monitoring.md)
 - **ADR-017:** [Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) (supersedes ADR-002)
+- **ADR-019:** [Opt-In Real-Time WebSocket Updates](decisions/019-opt-in-websocket-realtime-updates.md) (supersedes ADR-007)
 - **ATA API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
 - **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)
