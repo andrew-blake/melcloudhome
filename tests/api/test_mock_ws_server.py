@@ -1,6 +1,7 @@
 """In-process tests for the mock server's WebSocket support (no Docker)."""
 
 import asyncio
+from time import time
 
 import aiohttp
 import pytest
@@ -201,3 +202,20 @@ async def test_control_unknown_action_400(mock_client):
     client, _ = mock_client
     resp = await client.post("/_mock/ws", json={"action": "explode"})
     assert resp.status == 400
+
+
+async def test_ws_paths_exempt_from_rate_limiting(mock_client, monkeypatch):
+    """Regression: with the limiter live, the client hits /ws/token then
+    immediately opens /ws — <50ms apart. Without the exemption this
+    livelocks the listener (token 200 -> upgrade 429 -> backoff -> repeat).
+    """
+    client, _ = mock_client
+    monkeypatch.setattr("tools.mock_melcloud_server.ENABLE_RATE_LIMITING", True)
+    # Simulate a REST request having just consumed the rate limit window.
+    monkeypatch.setattr("tools.mock_melcloud_server.last_request_time", time())
+
+    resp = await client.get("/ws/token", headers=BEARER)
+    assert resp.status == 200
+
+    ws = await client.ws_connect(f"/ws/?hash={MOCK_WS_HASH}")
+    await ws.close()

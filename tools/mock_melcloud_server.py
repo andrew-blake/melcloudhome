@@ -60,11 +60,20 @@ RATE_LIMIT_INTERVAL = 0.5  # seconds
 rate_limit_lock = asyncio.Lock()
 last_request_time = 0.0
 
+# WS + control paths bypass rate limiting: prod's WS infra (API Gateway +
+# Lambda hash endpoint) is separate from the BFF the limiter simulates, and
+# the client opens /ws immediately after /ws/token — limiting them livelocks
+# the listener (token 200 -> upgrade 429 -> backoff -> repeat).
+RATE_LIMIT_EXEMPT_PATHS = {"/ws", "/ws/", "/ws/token", "/_mock/ws"}
+
 
 @web.middleware
 async def rate_limit_middleware(request, handler):
     """Enforce rate limiting on all requests."""
     if not ENABLE_RATE_LIMITING:
+        return await handler(request)
+
+    if request.path in RATE_LIMIT_EXEMPT_PATHS:
         return await handler(request)
 
     global last_request_time
