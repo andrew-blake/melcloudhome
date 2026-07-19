@@ -84,8 +84,10 @@ class TestWebSocketE2E:
             listener.stop()
             if task is not None:
                 task.cancel()
-                with pytest.raises(asyncio.CancelledError):
-                    await task
+                # Reap without raising: swallows the expected CancelledError
+                # and, unlike pytest.raises here in finally, can't mask the
+                # test's own failure if the task had already finished.
+                await asyncio.gather(task, return_exceptions=True)
             await client.close()
 
     @pytest.mark.e2e
@@ -113,6 +115,6 @@ class TestWebSocketE2E:
             listener.stop()
             if task is not None:
                 task.cancel()
-                with pytest.raises(asyncio.CancelledError):
-                    await task
+                # Reap without raising (see comment in the test above).
+                await asyncio.gather(task, return_exceptions=True)
             await client.close()
