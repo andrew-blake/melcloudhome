@@ -140,6 +140,16 @@ reverse-engineering = [
     "mitmproxy>=12.2.2",
 ]
 
+[tool.uv]
+# mitmproxy caps tornado/msgpack at vulnerable versions (GHSA-3x9g-8vmp-wqvf,
+# GHSA-mgf9-4vpg-hj56, GHSA-pw6j-qg29-8w7f, GHSA-cx3h-4qpv-8hc9,
+# GHSA-6v7p-g79w-8964). Patch-level force past the caps; remove once a
+# mitmproxy release allows tornado>=6.5.7 and msgpack>=1.2.1.
+override-dependencies = [
+    "tornado>=6.5.7",
+    "msgpack>=1.2.1",
+]
+
 [tool.coverage.paths]
 source = [
     "custom_components/melcloudhome",

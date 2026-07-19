@@ -651,3 +651,4 @@ sequenceDiagram
 - **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)
 - **Mobile API Capture Notes:** [research/mobile-bff-captures/README.md](research/mobile-bff-captures/README.md)
+- **Web BFF & WebSocket Capture Notes:** [research/web-bff-websocket-capture/README.md](research/web-bff-websocket-capture/README.md)
