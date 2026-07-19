@@ -1,6 +1,6 @@
 # ADR-018: Out-of-Band State Sync Limitation and Deduplication Trade-off
 
-**Status:** Accepted (limitation documented) — resolved by [ADR-019](019-opt-in-websocket-realtime-updates.md) when the opt-in WebSocket is enabled; still applies to the default configuration
+**Status:** Accepted (limitation documented) — resolved by [ADR-019](019-opt-in-websocket-realtime-updates.md)'s WebSocket accelerator (default on since v2.4.0); still applies when the WebSocket toggle is turned off
 **Date:** 2026-06-14
 
 ## Context

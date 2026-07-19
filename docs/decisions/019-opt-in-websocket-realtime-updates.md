@@ -1,8 +1,8 @@
-# ADR-019: Opt-In Real-Time WebSocket Updates
+# ADR-019: Real-Time WebSocket Updates
 
-**Status:** Accepted
+**Status:** Accepted; amended 2026-07-19 — **default on** (originally opt-in, see Amendment)
 **Date:** 2026-07-19
-**Supersedes:** [ADR-007](007-defer-websocket-implementation.md) (deferral); resolves the structural limitation documented in [ADR-018](018-out-of-band-state-sync-limitation.md) when enabled
+**Supersedes:** [ADR-007](007-defer-websocket-implementation.md) (deferral); resolves the structural limitation documented in [ADR-018](018-out-of-band-state-sync-limitation.md) when enabled (the default)
 
 ## Context
 
@@ -34,8 +34,9 @@ arriving reliably for every unit. The one-device-only behavior observed in
 
 ## Decision
 
-Implement WebSocket support as an **opt-in accelerator over REST polling**
-(options-flow toggle `enable_websocket`, default off, labeled experimental):
+Implement WebSocket support as an **accelerator over REST polling**, controlled
+by the options-flow toggle `enable_websocket` (originally default off; default
+on since the Amendment below — `DEFAULT_ENABLE_WEBSOCKET` in `const.py`):
 
 1. **REST stays the source of truth.** A delta frame is never applied to
    entity state. It only triggers the existing debounced coordinator refresh
@@ -86,20 +87,49 @@ The listener (`api/websocket.py`) is deliberately HA-agnostic: one
 long-running `run()` coroutine plus a delta callback. The coordinator owns it,
 launching it via `entry.async_create_background_task`, so HA cancels it
 automatically on entry unload/reload — no manual cancel bookkeeping.
-It is disabled in debug/mock mode.
+In debug/mock mode the listener connects to the mock server's WS endpoint
+(PR #181) instead of production, so the dev environment and e2e tests
+exercise the real code path with zero prod contact.
 
 ## Consequences
 
-- With the toggle on, the ADR-018 stale window shrinks from ≤ 60 s to roughly
-  the debounce delay plus one REST poll — which also defuses the dedup
-  command-drop scenario in practice. ADR-018's limitation still applies to
-  the default (off) configuration.
+- With the socket running, the ADR-018 stale window shrinks from ≤ 60 s to
+  roughly the debounce delay plus one REST poll — which also defuses the dedup
+  command-drop scenario in practice. ADR-018's limitation still applies when
+  the toggle is turned off.
 - The integration requires HA ≥ 2025.8.0 (`OptionsFlowWithReload`, new in
   2025.8; entry-scoped background tasks have been available since ~2023.4).
 - One extra long-lived connection and a hash fetch per (re)connect; steady
   state adds no REST traffic beyond the refreshes that real changes trigger.
-- The mock server does not yet expose a WS endpoint; local dev/e2e coverage
-  of the socket is planned separately (#180).
+
+## Amendment (2026-07-19): default on
+
+The original decision shipped the toggle default-off ("opt-in, experimental").
+Amended the same cycle, before any release carried it: `enable_websocket` now
+**defaults on** and the toggle is an opt-out.
+
+Rationale:
+
+- **A default-off accelerator produces no evidence and little value.** Few
+  users change experimental toggles, so the v2.4.0 beta would have soaked the
+  socket on approximately zero installations, and the out-of-band staleness
+  fix (ADR-018) would reach almost nobody.
+- **The failure mode is the feature's own design.** Any socket failure
+  degrades to exactly the polling behavior a default-off user would have had;
+  entities never become unavailable because of WebSocket state. The blast
+  radius of "default on and broken" is "default off".
+- **The evidence base already exceeds what opt-in soak would gather:** a
+  ~22.6h continuous probe (759 messages, 0 errors, 99.9% uptime), a ~12.5h
+  production soak covering the ATW device type and guest-account path (130
+  heat-pump deltas), plus multi-week dogfooding on two production instances
+  covering the owner+ATA path.
+- **The remaining unknown is fleet-scale server behavior** (hash-endpoint
+  rate limits, connection caps across many accounts) — which only a
+  default-on population can reveal, and which the backoff design (5s→300s,
+  jittered, connected-session-gated reset) is built to absorb.
+
+The opt-out toggle, INFO-level connect/lost logging, and the planned
+connectivity diagnostics remain the observability and escape hatches.
 
 ## References
 

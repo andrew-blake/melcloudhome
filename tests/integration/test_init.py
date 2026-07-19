@@ -169,6 +169,61 @@ async def test_options_flow_change_reloads_entry(
             mock_reload.assert_called_once_with(entry.entry_id)
 
 
+@pytest.mark.asyncio
+async def test_websocket_runs_by_default(hass: HomeAssistant) -> None:
+    """An entry with no options starts the WebSocket accelerator (default on).
+
+    Observed at the API boundary: the listener's first act is fetching the WS
+    hash from the client.
+    """
+    with patch(MOCK_CLIENT_PATH) as mock_client:
+        client = mock_client.return_value
+        client.login = AsyncMock()
+        client.close = AsyncMock()
+        client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
+        # Fail the hash fetch so the listener parks in backoff instead of
+        # flailing against the mock; the await itself proves it started.
+        client.async_get_ws_hash = AsyncMock(side_effect=RuntimeError("stop"))
+        type(client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        client.async_get_ws_hash.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_websocket_opt_out_respected(hass: HomeAssistant) -> None:
+    """An explicit enable_websocket=False keeps the listener off."""
+    from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
+
+    with patch(MOCK_CLIENT_PATH) as mock_client:
+        client = mock_client.return_value
+        client.login = AsyncMock()
+        client.close = AsyncMock()
+        client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
+        client.async_get_ws_hash = AsyncMock()
+        type(client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            options={CONF_ENABLE_WEBSOCKET: False},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        client.async_get_ws_hash.assert_not_awaited()
+
+
 def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
     """Create a mock ATA unit."""
     unit = MagicMock()
