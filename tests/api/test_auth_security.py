@@ -132,3 +132,30 @@ class TestURLValidationSecurity:
             and "/login" in parsed.path
         )
         assert not is_valid, "URL with /login but wrong hostname should be rejected"
+
+
+class TestDebugLogRedaction:
+    """The request tracer must never log credentials in URLs."""
+
+    @pytest.mark.parametrize(
+        ("url", "leaked"),
+        [
+            ("wss://ws.melcloudhome.com/?hash=secret-uuid", "secret-uuid"),
+            ("https://x.on.aws/cb?code=authcode&state=st8", "authcode"),
+            ("https://x.on.aws/cb?code=authcode&state=st8", "st8"),
+            ("ws://mock:8080/ws/?hash=aaaa&other=keep", "aaaa"),
+        ],
+    )
+    def test_credential_query_params_redacted(self, url, leaked):
+        from custom_components.melcloudhome.api.auth import _redact_url
+
+        redacted = _redact_url(url)
+        assert leaked not in redacted
+        assert "***REDACTED***" in redacted
+
+    def test_non_credential_params_untouched(self):
+        from custom_components.melcloudhome.api.auth import _redact_url
+
+        assert _redact_url("ws://mock:8080/ws/?hash=aaaa&other=keep").endswith(
+            "other=keep"
+        )

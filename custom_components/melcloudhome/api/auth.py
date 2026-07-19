@@ -38,7 +38,7 @@ def _mask_email(email: str) -> str:
 
 
 def _redact_url(url: Any) -> str:
-    return re.sub(r"([?&])(code|state)=[^&]*", r"\1\2=***REDACTED***", str(url))
+    return re.sub(r"([?&])(code|state|hash)=[^&]*", r"\1\2=***REDACTED***", str(url))
 
 
 class MELCloudHomeAuth:
