@@ -12,7 +12,7 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.4.0
 
-**Real-time updates** - changes made with the remote control or the MELCloud Home app now appear in Home Assistant within seconds, instead of up to a minute. Enabled by default with automatic fallback to regular polling, so there's nothing to set up - see [Real-Time Updates](#real-time-updates) for details. Contributed by [@mrdjtoto](https://github.com/mrdjtoto), from protocol investigation through implementation.
+**Real-time updates** - changes made with the remote control or the MELCloud Home app now appear in Home Assistant within seconds, instead of up to a minute. Enabled by default with automatic fallback to regular polling, so there's nothing to set up - see [Real-Time Updates](#real-time-updates) for details. Contributed by [@mrdjtoto](https://github.com/mrdjtoto).
 
 **Requires Home Assistant 2025.8.0 or newer.** If you're on an older version, HACS will not offer this update.
 
@@ -96,17 +96,13 @@ Enter your MELCloud Home credentials (email and password). Your devices will be 
 
 ## Real-Time Updates
 
-Changes made outside Home Assistant — the physical remote, the MELCloud Home app, a schedule — normally take up to 60 seconds to appear (the polling interval). Real-time updates shrink that to a couple of seconds: the integration listens on a MELCloud WebSocket and refreshes a device as soon as the cloud reports a change.
+Changes made with the remote control, the MELCloud Home app, or a schedule appear in Home Assistant within seconds — no more waiting for the next poll.
 
-**On by default.** There is nothing to set up. It is safe by design:
+It's on by default and there's nothing to set up. If the connection ever drops, the integration automatically falls back to regular 60-second polling, so your devices keep working either way.
 
-- The socket is receive-only — all control commands use the same cloud API as before
-- If the connection drops, the integration falls back to normal 60-second polling automatically; your devices keep working and never show as unavailable because of it
-- Reconnection is automatic (the MELCloud server routinely recycles connections about every 2 hours — this is normal)
+**To turn it off:** Settings → Devices & Services → MELCloud Home → **Configure** → switch off "Real-time updates".
 
-**How to tell it's working:** changes made on the remote or in the MELCloud app show up in Home Assistant within a few seconds. The log (Settings → System → Logs) shows `WebSocket connected` when it starts and `WebSocket connection lost; reconnecting (polling continues meanwhile)` if it drops.
-
-**How to turn it off:** Settings → Devices & Services → MELCloud Home → Configure → switch off "Real-time updates" → Submit. The integration then uses 60-second polling only.
+The "Real-time updates" sensor (under the MELCloud Home service device, Diagnostic section) shows whether the live connection is currently active.
 
 ## Important Notes
 
