@@ -36,7 +36,7 @@ OAUTH_SCOPES = "openid profile email offline_access IdentityServerApi"
 COGNITO_BASE_URL = "https://live-melcloudhome.auth.eu-west-1.amazoncognito.com"
 COGNITO_DOMAIN_SUFFIX = ".amazoncognito.com"
 
-# Real-time WebSocket (opt-in accelerator over polling — see issue #174).
+# Real-time WebSocket (default-on accelerator over polling — see issue #174).
 # The WS credential ("hash") is issued by an AWS Lambda Function URL,
 # authenticated with the mobile-BFF bearer token (same one used for REST).
 # Fixed endpoint (not per-user); treated as best-effort — any failure falls

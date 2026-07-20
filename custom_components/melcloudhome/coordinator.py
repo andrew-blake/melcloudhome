@@ -19,6 +19,7 @@ from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .api.websocket import MELCloudHomeWebSocket
 from .const import (
     CONF_ENABLE_WEBSOCKET,
+    DEFAULT_ENABLE_WEBSOCKET,
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
@@ -69,7 +70,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
-        # Real-time WebSocket listener (opt-in accelerator — issue #174)
+        # Real-time WebSocket listener (default-on accelerator — issue #174)
         self._websocket: MELCloudHomeWebSocket | None = None
         self._ws_task: asyncio.Task[None] | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
@@ -405,14 +406,18 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
-        # Start the real-time WebSocket listener if opted in
+        # Start the real-time WebSocket listener unless opted out
         self._async_setup_websocket()
 
     def _websocket_enabled(self) -> bool:
-        """Whether the opt-in WebSocket accelerator should run."""
+        """Whether the WebSocket accelerator should run (default on)."""
         if self._config_entry is None:
             return False
-        return bool(self._config_entry.options.get(CONF_ENABLE_WEBSOCKET, False))
+        return bool(
+            self._config_entry.options.get(
+                CONF_ENABLE_WEBSOCKET, DEFAULT_ENABLE_WEBSOCKET
+            )
+        )
 
     def _async_setup_websocket(self) -> None:
         """Launch the WebSocket listener as a background task if enabled."""

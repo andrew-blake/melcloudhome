@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tùy chọn MELCloud Home",
+        "data": {
+          "enable_websocket": "Cập nhật theo thời gian thực"
+        },
+        "data_description": {
+          "enable_websocket": "Các thay đổi được thực hiện bằng điều khiển từ xa hoặc ứng dụng MELCloud Home sẽ hiển thị trong vài giây."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

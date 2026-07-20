@@ -1,6 +1,6 @@
 """Real-time WebSocket listener for MELCloud Home.
 
-Opt-in accelerator over REST polling (see issue #174). Connects to the same
+Default-on accelerator over REST polling (see issue #174). Connects to the same
 WebSocket the official app uses and reports per-unit ``unitStateChanged``
 deltas so out-of-band changes (physical remote, MELCloud app, another HA
 instance) surface without waiting for the next poll.

@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "ตัวเลือก MELCloud Home",
+        "data": {
+          "enable_websocket": "การอัปเดตแบบเรียลไทม์"
+        },
+        "data_description": {
+          "enable_websocket": "การเปลี่ยนแปลงที่ทำผ่านรีโมตหรือแอป MELCloud Home จะแสดงภายในไม่กี่วินาที"
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
