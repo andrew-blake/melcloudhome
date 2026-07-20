@@ -10,21 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Real-time updates**: changes made with the physical remote, the MELCloud Home app, or a schedule now appear in Home Assistant within a few seconds instead of up to a minute. Enabled by default with automatic fallback to regular polling if the connection drops, so devices keep working and never show as unavailable because of it. Turn it off any time via Settings → Devices & Services → MELCloud Home → Configure. Contributed by @mrdjtoto, from protocol investigation through implementation. (#176, #185)
-- "Real-time updates" connectivity sensor (diagnostic) showing whether the live connection is currently active, so you can tell at a glance that real-time updates are working. (#187)
-- The diagnostics download now includes a real-time connection section to make support requests easier to investigate. (#187)
+- **Real-time updates**: changes made with the remote control, the MELCloud Home app, or a schedule now appear in Home Assistant within seconds instead of up to a minute. On by default with nothing to set up; if the connection drops, the integration falls back to regular polling automatically. Contributed by @mrdjtoto. (#176, #185)
+- "Real-time updates" sensor showing whether the live connection is active. (#187)
 
 ### Changed
 
-- Minimum supported Home Assistant version is now 2025.8.0. If you're on an older Home Assistant, HACS will not offer this update — upgrade Home Assistant first. (#185)
-
-### Fixed
-
-- Pre-release hardening of real-time updates: removing or reloading the integration could leave a background connection running, and an unexpected message from the cloud could interrupt live updates. Both fixed before release.
-
-### Security
-
-- Debug logs redact the real-time connection URL so the connection credential never appears in log files. (#183)
+- Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
 
 
 ## [2.3.5] - 2026-07-06
