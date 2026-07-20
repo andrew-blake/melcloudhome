@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.2
-**Last Updated:** 2026-02-07
+**Document Version:** 1.3
+**Last Updated:** 2026-07-20
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
@@ -612,6 +612,103 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 - Used by MELCloud web UI for temperature graphs
 - Integration sends a 24-hour `from`/`to` window but Daily period ignores it and returns all historical data
 
+### Trend Summary — Legacy Web Host Variant (not integrated)
+
+A second `trendsummary` endpoint exists on the **legacy web host** (`melcloudhome.com`), captured via a browser HAR review of the web app on 2026-07-11 (a separate, broader pass than the [Web BFF & WebSocket capture](../research/web-bff-websocket-capture/README.md), which doesn't include this endpoint). It is **not** the endpoint the integration uses — that's the mobile BFF one documented above — but it differs enough to be worth recording separately rather than assuming it's identical:
+
+```
+GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly&from=<iso>&to=<iso>
+```
+
+- Two extra `period` values observed that the mobile BFF endpoint above wasn't seen to support: `Weekly`, `Monthly`.
+- `Hourly` period returned data at roughly **2-minute resolution** in the capture — finer-grained than anything the mobile BFF variant was observed to return, and a candidate source for HA long-term statistics import if this endpoint is ever integrated.
+- Top-level response shape differs: an **array** of `{reportPeriod: 0|1|2|…, datasets: [...]}` objects, rather than the single flat `{datasets, annotations}` object the mobile BFF endpoint returns above. `datasets[].id` values observed: `room_temperature`, `set_temperature`, `outside_temperature`.
+- A second, related endpoint was also seen but not resolved: `POST /api/v1/report/trendsummary/previous` — body `{unitId, triggers:[{trigger, measure, value}], before, currentPeriod, period}`. The captured requests were browser-aborted (status `0`) before completing, so **the response shape is unknown**; documented here only so the endpoint's existence isn't lost.
+
+⚠️ Neither endpoint has been re-verified against the mobile BFF host, and both were captured on an ATA-only account (no ATW units to confirm behavior there).
+
+---
+
+## Scenes
+
+**Implementation Status:** Not integrated in the Home Assistant integration — documented for reference only. Home Assistant has its own scene/scripting system; whether to surface MELCloud Home's cloud scenes as HA entities is an open question, similar to the Schedules discussion at [#174](https://github.com/andrew-blake/melcloudhome/issues/174).
+
+All endpoints below were directly observed on the **legacy web host** (`melcloudhome.com`) via the same 2026-07-11 browser HAR review as the Trend Summary legacy-web variant above. Not re-verified against the mobile BFF host; captured on an ATA-only account, so cross-device-type (ATW) support is unconfirmed.
+
+### List Scenes
+
+```
+GET /api/user/scenes
+```
+
+Returns an array of scene objects for the authenticated user.
+
+### Create/Update Scene
+
+```
+POST /api/scene
+```
+
+**Request Body (fields observed):**
+
+```json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "userId": "",
+  "name": "<scene name>",
+  "enabled": true,
+  "icon": "HomeIcon",
+  "ataSceneSettings": [
+    {
+      "unitId": "<unit UUID>",
+      "ataSettings": {
+        "power": true,
+        "operationMode": 3,
+        "setFanSpeed": 5,
+        "vaneHorizontalDirection": 3,
+        "vaneVerticalDirection": 0,
+        "setTemperature": 21.0,
+        "temperatureIncrementOverride": null,
+        "inStandbyMode": null
+      },
+      "previousSettings": null
+    }
+  ]
+}
+```
+
+**Field Details:**
+
+- `id`: sent as the all-zero GUID `00000000-0000-0000-0000-000000000000` on create — likely server-assigned (unlike Schedules, where the client mints the UUID itself). Update-of-an-existing-scene was not captured, so this isn't confirmed either way.
+- `ataSceneSettings`: array, one entry per ATA unit included in the scene, keyed by `unitId`. Only `ataSceneSettings` was observed; an equivalent `atwSceneSettings` key is plausible by naming symmetry with the rest of the API (e.g. `ataunit`/`atwunit`, `cloudschedule`/`atwcloudschedule`) but was **not observed** — this capture's account has ATA units only.
+- `ataSettings`: same field set as the control endpoint (`PUT /monitor/ataunit/{id}`, documented above) — `power`, `operationMode`, `setFanSpeed`, `vaneHorizontalDirection`, `vaneVerticalDirection`, `setTemperature`, `temperatureIncrementOverride`, `inStandbyMode` — **but int-encoded**, not the strings the control endpoint uses (see mapping below).
+- `previousSettings`: observed as `null` in every capture; plausibly a rollback/undo slot, not confirmed.
+
+**Enum mapping — POST sends ints, GET returns strings (confirmed both directions on this endpoint):**
+
+| Field | POST value (int) | GET value (string) |
+|-------|-------------------|---------------------|
+| `operationMode` | `3` | `"cool"` |
+| `setFanSpeed` | `5` | `"five"` |
+| `vaneHorizontalDirection` | `3` | `"centre"` |
+| `vaneVerticalDirection` | `0` | `"auto"` |
+
+This is the same int/string duality flagged as *unconfirmed* for the Schedules endpoint above — here it's directly observed on both the request and response side of the same endpoint, so the mapping pairs above can be treated as confirmed (for these specific values; other positions/modes weren't exercised in the capture).
+
+### Enable Scene
+
+```
+PUT /api/scene/{sceneId}/enable
+```
+
+Empty body. ⚠️ Path is `/enable`, not `/enabled` — differs from the Schedules master switch above, which uses `/enabled`. Sets `enabled: true`; no disable-via-this-path call was captured (disabling likely goes through the general `POST /api/scene` update instead, but that wasn't observed either).
+
+### Delete Scene
+
+```
+DELETE /api/scene/{sceneId}
+```
+
 ---
 
 ## Error Handling
@@ -645,6 +742,7 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 - **[Contributing Guide](../../CONTRIBUTING.md)** - Development workflow and standards
 - **[ATW API Reference](atw-api-reference.md)** - Air-to-Water heat pump API
 - **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
+- **[Web BFF & WebSocket Capture](../research/web-bff-websocket-capture/README.md)** - Related web-app HAR capture (WebSocket + `cloudschedule`); Scenes and legacy-web Trend Summary above come from a separate, broader HAR review the same week
 
 ---
 
@@ -653,6 +751,7 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-11-16 | Initial comprehensive API reference with UI-verified values |
+| 1.3 | 2026-07-20 | Added Scenes section and legacy-web Trend Summary variant, sourced from 2026-07-11 web-app HAR capture |
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
