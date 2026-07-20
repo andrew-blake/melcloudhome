@@ -507,6 +507,8 @@ POST /api/protection/frost
 
 **Purpose:** Prevents system from freezing in cold weather by maintaining minimum temperatures.
 
+**Also see Overheat Protection:** `POST /api/protection/overheat`, same request shape (`enabled`/`min`/`max`/`units`) — confirmed for ATA (`units.ATA`) on 2026-07-20, see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode). Not yet confirmed with `units.ATW`, but presumed to work the same way given Holiday Mode and Frost Protection both turned out to be shared, non-ATW-exclusive endpoints.
+
 ---
 
 ## 8. Telemetry Sensors

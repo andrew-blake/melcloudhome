@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.2
-**Last Updated:** 2026-02-07
+**Document Version:** 1.3
+**Last Updated:** 2026-07-20
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
@@ -544,6 +544,103 @@ Use these capabilities to:
 
 ---
 
+## Protection Modes & Holiday Mode
+
+**Implementation Status:** Not integrated in the Home Assistant integration — documented for reference only.
+
+**Corrects earlier documentation:** [device-type-comparison.md](device-type-comparison.md#endpoint-comparison) previously marked Holiday Mode and Frost Protection as "ATW exclusive". That was never true — both are **shared, building-level endpoints** that accept ATA unit IDs too, confirmed here via a live HAR capture (2026-07-20, real account) that exercised all three endpoints below end-to-end (enable → verify in `/context` → disable → verify again) on a set of ATA units, then restored everything to its original disabled state.
+
+These are **not** per-unit endpoints like the control/schedule APIs above — a single call takes a *list* of unit IDs and applies the same setting to all of them at once, matching the batch pattern already noted for ATW in [device-type-comparison.md](device-type-comparison.md#endpoint-comparison).
+
+### Frost Protection
+
+```
+POST /api/protection/frost
+```
+
+**Request Body (confirmed):**
+
+```json
+{
+  "enabled": true,
+  "min": 10,
+  "max": 12,
+  "units": {
+    "ATA": ["unit-uuid-1", "unit-uuid-2", "unit-uuid-3"]
+  }
+}
+```
+
+Prevents units from freezing by maintaining a minimum temperature. `min`/`max` define the target band. Set `enabled: false` (keeping the last `min`/`max`) to turn it off — confirmed by capturing both directions.
+
+### Overheat Protection
+
+```
+POST /api/protection/overheat
+```
+
+**New discovery** — not documented anywhere before this, for either device type.
+
+**Request Body (confirmed):**
+
+```json
+{
+  "enabled": true,
+  "min": 35,
+  "max": 37,
+  "units": {
+    "ATA": ["unit-uuid-1", "unit-uuid-2", "unit-uuid-3"]
+  }
+}
+```
+
+Same shape as Frost Protection — presumably the ceiling-temperature counterpart, keeping units from overheating. Same `enabled:false` pattern confirmed to disable it.
+
+### Holiday Mode
+
+```
+POST /api/holidaymode
+```
+
+**Request Body (confirmed):**
+
+```json
+{
+  "enabled": true,
+  "startDate": "2026-07-20T18:30:53.79",
+  "endDate": "2026-07-22T12:00:00",
+  "units": {
+    "ATA": ["unit-uuid-1", "unit-uuid-2", "unit-uuid-3"]
+  }
+}
+```
+
+`startDate`/`endDate` are ISO 8601 without a timezone suffix. Confirmed both `enabled: true` (with a 2-day window) and `enabled: false` (disabling, sent with a fresh `startDate` timestamped at the moment of the call rather than the original one — worth noting if replaying this call, though the effect of `enabled:false` presumably makes the dates moot).
+
+All three POSTs above returned `200 OK` with an **empty body** — same pattern as the main control endpoint.
+
+### Response Shape (in `GET /context`)
+
+Confirmed field shapes on each `airToAirUnits[]` entry, previously only shown as `{...}` placeholders in the ATW reference:
+
+```json
+{
+  "frostProtection": { "enabled": true, "active": false, "min": 10, "max": 12 },
+  "overheatProtection": { "enabled": true, "active": false, "min": 35, "max": 37 },
+  "holidayMode": { "enabled": true, "active": false, "startDate": "2026-07-20T18:30:53.79", "endDate": "2026-07-22T12:00:00" }
+}
+```
+
+All three are `null` when never configured (the default/original state on every unit in this capture). Once configured they persist as an object even when `enabled: false` — only the value flips, the object doesn't revert to `null`.
+
+**`enabled` vs `active`** — not previously documented and easy to conflate: `enabled` means the protection mode is armed/configured; `active` means it is *currently* engaged (e.g. the room is actually at/below the frost threshold right now). Both stayed `false`/`false` and `true`/`false` respectively throughout this capture since no unit's temperature crossed the configured thresholds — `active:true` was not observed, so its exact trigger condition (probably current room or outdoor temperature vs. `min`/`max`) is inferred from the field names, not directly confirmed.
+
+### Evidence Level
+
+Confirmed via a live HAR capture, 2026-07-20, real account: all three endpoints called with `enabled:true` then `enabled:false` on a set of ATA units, with `GET /context` read back after each call to confirm the resulting state. Unit IDs in the examples above are placeholders. `active:true` (a mode actually engaging) was not observed or tested — inferred from field naming only.
+
+---
+
 ## Telemetry Endpoints
 
 ### Trend Summary (Temperature Reports)
@@ -653,6 +750,7 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-11-16 | Initial comprehensive API reference with UI-verified values |
+| 1.3 | 2026-07-20 | Added Protection Modes & Holiday Mode section (frost/overheat protection, holiday mode), confirmed via live HAR capture; corrects earlier "ATW exclusive" claim |
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
