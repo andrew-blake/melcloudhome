@@ -26,6 +26,10 @@ from typing import Any, cast
 # login/logout redirect URLs — in entries[] URLs/headers, in queryString[]
 # name/value pairs, and in pages[].title.
 SENSITIVE_PARAMS = {
+    # WebSocket credential (?hash=<per-user uuid>). The generic UUID pass
+    # happens to catch today's format; scrub it explicitly so a format
+    # change (base64/hex) can't slip through.
+    "hash",
     "sid",
     "nonce",
     "state",

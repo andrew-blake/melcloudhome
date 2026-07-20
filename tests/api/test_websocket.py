@@ -172,6 +172,36 @@ class TestHandleText:
         await ws._handle_text(_delta_frame("unit-5", [{"name": "Power"}]))
         on_delta.assert_awaited_once()
 
+    async def test_non_dict_data_is_skipped(self) -> None:
+        """One malformed frame must not tear down the whole session."""
+        ws, on_delta = _make_ws()
+        for bad_data in (["a", "list"], "a string", 42):
+            raw = json.dumps([{"messageType": "unitStateChanged", "Data": bad_data}])
+            # Must not raise — an AttributeError here would unwind
+            # _connect_once and force a full disconnect/reconnect cycle.
+            await ws._handle_text(raw)
+        on_delta.assert_not_awaited()
+
+    async def test_non_list_settings_is_tolerated(self) -> None:
+        ws, on_delta = _make_ws()
+        raw = json.dumps(
+            [
+                {
+                    "messageType": "unitStateChanged",
+                    "Data": {"id": "unit-6", "settings": "Power"},
+                }
+            ]
+        )
+        await ws._handle_text(raw)
+        on_delta.assert_awaited_once_with("unit-6", [])
+
+    async def test_server_strings_are_stripped_of_newlines(self) -> None:
+        """CR/LF in server-supplied strings can't forge downstream log lines."""
+        ws, on_delta = _make_ws()
+        raw = _delta_frame("unit\n7", [{"name": "Power\r\nFAKE"}])
+        await ws._handle_text(raw)
+        on_delta.assert_awaited_once_with("unit 7", ["Power FAKE"])
+
 
 # --------------------------------------------------------------------------- #
 # Connect + receive (_connect_once)
@@ -480,6 +510,32 @@ class TestRunLoop:
         lost = [r for r in caplog.records if "connection lost" in r.getMessage()]
         assert len(lost) == 1
         assert lost[0].levelname == "INFO"
+
+    async def test_session_error_log_redacts_hash(self, mocker, caplog) -> None:
+        """Handshake failures stringify with the full WS URL — redact the hash.
+
+        aiohttp's WSServerHandshakeError inherits ClientResponseError.__str__,
+        which embeds the request URL including ?hash=<credential>.
+        """
+        mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:
+            if attempts:
+                ws.stop()
+                return
+            attempts.append(1)
+            raise RuntimeError(
+                "500, message='x', url='wss://ws.example/?hash=SECRET-HASH'"
+            )
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        with caplog.at_level("DEBUG"):
+            await ws.run()
+
+        assert "SECRET-HASH" not in caplog.text
+        assert "hash=***REDACTED***" in caplog.text
 
     async def test_cancellation_propagates(self) -> None:
         ws, _ = _make_ws()
