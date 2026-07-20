@@ -10,9 +10,13 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.3.5
+## What's New in v2.4.0
 
-Fixes corrupt energy readings from the MELCloud cloud that could permanently inflate energy sensors and corrupt the Energy Dashboard - bad readings are now rejected, and inflated sensor totals are reset automatically on upgrade. Spikes already recorded in Energy Dashboard history need a one-time manual fix; a new diagnostic tool finds them for you. See [CHANGELOG.md](CHANGELOG.md) for full history.
+**Real-time updates** - changes made with the remote control or the MELCloud Home app now appear in Home Assistant within seconds, instead of up to a minute. Enabled by default with automatic fallback to regular polling, so there's nothing to set up - see [Real-Time Updates](#real-time-updates) for details. Contributed by [@mrdjtoto](https://github.com/mrdjtoto), from protocol investigation through implementation.
+
+**Requires Home Assistant 2025.8.0 or newer.** If you're on an older version, HACS will not offer this update.
+
+See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
@@ -219,3 +223,7 @@ This is an unofficial integration and is not affiliated with, endorsed by, or co
 ## Credits
 
 Developed by Andrew Blake ([@andrew-blake](https://github.com/andrew-blake))
+
+**Contributors:**
+
+- [@mrdjtoto](https://github.com/mrdjtoto) - real-time updates: WebSocket protocol investigation, captures, and implementation (#174-#176)
