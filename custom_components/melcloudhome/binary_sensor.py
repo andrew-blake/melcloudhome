@@ -111,5 +111,6 @@ class WebSocketConnectivitySensor(
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose the timestamp of the last received delta."""
-        return {"last_delta_at": self.coordinator.ws_last_delta_at}
+        """Expose the timestamp of the last received delta (ISO 8601)."""
+        last = self.coordinator.ws_last_delta_at
+        return {"last_delta_at": last.isoformat() if last else None}

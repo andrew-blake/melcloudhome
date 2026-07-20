@@ -7,6 +7,7 @@ behavior through hass.states only; the client is mocked at the API boundary.
 Run with: make test-integration
 """
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -82,4 +83,8 @@ async def test_ws_sensor_on_when_connected_and_tracks_deltas(
     state = hass.states.get(WS_ENTITY_ID)
     assert state is not None
     assert state.state == STATE_ON
-    assert state.attributes["last_delta_at"] is not None
+    # Exposed as an ISO 8601 string (consistent with the diagnostics section),
+    # not a raw datetime object.
+    last_delta_at = state.attributes["last_delta_at"]
+    assert isinstance(last_delta_at, str)
+    assert datetime.fromisoformat(last_delta_at)
