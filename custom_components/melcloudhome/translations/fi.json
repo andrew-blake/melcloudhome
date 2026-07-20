@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home -asetukset",
+        "data": {
+          "enable_websocket": "Reaaliaikaiset päivitykset"
+        },
+        "data_description": {
+          "enable_websocket": "Kaukosäätimellä tai MELCloud Home -sovelluksella tehdyt muutokset näkyvät muutamassa sekunnissa."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

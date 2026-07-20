@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home-opties",
+        "data": {
+          "enable_websocket": "Realtime updates"
+        },
+        "data_description": {
+          "enable_websocket": "Wijzigingen via de afstandsbediening of de MELCloud Home-app verschijnen binnen enkele seconden."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
