@@ -33,6 +33,10 @@ from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Shared by entity creation and the opt-out orphan cleanup below — if these
+# drift apart the cleanup silently stops matching.
+_WS_UNIQUE_ID_SUFFIX = "_realtime_updates"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -70,7 +74,7 @@ async def async_setup_entry(
     # Account-level real-time updates connectivity sensor (one per entry).
     # When opted out, drop any entity left over from a previously-enabled run
     # so it doesn't linger in the registry as a restored/unavailable orphan.
-    ws_unique_id = f"{entry.entry_id}_realtime_updates"
+    ws_unique_id = f"{entry.entry_id}{_WS_UNIQUE_ID_SUFFIX}"
     if coordinator.ws_enabled:
         async_add_entities([WebSocketConnectivitySensor(coordinator, entry)])
     else:
@@ -78,6 +82,9 @@ async def async_setup_entry(
         stale = registry.async_get_entity_id("binary_sensor", DOMAIN, ws_unique_id)
         if stale:
             registry.async_remove(stale)
+        # The "MELCloud Home" service device deliberately stays registered:
+        # it is removed with the config entry, and deleting it here would
+        # churn the registry on every opt-out/opt-in toggle.
 
 
 class WebSocketConnectivitySensor(
@@ -100,7 +107,7 @@ class WebSocketConnectivitySensor(
     ) -> None:
         """Initialize the connectivity sensor."""
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_realtime_updates"
+        self._attr_unique_id = f"{entry.entry_id}{_WS_UNIQUE_ID_SUFFIX}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="MELCloud Home",

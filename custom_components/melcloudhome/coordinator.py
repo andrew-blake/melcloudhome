@@ -496,6 +496,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""
+        await super().async_shutdown()
+        self.control_client_ata.cancel_pending_refresh()
+        self.control_client_atw.cancel_pending_refresh()
         if self._cancel_energy_updates:
             self._cancel_energy_updates()
         if self._cancel_telemetry_updates:

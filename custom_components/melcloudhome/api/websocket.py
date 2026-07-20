@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 
+from .auth import _redact_url
+
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
 
@@ -43,6 +45,15 @@ _HEARTBEAT = 30
 # backoff forever — each cycle costing a hash fetch and possibly a token
 # refresh.
 _STABLE_SESSION_SECS = 60
+
+
+def _sanitize(value: object) -> str:
+    """Strip CR/LF from server-supplied strings so they can't forge log lines.
+
+    Unconditional on purpose: CodeQL only recognizes unconditional barriers.
+    """
+    return str(value).replace("\r", "").replace("\n", " ")
+
 
 # Callback invoked for each unit that reports a state change:
 # (unit_id, [changed setting names]).
@@ -110,7 +121,10 @@ class MELCloudHomeWebSocket:
                 raise
             except Exception as err:
                 # Best-effort listener: any failure just backs off and retries.
-                _LOGGER.debug("WebSocket session ended: %s", err)
+                # Redact: a WSServerHandshakeError stringifies with the full
+                # request URL, including ?hash=<credential> (the leak class
+                # #183 fixed on the tracer path).
+                _LOGGER.debug("WebSocket session ended: %s", _redact_url(err))
 
             was_connected = self._connected
             if self._connected:
@@ -176,16 +190,20 @@ class MELCloudHomeWebSocket:
             if item.get("messageType") != "unitStateChanged":
                 continue
             data = item.get("Data") or item.get("data") or {}
+            if not isinstance(data, dict):
+                # One malformed frame must not tear down the whole session.
+                continue
             unit_id = data.get("id")
             if not unit_id:
                 continue
+            settings = data.get("settings")
             names = [
-                s["name"]
-                for s in data.get("settings", [])
+                _sanitize(s["name"])
+                for s in (settings if isinstance(settings, list) else [])
                 if isinstance(s, dict) and s.get("name")
             ]
             try:
-                await self._on_delta(str(unit_id), names)
+                await self._on_delta(_sanitize(unit_id), names)
             except Exception:
                 # A misbehaving handler must never kill the listen loop.
                 _LOGGER.debug("WebSocket delta handler failed", exc_info=True)

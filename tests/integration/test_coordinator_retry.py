@@ -1,4 +1,12 @@
-"""Tests for coordinator retry logic on session expiry."""
+"""Tests for coordinator retry logic on session expiry.
+
+Deliberately white-box (documented exemption from the "test through
+hass.states/hass.services only" rule): retry/backoff behavior — the
+``retry_after`` values passed to ``UpdateFailed`` and the re-auth sequencing
+inside ``_execute_with_retry`` — is not observable through the public entity
+surface, and a black-box equivalent would mean flaky time-travel assertions.
+Do not cite this file as precedent for entity or coordinator-state tests.
+"""
 
 import asyncio
 import contextlib
