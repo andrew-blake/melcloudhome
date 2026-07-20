@@ -3,10 +3,13 @@
 These fixtures require pytest-homeassistant-custom-component.
 """
 
+import asyncio
+import json
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import aiohttp
 import pytest
 
 if TYPE_CHECKING:
@@ -388,6 +391,7 @@ async def setup_ata_integration_custom(
     mock_context: Any,
     *,
     configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
 ) -> "tuple[MockConfigEntry, Any]":
     """Set up ATA integration with a custom mock context.
 
@@ -395,5 +399,56 @@ async def setup_ata_integration_custom(
     assert on calls after setup. Use configure_client for pre-setup mock wiring.
     """
     return await _setup_integration_custom(
-        hass, mock_context, configure_client=configure_client
+        hass, mock_context, configure_client=configure_client, options=options
     )
+
+
+# =============================================================================
+# WebSocket test fakes (shared by binary sensor + diagnostics tests)
+# =============================================================================
+
+
+class OpenFakeWS:
+    """Fake aiohttp WebSocket: yields queued frames, then stays open."""
+
+    def __init__(self, frames: list[Any]) -> None:
+        self._frames = list(frames)
+
+    async def __aenter__(self) -> "OpenFakeWS":
+        return self
+
+    async def __aexit__(self, *_exc: object) -> bool:
+        return False
+
+    def __aiter__(self) -> "OpenFakeWS":
+        return self
+
+    async def __anext__(self) -> Any:
+        if self._frames:
+            return self._frames.pop(0)
+        await asyncio.Event().wait()  # block until the task is cancelled
+        raise StopAsyncIteration
+
+
+def ws_text_frame(unit_id: str) -> MagicMock:
+    """Build a TEXT frame carrying one unitStateChanged delta."""
+    msg = MagicMock()
+    msg.type = aiohttp.WSMsgType.TEXT
+    msg.data = json.dumps(
+        [
+            {
+                "messageType": "unitStateChanged",
+                "Data": {"id": unit_id, "settings": [{"name": "Power"}]},
+            }
+        ]
+    )
+    return msg
+
+
+def wire_connected_ws(client: MagicMock, frames: list[Any]) -> None:
+    """Make the mocked client's WS path connect successfully."""
+    session = MagicMock()
+    session.ws_connect = MagicMock(return_value=OpenFakeWS(frames))
+    client.async_get_ws_hash = AsyncMock(return_value="HASH123")
+    client.async_ws_session = AsyncMock(return_value=session)
+    type(client).ws_host = "wss://example.invalid"

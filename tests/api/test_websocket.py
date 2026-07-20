@@ -271,6 +271,29 @@ class TestConnectionState:
         assert boom.call_count == 2  # both edges attempted
 
 
+class TestReconnectDiagnostics:
+    async def test_reconnect_count_and_backoff_escalate(self, mocker) -> None:
+        """Failed sessions bump reconnect_count and escalate current_backoff."""
+        client = MagicMock()
+        client.async_get_ws_hash = AsyncMock(side_effect=RuntimeError("down"))
+        ws = MELCloudHomeWebSocket(client, AsyncMock())
+        assert ws.reconnect_count == 0
+        assert ws.current_backoff == _INITIAL_BACKOFF
+
+        sleeps: list[float] = []
+
+        async def fake_sleep(delay: float) -> None:
+            sleeps.append(delay)
+            if len(sleeps) >= 2:
+                ws.stop()
+
+        mocker.patch("asyncio.sleep", new=fake_sleep)
+        await ws.run()
+
+        assert ws.reconnect_count == 2
+        assert ws.current_backoff == _INITIAL_BACKOFF * 4
+
+
 # --------------------------------------------------------------------------- #
 # Reconnect loop (run / stop)
 # --------------------------------------------------------------------------- #

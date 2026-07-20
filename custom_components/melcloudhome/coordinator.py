@@ -457,6 +457,22 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Whether the WebSocket is currently connected."""
         return self._websocket is not None and self._websocket.connected
 
+    def ws_diagnostics(self) -> dict[str, Any]:
+        """WebSocket state for the diagnostics dump (no credentials)."""
+        return {
+            "enabled": self.ws_enabled,
+            "connected": self.ws_connected,
+            "last_delta_at": self.ws_last_delta_at.isoformat()
+            if self.ws_last_delta_at
+            else None,
+            "reconnect_count": self._websocket.reconnect_count
+            if self._websocket
+            else 0,
+            "current_backoff": self._websocket.current_backoff
+            if self._websocket
+            else None,
+        }
+
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).
 

@@ -7,11 +7,8 @@ behavior through hass.states only; the client is mocked at the API boundary.
 Run with: make test-integration
 """
 
-import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock
 
-import aiohttp
 import pytest
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
@@ -22,54 +19,11 @@ from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 from .conftest import (
     create_mock_atw_user_context,
     setup_atw_integration_custom,
+    wire_connected_ws,
+    ws_text_frame,
 )
 
 WS_ENTITY_ID = "binary_sensor.melcloud_home_real_time_updates"
-
-
-class _OpenWS:
-    """Fake aiohttp WebSocket: yields queued frames, then stays open."""
-
-    def __init__(self, frames: list[object]) -> None:
-        self._frames = list(frames)
-
-    async def __aenter__(self) -> "_OpenWS":
-        return self
-
-    async def __aexit__(self, *_exc: object) -> bool:
-        return False
-
-    def __aiter__(self) -> "_OpenWS":
-        return self
-
-    async def __anext__(self) -> object:
-        if self._frames:
-            return self._frames.pop(0)
-        await asyncio.Event().wait()  # block until the task is cancelled
-        raise StopAsyncIteration
-
-
-def _text_frame(unit_id: str) -> MagicMock:
-    msg = MagicMock()
-    msg.type = aiohttp.WSMsgType.TEXT
-    msg.data = json.dumps(
-        [
-            {
-                "messageType": "unitStateChanged",
-                "Data": {"id": unit_id, "settings": [{"name": "Power"}]},
-            }
-        ]
-    )
-    return msg
-
-
-def _wire_connected_ws(client: MagicMock, frames: list[object]) -> None:
-    """Make the mocked client's WS path connect successfully."""
-    session = MagicMock()
-    session.ws_connect = MagicMock(return_value=_OpenWS(frames))
-    client.async_get_ws_hash = AsyncMock(return_value="HASH123")
-    client.async_ws_session = AsyncMock(return_value=session)
-    type(client).ws_host = "wss://example.invalid"
 
 
 @pytest.mark.asyncio
@@ -117,8 +71,8 @@ async def test_ws_sensor_on_when_connected_and_tracks_deltas(
     await setup_atw_integration_custom(
         hass,
         create_mock_atw_user_context(),
-        configure_client=lambda client: _wire_connected_ws(
-            client, [_text_frame("unit-1")]
+        configure_client=lambda client: wire_connected_ws(
+            client, [ws_text_frame("unit-1")]
         ),
     )
     # Let the listener task connect, consume the frame, and let the

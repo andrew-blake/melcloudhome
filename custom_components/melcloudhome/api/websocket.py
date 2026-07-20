@@ -67,11 +67,23 @@ class MELCloudHomeWebSocket:
         self._closing = False
         self._connected = False
         self._ever_connected = False
+        self._reconnect_count = 0
+        self._backoff = _INITIAL_BACKOFF
 
     @property
     def connected(self) -> bool:
         """Whether a WebSocket session is currently established."""
         return self._connected
+
+    @property
+    def reconnect_count(self) -> int:
+        """How many sessions have ended and gone into reconnect."""
+        return self._reconnect_count
+
+    @property
+    def current_backoff(self) -> float:
+        """Delay (seconds, pre-jitter) before the next reconnect attempt."""
+        return self._backoff
 
     def _set_connected(self, connected: bool) -> None:
         """Update connection state and notify the owner, swallowing errors."""
@@ -90,7 +102,6 @@ class MELCloudHomeWebSocket:
 
     async def run(self) -> None:
         """Connect, listen, and reconnect until stopped or cancelled."""
-        backoff = _INITIAL_BACKOFF
         while not self._closing:
             started = time.monotonic()
             try:
@@ -115,14 +126,15 @@ class MELCloudHomeWebSocket:
             # keep escalating, and so must a hash endpoint that hangs past the
             # threshold before failing — elapsed time alone proves nothing.
             if was_connected and time.monotonic() - started >= _STABLE_SESSION_SECS:
-                backoff = _INITIAL_BACKOFF
+                self._backoff = _INITIAL_BACKOFF
 
             if self._closing:
                 break
+            self._reconnect_count += 1
             # Jitter the sleep so a MELCloud outage doesn't have every
             # installation reconnecting on the same schedule.
-            await asyncio.sleep(backoff * random.uniform(0.8, 1.2))
-            backoff = min(backoff * 2, _MAX_BACKOFF)
+            await asyncio.sleep(self._backoff * random.uniform(0.8, 1.2))
+            self._backoff = min(self._backoff * 2, _MAX_BACKOFF)
 
     async def _connect_once(self) -> None:
         """Open one WebSocket session and pump messages until it closes."""
