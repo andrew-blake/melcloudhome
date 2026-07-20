@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Bağlantı durumu"
       },
+      "realtime_updates": {
+        "name": "Gerçek zamanlı güncellemeler"
+      },
       "forced_dhw_active": {
         "name": "Forced DHW aktif"
       }

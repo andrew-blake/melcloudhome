@@ -26,7 +26,51 @@ from .conftest import (
     create_mock_ata_unit,
     create_mock_ata_user_context,
     setup_ata_integration_custom,
+    wire_connected_ws,
+    ws_text_frame,
 )
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_includes_websocket_state(hass: HomeAssistant) -> None:
+    """A connected socket reports its full state; the hash never leaks."""
+    entry, _ = await setup_ata_integration_custom(
+        hass,
+        create_mock_ata_user_context(),
+        configure_client=lambda client: wire_connected_ws(
+            client, [ws_text_frame("unit-1")]
+        ),
+    )
+    await hass.async_block_till_done()
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+
+    ws = diagnostics["websocket"]
+    assert ws["enabled"] is True
+    assert ws["connected"] is True
+    assert ws["last_delta_at"] is not None
+    assert ws["reconnect_count"] == 0
+    assert ws["current_backoff"] is not None
+    # The WS hash credential must never appear anywhere in the dump.
+    assert "HASH123" not in json.dumps(diagnostics, default=str)
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_websocket_disabled(hass: HomeAssistant) -> None:
+    """Opted-out entries still report the section, marked disabled."""
+    from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
+
+    entry, _ = await setup_ata_integration_custom(
+        hass,
+        create_mock_ata_user_context(),
+        options={CONF_ENABLE_WEBSOCKET: False},
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+
+    ws = diagnostics["websocket"]
+    assert ws["enabled"] is False
+    assert ws["connected"] is False
 
 
 @pytest.mark.asyncio

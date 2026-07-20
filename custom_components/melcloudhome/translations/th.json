@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "สถานะการเชื่อมต่อ"
       },
+      "realtime_updates": {
+        "name": "การอัปเดตแบบเรียลไทม์"
+      },
       "forced_dhw_active": {
         "name": "การบังคับน้ำร้อนกำลังทำงาน"
       }

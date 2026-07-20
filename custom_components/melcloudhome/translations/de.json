@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Verbindungsstatus"
       },
+      "realtime_updates": {
+        "name": "Echtzeit-Updates"
+      },
       "forced_dhw_active": {
         "name": "Erzwungenes Warmwasser aktiv"
       }

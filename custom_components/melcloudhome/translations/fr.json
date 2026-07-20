@@ -98,6 +98,9 @@
       "connection_state": {
         "name": "État connexion"
       },
+      "realtime_updates": {
+        "name": "Mises à jour en temps réel"
+      },
       "forced_dhw_active": {
         "name": "ECS forcée active"
       }
