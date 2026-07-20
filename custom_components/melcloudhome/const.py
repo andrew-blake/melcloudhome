@@ -22,8 +22,8 @@ PLATFORMS = ["climate"]
 CONF_DEBUG_MODE = "debug_mode"
 
 # Options keys
-# Real-time WebSocket updates (accelerator over polling — issue #174).
-# Default ON since v2.4.0 (ADR-019 amendment); the option is an opt-out.
+# Real-time WebSocket updates (accelerator over polling — ADR-019).
+# Default on; the option is an opt-out.
 CONF_ENABLE_WEBSOCKET = "enable_websocket"
 DEFAULT_ENABLE_WEBSOCKET = True
 

@@ -1,6 +1,6 @@
 # ADR-007: Defer WebSocket Implementation to Post-v1.2
 
-**Status:** Superseded by [ADR-019](019-opt-in-websocket-realtime-updates.md)
+**Status:** Superseded by [ADR-019](019-websocket-realtime-updates.md)
 **Date:** 2025-11-17
 **Context:** Session 9 - v1.2 planning and scope refinement
 

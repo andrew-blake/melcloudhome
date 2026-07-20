@@ -4,10 +4,10 @@
       "init": {
         "title": "MELCloud Home options",
         "data": {
-          "enable_websocket": "Real-time updates (WebSocket)"
+          "enable_websocket": "Real-time updates"
         },
         "data_description": {
-          "enable_websocket": "Enabled by default. Receives out-of-band changes (physical remote, MELCloud app, another Home Assistant) in near real time over a WebSocket, in addition to periodic polling. Falls back to polling automatically if the connection is unavailable. Turn off to use periodic polling only."
+          "enable_websocket": "Show changes made with the remote control or the MELCloud Home app within a few seconds, instead of waiting up to a minute for the next scheduled update. If the connection is interrupted, the integration automatically falls back to regular updates - your devices keep working either way. Turn off to use scheduled updates only."
         }
       }
     }

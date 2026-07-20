@@ -102,7 +102,7 @@ Changes made outside Home Assistant — the physical remote, the MELCloud Home a
 
 **How to tell it's working:** changes made on the remote or in the MELCloud app show up in Home Assistant within a few seconds. The log (Settings → System → Logs) shows `WebSocket connected` when it starts and `WebSocket connection lost; reconnecting (polling continues meanwhile)` if it drops.
 
-**How to turn it off:** Settings → Devices & Services → MELCloud Home → Configure → switch off "Real-time updates (WebSocket)" → Submit. The integration then uses 60-second polling only.
+**How to turn it off:** Settings → Devices & Services → MELCloud Home → Configure → switch off "Real-time updates" → Submit. The integration then uses 60-second polling only.
 
 ## Important Notes
 

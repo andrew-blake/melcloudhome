@@ -2,7 +2,7 @@
 
 Visual architecture documentation for the MELCloud Home custom integration for Home Assistant.
 
-**Last Updated:** 2026-07-19
+**Last Updated:** 2026-07-20
 
 **Terminology:** This document uses **ATA** (Air-to-Air) and **ATW** (Air-to-Water) to refer to the two device types.
 
@@ -15,7 +15,7 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 3. **Multi-Type Container** - `UserContext` holds both device types in parallel arrays
 4. **Device-Specific Methods** - Method names indicate which device type they control
 5. **Equal Device Type Support** - ATA and ATW devices have full feature parity in their respective domains
-6. **Push Accelerates, REST Decides** - The WebSocket listener only signals that state is stale; entity state always comes from the REST `/context` parser, and all writes go over REST (see [ADR-019](decisions/019-opt-in-websocket-realtime-updates.md))
+6. **Push Accelerates, REST Decides** - The WebSocket listener only signals that state is stale; entity state always comes from the REST `/context` parser, and all writes go over REST (see [ADR-019](decisions/019-websocket-realtime-updates.md))
 
 **API target:** MELCloud mobile API at `https://mobile.bff.melcloudhome.com` (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)). Canonical endpoint/auth constants live in [`api/const_shared.py`](../custom_components/melcloudhome/api/const_shared.py).
 
@@ -629,7 +629,7 @@ Energy data is polled on its own 30-minute timer (`UPDATE_INTERVAL_ENERGY`), ind
 
 ## Real-Time WebSocket Updates (Default On)
 
-An accelerator over REST polling, enabled by default (options toggle `enable_websocket` is an opt-out — see the ADR-019 amendment). It surfaces out-of-band changes — physical remote, MELCloud app, another HA instance — in seconds instead of waiting for the next 60-second poll. It is strictly receive-only: all commands go over REST, and a delta only tells the coordinator to re-read `/context`. See [ADR-019](decisions/019-opt-in-websocket-realtime-updates.md) for the full rationale.
+An accelerator over REST polling, enabled by default (options toggle `enable_websocket` is an opt-out). It surfaces out-of-band changes — physical remote, MELCloud app, another HA instance — in seconds instead of waiting for the next 60-second poll. It is strictly receive-only: all commands go over REST, and a delta only tells the coordinator to re-read `/context`. See [ADR-019](decisions/019-websocket-realtime-updates.md) for the full rationale.
 
 ```mermaid
 sequenceDiagram
@@ -662,7 +662,7 @@ sequenceDiagram
 - **ADR-012:** [ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
 - **ADR-016:** [ATW Energy Monitoring Implementation](decisions/016-implement-atw-energy-monitoring.md)
 - **ADR-017:** [Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) (supersedes ADR-002)
-- **ADR-019:** [Real-Time WebSocket Updates](decisions/019-opt-in-websocket-realtime-updates.md) (supersedes ADR-007; amended to default on)
+- **ADR-019:** [Real-Time WebSocket Updates](decisions/019-websocket-realtime-updates.md) (supersedes ADR-007)
 - **ATA API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
 - **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)

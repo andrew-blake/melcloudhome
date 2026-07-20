@@ -1,6 +1,6 @@
 # ADR-019: Real-Time WebSocket Updates
 
-**Status:** Accepted; amended 2026-07-19 — **default on** (originally opt-in, see Amendment)
+**Status:** Accepted
 **Date:** 2026-07-19
 **Supersedes:** [ADR-007](007-defer-websocket-implementation.md) (deferral); resolves the structural limitation documented in [ADR-018](018-out-of-band-state-sync-limitation.md) when enabled (the default)
 
@@ -34,9 +34,9 @@ arriving reliably for every unit. The one-device-only behavior observed in
 
 ## Decision
 
-Implement WebSocket support as an **accelerator over REST polling**, controlled
-by the options-flow toggle `enable_websocket` (originally default off; default
-on since the Amendment below — `DEFAULT_ENABLE_WEBSOCKET` in `const.py`):
+Implement WebSocket support as an **accelerator over REST polling**, enabled
+by default (`DEFAULT_ENABLE_WEBSOCKET` in `const.py`; the options-flow toggle
+`enable_websocket` is an opt-out):
 
 1. **REST stays the source of truth.** A delta frame is never applied to
    entity state. It only triggers the existing debounced coordinator refresh
@@ -102,34 +102,28 @@ exercise the real code path with zero prod contact.
 - One extra long-lived connection and a hash fetch per (re)connect; steady
   state adds no REST traffic beyond the refreshes that real changes trigger.
 
-## Amendment (2026-07-19): default on
-
-The original decision shipped the toggle default-off ("opt-in, experimental").
-Amended the same cycle, before any release carried it: `enable_websocket` now
-**defaults on** and the toggle is an opt-out.
-
-Rationale:
+### Why default on rather than opt-in
 
 - **A default-off accelerator produces no evidence and little value.** Few
-  users change experimental toggles, so the v2.4.0 beta would have soaked the
-  socket on approximately zero installations, and the out-of-band staleness
-  fix (ADR-018) would reach almost nobody.
+  users change optional toggles, so the socket would soak on approximately
+  zero installations and the out-of-band staleness fix (ADR-018) would reach
+  almost nobody.
 - **The failure mode is the feature's own design.** Any socket failure
   degrades to exactly the polling behavior a default-off user would have had;
   entities never become unavailable because of WebSocket state. The blast
   radius of "default on and broken" is "default off".
-- **The evidence base already exceeds what opt-in soak would gather:** a
-  ~22.6h continuous probe (759 messages, 0 errors, 99.9% uptime), a ~12.5h
-  production soak covering the ATW device type and guest-account path (130
-  heat-pump deltas), plus multi-week dogfooding on two production instances
-  covering the owner+ATA path.
+- **The pre-release evidence base is strong:** a ~22.6h continuous probe
+  (759 messages, 0 errors, 99.9% uptime), a ~12.5h production soak covering
+  the ATW device type and guest-account path (130 heat-pump deltas), plus
+  multi-week dogfooding on two production instances covering the owner+ATA
+  path.
 - **The remaining unknown is fleet-scale server behavior** (hash-endpoint
   rate limits, connection caps across many accounts) — which only a
   default-on population can reveal, and which the backoff design (5s→300s,
   jittered, connected-session-gated reset) is built to absorb.
 
 The opt-out toggle, INFO-level connect/lost logging, and the planned
-connectivity diagnostics remain the observability and escape hatches.
+connectivity diagnostics are the observability and escape hatches.
 
 ## References
 

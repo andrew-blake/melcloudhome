@@ -22,7 +22,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
 - [ADR-017: Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) - Move from the legacy web API to the mobile API (`mobile.bff.melcloudhome.com`), with OAuth 2.0 + PKCE at `auth.melcloudhome.com` (supersedes ADR-002)
 - [ADR-018: Out-of-Band State Sync Limitation](decisions/018-out-of-band-state-sync-limitation.md) - The ≤60s stale window for changes made outside HA (resolved by ADR-019's WebSocket, default on)
-- [ADR-019: Real-Time WebSocket Updates](decisions/019-opt-in-websocket-realtime-updates.md) - Receive-only WebSocket deltas trigger debounced REST refresh; default on since v2.4.0 (supersedes ADR-007)
+- [ADR-019: Real-Time WebSocket Updates](decisions/019-websocket-realtime-updates.md) - Receive-only WebSocket deltas trigger debounced REST refresh; default on, opt-out toggle (supersedes ADR-007)
 
 ## Architecture
 
