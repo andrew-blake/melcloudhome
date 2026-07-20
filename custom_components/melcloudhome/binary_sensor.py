@@ -14,6 +14,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -66,9 +67,17 @@ async def async_setup_entry(
     _LOGGER.debug("Created %d binary sensor entities", len(entities))
     async_add_entities(entities)
 
-    # Account-level real-time updates connectivity sensor (one per entry)
+    # Account-level real-time updates connectivity sensor (one per entry).
+    # When opted out, drop any entity left over from a previously-enabled run
+    # so it doesn't linger in the registry as a restored/unavailable orphan.
+    ws_unique_id = f"{entry.entry_id}_realtime_updates"
     if coordinator.ws_enabled:
         async_add_entities([WebSocketConnectivitySensor(coordinator, entry)])
+    else:
+        registry = er.async_get(hass)
+        stale = registry.async_get_entity_id("binary_sensor", DOMAIN, ws_unique_id)
+        if stale:
+            registry.async_remove(stale)
 
 
 class WebSocketConnectivitySensor(

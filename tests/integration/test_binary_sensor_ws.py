@@ -8,16 +8,18 @@ Run with: make test-integration
 """
 
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
-from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
+from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
 
 from .conftest import (
+    MOCK_CLIENT_PATH,
     create_mock_atw_user_context,
     setup_atw_integration_custom,
     wire_connected_ws,
@@ -62,6 +64,46 @@ async def test_ws_sensor_absent_when_opted_out(hass: HomeAssistant) -> None:
     )
 
     assert hass.states.get(WS_ENTITY_ID) is None
+
+
+@pytest.mark.asyncio
+async def test_ws_sensor_removed_on_opt_out_no_orphan(hass: HomeAssistant) -> None:
+    """Opting out after it was created removes the entity (no restored orphan).
+
+    Regression: a conditionally-created entity left in the registry surfaces as
+    a `restored`/`unavailable` orphan on reload. Opt-out must clean it up.
+    """
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        client = mock_client_class.return_value
+        client.login = AsyncMock()
+        client.close = AsyncMock()
+        client.get_user_context = AsyncMock(return_value=create_mock_atw_user_context())
+        client.async_get_ws_hash = AsyncMock(side_effect=RuntimeError("down"))
+        type(client).is_authenticated = PropertyMock(return_value=True)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+
+        # Enabled (default): entity created and registered.
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        assert hass.states.get(WS_ENTITY_ID) is not None
+        registry = er.async_get(hass)
+        assert registry.async_get(WS_ENTITY_ID) is not None
+
+        # Opt out and reload — entity must be gone from states AND registry.
+        hass.config_entries.async_update_entry(
+            entry, options={CONF_ENABLE_WEBSOCKET: False}
+        )
+        await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+
+        assert hass.states.get(WS_ENTITY_ID) is None
+        assert registry.async_get(WS_ENTITY_ID) is None
 
 
 @pytest.mark.asyncio
