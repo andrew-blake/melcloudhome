@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Trạng thái kết nối"
       },
+      "realtime_updates": {
+        "name": "Cập nhật theo thời gian thực"
+      },
       "forced_dhw_active": {
         "name": "DHW bắt buộc đang hoạt động"
       }

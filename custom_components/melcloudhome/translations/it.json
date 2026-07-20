@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Stato connessione"
       },
+      "realtime_updates": {
+        "name": "Aggiornamenti in tempo reale"
+      },
       "forced_dhw_active": {
         "name": "ACS forzata attiva"
       }

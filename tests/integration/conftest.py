@@ -252,6 +252,7 @@ async def _setup_integration_custom(
     mock_context: Any,
     *,
     configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
 ) -> "tuple[MockConfigEntry, Any]":
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
     from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -271,6 +272,7 @@ async def _setup_integration_custom(
         entry = MockConfigEntry(
             domain=DOMAIN,
             data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            options=options or {},
             unique_id="test@example.com",
         )
         entry.add_to_hass(hass)
@@ -285,6 +287,7 @@ async def setup_atw_integration_custom(
     mock_context: Any,
     *,
     configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
 ) -> "tuple[MockConfigEntry, Any]":
     """Set up ATW integration with a custom mock context.
 
@@ -292,7 +295,7 @@ async def setup_atw_integration_custom(
     assert on calls after setup. Use configure_client for pre-setup mock wiring.
     """
     return await _setup_integration_custom(
-        hass, mock_context, configure_client=configure_client
+        hass, mock_context, configure_client=configure_client, options=options
     )
 
 

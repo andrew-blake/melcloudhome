@@ -73,6 +73,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Real-time WebSocket listener (default-on accelerator — issue #174)
         self._websocket: MELCloudHomeWebSocket | None = None
         self._ws_task: asyncio.Task[None] | None = None
+        self.ws_last_delta_at: datetime | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
@@ -424,7 +425,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         if not self._websocket_enabled() or self._config_entry is None:
             return
 
-        self._websocket = MELCloudHomeWebSocket(self.client, on_delta=self._on_ws_delta)
+        self._websocket = MELCloudHomeWebSocket(
+            self.client,
+            on_delta=self._on_ws_delta,
+            on_state_change=self._on_ws_state_change,
+        )
         # Entry-scoped: HA cancels the task on entry unload/reload, so
         # shutdown needs no manual cancel bookkeeping.
         self._ws_task = self._config_entry.async_create_background_task(
@@ -435,7 +440,22 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     async def _on_ws_delta(self, unit_id: str, changed: list[str]) -> None:
         """Handle a pushed per-unit state change by refreshing (debounced)."""
         _LOGGER.debug("WebSocket delta for %s: %s", unit_id, changed)
+        self.ws_last_delta_at = datetime.now(UTC)
         await self.async_request_refresh_debounced()
+
+    def _on_ws_state_change(self, connected: bool) -> None:
+        """Push the new WebSocket connection state to entities."""
+        self.async_update_listeners()
+
+    @property
+    def ws_enabled(self) -> bool:
+        """Whether the WebSocket accelerator is enabled for this entry."""
+        return self._websocket_enabled()
+
+    @property
+    def ws_connected(self) -> bool:
+        """Whether the WebSocket is currently connected."""
+        return self._websocket is not None and self._websocket.connected
 
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).

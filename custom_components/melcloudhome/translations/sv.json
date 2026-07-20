@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Anslutningsstatus"
       },
+      "realtime_updates": {
+        "name": "Realtidsuppdateringar"
+      },
       "forced_dhw_active": {
         "name": "Forcerat varmvatten aktivt"
       }

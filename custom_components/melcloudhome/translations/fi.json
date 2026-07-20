@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Yhteystila"
       },
+      "realtime_updates": {
+        "name": "Reaaliaikaiset päivitykset"
+      },
       "forced_dhw_active": {
         "name": "Pakotettu käyttövesitila aktiivinen"
       }

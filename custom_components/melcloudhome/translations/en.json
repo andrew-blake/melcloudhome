@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Connection state"
       },
+      "realtime_updates": {
+        "name": "Real-time updates"
+      },
       "forced_dhw_active": {
         "name": "Forced DHW active"
       }

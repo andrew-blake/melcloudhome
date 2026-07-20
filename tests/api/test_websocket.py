@@ -234,6 +234,44 @@ class TestConnectOnce:
 
 
 # --------------------------------------------------------------------------- #
+# Connection state surface (connected / on_state_change)
+# --------------------------------------------------------------------------- #
+class TestConnectionState:
+    def _client_with_ws(self, messages: list[object]) -> MagicMock:
+        session = MagicMock()
+        session.ws_connect = MagicMock(return_value=_FakeWS(messages))
+        client = MagicMock()
+        client.async_get_ws_hash = AsyncMock(return_value="HASH123")
+        client.async_ws_session = AsyncMock(return_value=session)
+        return client
+
+    async def test_connected_flips_and_callback_fires(self, mocker) -> None:
+        """connected tracks the session; on_state_change fires on both edges."""
+        client = self._client_with_ws([_msg(aiohttp.WSMsgType.CLOSE)])
+        states: list[bool] = []
+        ws = MELCloudHomeWebSocket(client, AsyncMock(), on_state_change=states.append)
+        assert ws.connected is False
+
+        # First backoff sleep stops the loop: exactly one session runs.
+        mocker.patch("asyncio.sleep", new=AsyncMock(side_effect=lambda *_: ws.stop()))
+        await ws.run()
+
+        assert states == [True, False]
+        assert ws.connected is False
+
+    async def test_state_callback_exception_does_not_kill_loop(self, mocker) -> None:
+        """A misbehaving state callback must not crash the listener."""
+        client = self._client_with_ws([_msg(aiohttp.WSMsgType.CLOSE)])
+        boom = MagicMock(side_effect=RuntimeError("callback boom"))
+        ws = MELCloudHomeWebSocket(client, AsyncMock(), on_state_change=boom)
+
+        mocker.patch("asyncio.sleep", new=AsyncMock(side_effect=lambda *_: ws.stop()))
+        await ws.run()  # must not raise
+
+        assert boom.call_count == 2  # both edges attempted
+
+
+# --------------------------------------------------------------------------- #
 # Reconnect loop (run / stop)
 # --------------------------------------------------------------------------- #
 class TestRunLoop:

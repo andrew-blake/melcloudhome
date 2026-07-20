@@ -47,18 +47,42 @@ _STABLE_SESSION_SECS = 60
 # Callback invoked for each unit that reports a state change:
 # (unit_id, [changed setting names]).
 DeltaHandler = Callable[[str, list[str]], Awaitable[None]]
+# Sync callback invoked when the connection state flips (True = connected).
+StateHandler = Callable[[bool], None]
 
 
 class MELCloudHomeWebSocket:
     """Resilient MELCloud Home WebSocket listener."""
 
-    def __init__(self, client: MELCloudHomeClient, on_delta: DeltaHandler) -> None:
+    def __init__(
+        self,
+        client: MELCloudHomeClient,
+        on_delta: DeltaHandler,
+        on_state_change: StateHandler | None = None,
+    ) -> None:
         """Initialise with an authenticated client and a delta callback."""
         self._client = client
         self._on_delta = on_delta
+        self._on_state_change = on_state_change
         self._closing = False
         self._connected = False
         self._ever_connected = False
+
+    @property
+    def connected(self) -> bool:
+        """Whether a WebSocket session is currently established."""
+        return self._connected
+
+    def _set_connected(self, connected: bool) -> None:
+        """Update connection state and notify the owner, swallowing errors."""
+        self._connected = connected
+        if self._on_state_change is None:
+            return
+        try:
+            self._on_state_change(connected)
+        except Exception:
+            # A misbehaving state callback must never kill the listener.
+            _LOGGER.debug("WebSocket state callback failed", exc_info=True)
 
     def stop(self) -> None:
         """Signal the run loop to exit (the owner also cancels the task)."""
@@ -79,7 +103,7 @@ class MELCloudHomeWebSocket:
 
             was_connected = self._connected
             if self._connected:
-                self._connected = False
+                self._set_connected(False)
                 if not self._closing:
                     _LOGGER.info(
                         "WebSocket connection lost; reconnecting"
@@ -112,7 +136,7 @@ class MELCloudHomeWebSocket:
                 "WebSocket %s",
                 "connection restored" if self._ever_connected else "connected",
             )
-            self._connected = True
+            self._set_connected(True)
             self._ever_connected = True
             async for msg in ws:
                 if msg.type == aiohttp.WSMsgType.TEXT:

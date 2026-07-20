@@ -157,6 +157,9 @@
       "connection_state": {
         "name": "Κατάσταση σύνδεσης"
       },
+      "realtime_updates": {
+        "name": "Ενημερώσεις σε πραγματικό χρόνο"
+      },
       "forced_dhw_active": {
         "name": "Αναγκαστική ΖΝΧ ενεργή"
       }
