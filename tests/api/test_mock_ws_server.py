@@ -149,28 +149,28 @@ async def test_atw_put_emits_assumed_shape_delta(mock_client):
 
 async def test_control_reject_hash(mock_client):
     client, _ = mock_client
-    await client.post("/_mock/ws", json={"action": "reject-hash"})
+    await client.post("/_mock/ws", json={"action": "reject-hash"}, headers=BEARER)
     with pytest.raises(aiohttp.WSServerHandshakeError) as err:
         await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
     assert err.value.status == 403
-    await client.post("/_mock/ws", json={"action": "clear"})
+    await client.post("/_mock/ws", json={"action": "clear"}, headers=BEARER)
     ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")  # works again
     await ws.close()
 
 
 async def test_control_accept_then_close(mock_client):
     client, _ = mock_client
-    await client.post("/_mock/ws", json={"action": "accept-then-close"})
+    await client.post("/_mock/ws", json={"action": "accept-then-close"}, headers=BEARER)
     ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")  # 101 succeeds...
     msg = await ws.receive(timeout=2)  # ...then server closes immediately
     assert msg.type == aiohttp.WSMsgType.CLOSE
-    await client.post("/_mock/ws", json={"action": "clear"})
+    await client.post("/_mock/ws", json={"action": "clear"}, headers=BEARER)
 
 
 async def test_control_close_now(mock_client):
     client, server = mock_client
     ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
-    await client.post("/_mock/ws", json={"action": "close-now"})
+    await client.post("/_mock/ws", json={"action": "close-now"}, headers=BEARER)
     msg = await ws.receive(timeout=2)
     assert msg.type == aiohttp.WSMsgType.CLOSE
     assert server.ws_clients == set()
@@ -190,6 +190,7 @@ async def test_control_emit_delta_passive_push(mock_client):
                 {"name": "ActualFanSpeed", "value": "2"},  # string, per capture
             ],
         },
+        headers=BEARER,
     )
     frame = await ws.receive_json(timeout=2)
     by_name = {s["name"]: s["value"] for s in frame[0]["Data"]["settings"]}
@@ -200,22 +201,29 @@ async def test_control_emit_delta_passive_push(mock_client):
 
 async def test_control_unknown_action_400(mock_client):
     client, _ = mock_client
-    resp = await client.post("/_mock/ws", json={"action": "explode"})
+    resp = await client.post("/_mock/ws", json={"action": "explode"}, headers=BEARER)
     assert resp.status == 400
+
+
+async def test_control_requires_bearer(mock_client):
+    """The fault-injection endpoint is not auth-exempt (LAN-peer hardening)."""
+    client, _ = mock_client
+    resp = await client.post("/_mock/ws", json={"action": "status"})
+    assert resp.status == 401
 
 
 async def test_control_emit_delta_missing_fields_400(mock_client):
     client, _ = mock_client
-    resp = await client.post("/_mock/ws", json={"action": "emit-delta"})
+    resp = await client.post("/_mock/ws", json={"action": "emit-delta"}, headers=BEARER)
     assert resp.status == 400
 
 
 async def test_control_status_reports_client_count(mock_client):
     client, _ = mock_client
-    resp = await client.post("/_mock/ws", json={"action": "status"})
+    resp = await client.post("/_mock/ws", json={"action": "status"}, headers=BEARER)
     assert (await resp.json())["clients"] == 0
     ws = await client.ws_connect(f"/ws?hash={MOCK_WS_HASH}")
-    resp = await client.post("/_mock/ws", json={"action": "status"})
+    resp = await client.post("/_mock/ws", json={"action": "status"}, headers=BEARER)
     assert (await resp.json())["clients"] == 1
     await ws.close()
 

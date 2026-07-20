@@ -17,11 +17,17 @@ from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from custom_components.melcloudhome.api.const_shared import MOCK_BASE_URL
 from custom_components.melcloudhome.api.websocket import MELCloudHomeWebSocket
 
+# The control endpoint requires a bearer like every other mock endpoint
+# (any value passes — the mock only checks the scheme).
+_BEARER = {"Authorization": "Bearer mock-token"}
+
 
 async def _ws_control(action: str) -> None:
     async with (
         aiohttp.ClientSession() as session,
-        session.post(f"{MOCK_BASE_URL}/_mock/ws", json={"action": action}) as resp,
+        session.post(
+            f"{MOCK_BASE_URL}/_mock/ws", json={"action": action}, headers=_BEARER
+        ) as resp,
     ):
         assert resp.status == 200
 
@@ -29,7 +35,9 @@ async def _ws_control(action: str) -> None:
 async def _ws_client_count() -> int:
     async with (
         aiohttp.ClientSession() as session,
-        session.post(f"{MOCK_BASE_URL}/_mock/ws", json={"action": "status"}) as resp,
+        session.post(
+            f"{MOCK_BASE_URL}/_mock/ws", json={"action": "status"}, headers=_BEARER
+        ) as resp,
     ):
         return int((await resp.json())["clients"])
 

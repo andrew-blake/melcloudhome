@@ -154,7 +154,6 @@ AUTH_EXEMPT_PATHS = {
     "/connect/token",
     "/ws",
     "/ws/",
-    "/_mock/ws",
 }
 
 
@@ -432,7 +431,12 @@ class MockMELCloudServer:
                 self.ws_clients.discard(ws)
 
     async def handle_ws_control(self, request: web.Request) -> web.Response:
-        """POST /_mock/ws - test-only fault injection (auth-exempt)."""
+        """POST /_mock/ws - test-only fault injection (bearer-checked).
+
+        Requires the mock bearer like every other endpoint: the server binds
+        0.0.0.0 for Docker, so an unauthenticated control endpoint would let
+        any LAN peer inject faults when the mock runs outside a container.
+        """
         body = await request.json()
         action = body.get("action")
         if action == "close-now":
