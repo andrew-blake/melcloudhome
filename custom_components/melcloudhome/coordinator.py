@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -36,6 +37,13 @@ if TYPE_CHECKING:
     from homeassistant.helpers.event import CALLBACK_TYPE
 
 _LOGGER = logging.getLogger(__name__)
+
+# UpdateFailed grew retry_after in HA 2025.12 (core #153550); the hacs.json
+# floor is 2025.8, so older cores get a plain UpdateFailed and retry at the
+# coordinator's regular cadence instead of our escalating outage backoff.
+_UPDATE_FAILED_HAS_RETRY_AFTER = (
+    "retry_after" in inspect.signature(UpdateFailed.__init__).parameters
+)
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -154,7 +162,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             _LOGGER.warning(
                 "MELCloud service unavailable, retrying in %ds", retry_after
             )
-            raise UpdateFailed(str(err), retry_after=retry_after) from err
+            if _UPDATE_FAILED_HAS_RETRY_AFTER:
+                raise UpdateFailed(str(err), retry_after=retry_after) from err
+            raise UpdateFailed(str(err)) from err
 
         self._outage_retry_count = 0
 

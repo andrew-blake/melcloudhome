@@ -202,6 +202,10 @@ async def test_outage_backoff_escalates(coordinator, hass):
     """Test retry_after escalates on consecutive outages."""
     from homeassistant.helpers.update_coordinator import UpdateFailed
 
+    from custom_components.melcloudhome.coordinator import (
+        _UPDATE_FAILED_HAS_RETRY_AFTER,
+    )
+
     # Ensure client looks unauthenticated so login is attempted
     coordinator.client._auth._authenticated = False
     coordinator.client._auth._access_token = None
@@ -214,9 +218,14 @@ async def test_outage_backoff_escalates(coordinator, hass):
         try:
             await coordinator._async_update_data()
         except UpdateFailed as err:
-            retry_values.append(err.retry_after)
+            retry_values.append(getattr(err, "retry_after", None))
 
-    assert retry_values == [120, 240, 480, 900, 900]
+    if _UPDATE_FAILED_HAS_RETRY_AFTER:
+        assert retry_values == [120, 240, 480, 900, 900]
+    else:
+        # HA < 2025.12: outages still raise UpdateFailed (no TypeError),
+        # just without the escalating retry hint.
+        assert retry_values == [None] * 5
 
 
 @pytest.mark.asyncio
