@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Επιλογές MELCloud Home",
+        "data": {
+          "enable_websocket": "Ενημερώσεις σε πραγματικό χρόνο"
+        },
+        "data_description": {
+          "enable_websocket": "Οι αλλαγές που γίνονται με το τηλεχειριστήριο ή την εφαρμογή MELCloud Home εμφανίζονται μέσα σε λίγα δευτερόλεπτα."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Κατάσταση σύνδεσης"
+      },
+      "realtime_updates": {
+        "name": "Ενημερώσεις σε πραγματικό χρόνο"
       },
       "forced_dhw_active": {
         "name": "Αναγκαστική ΖΝΧ ενεργή"

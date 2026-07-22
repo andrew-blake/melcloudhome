@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home -asetukset",
+        "data": {
+          "enable_websocket": "Reaaliaikaiset päivitykset"
+        },
+        "data_description": {
+          "enable_websocket": "Kaukosäätimellä tai MELCloud Home -sovelluksella tehdyt muutokset näkyvät muutamassa sekunnissa."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Yhteystila"
+      },
+      "realtime_updates": {
+        "name": "Reaaliaikaiset päivitykset"
       },
       "forced_dhw_active": {
         "name": "Pakotettu käyttövesitila aktiivinen"

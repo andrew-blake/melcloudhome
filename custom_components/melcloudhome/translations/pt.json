@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opções do MELCloud Home",
+        "data": {
+          "enable_websocket": "Atualizações em tempo real"
+        },
+        "data_description": {
+          "enable_websocket": "As alterações feitas com o comando ou a aplicação MELCloud Home aparecem em poucos segundos."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Estado da ligação"
+      },
+      "realtime_updates": {
+        "name": "Atualizações em tempo real"
       },
       "forced_dhw_active": {
         "name": "AQS forçada ativa"

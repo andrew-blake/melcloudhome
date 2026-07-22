@@ -6,10 +6,19 @@ Platform entry point that sets up both ATA and ATW binary sensor entities.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .binary_sensor_ata import (
     ATA_BINARY_SENSOR_TYPES,
@@ -23,6 +32,10 @@ from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Shared by entity creation and the opt-out orphan cleanup below — if these
+# drift apart the cleanup silently stops matching.
+_WS_UNIQUE_ID_SUFFIX = "_realtime_updates"
 
 
 async def async_setup_entry(
@@ -57,3 +70,63 @@ async def async_setup_entry(
 
     _LOGGER.debug("Created %d binary sensor entities", len(entities))
     async_add_entities(entities)
+
+    # Account-level real-time updates connectivity sensor (one per entry).
+    # When opted out, drop any entity left over from a previously-enabled run
+    # so it doesn't linger in the registry as a restored/unavailable orphan.
+    ws_unique_id = f"{entry.entry_id}{_WS_UNIQUE_ID_SUFFIX}"
+    if coordinator.ws_enabled:
+        async_add_entities([WebSocketConnectivitySensor(coordinator, entry)])
+    else:
+        registry = er.async_get(hass)
+        stale = registry.async_get_entity_id("binary_sensor", DOMAIN, ws_unique_id)
+        if stale:
+            registry.async_remove(stale)
+        # The "MELCloud Home" service device deliberately stays registered:
+        # it is removed with the config entry, and deleting it here would
+        # churn the registry on every opt-out/opt-in toggle.
+
+
+class WebSocketConnectivitySensor(
+    CoordinatorEntity[MELCloudHomeCoordinator],  # type: ignore[misc]
+    BinarySensorEntity,  # type: ignore[misc]
+):
+    """Reports whether the real-time WebSocket connection is up.
+
+    Account-level (one per config entry), attached to a service device.
+    Always available: it reports connectivity itself.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "realtime_updates"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: MELCloudHomeCoordinator, entry: ConfigEntry
+    ) -> None:
+        """Initialize the connectivity sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}{_WS_UNIQUE_ID_SUFFIX}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="MELCloud Home",
+            manufacturer="Mitsubishi Electric",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if the WebSocket is connected."""
+        return bool(self.coordinator.ws_connected)
+
+    @property
+    def available(self) -> bool:
+        """Always available — this entity reports connectivity itself."""
+        return True
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the timestamp of the last received delta (ISO 8601)."""
+        last = self.coordinator.ws_last_delta_at
+        return {"last_delta_at": last.isoformat() if last else None}

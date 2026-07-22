@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home options",
+        "data": {
+          "enable_websocket": "Real-time updates"
+        },
+        "data_description": {
+          "enable_websocket": "Changes made with the remote control or the MELCloud Home app appear within seconds."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Connection state"
+      },
+      "realtime_updates": {
+        "name": "Real-time updates"
       },
       "forced_dhw_active": {
         "name": "Forced DHW active"

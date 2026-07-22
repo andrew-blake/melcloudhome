@@ -51,6 +51,7 @@ ignore = [
 "tests/**" = ["S101", "S105", "S106"]  # asserts and dummy credentials are fine in tests
 "tools/**" = ["S104", "S105", "S311", "S501", "S603", "S607"]  # dev/mock tools: bind-all, fixture passwords, mock random, local verify=False, subprocess
 "custom_components/melcloudhome/telemetry_tracker.py" = ["S311"]  # random used for non-security timing jitter only; OAuth/PKCE uses secrets module
+"custom_components/melcloudhome/api/websocket.py" = ["S311"]  # random used for non-security reconnect jitter only
 
 [tool.ruff.lint.isort]
 known-first-party = ["custom_components.melcloudhome"]
@@ -137,6 +138,16 @@ dev = [
 ]
 reverse-engineering = [
     "mitmproxy>=12.2.2",
+]
+
+[tool.uv]
+# mitmproxy caps tornado/msgpack at vulnerable versions (GHSA-3x9g-8vmp-wqvf,
+# GHSA-mgf9-4vpg-hj56, GHSA-pw6j-qg29-8w7f, GHSA-cx3h-4qpv-8hc9,
+# GHSA-6v7p-g79w-8964). Patch-level force past the caps; remove once a
+# mitmproxy release allows tornado>=6.5.7 and msgpack>=1.2.1.
+override-dependencies = [
+    "tornado>=6.5.7",
+    "msgpack>=1.2.1",
 ]
 
 [tool.coverage.paths]

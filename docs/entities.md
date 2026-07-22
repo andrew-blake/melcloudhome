@@ -225,6 +225,20 @@ For each heat pump system, the following entities are created:
 
 ---
 
+## Account-Level Entities
+
+One per MELCloud Home account (config entry), attached to a "MELCloud Home" service device:
+
+- **Real-time updates**: `binary_sensor.melcloud_home_real_time_updates` — diagnostic
+  connectivity sensor reporting whether the real-time WebSocket connection is up
+  (`on` = connected). The `last_delta_at` attribute holds the timestamp of the last
+  push update received. Only created when real-time updates are enabled (the default);
+  polling continues either way, so a disconnected socket means slower updates, not
+  missing data. Not created when real-time updates are switched off in the
+  integration options.
+
+---
+
 ## Understanding ATW Operation (3-Way Valve)
 
 Your heat pump uses a 3-way valve that can only heat ONE target at a time (zones OR DHW tank, never both). This affects what you'll see in Home Assistant.

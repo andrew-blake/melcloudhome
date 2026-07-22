@@ -27,7 +27,11 @@ from .const_shared import (
     API_USER_CONTEXT,
     BASE_URL,
     MOCK_BASE_URL,
+    MOCK_WS_HASH_URL,
+    MOCK_WS_HOST,
     USER_AGENT,
+    WS_HASH_URL,
+    WS_HOST,
 )
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
@@ -52,6 +56,8 @@ class MELCloudHomeClient:
         """
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
+        self._ws_hash_url = MOCK_WS_HASH_URL if debug_mode else WS_HASH_URL
+        self._ws_host = MOCK_WS_HOST if debug_mode else WS_HOST
         self._user_context: UserContext | None = None
         self._on_tokens_refreshed: Callable[[], None] | None = None
         self._refresh_lock = asyncio.Lock()
@@ -127,6 +133,54 @@ class MELCloudHomeClient:
     async def refresh_access_token(self) -> bool:
         """Refresh the access token using stored refresh token."""
         return await self._auth.refresh_access_token()
+
+    @property
+    def ws_host(self) -> str:
+        """WebSocket host for this client's mode (mock in debug mode)."""
+        return self._ws_host
+
+    async def async_ws_session(self) -> Any:
+        """Return the authenticated aiohttp session (for the WebSocket).
+
+        Shares the same session (and User-Agent) as REST requests.
+        """
+        return await self._auth.get_session()
+
+    async def async_get_ws_hash(self) -> str:
+        """Fetch a real-time WebSocket credential ("hash") for this account.
+
+        Exchanges the mobile-BFF bearer for a ``{"hash", "userId"}`` document
+        at the Lambda token endpoint, mirroring what the official app does.
+        Refreshes the access token first if it is expired, so callers don't
+        need to. Returns the ``hash`` used to open ``ws_host/?hash=<hash>``.
+
+        Raises:
+            AuthenticationError: if the endpoint rejects the bearer (401/403).
+            ApiError: for any other non-200 response.
+        """
+        # Proactive refresh — same pattern as _api_request.
+        if self._auth.is_token_expired and self._auth.refresh_token:
+            async with self._refresh_lock:
+                if self._auth.is_token_expired:
+                    await self._auth.refresh_access_token()
+                    if self._on_tokens_refreshed:
+                        self._on_tokens_refreshed()
+
+        session = await self._auth.get_session()
+        headers = {"Authorization": f"Bearer {self._auth.access_token}"}
+        async with session.get(self._ws_hash_url, headers=headers) as resp:
+            if resp.status in (401, 403):
+                raise AuthenticationError(
+                    f"WebSocket token endpoint rejected credentials ({resp.status})"
+                )
+            if resp.status != 200:
+                raise ApiError(f"WebSocket token endpoint returned {resp.status}")
+            data = await resp.json()
+
+        ws_hash = data.get("hash")
+        if not ws_hash:
+            raise ApiError("WebSocket token response missing 'hash'")
+        return str(ws_hash)
 
     async def _api_request(
         self,

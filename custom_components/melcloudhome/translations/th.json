@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "ตัวเลือก MELCloud Home",
+        "data": {
+          "enable_websocket": "การอัปเดตแบบเรียลไทม์"
+        },
+        "data_description": {
+          "enable_websocket": "การเปลี่ยนแปลงที่ทำผ่านรีโมตหรือแอป MELCloud Home จะแสดงภายในไม่กี่วินาที"
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "สถานะการเชื่อมต่อ"
+      },
+      "realtime_updates": {
+        "name": "การอัปเดตแบบเรียลไทม์"
       },
       "forced_dhw_active": {
         "name": "การบังคับน้ำร้อนกำลังทำงาน"
