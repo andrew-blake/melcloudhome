@@ -93,6 +93,7 @@ class AirToAirUnit:
     vane_horizontal_direction: str | None
     in_standby_mode: bool
     is_in_error: bool
+    error_code: str | None
     rssi: int | None
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
@@ -149,6 +150,10 @@ class AirToAirUnit:
             # Return as-is (unknown value)
             return value
 
+        # Parse error code - convert empty string to None
+        error_code_value = settings.get("ErrorCode", "")
+        error_code = error_code_value if error_code_value else None
+
         return cls(
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
@@ -165,6 +170,7 @@ class AirToAirUnit:
             ),
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
             is_in_error=_parse_bool(settings.get("IsInError")),
+            error_code=error_code,
             rssi=data.get("rssi"),
             capabilities=capabilities,
         )

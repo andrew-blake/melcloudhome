@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -34,6 +35,9 @@ class ATABinarySensorEntityDescription(
     available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
     """Function to determine if sensor is available."""
 
+    attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
+    """Function to extract extra state attributes from unit data."""
+
 
 ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
@@ -42,6 +46,7 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         translation_key="error_state",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda unit: unit.is_in_error,
+        attributes_fn=lambda unit: {"error_code": unit.error_code},
     ),
     # Connection state - indicates if device is connected and responding
     # This will be handled differently as it depends on coordinator status
@@ -92,6 +97,17 @@ class ATABinarySensor(
         if device is None:
             return False
         return bool(self.entity_description.value_fn(device))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+
+        device = self.coordinator.get_ata_device(self._unit_id)
+        if device is None:
+            return None
+        return self.entity_description.attributes_fn(device)
 
     @property
     def available(self) -> bool:
