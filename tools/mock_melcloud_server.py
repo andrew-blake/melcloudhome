@@ -60,11 +60,20 @@ RATE_LIMIT_INTERVAL = 0.5  # seconds
 rate_limit_lock = asyncio.Lock()
 last_request_time = 0.0
 
+# WS + control paths bypass rate limiting: prod's WS infra (API Gateway +
+# Lambda hash endpoint) is separate from the BFF the limiter simulates, and
+# the client opens /ws immediately after /ws/token — limiting them livelocks
+# the listener (token 200 -> upgrade 429 -> backoff -> repeat).
+RATE_LIMIT_EXEMPT_PATHS = {"/ws", "/ws/", "/ws/token", "/_mock/ws"}
+
 
 @web.middleware
 async def rate_limit_middleware(request, handler):
     """Enforce rate limiting on all requests."""
     if not ENABLE_RATE_LIMITING:
+        return await handler(request)
+
+    if request.path in RATE_LIMIT_EXEMPT_PATHS:
         return await handler(request)
 
     global last_request_time
@@ -88,8 +97,64 @@ async def rate_limit_middleware(request, handler):
     return await handler(request)
 
 
+# Fixed WS credential — the real Lambda issues a per-user uuid where
+# hash == userId (#175 capture); one constant is all the mock needs.
+MOCK_WS_HASH = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+# Wire-format mapping for ATA deltas, per the #175 captures: the socket sends
+# NATIVELY TYPED values (int enums, bools, floats) even though REST /context
+# stringifies everything. The integration only reads setting NAMES (values
+# trigger a refresh, never parsed), so unlisted enum ints are plausible
+# placeholders — only 3=Cool, 4=Fan, 0=Auto(fan) were captured.
+_ATA_OPERATION_MODE_ENUM = {"Heat": 1, "Dry": 2, "Cool": 3, "Fan": 4, "Automatic": 8}
+_ATA_VANE_ENUM = {"Auto": 0, "Swing": 7}  # 6/7 = swing captured; rest plausible
+# Only 0=Auto confirmed from capture; 1-5 for One..Five are plausible placeholders.
+_ATA_FAN_SPEED_ENUM = {"Auto": 0, "One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
+
+ATA_WIRE_MAP = {
+    "power": ("Power", bool),
+    "set_temperature": ("SetTemperature", float),
+    "operation_mode": ("OperationMode", lambda v: _ATA_OPERATION_MODE_ENUM.get(v, 1)),
+    "set_fan_speed": ("SetFanSpeed", lambda v: _ATA_FAN_SPEED_ENUM.get(v, 0)),
+    "vane_vertical_direction": (
+        "VaneVerticalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "vane_horizontal_direction": (
+        "VaneHorizontalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "in_standby_mode": ("InStandbyMode", bool),
+}
+
+
+def _delta_frame(unit_id: str, settings: list) -> list:
+    """One unitStateChanged frame in the wire shape the socket sends."""
+    return [
+        {
+            "messageType": "unitStateChanged",
+            "Data": {"id": unit_id, "settings": settings},
+        }
+    ]
+
+
+def _atw_wire_name(key: str) -> str:
+    """snake_case -> PascalCase. ASSUMPTION: no ATW frame has ever been
+    captured; verify against Andrew's prod soak (backlog) and correct here."""
+    return "".join(part.capitalize() for part in key.split("_"))
+
+
 # Paths that don't require Bearer auth
-AUTH_EXEMPT_PATHS = {"/api/login", "/api/auth/login", "/connect/token"}
+# /ws is hash-in-URL auth (the real client sends no Authorization header on
+# the upgrade — matching prod). Both spellings: the client builds
+# "{host}/?hash=", so the mock's path arrives as "/ws/" (trailing slash).
+AUTH_EXEMPT_PATHS = {
+    "/api/login",
+    "/api/auth/login",
+    "/connect/token",
+    "/ws",
+    "/ws/",
+}
 
 
 @web.middleware
@@ -116,12 +181,15 @@ async def bearer_auth_middleware(request, handler):
 class MockMELCloudServer:
     """Mock MELCloud Home API server supporting ATA and ATW devices."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock server with default device states."""
         self.ata_states = self._init_ata_devices()
         self.atw_states = self._init_atw_devices()
         self.buildings = self._init_buildings()
         self.guest_buildings = self._init_guest_buildings()
+        self.ws_clients: set[web.WebSocketResponse] = set()
+        self.ws_accept_then_close = False
+        self.ws_reject_hash = False
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -303,6 +371,14 @@ class MockMELCloudServer:
             "/report/v1/trendsummary", self.get_trend_summary
         )
 
+        # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
+        app.router.add_get("/ws/token", self.handle_ws_token)
+        app.router.add_get("/ws", self.handle_ws_upgrade)
+        app.router.add_get("/ws/", self.handle_ws_upgrade)
+
+        # Test-only fault-injection control (not added to CORS)
+        app.router.add_post("/_mock/ws", self.handle_ws_control)
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -322,6 +398,92 @@ class MockMELCloudServer:
             cors.add(route)
 
         return app
+
+    async def handle_ws_token(self, request: web.Request) -> web.Response:
+        """GET /ws/token - WS credential (bearer-checked by middleware)."""
+        return web.json_response({"hash": MOCK_WS_HASH, "userId": MOCK_WS_HASH})
+
+    async def handle_ws_upgrade(self, request: web.Request) -> web.WebSocketResponse:
+        """GET /ws?hash= - upgrade; server-push only, inbound is discarded."""
+        if self.ws_reject_hash or request.query.get("hash") != MOCK_WS_HASH:
+            raise web.HTTPForbidden(reason="bad hash")
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        if self.ws_accept_then_close:
+            await ws.close()  # churn scenario: 101 then instant close
+            return ws
+        self.ws_clients.add(ws)
+        logger.info("🔌 WS client connected (%d total)", len(self.ws_clients))
+        try:
+            async for _msg in ws:
+                pass  # real clients send nothing, not even a subscribe
+        finally:
+            self.ws_clients.discard(ws)
+            logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
+        return ws
+
+    async def _send_frame(self, frame: list) -> None:
+        """Send one frame to every connected socket, dropping dead ones."""
+        for ws in set(self.ws_clients):
+            try:
+                await ws.send_json(frame)
+            except (ConnectionResetError, RuntimeError):
+                self.ws_clients.discard(ws)
+
+    async def handle_ws_control(self, request: web.Request) -> web.Response:
+        """POST /_mock/ws - test-only fault injection (bearer-checked).
+
+        Requires the mock bearer like every other endpoint: the server binds
+        0.0.0.0 for Docker, so an unauthenticated control endpoint would let
+        any LAN peer inject faults when the mock runs outside a container.
+        """
+        body = await request.json()
+        action = body.get("action")
+        if action == "close-now":
+            for ws in set(self.ws_clients):
+                await ws.close()
+            self.ws_clients.clear()
+        elif action == "accept-then-close":
+            self.ws_accept_then_close = True
+        elif action == "reject-hash":
+            self.ws_reject_hash = True
+        elif action == "clear":
+            self.ws_accept_then_close = False
+            self.ws_reject_hash = False
+        elif action == "emit-delta":
+            if "unit_id" not in body or "settings" not in body:
+                return web.json_response(
+                    {"error": "emit-delta requires unit_id and settings"}, status=400
+                )
+            await self._send_frame(_delta_frame(body["unit_id"], body["settings"]))
+        elif action == "status":
+            return web.json_response({"clients": len(self.ws_clients)})
+        else:
+            return web.json_response({"error": f"unknown action {action}"}, status=400)
+        logger.info("🎛️  WS control: %s", _safe_log(action))
+        return web.json_response({"ok": True})
+
+    async def _broadcast_delta(self, unit_id, changed, wire_map=None):
+        """Push one unitStateChanged frame for `changed` to every socket.
+
+        wire_map maps internal keys -> (WireName, coercer); keys absent from
+        the map fall back to PascalCase name + raw value (the ATW path).
+        """
+        settings = []
+        for key, value in changed.items():
+            if wire_map and key in wire_map:
+                name, coerce = wire_map[key]
+                settings.append({"name": name, "value": coerce(value)})
+            else:
+                settings.append({"name": _atw_wire_name(key), "value": value})
+        if not settings or not self.ws_clients:
+            return
+        await self._send_frame(_delta_frame(unit_id, settings))
+        logger.info(
+            "📡 WS delta for %s: %s",
+            _safe_log(unit_id),
+            _safe_log([s["name"] for s in settings]),
+        )
 
     async def handle_login(self, request: web.Request) -> web.Response:
         """Mock OAuth login endpoint.
@@ -566,6 +728,7 @@ class MockMELCloudServer:
         logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.ata_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values (sparse update pattern)
         # Permissive: Accept all values, warn if suspicious
@@ -621,6 +784,9 @@ class MockMELCloudServer:
             _safe_log(state["room_temperature"]),
         )
 
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed, ATA_WIRE_MAP)
+
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
 
@@ -666,6 +832,7 @@ class MockMELCloudServer:
         logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.atw_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values
         if body.get("power") is not None:
@@ -760,6 +927,9 @@ class MockMELCloudServer:
             _safe_log(state["set_tank_water_temperature"]),
         )
         self._log_3way_valve_status(unit_id)
+
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed)
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")

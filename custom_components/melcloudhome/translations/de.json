@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home-Optionen",
+        "data": {
+          "enable_websocket": "Echtzeit-Updates"
+        },
+        "data_description": {
+          "enable_websocket": "Änderungen über die Fernbedienung oder die MELCloud Home App erscheinen innerhalb weniger Sekunden."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Verbindungsstatus"
+      },
+      "realtime_updates": {
+        "name": "Echtzeit-Updates"
       },
       "forced_dhw_active": {
         "name": "Erzwungenes Warmwasser aktiv"

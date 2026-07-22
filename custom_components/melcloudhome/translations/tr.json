@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home seçenekleri",
+        "data": {
+          "enable_websocket": "Gerçek zamanlı güncellemeler"
+        },
+        "data_description": {
+          "enable_websocket": "Kumanda veya MELCloud Home uygulamasıyla yapılan değişiklikler birkaç saniye içinde görünür."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Bağlantı durumu"
+      },
+      "realtime_updates": {
+        "name": "Gerçek zamanlı güncellemeler"
       },
       "forced_dhw_active": {
         "name": "Forced DHW aktif"

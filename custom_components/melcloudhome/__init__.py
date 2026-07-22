@@ -360,6 +360,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.async_add_listener(_create_discovery_listener(hass, entry))
     )
 
+    # Options changes (e.g. toggling the real-time WebSocket) reload the entry
+    # via OptionsFlowWithReload in config_flow.py — no update listener here, so
+    # token-only ``entry.data`` writes never tear the integration down.
+
     return True
 
 

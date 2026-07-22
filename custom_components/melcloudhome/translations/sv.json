@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alternativ för MELCloud Home",
+        "data": {
+          "enable_websocket": "Realtidsuppdateringar"
+        },
+        "data_description": {
+          "enable_websocket": "Ändringar som görs med fjärrkontrollen eller MELCloud Home-appen visas inom några sekunder."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Anslutningsstatus"
+      },
+      "realtime_updates": {
+        "name": "Realtidsuppdateringar"
       },
       "forced_dhw_active": {
         "name": "Forcerat varmvatten aktivt"
