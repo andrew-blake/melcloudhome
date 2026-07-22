@@ -1345,6 +1345,7 @@ class MockMELCloudServer:
             },
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
+            {"name": "ErrorCode", "value": state.get("error_code", "")},
         ]
 
     def _build_atw_settings(self, unit_id: str) -> list[dict]:
@@ -1383,6 +1384,7 @@ class MockMELCloudServer:
             {"name": "HasZone2", "value": str(int(state["has_zone2"]))},
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
+            {"name": "ErrorCode", "value": state.get("error_code", "")},
             {"name": "FTCModel", "value": str(state["ftc_model"])},
             {"name": "OutdoorTemperature", "value": str(state["outdoor_temperature"])},
         ]

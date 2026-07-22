@@ -67,6 +67,33 @@ async def test_error_state_sensor_reflects_unit_status(hass: HomeAssistant) -> N
 
 
 @pytest.mark.asyncio
+async def test_error_state_sensor_exposes_error_code(hass: HomeAssistant) -> None:
+    """Test that error state sensor exposes the device error code as attribute."""
+    unit_with_error = create_mock_ata_unit(is_in_error=True, error_code="E6")
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_error])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    assert error_state.state == STATE_ON
+    assert error_state.attributes["error_code"] == "E6"
+
+
+@pytest.mark.asyncio
+async def test_error_state_sensor_error_code_none_when_no_error(
+    hass: HomeAssistant,
+) -> None:
+    """Test that error code attribute is None when device has no error."""
+    mock_context = create_mock_ata_user_context()
+    await setup_ata_integration_custom(hass, mock_context)
+
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    assert error_state.state == STATE_OFF
+    assert error_state.attributes["error_code"] is None
+
+
+@pytest.mark.asyncio
 async def test_connection_state_sensor_reflects_coordinator_status(
     hass: HomeAssistant,
 ) -> None:

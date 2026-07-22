@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -34,6 +35,9 @@ class ATWBinarySensorEntityDescription(
     available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
     """Function to determine if sensor is available."""
 
+    attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
+    """Function to extract extra state attributes from unit data."""
+
 
 ATW_BINARY_SENSOR_TYPES: tuple[ATWBinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
@@ -42,6 +46,7 @@ ATW_BINARY_SENSOR_TYPES: tuple[ATWBinarySensorEntityDescription, ...] = (
         translation_key="error_state",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda unit: unit.is_in_error,
+        attributes_fn=lambda unit: {"error_code": unit.error_code},
     ),
     # Connection state - indicates if device is connected and responding
     ATWBinarySensorEntityDescription(
@@ -94,6 +99,17 @@ class ATWBinarySensor(
             return None
 
         return self.entity_description.value_fn(device)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
+            return None
+        return self.entity_description.attributes_fn(device)
 
     @property
     def available(self) -> bool:
