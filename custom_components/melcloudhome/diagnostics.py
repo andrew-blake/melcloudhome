@@ -54,6 +54,7 @@ async def async_get_config_entry_diagnostics(
             if coordinator.update_interval
             else None,
         },
+        "websocket": coordinator.ws_diagnostics(),
         "entities": entity_data,
     }
 

@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni di MELCloud Home",
+        "data": {
+          "enable_websocket": "Aggiornamenti in tempo reale"
+        },
+        "data_description": {
+          "enable_websocket": "Le modifiche effettuate con il telecomando o l'app MELCloud Home compaiono in pochi secondi."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -143,6 +156,9 @@
       },
       "connection_state": {
         "name": "Stato connessione"
+      },
+      "realtime_updates": {
+        "name": "Aggiornamenti in tempo reale"
       },
       "forced_dhw_active": {
         "name": "ACS forzata attiva"

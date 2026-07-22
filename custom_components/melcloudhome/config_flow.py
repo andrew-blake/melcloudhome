@@ -20,7 +20,12 @@ from homeassistant.helpers.selector import (
 
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
-from .const import CONF_DEBUG_MODE, CONF_ENABLE_WEBSOCKET, DOMAIN
+from .const import (
+    CONF_DEBUG_MODE,
+    CONF_ENABLE_WEBSOCKET,
+    DEFAULT_ENABLE_WEBSOCKET,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -215,7 +220,7 @@ class MELCloudHomeOptionsFlow(config_entries.OptionsFlowWithReload):
                     vol.Optional(
                         CONF_ENABLE_WEBSOCKET,
                         default=self.config_entry.options.get(
-                            CONF_ENABLE_WEBSOCKET, False
+                            CONF_ENABLE_WEBSOCKET, DEFAULT_ENABLE_WEBSOCKET
                         ),
                     ): BooleanSelector(),
                 }

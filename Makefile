@@ -50,6 +50,16 @@ test-integration: test-ensure-images  ## Integration tests only
 		         --cov-report=term-missing"
 	docker compose -f docker-compose.test.yml down
 
+# phcc 0.13.269 pins homeassistant==2025.8.0 — the hacs.json floor. pycares<5
+# because that HA's aiodns 3.5.0 breaks against pycares 5.x. Bump BOTH the pin
+# here and hacs.json together when raising the floor.
+test-integration-floor: test-ensure-images  ## Integration tests on the hacs.json HA floor
+	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
+	docker compose -f docker-compose.test.yml run --rm integration-tests \
+		sh -c "uv pip install 'pytest-homeassistant-custom-component==0.13.269' 'pycares<5' && \
+		       uv run pytest tests/integration/ -q --no-cov"
+	docker compose -f docker-compose.test.yml down
+
 test-e2e: test-ensure-images  ## E2E tests only
 	@rm -f .coverage coverage.xml
 	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock

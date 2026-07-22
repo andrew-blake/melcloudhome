@@ -172,6 +172,36 @@ class TestHandleText:
         await ws._handle_text(_delta_frame("unit-5", [{"name": "Power"}]))
         on_delta.assert_awaited_once()
 
+    async def test_non_dict_data_is_skipped(self) -> None:
+        """One malformed frame must not tear down the whole session."""
+        ws, on_delta = _make_ws()
+        for bad_data in (["a", "list"], "a string", 42):
+            raw = json.dumps([{"messageType": "unitStateChanged", "Data": bad_data}])
+            # Must not raise — an AttributeError here would unwind
+            # _connect_once and force a full disconnect/reconnect cycle.
+            await ws._handle_text(raw)
+        on_delta.assert_not_awaited()
+
+    async def test_non_list_settings_is_tolerated(self) -> None:
+        ws, on_delta = _make_ws()
+        raw = json.dumps(
+            [
+                {
+                    "messageType": "unitStateChanged",
+                    "Data": {"id": "unit-6", "settings": "Power"},
+                }
+            ]
+        )
+        await ws._handle_text(raw)
+        on_delta.assert_awaited_once_with("unit-6", [])
+
+    async def test_server_strings_are_stripped_of_newlines(self) -> None:
+        """CR/LF in server-supplied strings can't forge downstream log lines."""
+        ws, on_delta = _make_ws()
+        raw = _delta_frame("unit\n7", [{"name": "Power\r\nFAKE"}])
+        await ws._handle_text(raw)
+        on_delta.assert_awaited_once_with("unit 7", ["Power FAKE"])
+
 
 # --------------------------------------------------------------------------- #
 # Connect + receive (_connect_once)
@@ -231,6 +261,67 @@ class TestConnectOnce:
             if r.levelname == "INFO" and "WebSocket" in r.getMessage()
         ]
         assert infos == ["WebSocket connected", "WebSocket connection restored"]
+
+
+# --------------------------------------------------------------------------- #
+# Connection state surface (connected / on_state_change)
+# --------------------------------------------------------------------------- #
+class TestConnectionState:
+    def _client_with_ws(self, messages: list[object]) -> MagicMock:
+        session = MagicMock()
+        session.ws_connect = MagicMock(return_value=_FakeWS(messages))
+        client = MagicMock()
+        client.async_get_ws_hash = AsyncMock(return_value="HASH123")
+        client.async_ws_session = AsyncMock(return_value=session)
+        return client
+
+    async def test_connected_flips_and_callback_fires(self, mocker) -> None:
+        """connected tracks the session; on_state_change fires on both edges."""
+        client = self._client_with_ws([_msg(aiohttp.WSMsgType.CLOSE)])
+        states: list[bool] = []
+        ws = MELCloudHomeWebSocket(client, AsyncMock(), on_state_change=states.append)
+        assert ws.connected is False
+
+        # First backoff sleep stops the loop: exactly one session runs.
+        mocker.patch("asyncio.sleep", new=AsyncMock(side_effect=lambda *_: ws.stop()))
+        await ws.run()
+
+        assert states == [True, False]
+        assert ws.connected is False
+
+    async def test_state_callback_exception_does_not_kill_loop(self, mocker) -> None:
+        """A misbehaving state callback must not crash the listener."""
+        client = self._client_with_ws([_msg(aiohttp.WSMsgType.CLOSE)])
+        boom = MagicMock(side_effect=RuntimeError("callback boom"))
+        ws = MELCloudHomeWebSocket(client, AsyncMock(), on_state_change=boom)
+
+        mocker.patch("asyncio.sleep", new=AsyncMock(side_effect=lambda *_: ws.stop()))
+        await ws.run()  # must not raise
+
+        assert boom.call_count == 2  # both edges attempted
+
+
+class TestReconnectDiagnostics:
+    async def test_reconnect_count_and_backoff_escalate(self, mocker) -> None:
+        """Failed sessions bump reconnect_count and escalate current_backoff."""
+        client = MagicMock()
+        client.async_get_ws_hash = AsyncMock(side_effect=RuntimeError("down"))
+        ws = MELCloudHomeWebSocket(client, AsyncMock())
+        assert ws.reconnect_count == 0
+        assert ws.current_backoff == _INITIAL_BACKOFF
+
+        sleeps: list[float] = []
+
+        async def fake_sleep(delay: float) -> None:
+            sleeps.append(delay)
+            if len(sleeps) >= 2:
+                ws.stop()
+
+        mocker.patch("asyncio.sleep", new=fake_sleep)
+        await ws.run()
+
+        assert ws.reconnect_count == 2
+        assert ws.current_backoff == _INITIAL_BACKOFF * 4
 
 
 # --------------------------------------------------------------------------- #
@@ -419,6 +510,32 @@ class TestRunLoop:
         lost = [r for r in caplog.records if "connection lost" in r.getMessage()]
         assert len(lost) == 1
         assert lost[0].levelname == "INFO"
+
+    async def test_session_error_log_redacts_hash(self, mocker, caplog) -> None:
+        """Handshake failures stringify with the full WS URL — redact the hash.
+
+        aiohttp's WSServerHandshakeError inherits ClientResponseError.__str__,
+        which embeds the request URL including ?hash=<credential>.
+        """
+        mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+        ws, _ = _make_ws()
+        attempts: list[int] = []
+
+        async def fake_connect() -> None:
+            if attempts:
+                ws.stop()
+                return
+            attempts.append(1)
+            raise RuntimeError(
+                "500, message='x', url='wss://ws.example/?hash=SECRET-HASH'"
+            )
+
+        ws._connect_once = fake_connect  # type: ignore[method-assign]
+        with caplog.at_level("DEBUG"):
+            await ws.run()
+
+        assert "SECRET-HASH" not in caplog.text
+        assert "hash=***REDACTED***" in caplog.text
 
     async def test_cancellation_propagates(self) -> None:
         ws, _ = _make_ws()

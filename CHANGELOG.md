@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.4.0] - 2026-07-20
+
+### Added
+
+- **Real-time updates**: changes made with the remote control, the MELCloud Home app, or a schedule now appear in Home Assistant within seconds instead of up to a minute. On by default with nothing to set up; if the connection drops, the integration falls back to regular polling automatically. Contributed by @mrdjtoto. (#176, #185)
+- "Real-time updates" sensor showing whether the live connection is active. (#187)
+
+### Changed
+
+- Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
+
+
 ## [2.3.5] - 2026-07-06
 
 ### Added

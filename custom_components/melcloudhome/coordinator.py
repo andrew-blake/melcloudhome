@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
@@ -19,6 +20,7 @@ from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
 from .api.websocket import MELCloudHomeWebSocket
 from .const import (
     CONF_ENABLE_WEBSOCKET,
+    DEFAULT_ENABLE_WEBSOCKET,
     DOMAIN,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
@@ -35,6 +37,13 @@ if TYPE_CHECKING:
     from homeassistant.helpers.event import CALLBACK_TYPE
 
 _LOGGER = logging.getLogger(__name__)
+
+# UpdateFailed grew retry_after in HA 2025.12 (core #153550); the hacs.json
+# floor is 2025.8, so older cores get a plain UpdateFailed and retry at the
+# coordinator's regular cadence instead of our escalating outage backoff.
+_UPDATE_FAILED_HAS_RETRY_AFTER = (
+    "retry_after" in inspect.signature(UpdateFailed.__init__).parameters
+)
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -69,9 +78,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
-        # Real-time WebSocket listener (opt-in accelerator — issue #174)
+        # Real-time WebSocket listener (default-on accelerator — issue #174)
         self._websocket: MELCloudHomeWebSocket | None = None
         self._ws_task: asyncio.Task[None] | None = None
+        self.ws_last_delta_at: datetime | None = None
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
@@ -152,7 +162,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             _LOGGER.warning(
                 "MELCloud service unavailable, retrying in %ds", retry_after
             )
-            raise UpdateFailed(str(err), retry_after=retry_after) from err
+            if _UPDATE_FAILED_HAS_RETRY_AFTER:
+                raise UpdateFailed(str(err), retry_after=retry_after) from err
+            raise UpdateFailed(str(err)) from err
 
         self._outage_retry_count = 0
 
@@ -405,21 +417,29 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
-        # Start the real-time WebSocket listener if opted in
+        # Start the real-time WebSocket listener unless opted out
         self._async_setup_websocket()
 
     def _websocket_enabled(self) -> bool:
-        """Whether the opt-in WebSocket accelerator should run."""
+        """Whether the WebSocket accelerator should run (default on)."""
         if self._config_entry is None:
             return False
-        return bool(self._config_entry.options.get(CONF_ENABLE_WEBSOCKET, False))
+        return bool(
+            self._config_entry.options.get(
+                CONF_ENABLE_WEBSOCKET, DEFAULT_ENABLE_WEBSOCKET
+            )
+        )
 
     def _async_setup_websocket(self) -> None:
         """Launch the WebSocket listener as a background task if enabled."""
         if not self._websocket_enabled() or self._config_entry is None:
             return
 
-        self._websocket = MELCloudHomeWebSocket(self.client, on_delta=self._on_ws_delta)
+        self._websocket = MELCloudHomeWebSocket(
+            self.client,
+            on_delta=self._on_ws_delta,
+            on_state_change=self._on_ws_state_change,
+        )
         # Entry-scoped: HA cancels the task on entry unload/reload, so
         # shutdown needs no manual cancel bookkeeping.
         self._ws_task = self._config_entry.async_create_background_task(
@@ -430,7 +450,38 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     async def _on_ws_delta(self, unit_id: str, changed: list[str]) -> None:
         """Handle a pushed per-unit state change by refreshing (debounced)."""
         _LOGGER.debug("WebSocket delta for %s: %s", unit_id, changed)
+        self.ws_last_delta_at = datetime.now(UTC)
         await self.async_request_refresh_debounced()
+
+    def _on_ws_state_change(self, connected: bool) -> None:
+        """Push the new WebSocket connection state to entities."""
+        self.async_update_listeners()
+
+    @property
+    def ws_enabled(self) -> bool:
+        """Whether the WebSocket accelerator is enabled for this entry."""
+        return self._websocket_enabled()
+
+    @property
+    def ws_connected(self) -> bool:
+        """Whether the WebSocket is currently connected."""
+        return self._websocket is not None and self._websocket.connected
+
+    def ws_diagnostics(self) -> dict[str, Any]:
+        """WebSocket state for the diagnostics dump (no credentials)."""
+        return {
+            "enabled": self.ws_enabled,
+            "connected": self.ws_connected,
+            "last_delta_at": self.ws_last_delta_at.isoformat()
+            if self.ws_last_delta_at
+            else None,
+            "reconnect_count": self._websocket.reconnect_count
+            if self._websocket
+            else 0,
+            "current_backoff": self._websocket.current_backoff
+            if self._websocket
+            else None,
+        }
 
     def get_unit_energy(self, unit_id: str) -> float | None:
         """Get cached energy data for a unit (in kWh).
@@ -445,6 +496,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
     async def async_shutdown(self) -> None:
         """Shutdown the coordinator."""
+        await super().async_shutdown()
+        self.control_client_ata.cancel_pending_refresh()
+        self.control_client_atw.cancel_pending_refresh()
         if self._cancel_energy_updates:
             self._cancel_energy_updates()
         if self._cancel_telemetry_updates:
