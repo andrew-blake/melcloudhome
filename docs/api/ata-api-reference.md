@@ -62,6 +62,10 @@ For current integration features, see [README.md](../../README.md).
 https://mobile.bff.melcloudhome.com
 ```
 
+### Hosts
+
+This integration talks to the **mobile BFF** (`mobile.bff.melcloudhome.com`), the host behind the Base URL above. A separate **web host** (`melcloudhome.com`, the Blazor web app used by [docs/research/web-bff-websocket-capture/README.md](../research/web-bff-websocket-capture/README.md)) exposes an equivalent but not always identical `/api/...` surface — same auth server and data model, different path conventions (e.g. mobile's `/monitor/{resource}/{unitId}` vs web's `/api/{resource}`). Where an endpoint below was only observed on one host, its evidence note says which; treat the other host's path as inferred-by-analogy unless stated otherwise.
+
 ### Authentication
 - Uses OAuth 2.0 PKCE + AWS Cognito (see [../architecture.md](../architecture.md) for details)
 - Bearer token authentication
@@ -619,6 +623,7 @@ A second `trendsummary` endpoint exists on the **legacy web host** (`melcloudhom
 ```
 GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly&from=<iso>&to=<iso>
 ```
+*(web host: `melcloudhome.com` — the mobile-BFF equivalent above is a different endpoint, not a host variant of this one; see [Hosts](#hosts))*
 
 - Two extra `period` values observed that the mobile BFF endpoint above wasn't seen to support: `Weekly`, `Monthly`.
 - `Hourly` period returned data at roughly **2-minute resolution** in the capture — finer-grained than anything the mobile BFF variant was observed to return, and a candidate source for HA long-term statistics import if this endpoint is ever integrated.
@@ -627,19 +632,22 @@ GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly
 
 ⚠️ Neither endpoint has been re-verified against the mobile BFF host, and both were captured on an ATA-only account (no ATW units to confirm behavior there).
 
+**Evidence Level:** Passive browser HAR review, 2026-07-11, real account. The raw capture file is no longer available on disk to commit an anonymized slice (unlike the #175 convention) — these claims rest on the documented observations alone, not an in-repo artifact.
+
 ---
 
 ## Scenes
 
 **Implementation Status:** Not integrated in the Home Assistant integration — documented for reference only. Home Assistant has its own scene/scripting system; whether to surface MELCloud Home's cloud scenes as HA entities is an open question, similar to the Schedules discussion at [#174](https://github.com/andrew-blake/melcloudhome/issues/174).
 
-All endpoints below were directly observed on the **legacy web host** (`melcloudhome.com`) via the same 2026-07-11 browser HAR review as the Trend Summary legacy-web variant above. Not re-verified against the mobile BFF host; captured on an ATA-only account, so cross-device-type (ATW) support is unconfirmed.
+All endpoints below were directly observed on the **legacy web host** (`melcloudhome.com`, see [Hosts](#hosts)) via the same 2026-07-11 browser HAR review as the Trend Summary legacy-web variant above. Not re-verified against the mobile BFF host; captured on an ATA-only account, so cross-device-type (ATW) support is unconfirmed.
 
 ### List Scenes
 
 ```
 GET /api/user/scenes
 ```
+*(web host: `melcloudhome.com`)*
 
 Returns an array of scene objects for the authenticated user.
 
@@ -648,6 +656,7 @@ Returns an array of scene objects for the authenticated user.
 ```
 POST /api/scene
 ```
+*(web host: `melcloudhome.com`)*
 
 **Request Body (fields observed):**
 
@@ -693,13 +702,14 @@ POST /api/scene
 | `vaneHorizontalDirection` | `3` | `"centre"` |
 | `vaneVerticalDirection` | `0` | `"auto"` |
 
-This is the same int/string duality flagged as *unconfirmed* for the Schedules endpoint above — here it's directly observed on both the request and response side of the same endpoint, so the mapping pairs above can be treated as confirmed (for these specific values; other positions/modes weren't exercised in the capture).
+This same int/string duality is also confirmed directly on the Schedules endpoint — see [#195](https://github.com/andrew-blake/melcloudhome/pull/195). Here it's observed on both the request and response side of this endpoint, so the mapping pairs above can be treated as confirmed (for these specific values; other positions/modes weren't exercised in the capture).
 
 ### Enable Scene
 
 ```
 PUT /api/scene/{sceneId}/enable
 ```
+*(web host: `melcloudhome.com`)*
 
 Empty body. ⚠️ Path is `/enable`, not `/enabled` — differs from the Schedules master switch above, which uses `/enabled`. Sets `enabled: true`; no disable-via-this-path call was captured (disabling likely goes through the general `POST /api/scene` update instead, but that wasn't observed either).
 
@@ -708,6 +718,7 @@ Empty body. ⚠️ Path is `/enable`, not `/enabled` — differs from the Schedu
 ```
 DELETE /api/scene/{sceneId}
 ```
+*(web host: `melcloudhome.com`)*
 
 ---
 
