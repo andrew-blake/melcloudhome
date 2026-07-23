@@ -64,6 +64,9 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     # State reflects "enabled" (armed/configured) - the everyday question a user
     # checks in HA - not "active" (currently engaging), which stays off unless the
     # room has actually crossed the threshold; "active" is exposed as an attribute.
+    # min/max/start_date/end_date are separate sensor entities (sensor_ata.py),
+    # not attributes here, so they're visible as first-class entities in the
+    # frontend rather than hidden in a details panel.
     ATABinarySensorEntityDescription(
         key="frost_protection",
         translation_key="frost_protection",
@@ -72,13 +75,7 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         ),
         should_create_fn=lambda unit: unit.frost_protection is not None,
         attributes_fn=lambda unit: (
-            {
-                "active": unit.frost_protection.active,
-                "min": unit.frost_protection.min,
-                "max": unit.frost_protection.max,
-            }
-            if unit.frost_protection
-            else {}
+            {"active": unit.frost_protection.active} if unit.frost_protection else {}
         ),
     ),
     ATABinarySensorEntityDescription(
@@ -89,11 +86,7 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         ),
         should_create_fn=lambda unit: unit.overheat_protection is not None,
         attributes_fn=lambda unit: (
-            {
-                "active": unit.overheat_protection.active,
-                "min": unit.overheat_protection.min,
-                "max": unit.overheat_protection.max,
-            }
+            {"active": unit.overheat_protection.active}
             if unit.overheat_protection
             else {}
         ),
@@ -104,13 +97,7 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         value_fn=lambda unit: bool(unit.holiday_mode and unit.holiday_mode.enabled),
         should_create_fn=lambda unit: unit.holiday_mode is not None,
         attributes_fn=lambda unit: (
-            {
-                "active": unit.holiday_mode.active,
-                "start_date": unit.holiday_mode.start_date,
-                "end_date": unit.holiday_mode.end_date,
-            }
-            if unit.holiday_mode
-            else {}
+            {"active": unit.holiday_mode.active} if unit.holiday_mode else {}
         ),
     ),
 )

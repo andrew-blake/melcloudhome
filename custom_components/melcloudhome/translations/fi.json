@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Ulkolämpötila"
       },
+      "frost_protection_min": {
+        "name": "Jäätymissuojan minimi"
+      },
+      "frost_protection_max": {
+        "name": "Jäätymissuojan maksimi"
+      },
+      "overheat_protection_min": {
+        "name": "Ylikuumenemissuojan minimi"
+      },
+      "overheat_protection_max": {
+        "name": "Ylikuumenemissuojan maksimi"
+      },
+      "holiday_mode_start_date": {
+        "name": "Lomatilan alkupäivä"
+      },
+      "holiday_mode_end_date": {
+        "name": "Lomatilan loppupäivä"
+      },
       "zone_1_temperature": {
         "name": "Vyöhyke 1 lämpötila"
       },

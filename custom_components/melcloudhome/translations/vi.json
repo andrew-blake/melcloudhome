@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Nhiệt độ ngoài trời"
       },
+      "frost_protection_min": {
+        "name": "Bảo vệ chống đóng băng tối thiểu"
+      },
+      "frost_protection_max": {
+        "name": "Bảo vệ chống đóng băng tối đa"
+      },
+      "overheat_protection_min": {
+        "name": "Bảo vệ quá nhiệt tối thiểu"
+      },
+      "overheat_protection_max": {
+        "name": "Bảo vệ quá nhiệt tối đa"
+      },
+      "holiday_mode_start_date": {
+        "name": "Ngày bắt đầu chế độ nghỉ lễ"
+      },
+      "holiday_mode_end_date": {
+        "name": "Ngày kết thúc chế độ nghỉ lễ"
+      },
       "zone_1_temperature": {
         "name": "Nhiệt độ vùng 1"
       },

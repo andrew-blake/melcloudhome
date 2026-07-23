@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Dışarı sıcaklığı"
       },
+      "frost_protection_min": {
+        "name": "Donma koruması minimum"
+      },
+      "frost_protection_max": {
+        "name": "Donma koruması maksimum"
+      },
+      "overheat_protection_min": {
+        "name": "Aşırı ısınma koruması minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Aşırı ısınma koruması maksimum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Tatil modu başlangıç tarihi"
+      },
+      "holiday_mode_end_date": {
+        "name": "Tatil modu bitiş tarihi"
+      },
       "zone_1_temperature": {
         "name": "Alan 1 sıcaklığı"
       },

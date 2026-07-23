@@ -94,6 +94,77 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         available_fn=lambda unit: unit.outdoor_temperature is not None,
         should_create_fn=lambda unit: unit.has_outdoor_temp_sensor,
     ),
+    # Protection mode setpoints - separate sensors so the thresholds are visible
+    # as first-class entities in the frontend, not just tucked away as attributes
+    # on the frost_protection/overheat_protection binary sensors.
+    ATASensorEntityDescription(
+        key="frost_protection_min",
+        translation_key="frost_protection_min",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: (
+            unit.frost_protection.min if unit.frost_protection else None
+        ),
+        should_create_fn=lambda unit: unit.frost_protection is not None,
+    ),
+    ATASensorEntityDescription(
+        key="frost_protection_max",
+        translation_key="frost_protection_max",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: (
+            unit.frost_protection.max if unit.frost_protection else None
+        ),
+        should_create_fn=lambda unit: unit.frost_protection is not None,
+    ),
+    ATASensorEntityDescription(
+        key="overheat_protection_min",
+        translation_key="overheat_protection_min",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: (
+            unit.overheat_protection.min if unit.overheat_protection else None
+        ),
+        should_create_fn=lambda unit: unit.overheat_protection is not None,
+    ),
+    ATASensorEntityDescription(
+        key="overheat_protection_max",
+        translation_key="overheat_protection_max",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: (
+            unit.overheat_protection.max if unit.overheat_protection else None
+        ),
+        should_create_fn=lambda unit: unit.overheat_protection is not None,
+    ),
+    # Holiday mode window - raw ISO strings as observed from the API (no
+    # confirmed timezone for these two fields, unlike outdoor-temp's recorded_at
+    # - see #173 - so not parsed into a UTC-aware datetime / TIMESTAMP device
+    # class here; exposed as-is rather than asserting an unconfirmed offset).
+    ATASensorEntityDescription(
+        key="holiday_mode_start_date",
+        translation_key="holiday_mode_start_date",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: (
+            unit.holiday_mode.start_date if unit.holiday_mode else None
+        ),
+        should_create_fn=lambda unit: unit.holiday_mode is not None,
+    ),
+    ATASensorEntityDescription(
+        key="holiday_mode_end_date",
+        translation_key="holiday_mode_end_date",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda unit: unit.holiday_mode.end_date if unit.holiday_mode else None,
+        should_create_fn=lambda unit: unit.holiday_mode is not None,
+    ),
 )
 
 

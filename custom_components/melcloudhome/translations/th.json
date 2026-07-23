@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "อุณหภูมิภายนอก"
       },
+      "frost_protection_min": {
+        "name": "ค่าต่ำสุดการป้องกันน้ำแข็ง"
+      },
+      "frost_protection_max": {
+        "name": "ค่าสูงสุดการป้องกันน้ำแข็ง"
+      },
+      "overheat_protection_min": {
+        "name": "ค่าต่ำสุดการป้องกันความร้อนสูงเกินไป"
+      },
+      "overheat_protection_max": {
+        "name": "ค่าสูงสุดการป้องกันความร้อนสูงเกินไป"
+      },
+      "holiday_mode_start_date": {
+        "name": "วันที่เริ่มโหมดวันหยุด"
+      },
+      "holiday_mode_end_date": {
+        "name": "วันที่สิ้นสุดโหมดวันหยุด"
+      },
       "zone_1_temperature": {
         "name": "อุณหภูมิโซน 1"
       },

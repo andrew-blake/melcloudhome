@@ -36,6 +36,9 @@ For each air conditioning unit, the following entities are created:
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
+- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; only created once frost protection has ever been configured)
+- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API — no confirmed timezone for these two fields, so not parsed into a timestamp device class; diagnostic, only created once ever configured)
 
 ### Binary Sensors
 
@@ -43,13 +46,15 @@ For each air conditioning unit, the following entities are created:
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
 - **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
 - **Frost Protection**: `binary_sensor.melcloudhome_{short_id}_frost_protection` (only created once the unit has ever had frost protection configured)
-  - Attributes: `active` (currently engaging, e.g. room has crossed the threshold), `min`, `max` (temperature band)
+  - Attribute `active`: currently engaging (e.g. room has crossed the threshold) — see the min/max sensors above for the configured band
 - **Overheat Protection**: `binary_sensor.melcloudhome_{short_id}_overheat_protection` (only created once ever configured)
-  - Attributes: `active`, `min`, `max`
+  - Attribute `active`
 - **Holiday Mode**: `binary_sensor.melcloudhome_{short_id}_holiday_mode` (only created once ever configured)
-  - Attributes: `active`, `start_date`, `end_date`
+  - Attribute `active` — see the start/end date sensors above for the configured window
 
 All three reflect state read from the API only — the state is `on` when the mode is armed/configured (`enabled`), not only when it's currently engaging (`active`, exposed as an attribute); read-only, no control exposed yet.
+
+**Tested locally** against a real HA instance with 3 live ATA units (2026-07-23): entities correctly appear/hide per unit based on whether each mode has ever been configured, state correctly reflects `enabled` toggled from the MELCloud app, and setpoint/date sensors correctly display the configured values — verified through a full on/off cycle on Frost Protection and Holiday Mode.
 
 ### ATA Control Options
 

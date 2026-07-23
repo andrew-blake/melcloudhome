@@ -212,8 +212,12 @@ async def test_protection_mode_state_reflects_enabled_flag(hass: HomeAssistant) 
 
 
 @pytest.mark.asyncio
-async def test_protection_mode_attributes_exposed(hass: HomeAssistant) -> None:
-    """Test active/min/max attributes are exposed on the protection mode sensor."""
+async def test_protection_mode_active_attribute_exposed(hass: HomeAssistant) -> None:
+    """Test the 'active' attribute is exposed on the protection mode sensor.
+
+    min/max are separate sensor entities (see test_sensor_ata.py), not
+    attributes here, so this only covers 'active'.
+    """
     unit = create_mock_ata_unit(
         frost_protection=ProtectionModeState(
             enabled=True, active=False, min=10, max=12
@@ -228,17 +232,20 @@ async def test_protection_mode_attributes_exposed(hass: HomeAssistant) -> None:
     assert state is not None
     assert state.state == STATE_ON
     assert state.attributes["active"] is False
-    assert state.attributes["min"] == 10
-    assert state.attributes["max"] == 12
+    assert "min" not in state.attributes
+    assert "max" not in state.attributes
 
 
 @pytest.mark.asyncio
-async def test_holiday_mode_attributes_expose_dates(hass: HomeAssistant) -> None:
-    """Test start_date/end_date attributes are exposed on the holiday mode sensor."""
+async def test_holiday_mode_active_attribute_exposed(hass: HomeAssistant) -> None:
+    """Test the 'active' attribute is exposed on the holiday mode sensor.
+
+    start_date/end_date are separate sensor entities (see test_sensor_ata.py).
+    """
     unit = create_mock_ata_unit(
         holiday_mode=ProtectionModeState(
             enabled=True,
-            active=False,
+            active=True,
             start_date="2026-07-20T18:30:53.79",
             end_date="2026-07-22T12:00:00",
         ),
@@ -250,5 +257,6 @@ async def test_holiday_mode_attributes_expose_dates(hass: HomeAssistant) -> None
 
     state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_holiday_mode")
     assert state is not None
-    assert state.attributes["start_date"] == "2026-07-20T18:30:53.79"
-    assert state.attributes["end_date"] == "2026-07-22T12:00:00"
+    assert state.attributes["active"] is True
+    assert "start_date" not in state.attributes
+    assert "end_date" not in state.attributes
