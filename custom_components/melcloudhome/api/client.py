@@ -346,7 +346,7 @@ class MELCloudHomeClient:
 
     def _parse_outdoor_temp(
         self, response: dict[str, Any] | list
-    ) -> tuple[float | None, str | None]:
+    ) -> tuple[float | None, datetime | None]:
         """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
@@ -365,10 +365,12 @@ class MELCloudHomeClient:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Tuple of (temperature in Celsius, ISO timestamp of the reading),
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available. The timestamp lets consumers
             detect stale data: units stop uploading outdoor temperature while
             idle, so the latest datapoint can be hours old (issues #152, #171).
+            The API's "x" timestamps are naive but confirmed UTC (cross-checked
+            against the response's own Date header), hence the tzinfo attach.
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -384,13 +386,15 @@ class MELCloudHomeClient:
                     if value is None:
                         return None, None
                     return float(value), (
-                        str(recorded_at) if recorded_at is not None else None
+                        datetime.fromisoformat(str(recorded_at)).replace(tzinfo=UTC)
+                        if recorded_at is not None
+                        else None
                     )
         return None, None  # No outdoor temp dataset found
 
     async def get_outdoor_temperature(
         self, unit_id: str
-    ) -> tuple[float | None, str | None]:
+    ) -> tuple[float | None, datetime | None]:
         """Get latest outdoor temperature for an ATA unit.
 
         Queries trendsummary endpoint with Daily period. The API ignores the
@@ -401,7 +405,7 @@ class MELCloudHomeClient:
             unit_id: ATA unit UUID
 
         Returns:
-            Tuple of (temperature in Celsius, ISO timestamp of the reading),
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available
         """
         # Build time range: last 24 hours. Daily period covers units idle for up to

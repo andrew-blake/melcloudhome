@@ -230,7 +230,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
                 async def get_outdoor_temp(
                     uid: str = unit_id,
-                ) -> tuple[float | None, str | None]:
+                ) -> tuple[float | None, datetime | None]:
                     return await self.client.get_outdoor_temperature(uid)
 
                 # Poll outdoor temp if: never polled, or interval elapsed.

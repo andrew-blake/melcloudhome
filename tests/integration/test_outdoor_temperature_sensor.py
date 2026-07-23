@@ -1,5 +1,6 @@
 """Integration tests for outdoor temperature sensor."""
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -44,9 +45,9 @@ async def setup_integration_with_outdoor_temp(hass: HomeAssistant) -> MockConfig
 
     async def mock_get_outdoor_temp(
         unit_id: str,
-    ) -> tuple[float | None, str | None]:
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 12.0, "2026-02-07T11:55:00"
+            return 12.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC)
         return None, None
 
     def configure(client: Any) -> None:
@@ -87,7 +88,7 @@ async def test_outdoor_temperature_sensor_exposes_last_reading(
     state = hass.states.get(entity_id)
 
     assert state is not None
-    assert state.attributes["last_reading"] == "2026-02-07T11:55:00"
+    assert state.attributes["last_reading"] == "2026-02-07T11:55:00+00:00"
 
 
 async def test_outdoor_temperature_sensor_not_created_when_no_sensor(
@@ -167,11 +168,11 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
 
     async def mock_get_outdoor_temp(
         unit_id: str,
-    ) -> tuple[float | None, str | None]:
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 8.0, "2026-02-07T11:55:00"
+            return 8.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC)
         if unit_id == STUDY_ID:
-            return 3.0, "2026-02-07T11:56:00"
+            return 3.0, datetime(2026, 2, 7, 11, 56, 0, tzinfo=UTC)
         return None, None
 
     def configure(client: Any) -> None:
@@ -197,11 +198,11 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
 
     async def mock_get_outdoor_temp_updated(
         unit_id: str,
-    ) -> tuple[float | None, str | None]:
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 10.0, "2026-02-07T12:05:00"
+            return 10.0, datetime(2026, 2, 7, 12, 5, 0, tzinfo=UTC)
         if unit_id == STUDY_ID:
-            return 1.0, "2026-02-07T12:06:00"
+            return 1.0, datetime(2026, 2, 7, 12, 6, 0, tzinfo=UTC)
         return None, None
 
     # mock_client is the same instance the coordinator holds — update directly
@@ -257,7 +258,7 @@ async def test_idle_unit_reprobed_after_polling_interval(
     assert unit.outdoor_temperature is None
 
     mock_client.get_outdoor_temperature = AsyncMock(
-        return_value=(15.0, "2026-02-07T12:00:00")
+        return_value=(15.0, datetime(2026, 2, 7, 12, 0, 0, tzinfo=UTC))
     )
     coordinator._last_outdoor_temp_poll.clear()
 

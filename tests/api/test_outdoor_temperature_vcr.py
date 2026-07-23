@@ -12,6 +12,7 @@ Recording VCR cassettes:
 Reference: docs/testing-best-practices.md
 """
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -56,5 +57,5 @@ async def test_get_outdoor_temperature(
     if temp is not None:
         assert isinstance(temp, float)
         assert -50.0 <= temp <= 50.0  # Reasonable temperature range
-        assert recorded_at is None or isinstance(recorded_at, str)
+        assert recorded_at is None or isinstance(recorded_at, datetime)
     # else: None is valid (device lacks outdoor sensor)

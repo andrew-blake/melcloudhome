@@ -33,7 +33,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (12.0, "2026-02-03T12:00:00")  # Latest value
+        assert result == (12.0, datetime(2026, 2, 3, 12, 0, 0, tzinfo=UTC))  # Latest
 
     def test_parse_outdoor_temperature_missing_dataset(self):
         """Test when outdoor temperature dataset is missing."""
@@ -83,7 +83,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (14.5, "2026-04-12T20:00:00")
+        assert result == (14.5, datetime(2026, 4, 12, 20, 0, 0, tzinfo=UTC))
 
     def test_parse_outdoor_temperature_malformed(self):
         """Test with malformed response structure."""
@@ -141,7 +141,7 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
     assert to_dt - from_dt == timedelta(hours=24)
 
     # Verify result
-    assert result == (12.0, "2026-02-03T12:00:00")
+    assert result == (12.0, datetime(2026, 2, 3, 12, 0, 0, tzinfo=UTC))
 
 
 @pytest.mark.asyncio
