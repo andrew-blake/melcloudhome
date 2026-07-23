@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.2
-**Last Updated:** 2026-02-07
+**Document Version:** 1.4
+**Last Updated:** 2026-07-20
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation only
 
@@ -614,6 +614,120 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 
 ---
 
+## Schedules
+
+**Implementation Status:** Not integrated in the Home Assistant integration — documented for reference only. Home Assistant has its own automation/scheduler, so exposing cloud-side schedules may be out of scope; see [#174](https://github.com/andrew-blake/melcloudhome/issues/174) for the maintainer discussion this is bundled into.
+
+All three write operations below (create, update, delete) were directly observed and confirmed on 2026-07-20 via a live, driven capture against the **legacy web host** (`melcloudhome.com`) — three real schedule entries were created through the actual UI, edited, and deleted again, with request bodies captured via an injected `fetch`/`XHR` interceptor rather than passively reviewed from a HAR file. This superseded and resolved several items earlier documentation here had flagged as inferred-not-observed (see Evidence Level below).
+
+### Create Schedule
+
+```
+POST /monitor/cloudschedule/{unitId}
+```
+
+*Mobile-BFF path shown per [device-type-comparison.md](device-type-comparison.md) and the confirmed ATW twin (`/monitor/atwcloudschedule/{unitId}`) — inferred by analogy, not directly captured on mobile for ATA. All observations below were made on the **web host** (`melcloudhome.com`), where this same request/response was captured as `POST /api/cloudschedule/{unitId}`; see Evidence Level.*
+
+**Request Body (confirmed, flat shape):**
+
+```json
+{
+  "id": "11111111-1111-4111-8111-111111111111",
+  "days": [2],
+  "time": "18:16:00",
+  "enabled": false,
+  "power": true,
+  "operationMode": 1,
+  "setPoint": 26,
+  "vaneVerticalDirection": 0,
+  "vaneHorizontalDirection": 3,
+  "setFanSpeed": 0
+}
+```
+
+### Update Schedule
+
+```
+PUT /monitor/cloudschedule/{unitId}
+```
+
+*Mobile-BFF path inferred the same way as Create above — observed on the web host as `PUT /api/cloudschedule/{unitId}`.*
+
+⚠️ **Different from Create**: same URL (no schedule ID in the path — it's the same URL Create posts to, just a different HTTP method) and a **nested** body, not the flat shape Create uses:
+
+```json
+{
+  "id": "22222222-2222-4222-8222-222222222222",
+  "schedule": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "days": [1, 0],
+    "time": "18:12:00",
+    "enabled": false,
+    "power": true,
+    "operationMode": 3,
+    "setPoint": 26,
+    "vaneVerticalDirection": 1,
+    "vaneHorizontalDirection": 3,
+    "setFanSpeed": 3
+  }
+}
+```
+
+⚠️ **Web-host-observed only.** This nested `{id, schedule}` wrapper was only captured against the web client — it may be a web-client-specific quirk rather than the mobile app's actual Update shape. If schedules are ever integrated, this is the first thing to verify with a mobile-side mitmproxy capture; don't assume the mobile app sends the same nested body.
+
+**Field Details (Create and Update):**
+
+- `id`: Client-generated UUID (a real random v4, not a placeholder) — confirmed the client, not the server, mints the schedule ID.
+- `days`: Array of day numbers, **confirmed** `0=Sunday, 1=Monday, 2=Tuesday, ..., 6=Saturday` — same convention as the ATW schedule API ([atw-api-reference.md](atw-api-reference.md#5-schedules)). Confirmed from three separate captures (`[2]` for a Tuesday-only entry, `[1, 0]` for a Monday+Sunday entry) plus an earlier passively-observed `[6]` for a Saturday entry — all consistent with this scheme and with no other scheme tried.
+- `time`: `HH:MM:SS` (24-hour) — matches the ATW schedule format.
+- `setPoint`: carries the target temperature as a plain number (confirmed `26` for a UI-set 26°C) — still unconfirmed whether this is a schedule-API-specific rename of `setTemperature` or a distinct field, but it behaves identically.
+- `operationMode`, `setFanSpeed`, `vaneVerticalDirection`, `vaneHorizontalDirection`: **confirmed integer-encoded** (not the strings the control endpoint `PUT /monitor/ataunit/{id}` uses). Confirmed pairs from these captures: `operationMode` `1`=Heat, `3`=Cool; `setFanSpeed` `0`=Auto, `3`=Three; `vaneVerticalDirection` `0`=Auto, `1`=Position 1; `vaneHorizontalDirection` `3`=Centre. Consistent with the separately-observed Scenes endpoint mapping (see below), now confirmed independently on this endpoint too.
+- `enabled`: sent as **`false` in every captured create and update**, including ones where the UI's per-entry power on/off toggle was visibly ON (green) — that toggle maps to `power`, not `enabled`. What actually flips this field to `true`, or whether the web client ever does, was **not determined** in this session; don't assume it tracks the visible on/off state. The per-unit master switch below is a separate mechanism and wasn't tested for interaction with this field.
+- A "power-off" schedule was separately observed (passive HAR review) sending `null` for `operationMode`/`setPoint`/both vane fields alongside `power:false` — not re-confirmed in this session, but presumably still the Create-endpoint's flat-body behavior.
+
+**Enum mapping (confirmed on both Schedules and the adjacent Scenes endpoint):**
+
+| Field | Int value | Meaning | Confirmed on |
+|-------|-----------|---------|---------------|
+| `operationMode` | `1` | Heat | Schedules (this session) |
+| `operationMode` | `3` | Cool | Schedules + Scenes |
+| `setFanSpeed` | `0` | Auto | Schedules (this session) |
+| `setFanSpeed` | `3` | Three | Schedules (this session) |
+| `setFanSpeed` | `5` | Five | Scenes |
+| `vaneVerticalDirection` | `0` | Auto | Schedules + Scenes |
+| `vaneVerticalDirection` | `1` | Position 1 | Schedules (this session) |
+| `vaneHorizontalDirection` | `3` | Centre | Schedules + Scenes |
+
+### Enable/Disable Schedules (master switch)
+
+```
+PUT /monitor/cloudschedule/{unitId}/enabled
+```
+
+*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); the passively-observed web-host form is `PUT /api/cloudschedule/{unitId}/enabled` — not re-driven in this session, so left as previously documented.*
+
+```json
+{ "enabled": true }
+```
+
+Per-unit switch that toggles all of that unit's schedules at once, independent of each individual schedule's own `enabled` field (see above — not tested for interaction with it in this session).
+
+### Delete Schedule
+
+```
+DELETE /monitor/cloudschedule/{unitId}/{scheduleId}
+```
+
+*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); observed on the web host as `DELETE /api/cloudschedule/{unitId}/{scheduleId}`.*
+
+**Confirmed** — both test schedule entries created during this capture were deleted this way (on the web host), cleanly removing them from the account with no other side effects observed.
+
+### Evidence Level
+
+Two sources feed this section: a passive 2026-07-11 HAR review of the web app (dev account), and a live, driven capture on 2026-07-20 (a real account, three schedule entries created/edited/deleted through the actual UI on a live ATA unit and cleaned up immediately after, with no other side effects observed). The 2026-07-20 session resolved every item this section previously flagged as inferred-by-analogy: day-number encoding, and the int typing of `operationMode`/`setFanSpeed`/vane fields on this specific endpoint. See also the [Web BFF endpoint catalog](../research/web-bff-websocket-capture/README.md#web-bff-endpoint-catalog-observed) for the original HAR-sourced endpoint list. Guest/shared accounts have full write access to schedules on units shared with them (observed 2026-07-11, guest account, web host).
+
+---
+
 ## Error Handling
 
 **Observed Responses:**
@@ -645,6 +759,7 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 - **[Contributing Guide](../../CONTRIBUTING.md)** - Development workflow and standards
 - **[ATW API Reference](atw-api-reference.md)** - Air-to-Water heat pump API
 - **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
+- **[Web BFF & WebSocket Capture](../research/web-bff-websocket-capture/README.md)** - Source HAR capture for the Schedules section above
 
 ---
 
@@ -653,6 +768,8 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-11-16 | Initial comprehensive API reference with UI-verified values |
+| 1.3 | 2026-07-20 | Added Schedules section (cloud-schedule CRUD), sourced from 2026-07-11 web-app HAR capture |
+| 1.4 | 2026-07-20 | Schedules section rewritten with confirmed data from a live driven capture: day-number encoding and int-typed mode/fan/vane fields moved from inferred to confirmed; documented the Update (PUT) endpoint and its distinct nested body shape |
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
