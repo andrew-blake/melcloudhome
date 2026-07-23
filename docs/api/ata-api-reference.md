@@ -704,14 +704,16 @@ POST /api/scene
 }
 ```
 
-**Response** (from `GET /api/user/scenes` after creating, 2026-07-23): a freshly server-assigned UUID, not the all-zero placeholder — confirming the server does assign its own ID rather than persisting whatever the client sent. **Still not confirmed which**: the exact Create request body couldn't be re-captured in the 2026-07-23 session (see Evidence Level note below on this specific gap), so whether the client actually sends the all-zero GUID (as originally observed 2026-07-11) and the server replaces it, or sends something else, remains only 2026-07-11-sourced evidence.
+**Confirmed via a real DevTools HAR capture, 2026-07-23** (see Evidence Level below — this superseded the earlier gap where the exact Create body couldn't be re-verified): the client sends `id` as the all-zero GUID exactly as originally documented, and the server responds with a freshly assigned real UUID in place of it — both directions now directly confirmed, not just inferred from one side.
+
+**New finding (2026-07-23): a single scene can target multiple units with independently different settings each.** The captured Create request included three ATA units in `ataSceneSettings`, each with its own `ataSettings` object — one had `power: true`, another `power: false`, matching what each unit should do when the scene is applied. Not a single shared settings block replicated per unit.
 
 **Response also confirmed to include `atwSceneSettings` (2026-07-23):** present as `[]` on this ATA-only account — resolving the naming-symmetry guess below from "not observed" to "confirmed key exists, empty when unused." Whether it's ever populated (i.e. whether a scene can mix ATA and ATW units) is still unconfirmed.
 
 **Field Details:**
 
-- `id`: sent as the all-zero GUID `00000000-0000-0000-0000-000000000000` on create per the 2026-07-11 capture — the 2026-07-23 re-capture confirms the *response* gets a real server-assigned ID either way, but couldn't re-confirm what the client actually sends (see above).
-- `ataSceneSettings`: array, one entry per ATA unit included in the scene, keyed by `unitId`.
+- `id`: confirmed sent as the all-zero GUID `00000000-0000-0000-0000-000000000000` on create (see above) — the server replaces it with its own assigned ID.
+- `ataSceneSettings`: array, one entry per ATA unit included in the scene, keyed by `unitId` — confirmed to support multiple units per scene with independent settings each (see above).
 - `ataSettings`: same field set as the control endpoint (`PUT /monitor/ataunit/{id}`, documented above) — `power`, `operationMode`, `setFanSpeed`, `vaneHorizontalDirection`, `vaneVerticalDirection`, `setTemperature`, `temperatureIncrementOverride`, `inStandbyMode` — **but int-encoded**, not the strings the control endpoint uses (see mapping below).
 - `previousSettings`: observed as `null` in every capture; plausibly a rollback/undo slot, not confirmed.
 
@@ -733,7 +735,7 @@ GET /api/scene/{sceneId}
 ```
 *(web host: `melcloudhome.com`)*
 
-**New endpoint, confirmed 2026-07-23** — fetches a single scene by ID; the web UI calls this when opening a scene for editing. Confirmed via browser network monitoring (method, URL, and `200` status all observed directly); the response body itself couldn't be captured in this session (see Evidence Level note below) but is presumably shaped like one entry of the `GET /api/user/scenes` array.
+**New endpoint, confirmed 2026-07-23** — fetches a single scene by ID; the web UI calls this when opening a scene for editing. **Response body confirmed via a real DevTools HAR capture**: identical shape to one entry of the `GET /api/user/scenes` array (`id`, `userId`, `name`, `enabled`, `icon`, `ataSceneSettings`, `atwSceneSettings`).
 
 ### Update Scene
 
@@ -742,7 +744,7 @@ PUT /api/scene/{sceneId}
 ```
 *(web host: `melcloudhome.com`)*
 
-**Corrects earlier documentation** — this section previously assumed Update reused `POST /api/scene` (same as Create). **Confirmed 2026-07-23 via browser network monitoring: Update is actually `PUT` to the scene's own ID-scoped URL**, not a re-POST to the collection endpoint. The request/response bodies couldn't be captured in this session (see Evidence Level note below), so the exact shape (flat vs. nested, whether `id` is repeated in the body) is unconfirmed — unlike Schedules' Update, don't assume the two share a shape.
+**Corrects earlier documentation** — this section previously assumed Update reused `POST /api/scene` (same as Create). **Confirmed 2026-07-23 via a real DevTools HAR capture: Update is `PUT` to the scene's own ID-scoped URL** with a **flat** request body — the *entire* scene object (`id`, `userId`, `name`, `enabled`, `icon`, `ataSceneSettings`, `atwSceneSettings`), with `id`/`userId` repeated matching the URL, not just the changed fields. This is a genuinely different shape from Schedules' Update, which nests the payload as `{id, schedule: {...}}` — don't assume the two APIs share a convention just because both offer Create/Update/Delete.
 
 ### Enable Scene
 
@@ -769,9 +771,9 @@ DELETE /api/scene/{sceneId}
 ```
 *(web host: `melcloudhome.com`)*
 
-Confirmed via browser network monitoring, 2026-07-23 (method/URL/status only — request has no body to capture). Path matches the original 2026-07-11 observation exactly.
+Confirmed via a real DevTools HAR capture, 2026-07-23 (no request body; empty response). Path matches the original 2026-07-11 observation exactly.
 
-**Evidence Level for this 2026-07-23 session's gaps:** the same injected `fetch`/`XMLHttpRequest` hook that successfully captured full request/response bodies for List, Create, Enable, and Disable did **not** fire for Get-single, Update, or Delete, despite all three being confirmed as real `200` calls via the browser's own network monitor. The pattern doesn't correlate with anything obvious (URL shape, HTTP method, or path parameters — Enable/Disable are equally ID-scoped and were captured fine), and wasn't root-caused in this session; flagging it here as a known gap in this capture technique rather than a claim about the API itself. Anyone re-capturing these three endpoints should try a different interception approach (e.g. a proxy-level tool like mitmproxy instead of a page-level JS hook). The captured session (everything the hook *did* see, plus the network-monitor-only entries for what it didn't) is committed anonymized at [docs/research/scenes-trendsummary-capture/](../research/scenes-trendsummary-capture/README.md).
+**Evidence Level:** Two 2026-07-23 sources back this Scenes section, on top of the original 2026-07-11 passive HAR review. First, a Claude-in-Chrome-driven session (create→enable→disable→edit→delete round trip) captured via an injected `fetch`/`XMLHttpRequest` hook — this caught List, Create (partially — the exact request body wasn't recovered that pass), Enable, and Disable in full, but never fired for Get-single, Update, or Delete despite the browser's own network monitor confirming all three completed with real `200`s. That gap is why a second pass followed: a genuine Chrome DevTools "Save all as HAR" export of the same round trip, done manually, which filled in exactly the three missing bodies (Get-single, Update, Delete) plus a cleaner Create body — including the multi-unit finding above. Both captures are committed anonymized at [docs/research/scenes-trendsummary-capture/](../research/scenes-trendsummary-capture/README.md): `scenes_anonymized.har` (the real DevTools export — primary evidence for the Scenes endpoints) and `captured-requests_anonymized.json` (the earlier JS-hook log — still the only source for the Trend Summary legacy-variant findings below, since that pass wasn't repeated with a native HAR).
 
 ---
 

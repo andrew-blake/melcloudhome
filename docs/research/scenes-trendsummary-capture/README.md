@@ -1,75 +1,91 @@
 # Scenes & Trend Summary (Legacy Web Host) — Capture Notes
 
-## What This Is (and Isn't)
+## What's In This Folder
 
-A capture of the **Scenes** and legacy-web **Trend Summary** endpoints
-(`melcloudhome.com`, distinct from the mobile BFF the integration talks to —
-see [Hosts](../../api/ata-api-reference.md#hosts)), gathered 2026-07-23 by
-driving the real web UI with `claude-in-chrome` browser automation against a
-real account, targeting one live ATA unit.
+Two captures backing the **Scenes** and legacy-web **Trend Summary** sections
+of [docs/api/ata-api-reference.md](../../api/ata-api-reference.md), both
+against `melcloudhome.com` (the web host, distinct from the mobile BFF the
+integration talks to — see [Hosts](../../api/ata-api-reference.md#hosts)),
+2026-07-23, real account, one live ATA unit exercised:
 
-**This is not a browser DevTools HAR export.** Earlier captures in this repo
-(e.g. [web-bff-websocket-capture](../web-bff-websocket-capture/README.md)) used
-Chrome's native "Save as HAR" feature. This session instead injected a
-`fetch`/`XMLHttpRequest.prototype.send` hook into the page via JavaScript and
-read the intercepted request/response pairs back out — a different technique
-with a different (and, it turned out, incomplete) capture surface. The result
-is committed as `captured-requests_anonymized.json`, a plain JSON log of what
-the hook actually saw, not a `.har` file, so it isn't mistaken for a native
-export.
+- **`scenes_anonymized.har`** — a genuine Chrome DevTools "Save all as HAR"
+  export, manually captured. Covers the Scenes endpoints: List, Create,
+  Enable, Get-single, Update, Disable, Delete. This is the primary evidence
+  for that section.
+- **`captured-requests_anonymized.json`** — **not** a HAR export. An earlier
+  same-day pass drove the UI via `claude-in-chrome` browser automation and
+  read requests back through an injected `fetch`/`XMLHttpRequest` hook rather
+  than a native export. It's the only source for the **Trend Summary
+  legacy-variant** findings (that pass wasn't repeated with a real HAR), and
+  it also documents *why* the second capture happened: three Scenes calls
+  (Get-single, Update, Delete) completed with real `200`s per the browser's
+  own network monitor but never appeared in the hook's buffer — an
+  unexplained gap in that technique, not a claim about the API. The real HAR
+  above fills exactly that gap.
 
 ## Method
 
-1. Logged into `melcloudhome.com` in a real Chrome profile (manual login —
-   browser automation does not handle credentials).
-2. Injected an interceptor patching `XMLHttpRequest.prototype.open/send` and
-   `window.fetch` to log `{method, url, status, requestBody, responseBody}` to
-   a page-global array, decoding Blazor's `Uint8Array`-shaped XHR bodies via
-   `TextDecoder`.
-3. Drove the UI: Scenarios → create a scene named "TEST API CAPTURE DELETE ME"
-   targeting one ATA unit (Cucina, 25°C/Cool/Auto fan) → enabled it → disabled
-   it → edited it (no-op save) → deleted it. Separately, opened the unit's
-   Grafici/Reports → Temperature chart and cycled through all four period tabs
-   (Orario/Giorno/Settimana/Mese = Hourly/Daily/Weekly/Monthly).
-4. Read the interceptor's buffer back via JavaScript after each step.
-5. Cross-checked against the browser's own network monitor
-   (`read_network_requests`), which surfaces method/URL/status for every real
-   request regardless of whether the JS-level hook caught it — this is how the
-   Get-single/Update/Delete gap below was noticed at all.
-6. Restored the unit to its pre-capture state (off) and confirmed via the
-   dashboard; deleted the test scene so no residue was left on the account.
+**`scenes_anonymized.har`:** DevTools open, Network tab recording, "Preserve
+log" on. Drove Scenarios → created a test scene targeting three ATA units
+(mixed power on/off per unit) → enabled it → opened it for edit (GET) →
+changed a setting and saved (PUT) → deleted it (DELETE). Exported via
+right-click → "Save all as HAR with content", then anonymized with
+`tools/anonymize_har.py` plus a manual pass (see Anonymization below) and
+curated to drop Chrome's `_initiator` stack traces and other verbose
+per-request metadata not relevant to the API shape.
 
-## Known Gap: Three Calls the Hook Never Caught
+**`captured-requests_anonymized.json`:** Injected an interceptor patching
+`XMLHttpRequest.prototype.open/send` and `window.fetch` to log `{method, url,
+status, requestBody, responseBody}` to a page-global array, decoding Blazor's
+`Uint8Array`-shaped XHR bodies via `TextDecoder`. Drove the same Scenes round
+trip (a separate test scene, one unit, cleaned up the same way) plus the
+target unit's Grafici/Reports → Temperature chart, cycling all four period
+tabs (Orario/Giorno/Settimana/Mese = Hourly/Daily/Weekly/Monthly).
 
-`GET /api/scene/{id}`, `PUT /api/scene/{id}` (Update), and
-`DELETE /api/scene/{id}` all completed with real `200` responses per the
-browser's own network monitor, but **never appeared in the interceptor's
-buffer** — despite `PUT /api/scene/{id}/enable` and `/disable` (equally
-ID-scoped URLs) being captured without issue. Not root-caused this session.
-The JSON file below has entries for these three with `"capturedVia":
-"network-monitor-only"` and no body, rather than a guessed one.
+Both sessions restored the target unit(s) to their pre-capture state and
+deleted their test scenes; verified via the dashboard afterward.
 
-## Sampling Note on Trend Summary Datasets
+## Sampling Note on Trend Summary Datasets (JSON file only)
 
 The Hourly/Weekly/Monthly trend responses carry over a hundred datapoints per
-dataset in places. Rather than paste the full arrays, the JSON file below
-keeps each dataset's **length**, **first point**, and **last point** — enough
-to verify the shape and resolution claims in the doc — and says so explicitly
+dataset in places. Rather than paste the full arrays, the JSON file keeps
+each dataset's **length**, **first point**, and **last point** — enough to
+verify the shape and resolution claims in the doc — and says so explicitly
 per entry (`"dataSampled": true`). The full arrays were only ever inspected
 transiently in-browser and were not saved anywhere.
 
 ## Anonymization
 
-Real identifiers seen during this session — the test scene's server-assigned
-ID, the target unit's ID, and the account's user ID — are replaced with fixed
-placeholder UUIDs (`11111111-...`, `66666666-...`, `aaaaaaaa-...`) throughout
-the JSON file, consistently so the same placeholder always maps to the same
-real value. Timestamps are real (this was a live capture) but carry no PII.
+Real identifiers seen during these sessions — unit IDs, scene IDs, the
+account's user ID, first/last name, the building's real name — are replaced
+with placeholder values, consistently so the same placeholder always maps to
+the same real value throughout each file.
+
+For the HAR file specifically: `tools/anonymize_har.py` handles most of this
+automatically, but needed two manual corrections applied afterward:
+1. The script's generic UUID-scrubbing doesn't know that
+   `00000000-0000-0000-0000-000000000000` is a meaningful protocol sentinel
+   (the client's literal Create-scene placeholder ID) rather than a real
+   identifier — it was getting swapped for a fake UUID like anything else,
+   which would have misrepresented the very claim this capture exists to
+   verify. Reverted that one specific value back to the literal all-zero GUID.
+2. The script's `"name"` field handling isn't memoized per real value (unlike
+   its UUID handling), so the same real scene name got a different
+   placeholder every time it appeared, and it also caught the HAR's own
+   `log.creator.name` (Chrome's internal `"WebInspector"` label) as if it were
+   account data. Fixed both: consistent placeholders per real value, and
+   `log.creator`/`log.browser` left untouched.
+
+For the JSON file: identifiers were substituted by hand while writing it,
+using the same fixed placeholder values throughout
+(`11111111-2222-4333-8444-555555555555` for the unit,
+`66666666-7777-4888-8999-000000000000` for the scene,
+`aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee` for the user). Timestamps and
+temperature readings are real but carry no PII.
 
 ## Where the Findings Live
 
-The actual documented conclusions from this capture are in
+The actual documented conclusions from these captures are in
 [docs/api/ata-api-reference.md](../../api/ata-api-reference.md), under
 **Scenes** and **Trend Summary — Legacy Web Host Variant**. This folder exists
-so those claims are checkable against the raw(ish) capture rather than taken
-on faith.
+so those claims are checkable against the capture rather than taken on faith.
