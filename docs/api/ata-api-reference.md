@@ -623,8 +623,10 @@ All three write operations below (create, update, delete) were directly observed
 ### Create Schedule
 
 ```
-POST /api/cloudschedule/{unitId}
+POST /monitor/cloudschedule/{unitId}
 ```
+
+*Mobile-BFF path shown per [device-type-comparison.md](device-type-comparison.md) and the confirmed ATW twin (`/monitor/atwcloudschedule/{unitId}`) — inferred by analogy, not directly captured on mobile for ATA. All observations below were made on the **web host** (`melcloudhome.com`), where this same request/response was captured as `POST /api/cloudschedule/{unitId}`; see Evidence Level.*
 
 **Request Body (confirmed, flat shape):**
 
@@ -646,10 +648,12 @@ POST /api/cloudschedule/{unitId}
 ### Update Schedule
 
 ```
-PUT /api/cloudschedule/{unitId}
+PUT /monitor/cloudschedule/{unitId}
 ```
 
-⚠️ **Different from Create**: same base URL (no schedule ID in the path — it's the same URL Create posts to, just a different HTTP method) and a **nested** body, not the flat shape Create uses:
+*Mobile-BFF path inferred the same way as Create above — observed on the web host as `PUT /api/cloudschedule/{unitId}`.*
+
+⚠️ **Different from Create**: same URL (no schedule ID in the path — it's the same URL Create posts to, just a different HTTP method) and a **nested** body, not the flat shape Create uses:
 
 ```json
 {
@@ -668,6 +672,8 @@ PUT /api/cloudschedule/{unitId}
   }
 }
 ```
+
+⚠️ **Web-host-observed only.** This nested `{id, schedule}` wrapper was only captured against the web client — it may be a web-client-specific quirk rather than the mobile app's actual Update shape. If schedules are ever integrated, this is the first thing to verify with a mobile-side mitmproxy capture; don't assume the mobile app sends the same nested body.
 
 **Field Details (Create and Update):**
 
@@ -695,26 +701,30 @@ PUT /api/cloudschedule/{unitId}
 ### Enable/Disable Schedules (master switch)
 
 ```
-PUT /api/cloudschedule/{unitId}/enabled
+PUT /monitor/cloudschedule/{unitId}/enabled
 ```
+
+*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); the passively-observed web-host form is `PUT /api/cloudschedule/{unitId}/enabled` — not re-driven in this session, so left as previously documented.*
 
 ```json
 { "enabled": true }
 ```
 
-Per-unit switch that toggles all of that unit's schedules at once, independent of each individual schedule's own `enabled` field (see above — not tested for interaction with it in this session). Path form per the passively-observed HAR; not re-driven in this session, so left as previously documented.
+Per-unit switch that toggles all of that unit's schedules at once, independent of each individual schedule's own `enabled` field (see above — not tested for interaction with it in this session).
 
 ### Delete Schedule
 
 ```
-DELETE /api/cloudschedule/{unitId}/{scheduleId}
+DELETE /monitor/cloudschedule/{unitId}/{scheduleId}
 ```
 
-**Confirmed** — both test schedule entries created during this capture were deleted this way, cleanly removing them from the account with no other side effects observed.
+*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); observed on the web host as `DELETE /api/cloudschedule/{unitId}/{scheduleId}`.*
+
+**Confirmed** — both test schedule entries created during this capture were deleted this way (on the web host), cleanly removing them from the account with no other side effects observed.
 
 ### Evidence Level
 
-Two sources feed this section: a passive 2026-07-11 HAR review of the web app (dev account), and a live, driven capture on 2026-07-20 (a real account, three schedule entries created/edited/deleted through the actual UI on a live ATA unit and cleaned up immediately after, with no other side effects observed). The 2026-07-20 session resolved every item this section previously flagged as inferred-by-analogy: day-number encoding, and the int typing of `operationMode`/`setFanSpeed`/vane fields on this specific endpoint. See also the [Web BFF endpoint catalog](../research/web-bff-websocket-capture/README.md#web-bff-endpoint-catalog-observed) for the original HAR-sourced endpoint list. Guest/shared accounts were separately observed (2026-07-11 review) to have full write access to schedules on units shared with them.
+Two sources feed this section: a passive 2026-07-11 HAR review of the web app (dev account), and a live, driven capture on 2026-07-20 (a real account, three schedule entries created/edited/deleted through the actual UI on a live ATA unit and cleaned up immediately after, with no other side effects observed). The 2026-07-20 session resolved every item this section previously flagged as inferred-by-analogy: day-number encoding, and the int typing of `operationMode`/`setFanSpeed`/vane fields on this specific endpoint. See also the [Web BFF endpoint catalog](../research/web-bff-websocket-capture/README.md#web-bff-endpoint-catalog-observed) for the original HAR-sourced endpoint list. Guest/shared accounts have full write access to schedules on units shared with them (observed 2026-07-11, guest account, web host).
 
 ---
 
@@ -749,7 +759,7 @@ Two sources feed this section: a passive 2026-07-11 HAR review of the web app (d
 - **[Contributing Guide](../../CONTRIBUTING.md)** - Development workflow and standards
 - **[ATW API Reference](atw-api-reference.md)** - Air-to-Water heat pump API
 - **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
-- **[Web BFF & WebSocket Capture](../research/web-bff-websocket-capture/README.md)** - Source HAR capture for the Schedules section below
+- **[Web BFF & WebSocket Capture](../research/web-bff-websocket-capture/README.md)** - Source HAR capture for the Schedules section above
 
 ---
 
