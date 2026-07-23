@@ -219,6 +219,8 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 
 ## Telemetry Measures
 
+**Note:** `rssi` is listed below because it's technically exposed as a telemetry measure for both device types, but both also carry a top-level `rssi` field on `/context` that refreshes every ~60s (vs this endpoint's hourly cadence) — that's the field the integration actually uses, not telemetry polling.
+
 ### Air-to-Air Measures
 
 **3 primary measures:**
