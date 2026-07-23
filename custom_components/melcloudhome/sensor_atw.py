@@ -218,9 +218,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda unit: unit.telemetry.get("rssi"),
+        value_fn=lambda unit: unit.rssi,
         should_create_fn=lambda unit: True,
-        available_fn=lambda unit: unit.telemetry.get("rssi") is not None,
+        available_fn=lambda unit: unit.rssi is not None,
     ),
     # Energy monitoring sensors
     # Created if device has energy capability (measured or estimated), even if no initial data
