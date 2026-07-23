@@ -8,7 +8,7 @@
 **Document Version:** 1.3
 **Last Updated:** 2026-07-20
 **Device Type:** Air-to-Air Air Conditioning Units
-**Method:** Passive UI observation only
+**Method:** Passive UI observation; some sections verified by driven capture — see per-section evidence notes
 
 ---
 
@@ -61,6 +61,10 @@ For current integration features, see [README.md](../../README.md).
 ```
 https://mobile.bff.melcloudhome.com
 ```
+
+### Hosts
+
+This integration talks to the **mobile BFF** (`mobile.bff.melcloudhome.com`), the host behind the Base URL above. A separate **web host** (`melcloudhome.com`, the Blazor web app used by [docs/research/web-bff-websocket-capture/README.md](../research/web-bff-websocket-capture/README.md)) exposes an equivalent but not always identical `/api/...` surface — same auth server and data model, different path conventions (e.g. mobile's `/monitor/{resource}/{unitId}` vs web's `/api/{resource}`). Where an endpoint below was only observed on one host, its evidence note says which; treat the other host's path as inferred-by-analogy unless stated otherwise.
 
 ### Authentication
 - Uses OAuth 2.0 PKCE + AWS Cognito (see [../architecture.md](../architecture.md) for details)
@@ -557,6 +561,7 @@ These are **not** per-unit endpoints like the control/schedule APIs above — a 
 ```
 POST /api/protection/frost
 ```
+*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
 
 **Request Body (confirmed):**
 
@@ -578,6 +583,7 @@ Prevents units from freezing by maintaining a minimum temperature. `min`/`max` d
 ```
 POST /api/protection/overheat
 ```
+*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
 
 **New discovery** — not documented anywhere before this, for either device type.
 
@@ -601,6 +607,7 @@ Same shape as Frost Protection — presumably the ceiling-temperature counterpar
 ```
 POST /api/holidaymode
 ```
+*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
 
 **Request Body (confirmed):**
 
@@ -621,7 +628,7 @@ All three POSTs above returned `200 OK` with an **empty body** — same pattern 
 
 ### Response Shape (in `GET /context`)
 
-Confirmed field shapes on each `airToAirUnits[]` entry, previously only shown as `{...}` placeholders in the ATW reference:
+Confirmed field shapes on each `airToAirUnits[]` entry, previously only shown as `{...}` placeholders in the ATW reference. Independently corroborated on the **mobile BFF** (this integration's own VCR cassettes show the same three keys with the same null-when-unconfigured behavior), even though the POST paths above were only captured on the web host — see [Hosts](#hosts). Note ATW carries `zone1Active`/`zone2Active` instead of a single `active` field on its equivalent objects (multi-zone systems have independent zones) — see [atw-api-reference.md](atw-api-reference.md#6-holiday-mode).
 
 ```json
 {
