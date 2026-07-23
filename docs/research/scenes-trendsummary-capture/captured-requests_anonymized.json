@@ -1,0 +1,273 @@
+{
+  "_meta": {
+    "capturedAt": "2026-07-23",
+    "host": "melcloudhome.com (web host, distinct from the mobile BFF)",
+    "account": "real account, one live ATA unit exercised",
+    "tool": "claude-in-chrome browser automation + injected fetch/XMLHttpRequest hook (NOT a native DevTools HAR export)",
+    "anonymization": {
+      "UNIT_ID": "11111111-2222-4333-8444-555555555555",
+      "SCENE_ID": "66666666-7777-4888-8999-000000000000",
+      "USER_ID": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "note": "All three are fixed placeholders substituted consistently for the real values seen during capture. Timestamps and temperature readings are real but carry no PII."
+    },
+    "knownGap": "GET /api/scene/{id}, PUT /api/scene/{id} (Update), and DELETE /api/scene/{id} all returned real 200s per the browser's own network monitor but never appeared in the interceptor buffer. Entries for these three below have capturedVia: 'network-monitor-only' and no body, rather than a guessed one. Not root-caused this session.",
+    "cleanup": "The test scene was deleted and the target unit restored to its pre-capture (off) state; verified via the dashboard afterward."
+  },
+  "entries": [
+    {
+      "step": "List Scenes, before creating anything",
+      "method": "GET",
+      "url": "/api/user/scenes",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": []
+    },
+    {
+      "step": "Create Scene",
+      "method": "POST",
+      "url": "/api/scene",
+      "capturedVia": "fetch-hook (fired, but body decode failed this session — see note)",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": "",
+      "note": "The call was observed firing and returning 200, but the interceptor's body-decoding logic failed on this specific payload shape in this session (fixed for later calls) — the exact request JSON sent for Create was not recovered. What was actually persisted is visible in the next List Scenes entry."
+    },
+    {
+      "step": "List Scenes, after Create",
+      "method": "GET",
+      "url": "/api/user/scenes",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": [
+        {
+          "id": "66666666-7777-4888-8999-000000000000",
+          "userId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "name": "TEST API CAPTURE DELETE ME",
+          "enabled": false,
+          "icon": "FilmIcon",
+          "ataSceneSettings": [
+            {
+              "unitId": "11111111-2222-4333-8444-555555555555",
+              "ataSettings": {
+                "power": true,
+                "operationMode": "cool",
+                "setFanSpeed": "auto",
+                "vaneHorizontalDirection": "centre",
+                "vaneVerticalDirection": "auto",
+                "setTemperature": 25,
+                "temperatureIncrementOverride": null,
+                "inStandbyMode": null
+              },
+              "previousSettings": null
+            }
+          ],
+          "atwSceneSettings": []
+        }
+      ]
+    },
+    {
+      "step": "Enable Scene",
+      "method": "PUT",
+      "url": "/api/scene/66666666-7777-4888-8999-000000000000/enable",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": ""
+    },
+    {
+      "step": "List Scenes, after Enable (enabled flips to true; unit itself powered on/Cool/25°C in real time on the dashboard, confirmed visually)",
+      "method": "GET",
+      "url": "/api/user/scenes",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": [
+        {
+          "id": "66666666-7777-4888-8999-000000000000",
+          "userId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "name": "TEST API CAPTURE DELETE ME",
+          "enabled": true,
+          "icon": "FilmIcon",
+          "ataSceneSettings": [
+            {
+              "unitId": "11111111-2222-4333-8444-555555555555",
+              "ataSettings": {
+                "power": true,
+                "operationMode": "cool",
+                "setFanSpeed": "auto",
+                "vaneHorizontalDirection": "centre",
+                "vaneVerticalDirection": "auto",
+                "setTemperature": 25,
+                "temperatureIncrementOverride": null,
+                "inStandbyMode": null
+              },
+              "previousSettings": null
+            }
+          ],
+          "atwSceneSettings": []
+        }
+      ]
+    },
+    {
+      "step": "Disable Scene",
+      "method": "PUT",
+      "url": "/api/scene/66666666-7777-4888-8999-000000000000/disable",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": ""
+    },
+    {
+      "step": "Get single Scene (opened from the edit UI)",
+      "method": "GET",
+      "url": "/api/scene/66666666-7777-4888-8999-000000000000",
+      "capturedVia": "network-monitor-only",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": null,
+      "note": "See knownGap above."
+    },
+    {
+      "step": "Update Scene (edit form re-saved with no actual changes)",
+      "method": "PUT",
+      "url": "/api/scene/66666666-7777-4888-8999-000000000000",
+      "capturedVia": "network-monitor-only",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": null,
+      "note": "See knownGap above. Confirms Update is PUT to the scene's own ID-scoped URL, not a re-POST to /api/scene as previously documented."
+    },
+    {
+      "step": "Delete Scene",
+      "method": "DELETE",
+      "url": "/api/scene/66666666-7777-4888-8999-000000000000",
+      "capturedVia": "network-monitor-only",
+      "status": 200,
+      "requestBody": null,
+      "responseBody": null,
+      "note": "See knownGap above."
+    },
+    {
+      "step": "Trend Summary, Hourly period",
+      "method": "GET",
+      "url": "/api/v1/report/trendsummary?unitId=11111111-2222-4333-8444-555555555555&period=Hourly",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "dataSampled": true,
+      "responseBody": {
+        "reportPeriod": 0,
+        "timeUnit": 0,
+        "stepSize": 15,
+        "from": "2026-07-23T00:00:00",
+        "to": "2026-07-23T12:00:00",
+        "datasets": [
+          {
+            "id": "room_temperature",
+            "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
+            "dataLength": 211,
+            "first": { "x": "2026-07-23T00:00:31.382", "y": 25.5 },
+            "last": { "x": "2026-07-23T11:13:42.87899", "y": 27 }
+          },
+          {
+            "id": "set_temperature",
+            "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
+            "dataLength": 0
+          },
+          {
+            "id": "outside_temperature",
+            "dataLength": 117,
+            "note": "first/last not captured this session"
+          }
+        ],
+        "annotations": "not inspected this session",
+        "previousTriggers": []
+      }
+    },
+    {
+      "step": "Trend Summary, Weekly period",
+      "method": "GET",
+      "url": "/api/v1/report/trendsummary?unitId=11111111-2222-4333-8444-555555555555&period=Weekly",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "dataSampled": true,
+      "responseBody": {
+        "reportPeriod": 2,
+        "timeUnit": 2,
+        "stepSize": 1,
+        "from": "2026-07-13T00:00:00",
+        "to": "2026-07-27T00:00:00",
+        "datasets": [
+          {
+            "id": "room_temperature",
+            "dataLength": 41,
+            "first": { "x": "2026-07-12T21:00:00", "y": 26 },
+            "note": "last point not captured this session"
+          },
+          { "id": "set_temperature", "dataLength": 15, "note": "first/last not captured this session" },
+          { "id": "outside_temperature", "dataLength": 46, "note": "first/last not captured this session" }
+        ]
+      }
+    },
+    {
+      "step": "Trend Summary, Monthly period",
+      "method": "GET",
+      "url": "/api/v1/report/trendsummary?unitId=11111111-2222-4333-8444-555555555555&period=Monthly",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "dataSampled": true,
+      "responseBody": {
+        "reportPeriod": 3,
+        "timeUnit": 2,
+        "stepSize": 7,
+        "from": "2026-04-01T00:00:00",
+        "to": "2026-08-01T00:00:00",
+        "datasets": "not individually captured this session (output truncated at capture time) — see doc for the UI-observed Temp. aria / Temp. esterna / Setpoint chart legend as indirect confirmation of the same three dataset ids"
+      }
+    },
+    {
+      "step": "Trend Summary, previous-triggers endpoint (resolves a prior 'response unknown' gap)",
+      "method": "POST",
+      "url": "/api/v1/report/trendsummary/previous",
+      "capturedVia": "fetch-hook",
+      "status": 200,
+      "requestBody": {
+        "unitId": "11111111-2222-4333-8444-555555555555",
+        "triggers": [
+          { "trigger": "2026-07-23T00:00:31.382", "measure": "room_temperature", "value": 25.5 },
+          { "trigger": "9999-12-31T23:59:59.9999999", "measure": "set_temperature", "value": null },
+          { "trigger": "2026-07-23T00:09:31.188", "measure": "outside_temperature", "value": 29 }
+        ],
+        "before": "2026-07-23T00:00:00",
+        "currentPeriod": "2026-07-23T11:00:00",
+        "period": 0
+      },
+      "dataSampled": true,
+      "responseBody": {
+        "data": [
+          {
+            "id": "set_temperature",
+            "dataLength": 13,
+            "first": { "x": "2026-07-22T21:56:31.329", "y": 25 },
+            "last": { "x": "2026-07-23T11:13:49.8589767", "y": 25 }
+          },
+          {
+            "id": "room_temperature",
+            "dataLength": 2,
+            "first": { "x": "2026-07-22T23:59:31.362", "y": 25 },
+            "last": { "x": "2026-07-23T00:00:00", "y": 25 }
+          },
+          {
+            "id": "outside_temperature",
+            "dataLength": 2,
+            "first": { "x": "2026-07-22T23:55:30.706", "y": 30 },
+            "last": { "x": "2026-07-23T00:00:00", "y": 30 }
+          }
+        ],
+        "reportTimeAnnotations": [],
+        "previousTriggers": []
+      }
+    }
+  ]
+}

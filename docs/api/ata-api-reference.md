@@ -648,7 +648,7 @@ GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly
 
 ⚠️ Neither endpoint has been re-verified against the mobile BFF host, and both were captured on an ATA-only account (no ATW units to confirm behavior there).
 
-**Evidence Level:** Two sources: a passive browser HAR review, 2026-07-11 (dev account; original raw capture file no longer on disk, see below), and a live Claude-in-Chrome-driven re-capture, 2026-07-23 (real account, read-only GET/POST calls against the actual `/trendsummary` chart UI — no settings were changed on any unit). The 2026-07-23 session resolved the `/previous` endpoint's response shape and added the `reportPeriod`/`timeUnit`/`stepSize`/`from`/`to` fields, which the 2026-07-11 pass hadn't captured. The 2026-07-11 raw capture file is no longer available to commit as an anonymized slice (unlike the #175 convention); the 2026-07-23 session's capture buffer was inspected live via injected `fetch`/`XHR` hooks rather than saved to a file, so nothing from either session exists on disk to commit as evidence.
+**Evidence Level:** Two sources: a passive browser HAR review, 2026-07-11 (dev account; original raw capture file no longer on disk), and a live Claude-in-Chrome-driven re-capture, 2026-07-23 (real account, read-only GET/POST calls against the actual `/trendsummary` chart UI — no settings were changed on any unit). The 2026-07-23 session resolved the `/previous` endpoint's response shape and added the `reportPeriod`/`timeUnit`/`stepSize`/`from`/`to` fields, which the 2026-07-11 pass hadn't captured. The 2026-07-11 raw capture file is no longer available; the 2026-07-23 session's capture is committed as [docs/research/scenes-trendsummary-capture/](../research/scenes-trendsummary-capture/README.md) — a JSON log of the intercepted requests (not a native HAR export; see that folder's README for the technique and its limitations), anonymized before commit.
 
 ---
 
@@ -771,7 +771,7 @@ DELETE /api/scene/{sceneId}
 
 Confirmed via browser network monitoring, 2026-07-23 (method/URL/status only — request has no body to capture). Path matches the original 2026-07-11 observation exactly.
 
-**Evidence Level for this 2026-07-23 session's gaps:** the same injected `fetch`/`XMLHttpRequest` hook that successfully captured full request/response bodies for List, Create, Enable, and Disable did **not** fire for Get-single, Update, or Delete, despite all three being confirmed as real `200` calls via the browser's own network monitor. The pattern doesn't correlate with anything obvious (URL shape, HTTP method, or path parameters — Enable/Disable are equally ID-scoped and were captured fine), and wasn't root-caused in this session; flagging it here as a known gap in this capture technique rather than a claim about the API itself. Anyone re-capturing these three endpoints should try a different interception approach (e.g. a proxy-level tool like mitmproxy instead of a page-level JS hook).
+**Evidence Level for this 2026-07-23 session's gaps:** the same injected `fetch`/`XMLHttpRequest` hook that successfully captured full request/response bodies for List, Create, Enable, and Disable did **not** fire for Get-single, Update, or Delete, despite all three being confirmed as real `200` calls via the browser's own network monitor. The pattern doesn't correlate with anything obvious (URL shape, HTTP method, or path parameters — Enable/Disable are equally ID-scoped and were captured fine), and wasn't root-caused in this session; flagging it here as a known gap in this capture technique rather than a claim about the API itself. Anyone re-capturing these three endpoints should try a different interception approach (e.g. a proxy-level tool like mitmproxy instead of a page-level JS hook). The captured session (everything the hook *did* see, plus the network-monitor-only entries for what it didn't) is committed anonymized at [docs/research/scenes-trendsummary-capture/](../research/scenes-trendsummary-capture/README.md).
 
 ---
 
@@ -807,6 +807,7 @@ Confirmed via browser network monitoring, 2026-07-23 (method/URL/status only —
 - **[ATW API Reference](atw-api-reference.md)** - Air-to-Water heat pump API
 - **[Device Type Comparison](device-type-comparison.md)** - ATA vs ATW API differences
 - **[Web BFF & WebSocket Capture](../research/web-bff-websocket-capture/README.md)** - Related web-app HAR capture (WebSocket + `cloudschedule`); Scenes and legacy-web Trend Summary above come from a separate, broader HAR review the same week
+- **[Scenes & Trend Summary Capture](../research/scenes-trendsummary-capture/README.md)** - Anonymized capture backing the Scenes and Trend Summary legacy-variant sections above
 
 ---
 
