@@ -189,11 +189,16 @@ async def test_frost_protection_only_created_when_configured(
 
 
 @pytest.mark.asyncio
-async def test_protection_mode_state_reflects_active_flag(hass: HomeAssistant) -> None:
-    """Test protection mode sensors report on/off based on 'active', not 'enabled'."""
+async def test_protection_mode_state_reflects_enabled_flag(hass: HomeAssistant) -> None:
+    """Test protection mode sensors report on/off based on 'enabled', not 'active'.
+
+    'enabled' (armed/configured) is what a user checks after toggling the mode
+    in the MELCloud app - 'active' (currently engaging, e.g. room actually
+    crossed the threshold) is a rarer condition, exposed as an attribute instead.
+    """
     unit = create_mock_ata_unit(
         overheat_protection=ProtectionModeState(
-            enabled=True, active=True, min=35, max=37
+            enabled=True, active=False, min=35, max=37
         ),
     )
     mock_context = create_mock_ata_user_context(
@@ -208,7 +213,7 @@ async def test_protection_mode_state_reflects_active_flag(hass: HomeAssistant) -
 
 @pytest.mark.asyncio
 async def test_protection_mode_attributes_exposed(hass: HomeAssistant) -> None:
-    """Test enabled/min/max attributes are exposed on the protection mode sensor."""
+    """Test active/min/max attributes are exposed on the protection mode sensor."""
     unit = create_mock_ata_unit(
         frost_protection=ProtectionModeState(
             enabled=True, active=False, min=10, max=12
@@ -221,8 +226,8 @@ async def test_protection_mode_attributes_exposed(hass: HomeAssistant) -> None:
 
     state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_frost_protection")
     assert state is not None
-    assert state.state == STATE_OFF
-    assert state.attributes["enabled"] is True
+    assert state.state == STATE_ON
+    assert state.attributes["active"] is False
     assert state.attributes["min"] == 10
     assert state.attributes["max"] == 12
 

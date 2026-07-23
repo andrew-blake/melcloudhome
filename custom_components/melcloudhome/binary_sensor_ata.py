@@ -61,16 +61,19 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     ),
     # Protection modes - only created once a unit has ever had the mode configured
     # (the API leaves these objects null until then, then persists them even when disabled)
+    # State reflects "enabled" (armed/configured) - the everyday question a user
+    # checks in HA - not "active" (currently engaging), which stays off unless the
+    # room has actually crossed the threshold; "active" is exposed as an attribute.
     ATABinarySensorEntityDescription(
         key="frost_protection",
         translation_key="frost_protection",
         value_fn=lambda unit: bool(
-            unit.frost_protection and unit.frost_protection.active
+            unit.frost_protection and unit.frost_protection.enabled
         ),
         should_create_fn=lambda unit: unit.frost_protection is not None,
         attributes_fn=lambda unit: (
             {
-                "enabled": unit.frost_protection.enabled,
+                "active": unit.frost_protection.active,
                 "min": unit.frost_protection.min,
                 "max": unit.frost_protection.max,
             }
@@ -82,12 +85,12 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         key="overheat_protection",
         translation_key="overheat_protection",
         value_fn=lambda unit: bool(
-            unit.overheat_protection and unit.overheat_protection.active
+            unit.overheat_protection and unit.overheat_protection.enabled
         ),
         should_create_fn=lambda unit: unit.overheat_protection is not None,
         attributes_fn=lambda unit: (
             {
-                "enabled": unit.overheat_protection.enabled,
+                "active": unit.overheat_protection.active,
                 "min": unit.overheat_protection.min,
                 "max": unit.overheat_protection.max,
             }
@@ -98,11 +101,11 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     ATABinarySensorEntityDescription(
         key="holiday_mode",
         translation_key="holiday_mode",
-        value_fn=lambda unit: bool(unit.holiday_mode and unit.holiday_mode.active),
+        value_fn=lambda unit: bool(unit.holiday_mode and unit.holiday_mode.enabled),
         should_create_fn=lambda unit: unit.holiday_mode is not None,
         attributes_fn=lambda unit: (
             {
-                "enabled": unit.holiday_mode.enabled,
+                "active": unit.holiday_mode.active,
                 "start_date": unit.holiday_mode.start_date,
                 "end_date": unit.holiday_mode.end_date,
             }
