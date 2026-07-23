@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Erzwungenes Warmwasser aktiv"
+      },
+      "frost_protection": {
+        "name": "Frostschutz"
+      },
+      "overheat_protection": {
+        "name": "Überhitzungsschutz"
+      },
+      "holiday_mode": {
+        "name": "Urlaubsmodus"
       }
     }
   },

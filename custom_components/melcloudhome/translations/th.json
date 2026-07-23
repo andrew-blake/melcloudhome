@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "การบังคับน้ำร้อนกำลังทำงาน"
+      },
+      "frost_protection": {
+        "name": "การป้องกันน้ำแข็ง"
+      },
+      "overheat_protection": {
+        "name": "การป้องกันความร้อนสูงเกินไป"
+      },
+      "holiday_mode": {
+        "name": "โหมดวันหยุด"
       }
     }
   },

@@ -103,6 +103,15 @@
       },
       "forced_dhw_active": {
         "name": "ECS forcée active"
+      },
+      "frost_protection": {
+        "name": "Protection antigel"
+      },
+      "overheat_protection": {
+        "name": "Protection contre la surchauffe"
+      },
+      "holiday_mode": {
+        "name": "Mode vacances"
       }
     },
     "sensor": {

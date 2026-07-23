@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Forced DHW aktif"
+      },
+      "frost_protection": {
+        "name": "Donma koruması"
+      },
+      "overheat_protection": {
+        "name": "Aşırı ısınma koruması"
+      },
+      "holiday_mode": {
+        "name": "Tatil modu"
       }
     }
   },

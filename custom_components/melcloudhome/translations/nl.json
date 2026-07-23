@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Geforceerd WW actief"
+      },
+      "frost_protection": {
+        "name": "Vorstbescherming"
+      },
+      "overheat_protection": {
+        "name": "Oververhittingsbeveiliging"
+      },
+      "holiday_mode": {
+        "name": "Vakantiemodus"
       }
     }
   },

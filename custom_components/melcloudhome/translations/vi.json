@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "DHW bắt buộc đang hoạt động"
+      },
+      "frost_protection": {
+        "name": "Bảo vệ chống đóng băng"
+      },
+      "overheat_protection": {
+        "name": "Bảo vệ quá nhiệt"
+      },
+      "holiday_mode": {
+        "name": "Chế độ nghỉ lễ"
       }
     }
   },

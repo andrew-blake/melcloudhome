@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Forcerat varmvatten aktivt"
+      },
+      "frost_protection": {
+        "name": "Frostskydd"
+      },
+      "overheat_protection": {
+        "name": "Överhettningsskydd"
+      },
+      "holiday_mode": {
+        "name": "Semesterläge"
       }
     }
   },

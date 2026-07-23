@@ -42,6 +42,14 @@ For each air conditioning unit, the following entities are created:
 - **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
 - **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+- **Frost Protection**: `binary_sensor.melcloudhome_{short_id}_frost_protection` (only created once the unit has ever had frost protection configured)
+  - Attributes: `enabled` (armed/configured), `min`, `max` (temperature band)
+- **Overheat Protection**: `binary_sensor.melcloudhome_{short_id}_overheat_protection` (only created once ever configured)
+  - Attributes: `enabled`, `min`, `max`
+- **Holiday Mode**: `binary_sensor.melcloudhome_{short_id}_holiday_mode` (only created once ever configured)
+  - Attributes: `enabled`, `start_date`, `end_date`
+
+All three reflect state read from the API only — the state is `on` when the mode is currently engaging (`active`), not merely armed (`enabled`); read-only, no control exposed yet.
 
 ### ATA Control Options
 

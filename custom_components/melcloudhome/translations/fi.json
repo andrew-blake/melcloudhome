@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Pakotettu käyttövesitila aktiivinen"
+      },
+      "frost_protection": {
+        "name": "Jäätymissuoja"
+      },
+      "overheat_protection": {
+        "name": "Ylikuumenemissuoja"
+      },
+      "holiday_mode": {
+        "name": "Lomatila"
       }
     }
   },

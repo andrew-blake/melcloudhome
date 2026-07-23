@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "ACS forzado activo"
+      },
+      "frost_protection": {
+        "name": "Protección antiheladas"
+      },
+      "overheat_protection": {
+        "name": "Protección contra sobrecalentamiento"
+      },
+      "holiday_mode": {
+        "name": "Modo vacaciones"
       }
     }
   },

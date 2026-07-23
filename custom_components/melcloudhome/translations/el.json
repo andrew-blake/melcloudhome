@@ -162,6 +162,15 @@
       },
       "forced_dhw_active": {
         "name": "Αναγκαστική ΖΝΧ ενεργή"
+      },
+      "frost_protection": {
+        "name": "Προστασία από παγετό"
+      },
+      "overheat_protection": {
+        "name": "Προστασία υπερθέρμανσης"
+      },
+      "holiday_mode": {
+        "name": "Λειτουργία διακοπών"
       }
     }
   },

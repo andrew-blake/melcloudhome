@@ -13,6 +13,8 @@ import pytest
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 
+from custom_components.melcloudhome.api.models_ata import ProtectionModeState
+
 from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
@@ -152,3 +154,96 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
     connection_state = hass.states.get(connection_sensor_id)
     assert connection_state is not None
     assert connection_state.state == STATE_OFF  # Shows disconnection, not unavailable
+
+
+@pytest.mark.asyncio
+async def test_frost_protection_only_created_when_configured(
+    hass: HomeAssistant,
+) -> None:
+    """Test frost protection sensor is only created for units with the mode ever set."""
+    unit_with_frost = create_mock_ata_unit(
+        unit_id="aaaa1234-5678-9abc-def0-123456789999",
+        name="Unit With Frost",
+        frost_protection=ProtectionModeState(
+            enabled=True, active=False, min=10, max=12
+        ),
+    )
+    unit_without_frost = create_mock_ata_unit(
+        unit_id="bbbb1234-5678-9abc-def0-123456788888",
+        name="Unit Without Frost",
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_frost, unit_without_frost])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    with_frost_state = hass.states.get(
+        "binary_sensor.melcloudhome_aaaa_9999_frost_protection"
+    )
+    without_frost_state = hass.states.get(
+        "binary_sensor.melcloudhome_bbbb_8888_frost_protection"
+    )
+
+    assert with_frost_state is not None
+    assert without_frost_state is None
+
+
+@pytest.mark.asyncio
+async def test_protection_mode_state_reflects_active_flag(hass: HomeAssistant) -> None:
+    """Test protection mode sensors report on/off based on 'active', not 'enabled'."""
+    unit = create_mock_ata_unit(
+        overheat_protection=ProtectionModeState(
+            enabled=True, active=True, min=35, max=37
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_overheat_protection")
+    assert state is not None
+    assert state.state == STATE_ON
+
+
+@pytest.mark.asyncio
+async def test_protection_mode_attributes_exposed(hass: HomeAssistant) -> None:
+    """Test enabled/min/max attributes are exposed on the protection mode sensor."""
+    unit = create_mock_ata_unit(
+        frost_protection=ProtectionModeState(
+            enabled=True, active=False, min=10, max=12
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_frost_protection")
+    assert state is not None
+    assert state.state == STATE_OFF
+    assert state.attributes["enabled"] is True
+    assert state.attributes["min"] == 10
+    assert state.attributes["max"] == 12
+
+
+@pytest.mark.asyncio
+async def test_holiday_mode_attributes_expose_dates(hass: HomeAssistant) -> None:
+    """Test start_date/end_date attributes are exposed on the holiday mode sensor."""
+    unit = create_mock_ata_unit(
+        holiday_mode=ProtectionModeState(
+            enabled=True,
+            active=False,
+            start_date="2026-07-20T18:30:53.79",
+            end_date="2026-07-22T12:00:00",
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_holiday_mode")
+    assert state is not None
+    assert state.attributes["start_date"] == "2026-07-20T18:30:53.79"
+    assert state.attributes["end_date"] == "2026-07-22T12:00:00"
