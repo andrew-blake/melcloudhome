@@ -626,13 +626,29 @@ GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly
 *(web host: `melcloudhome.com` — the mobile-BFF equivalent above is a different endpoint, not a host variant of this one; see [Hosts](#hosts))*
 
 - Two extra `period` values observed that the mobile BFF endpoint above wasn't seen to support: `Weekly`, `Monthly`.
-- `Hourly` period returned data at roughly **2-minute resolution** in the capture — finer-grained than anything the mobile BFF variant was observed to return, and a candidate source for HA long-term statistics import if this endpoint is ever integrated.
-- Top-level response shape differs: an **array** of `{reportPeriod: 0|1|2|…, datasets: [...]}` objects, rather than the single flat `{datasets, annotations}` object the mobile BFF endpoint returns above. `datasets[].id` values observed: `room_temperature`, `set_temperature`, `outside_temperature`.
-- A second, related endpoint was also seen but not resolved: `POST /api/v1/report/trendsummary/previous` — body `{unitId, triggers:[{trigger, measure, value}], before, currentPeriod, period}`. The captured requests were browser-aborted (status `0`) before completing, so **the response shape is unknown**; documented here only so the endpoint's existence isn't lost.
+- `Hourly` period returned data at roughly **3-minute resolution** in a live driven re-capture (2026-07-23: 211 datapoints over an 11h13m window) — finer-grained than anything the mobile BFF variant was observed to return, and a candidate source for HA long-term statistics import if this endpoint is ever integrated. (Corrects an earlier "~2-minute" estimate from the original passive review — the actual interval may vary with how recently the unit was reporting.)
+- Top-level response shape is an **array** of report objects, rather than the single flat `{datasets, annotations}` object the mobile BFF endpoint returns above. Each report object: `{reportPeriod, timeUnit, stepSize, from, to, datasets: [...], annotations, previousTriggers}`. `datasets[].id` values observed: `room_temperature`, `set_temperature`, `outside_temperature`. `reportPeriod` is a confirmed int enum: `0`=Hourly, `2`=Weekly, `3`=Monthly (`1`=Daily is inferred by position, not directly observed — Daily's own request wasn't re-captured with this session's tooling, only the pre-existing passive-review evidence). `previousTriggers` is present here too (empty array in every capture) — related to, but distinct from, the dedicated endpoint below.
+- **Resolved 2026-07-23** (was previously unconfirmed — the original capture's requests were browser-aborted before completing): `POST /api/v1/report/trendsummary/previous` returns `200` with a genuinely different response shape from the main endpoint — `{data: [{id, data: [{x, y}, ...]}], reportTimeAnnotations: [], previousTriggers: []}` (flat `data` array keyed by dataset `id`, no `label`/`reportPeriod` wrapper). Confirmed request body:
+
+  ```json
+  {
+    "unitId": "<unit UUID>",
+    "triggers": [
+      { "trigger": "<iso datetime>", "measure": "room_temperature", "value": 25.5 },
+      { "trigger": "9999-12-31T23:59:59.9999999", "measure": "set_temperature", "value": null },
+      { "trigger": "<iso datetime>", "measure": "outside_temperature", "value": 29 }
+    ],
+    "before": "<iso datetime>",
+    "currentPeriod": "<iso datetime>",
+    "period": 0
+  }
+  ```
+
+  `triggers` appears to carry, per measure, the timestamp/value of the last-seen datapoint the client already has (with a sentinel far-future date for a measure with no value yet) — consistent with an incremental "give me anything since my last known point per series" contract, though the exact selection logic on the server side wasn't reverse-engineered. `period: 0` matches the `reportPeriod` enum above (this call was triggered from the Hourly tab).
 
 ⚠️ Neither endpoint has been re-verified against the mobile BFF host, and both were captured on an ATA-only account (no ATW units to confirm behavior there).
 
-**Evidence Level:** Passive browser HAR review, 2026-07-11, real account. The raw capture file is no longer available on disk to commit an anonymized slice (unlike the #175 convention) — these claims rest on the documented observations alone, not an in-repo artifact.
+**Evidence Level:** Two sources: a passive browser HAR review, 2026-07-11 (dev account; original raw capture file no longer on disk, see below), and a live Claude-in-Chrome-driven re-capture, 2026-07-23 (real account, read-only GET/POST calls against the actual `/trendsummary` chart UI — no settings were changed on any unit). The 2026-07-23 session resolved the `/previous` endpoint's response shape and added the `reportPeriod`/`timeUnit`/`stepSize`/`from`/`to` fields, which the 2026-07-11 pass hadn't captured. The 2026-07-11 raw capture file is no longer available to commit as an anonymized slice (unlike the #175 convention); the 2026-07-23 session's capture buffer was inspected live via injected `fetch`/`XHR` hooks rather than saved to a file, so nothing from either session exists on disk to commit as evidence.
 
 ---
 
@@ -640,7 +656,9 @@ GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly
 
 **Implementation Status:** Not integrated in the Home Assistant integration — documented for reference only. Home Assistant has its own scene/scripting system; whether to surface MELCloud Home's cloud scenes as HA entities is an open question, similar to the Schedules discussion at [#174](https://github.com/andrew-blake/melcloudhome/issues/174).
 
-All endpoints below were directly observed on the **legacy web host** (`melcloudhome.com`, see [Hosts](#hosts)) via the same 2026-07-11 browser HAR review as the Trend Summary legacy-web variant above. Not re-verified against the mobile BFF host; captured on an ATA-only account, so cross-device-type (ATW) support is unconfirmed.
+All endpoints below were directly observed on the **legacy web host** (`melcloudhome.com`, see [Hosts](#hosts)) via the 2026-07-11 browser HAR review, supplemented by a live Claude-in-Chrome-driven re-capture on 2026-07-23 (full round trip: created a real test scene on a live ATA unit, enabled it, disabled it, edited it, deleted it — cleaned up immediately after; enabling briefly and deliberately powered the unit on at a safe, UI-observed setting, restored to its original off state afterward). Not re-verified against the mobile BFF host; captured on an ATA-only account, so cross-device-type (ATW) support is unconfirmed for the request/response shapes below, but see the confirmed `atwSceneSettings` note under Create Scene.
+
+**Behavioral note (2026-07-23):** Enabling a scene applies its settings to the target unit(s) **immediately** — confirmed by watching the physical unit power on, switch to Cool, and set 25°C in real time upon enabling a test scene, matching the scene's configured settings exactly. This is not a passive "favorite" flag; enabling a scene is equivalent to sending its settings directly to the control endpoint. In the web UI, clicking a scene's tile in the Scenarios list toggles it enabled/disabled directly (no confirmation step) — the same action that hits the Enable/Disable endpoints below.
 
 ### List Scenes
 
@@ -651,7 +669,7 @@ GET /api/user/scenes
 
 Returns an array of scene objects for the authenticated user.
 
-### Create/Update Scene
+### Create Scene
 
 ```
 POST /api/scene
@@ -686,10 +704,14 @@ POST /api/scene
 }
 ```
 
+**Response** (from `GET /api/user/scenes` after creating, 2026-07-23): a freshly server-assigned UUID, not the all-zero placeholder — confirming the server does assign its own ID rather than persisting whatever the client sent. **Still not confirmed which**: the exact Create request body couldn't be re-captured in the 2026-07-23 session (see Evidence Level note below on this specific gap), so whether the client actually sends the all-zero GUID (as originally observed 2026-07-11) and the server replaces it, or sends something else, remains only 2026-07-11-sourced evidence.
+
+**Response also confirmed to include `atwSceneSettings` (2026-07-23):** present as `[]` on this ATA-only account — resolving the naming-symmetry guess below from "not observed" to "confirmed key exists, empty when unused." Whether it's ever populated (i.e. whether a scene can mix ATA and ATW units) is still unconfirmed.
+
 **Field Details:**
 
-- `id`: sent as the all-zero GUID `00000000-0000-0000-0000-000000000000` on create — likely server-assigned (unlike Schedules, where the client mints the UUID itself). Update-of-an-existing-scene was not captured, so this isn't confirmed either way.
-- `ataSceneSettings`: array, one entry per ATA unit included in the scene, keyed by `unitId`. Only `ataSceneSettings` was observed; an equivalent `atwSceneSettings` key is plausible by naming symmetry with the rest of the API (e.g. `ataunit`/`atwunit`, `cloudschedule`/`atwcloudschedule`) but was **not observed** — this capture's account has ATA units only.
+- `id`: sent as the all-zero GUID `00000000-0000-0000-0000-000000000000` on create per the 2026-07-11 capture — the 2026-07-23 re-capture confirms the *response* gets a real server-assigned ID either way, but couldn't re-confirm what the client actually sends (see above).
+- `ataSceneSettings`: array, one entry per ATA unit included in the scene, keyed by `unitId`.
 - `ataSettings`: same field set as the control endpoint (`PUT /monitor/ataunit/{id}`, documented above) — `power`, `operationMode`, `setFanSpeed`, `vaneHorizontalDirection`, `vaneVerticalDirection`, `setTemperature`, `temperatureIncrementOverride`, `inStandbyMode` — **but int-encoded**, not the strings the control endpoint uses (see mapping below).
 - `previousSettings`: observed as `null` in every capture; plausibly a rollback/undo slot, not confirmed.
 
@@ -704,6 +726,24 @@ POST /api/scene
 
 This same int/string duality is also confirmed directly on the Schedules endpoint — see [#195](https://github.com/andrew-blake/melcloudhome/pull/195). Here it's observed on both the request and response side of this endpoint, so the mapping pairs above can be treated as confirmed (for these specific values; other positions/modes weren't exercised in the capture).
 
+### Get Scene
+
+```
+GET /api/scene/{sceneId}
+```
+*(web host: `melcloudhome.com`)*
+
+**New endpoint, confirmed 2026-07-23** — fetches a single scene by ID; the web UI calls this when opening a scene for editing. Confirmed via browser network monitoring (method, URL, and `200` status all observed directly); the response body itself couldn't be captured in this session (see Evidence Level note below) but is presumably shaped like one entry of the `GET /api/user/scenes` array.
+
+### Update Scene
+
+```
+PUT /api/scene/{sceneId}
+```
+*(web host: `melcloudhome.com`)*
+
+**Corrects earlier documentation** — this section previously assumed Update reused `POST /api/scene` (same as Create). **Confirmed 2026-07-23 via browser network monitoring: Update is actually `PUT` to the scene's own ID-scoped URL**, not a re-POST to the collection endpoint. The request/response bodies couldn't be captured in this session (see Evidence Level note below), so the exact shape (flat vs. nested, whether `id` is repeated in the body) is unconfirmed — unlike Schedules' Update, don't assume the two share a shape.
+
 ### Enable Scene
 
 ```
@@ -711,7 +751,16 @@ PUT /api/scene/{sceneId}/enable
 ```
 *(web host: `melcloudhome.com`)*
 
-Empty body. ⚠️ Path is `/enable`, not `/enabled` — differs from the Schedules master switch above, which uses `/enabled`. Sets `enabled: true`; no disable-via-this-path call was captured (disabling likely goes through the general `POST /api/scene` update instead, but that wasn't observed either).
+Empty body, confirmed `200` with an empty response. Sets `enabled: true`. **Confirmed 2026-07-23: this immediately applies the scene's settings to the target unit(s)** — verified by watching a real unit power on and change mode/temperature in real time upon enabling a test scene (see the Behavioral note above).
+
+### Disable Scene
+
+```
+PUT /api/scene/{sceneId}/disable
+```
+*(web host: `melcloudhome.com`)*
+
+**New endpoint, confirmed 2026-07-23** — previously assumed not to exist as a dedicated path ("disabling likely goes through the general update instead"). Empty request body, empty `200` response, confirmed via the web UI: clicking an already-enabled scene's tile calls this and flips `enabled` back to `false` in the subsequent `GET /api/user/scenes` response. Unlike Enable, disabling does not appear to send any command to the unit (the unit's state was left as Enable had set it; disabling only stops the scene from being "active", it doesn't revert the unit).
 
 ### Delete Scene
 
@@ -719,6 +768,10 @@ Empty body. ⚠️ Path is `/enable`, not `/enabled` — differs from the Schedu
 DELETE /api/scene/{sceneId}
 ```
 *(web host: `melcloudhome.com`)*
+
+Confirmed via browser network monitoring, 2026-07-23 (method/URL/status only — request has no body to capture). Path matches the original 2026-07-11 observation exactly.
+
+**Evidence Level for this 2026-07-23 session's gaps:** the same injected `fetch`/`XMLHttpRequest` hook that successfully captured full request/response bodies for List, Create, Enable, and Disable did **not** fire for Get-single, Update, or Delete, despite all three being confirmed as real `200` calls via the browser's own network monitor. The pattern doesn't correlate with anything obvious (URL shape, HTTP method, or path parameters — Enable/Disable are equally ID-scoped and were captured fine), and wasn't root-caused in this session; flagging it here as a known gap in this capture technique rather than a claim about the API itself. Anyone re-capturing these three endpoints should try a different interception approach (e.g. a proxy-level tool like mitmproxy instead of a page-level JS hook).
 
 ---
 
