@@ -62,7 +62,7 @@ wss://ws.melcloudhome.com/?hash={hash}
   {
     "messageType": "unitStateChanged",
     "Data": {
-      "id": "bf8d1e84-95cc-44d8-ab9b-25b87a945119",
+      "id": "40e80e68-f338-e41f-787d-40a7fbaf0624",
       "unitType": "ata",
       "settings": [
         {"name": "Power", "value": "False"},
