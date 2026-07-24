@@ -182,7 +182,22 @@ class HARAnonymizer:
             r"\bFE[0-9A-Fa-f]{30}\b",  # Long format MACs
         ]
         for pattern in mac_patterns:
-            text = re.sub(pattern, lambda m: self.anonymize_mac(m.group()), text)
+            # The UUID pass above just replaced e.g. a scene ID's last block
+            # with a run of a single repeated letter (AAAAAAAAAAAA). That's
+            # valid MAC-pattern shape, so without this guard the MAC pass
+            # re-matches our own placeholder and double-mangles it into an
+            # unrelated hex counter - breaking the URL-vs-body ID link a
+            # reader relies on to cross-check requests against the same
+            # resource. Real MACs are never 12 identical hex digits.
+            text = re.sub(
+                pattern,
+                lambda m: (
+                    m.group()
+                    if len(set(m.group().lower())) <= 1
+                    else self.anonymize_mac(m.group())
+                ),
+                text,
+            )
 
         # SENSITIVE_PARAMS in URLs: the UUID/token patterns above don't catch
         # them (base64/hex blobs), so scrub the whole parameter value.

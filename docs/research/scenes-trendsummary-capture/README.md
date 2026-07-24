@@ -62,7 +62,7 @@ with placeholder values, consistently so the same placeholder always maps to
 the same real value throughout each file.
 
 For the HAR file specifically: `tools/anonymize_har.py` handles most of this
-automatically, but needed two manual corrections applied afterward:
+automatically, but needed three manual corrections applied afterward:
 1. The script's generic UUID-scrubbing doesn't know that
    `00000000-0000-0000-0000-000000000000` is a meaningful protocol sentinel
    (the client's literal Create-scene placeholder ID) rather than a real
@@ -75,6 +75,18 @@ automatically, but needed two manual corrections applied afterward:
    `log.creator.name` (Chrome's internal `"WebInspector"` label) as if it were
    account data. Fixed both: consistent placeholders per real value, and
    `log.creator`/`log.browser` left untouched.
+3. The scene ID's URL-embedded form (`.../scene/{id}`, `.../scene/{id}/enable`)
+   didn't match the same scene's `id` field in the JSON bodies
+   (`BBBBBBBB-BBBB-BBBB-BBBB-000000000004` vs.
+   `BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB`): the script's UUID pass replaced
+   the real ID with a placeholder ending in a run of one repeated letter,
+   and its MAC-address pass then re-matched that same run (indistinguishable
+   from a 12-hex-digit MAC) and mangled it again. Both placeholders were
+   fake, so this wasn't a real secret leak, but it broke cross-checking that
+   the GET/PUT/DELETE calls target the scene the Create call made. Fixed at
+   the source (`tools/anonymize_har.py` now skips MAC-anonymizing any
+   already-placeholder-shaped run of a single repeated character) and
+   corrected in this file.
 
 For the JSON file: identifiers were substituted by hand while writing it,
 using the same fixed placeholder values throughout
