@@ -662,10 +662,10 @@ interactions:
       authorization:
       - '***REDACTED***'
     method: GET
-    uri: https://mobile.bff.melcloudhome.com/telemetry/telemetry/actual/8e61d4cb-bc08-4424-bb5c-8bce84857637?from=2026-01-14+12:00&to=2026-01-14+16:00&measure=return_temperature
+    uri: https://mobile.bff.melcloudhome.com/telemetry/telemetry/actual/c7f4fe40-34e1-e8b6-ff50-17302662eb00?from=2026-01-14+12:00&to=2026-01-14+16:00&measure=return_temperature
   response:
     body:
-      string: '{"measureData":[{"deviceId":"8e61d4cb-bc08-4424-bb5c-8bce84857637","type":"returnTemperature","values":[{"time":"2026-01-14
+      string: '{"measureData":[{"deviceId":"c7f4fe40-34e1-e8b6-ff50-17302662eb00","type":"returnTemperature","values":[{"time":"2026-01-14
         05:52:42.759000000","value":"20.5"},{"time":"2026-01-14 12:48:44.047000000","value":"29.5"},{"time":"2026-01-14
         12:50:43.530000000","value":"31.5"},{"time":"2026-01-14 12:52:44.277000000","value":"31.0"},{"time":"2026-01-14
         12:54:43.660000000","value":"30.5"},{"time":"2026-01-14 12:56:44.262000000","value":"32.5"},{"time":"2026-01-14
