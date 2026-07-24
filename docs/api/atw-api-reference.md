@@ -222,6 +222,8 @@ Returns complete user context including all buildings, devices, current states, 
 
 **Note:** This endpoint is **shared** between ATA and ATW devices.
 
+**RSSI:** The unit object carries a top-level `rssi` field (dBm), refreshed on every `/context` poll (~60s) — same as ATA. This is a faster-updating duplicate of the `rssi` measure also available via telemetry (Section 8); prefer this field over telemetry polling for WiFi signal strength.
+
 ### Response Structure
 ```json
 {
@@ -246,6 +248,7 @@ Returns complete user context including all buildings, devices, current states, 
           "macAddress": "AABBCCDDEEFF",
           "timeZone": "Europe/Madrid",
           "ftcModel": 3,
+          "rssi": -54,
           "isConnected": true,
           "isInError": false,
           "settings": [...],
@@ -556,7 +559,7 @@ GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:
 
 **Polling Recommendations:**
 - **Temperature measures:** Poll every 60 minutes (changes slowly)
-- **RSSI:** Poll every 60 minutes (diagnostic only)
+- **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
 - Use 4-hour lookback window for recent data
 
 ---

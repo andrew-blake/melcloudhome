@@ -62,7 +62,6 @@ ATW_TELEMETRY_MEASURES = [
     "return_temperature_zone1",
     "flow_temperature_boiler",
     "return_temperature_boiler",
-    "rssi",  # WiFi signal strength in dBm
 ]
 
 # ATW telemetry measures for Zone 2 devices only
