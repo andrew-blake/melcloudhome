@@ -483,7 +483,10 @@ POST /api/holidaymode
 - ISO 8601 datetime format
 - Set `enabled: false` to deactivate
 
-**Response shape note:** on multi-zone ATW units, the `holidayMode`/`frostProtection`/`overheatProtection` objects in `GET /context` carry `zone1Active`/`zone2Active` instead of the single `active` field ATA uses (each zone can be independently at/below its threshold) — confirmed via this integration's own mobile-BFF VCR cassettes; see [ata-api-reference.md](ata-api-reference.md#response-shape-in-get-context) for the ATA `enabled`/`active` shape this differs from.
+**Response shape note:** evidence level differs per field, confirmed via this integration's own mobile-BFF VCR cassettes (`tests/api/cassettes/test_get_devices.yaml`, line 667) — see [ata-api-reference.md](ata-api-reference.md#response-shape-in-get-context) for the full breakdown and the ATA `enabled`/`active` shape this compares against:
+- `frostProtection` carries `zone1Active`/`zone2Active` instead of a single `active` field — confirmed.
+- `holidayMode` carries a **single** `active` field, same shape as ATA — confirmed, *not* zone-split.
+- `overheatProtection` is `null` on every ATW unit observed so far, so its shape is unconfirmed on ATW.
 
 ---
 

@@ -628,7 +628,15 @@ All three POSTs above returned `200 OK` with an **empty body** — same pattern 
 
 ### Response Shape (in `GET /context`)
 
-Confirmed field shapes on each `airToAirUnits[]` entry, previously only shown as `{...}` placeholders in the ATW reference. Independently corroborated on the **mobile BFF** (this integration's own VCR cassettes show the same three keys with the same null-when-unconfigured behavior), even though the POST paths above were only captured on the web host — see [Hosts](#hosts). Note ATW carries `zone1Active`/`zone2Active` instead of a single `active` field on its equivalent objects (multi-zone systems have independent zones) — see [atw-api-reference.md](atw-api-reference.md#6-holiday-mode).
+Confirmed field shapes on each `airToAirUnits[]` entry, previously only shown as `{...}` placeholders in the ATW reference. Independently corroborated on the **mobile BFF** (this integration's own VCR cassettes show the same three keys with the same null-when-unconfigured behavior), even though the POST paths above were only captured on the web host — see [Hosts](#hosts).
+
+Cross-checking against the one ATW unit in that same cassette (`tests/api/cassettes/test_get_devices.yaml`, line 667) gives a different evidence level per field, not one uniform claim:
+
+- **`frostProtection`** — confirmed zone-split on ATW: `{"zone1Active":false,"zone2Active":false,"enabled":false,"min":9,"max":11}`. See [atw-api-reference.md](atw-api-reference.md#6-holiday-mode).
+- **`holidayMode`** — confirmed a **single** `active` field on ATW, same shape as ATA (not zone-split): `{"enabled":false,"startDate":"2025-12-14T14:20:03.064","endDate":"2025-12-17T12:00:00","active":false}`.
+- **`overheatProtection`** — unconfirmed on ATW: `null` on every ATW unit in every cassette in this repo, so there's no direct evidence of its shape there. The object shown below is inferred by analogy with `frostProtection`, not observed.
+
+That same ATW unit has `hasZone2: false`, so the zone-split on `frostProtection` isn't evidence of a "multi-zone systems get independent zones" rule — it's just how that field happens to be shaped on ATW, independent of zone count.
 
 ```json
 {
