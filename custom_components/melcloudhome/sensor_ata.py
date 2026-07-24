@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -41,6 +42,9 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
 
     should_create_fn: Callable[[AirToAirUnit], bool] | None = None
     """Function to determine if sensor should be created. If None, uses available_fn."""
+
+    attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
+    """Function to extract extra state attributes from unit data."""
 
 
 ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
@@ -93,6 +97,13 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         value_fn=lambda unit: unit.outdoor_temperature,
         available_fn=lambda unit: unit.outdoor_temperature is not None,
         should_create_fn=lambda unit: unit.has_outdoor_temp_sensor,
+        # Units stop uploading outdoor temperature while idle, so the value
+        # can be hours old (issue #171): surface when it was recorded
+        attributes_fn=lambda unit: {
+            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
+            if unit.outdoor_temp_recorded_at
+            else None
+        },
     ),
 )
 
@@ -127,6 +138,17 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         if device is None:
             return None
         return self.entity_description.value_fn(device)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+
+        device = self.coordinator.get_ata_device(self._unit_id)
+        if device is None:
+            return None
+        return self.entity_description.attributes_fn(device)
 
     @property
     def available(self) -> bool:

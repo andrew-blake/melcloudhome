@@ -226,10 +226,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     old_unit = self._units[unit_id]
                     unit.has_outdoor_temp_sensor = old_unit.has_outdoor_temp_sensor
                     unit.outdoor_temperature = old_unit.outdoor_temperature
+                    unit.outdoor_temp_recorded_at = old_unit.outdoor_temp_recorded_at
 
                 async def get_outdoor_temp(
                     uid: str = unit_id,
-                ) -> float | None:
+                ) -> tuple[float | None, datetime | None]:
                     return await self.client.get_outdoor_temperature(uid)
 
                 # Poll outdoor temp if: never polled, or interval elapsed.
@@ -237,7 +238,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 # units recover automatically when the AC next runs.
                 if self._should_poll_outdoor_temp(unit_id):
                     try:
-                        temp = await self._execute_with_retry(
+                        temp, recorded_at = await self._execute_with_retry(
                             get_outdoor_temp,
                             "outdoor temperature",
                         )
@@ -246,10 +247,12 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                         if temp is not None:
                             unit.has_outdoor_temp_sensor = True
                             unit.outdoor_temperature = temp
+                            unit.outdoor_temp_recorded_at = recorded_at
                             _LOGGER.debug(
-                                "Outdoor temp for %s: %.1f°C",
+                                "Outdoor temp for %s: %.1f°C (recorded %s)",
                                 unit.name,
                                 temp,
+                                recorded_at,
                             )
                         else:
                             _LOGGER.debug(
