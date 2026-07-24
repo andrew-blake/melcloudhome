@@ -60,7 +60,7 @@ Retrieves time-series data for various measurements over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
+GET /telemetry/telemetry/actual/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
 ```
 
 **Response Format:**
@@ -68,7 +68,7 @@ GET /telemetry/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-1
 {
   "measureData": [
     {
-      "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+      "deviceId": "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01",
       "type": "roomTemperature",
       "values": [
         {
@@ -123,7 +123,7 @@ Retrieves operation mode changes over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:33
+GET /telemetry/telemetry/operationmode/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01?from=2025-11-16%2008:00&to=2025-11-16%2008:33
 ```
 
 **Response Format:**
@@ -131,7 +131,7 @@ GET /telemetry/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from
 {
   "operationModeData": [
     {
-      "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+      "deviceId": "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01",
       "values": [
         {
           "time": "2025-11-16 08:00:00.000000000",
@@ -172,13 +172,13 @@ Retrieves energy consumption data over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
+GET /telemetry/telemetry/energy/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
 ```
 
 **Response Format:**
 ```json
 {
-  "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+  "deviceId": "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01",
   "measureData": [
     {
       "type": "cumulativeEnergyConsumedSinceLastUpload",
@@ -236,7 +236,7 @@ Retrieves error history for the specified unit.
 
 **Example Request:**
 ```
-GET /monitor/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
+GET /monitor/ataunit/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01/errorlog
 ```
 
 **Response Format (No Errors):**
@@ -278,12 +278,12 @@ The MELCloud Home UI provides 4 report types:
 - **Endpoint:** `/telemetry/telemetry/actual/{unit_id}`
 - **Measures:** `room_temperature`, `set_temperature`
 - **Time ranges:** Hour, Day, Week, Month
-- **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/trendsummary`
+- **URL:** `/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01/trendsummary`
 
 ### 2. ERROR LOG Report
 - **Endpoint:** `/monitor/ataunit/{unit_id}/errorlog`
 - **Shows:** Error code, start time, end time
-- **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/uniterrorlog`
+- **URL:** `/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01/uniterrorlog`
 
 ### 3. ENERGY Report
 - **Endpoint:** `/telemetry/telemetry/energy/{unit_id}`
@@ -504,4 +504,4 @@ async def safe_telemetry_fetch(session, unit_id, measure):
 
 **Discovery Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
-**Location:** Dining Room unit (0efce33f-5847-4042-88eb-aaf3ff6a76db)
+**Location:** Dining Room unit (4c6fd61a-c825-4cb5-300e-3d0ba2c70c01)

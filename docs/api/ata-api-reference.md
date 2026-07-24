@@ -563,7 +563,7 @@ Returns historical temperature data for chart display. Used by integration to fe
 **Example Request:**
 
 ```
-GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=Daily&from=2026-02-02T12:30:00.0000000&to=2026-02-03T12:30:00.0000000
+GET /report/v1/trendsummary?unitId=4c6fd61a-c825-4cb5-300e-3d0ba2c70c01&period=Daily&from=2026-02-02T12:30:00.0000000&to=2026-02-03T12:30:00.0000000
 ```
 
 **Response:**
@@ -656,4 +656,4 @@ GET /report/v1/trendsummary?unitId=0efce33f-5847-4042-88eb-aaf3ff6a76db&period=D
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
-**Location:** Dining Room unit (0efce33f-5847-4042-88eb-aaf3ff6a76db)
+**Location:** Dining Room unit (4c6fd61a-c825-4cb5-300e-3d0ba2c70c01)
