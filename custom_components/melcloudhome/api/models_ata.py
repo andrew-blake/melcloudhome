@@ -21,6 +21,36 @@ from .parsing import (
 
 
 @dataclass
+class ProtectionModeState:
+    """Shared shape for frost/overheat protection and holiday mode.
+
+    Sourced from GET /context, where these objects are null until a mode has
+    ever been configured on a unit, then persist even when disabled.
+    """
+
+    enabled: bool
+    active: bool
+    min: float | None = None
+    max: float | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "ProtectionModeState | None":
+        """Create from an API frostProtection/overheatProtection/holidayMode object."""
+        if not data:
+            return None
+        return cls(
+            enabled=_parse_bool(data.get("enabled")),
+            active=_parse_bool(data.get("active")),
+            min=_parse_float(data.get("min")),
+            max=_parse_float(data.get("max")),
+            start_date=data.get("startDate"),
+            end_date=data.get("endDate"),
+        )
+
+
+@dataclass
 class AirToAirCapabilities:
     """Air-to-Air device capability flags and limits."""
 
@@ -101,6 +131,10 @@ class AirToAirUnit:
     # Outdoor temperature monitoring (set by coordinator via trendsummary API)
     outdoor_temperature: float | None = None  # °C
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
+    # Protection modes (from GET /context; null until ever configured on this unit)
+    frost_protection: ProtectionModeState | None = None
+    overheat_protection: ProtectionModeState | None = None
+    holiday_mode: ProtectionModeState | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":
@@ -173,4 +207,9 @@ class AirToAirUnit:
             error_code=error_code,
             rssi=data.get("rssi"),
             capabilities=capabilities,
+            frost_protection=ProtectionModeState.from_dict(data.get("frostProtection")),
+            overheat_protection=ProtectionModeState.from_dict(
+                data.get("overheatProtection")
+            ),
+            holiday_mode=ProtectionModeState.from_dict(data.get("holidayMode")),
         )

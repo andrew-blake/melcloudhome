@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Εξωτερική θερμοκρασία"
       },
+      "frost_protection_min": {
+        "name": "Ελάχιστο προστασίας από παγετό"
+      },
+      "frost_protection_max": {
+        "name": "Μέγιστο προστασίας από παγετό"
+      },
+      "overheat_protection_min": {
+        "name": "Ελάχιστο προστασίας υπερθέρμανσης"
+      },
+      "overheat_protection_max": {
+        "name": "Μέγιστο προστασίας υπερθέρμανσης"
+      },
+      "holiday_mode_start_date": {
+        "name": "Ημερομηνία έναρξης διακοπών"
+      },
+      "holiday_mode_end_date": {
+        "name": "Ημερομηνία λήξης διακοπών"
+      },
       "zone_1_temperature": {
         "name": "Θερμοκρασία ζώνης 1"
       },
@@ -162,6 +180,15 @@
       },
       "forced_dhw_active": {
         "name": "Αναγκαστική ΖΝΧ ενεργή"
+      },
+      "frost_protection": {
+        "name": "Προστασία από παγετό"
+      },
+      "overheat_protection": {
+        "name": "Προστασία υπερθέρμανσης"
+      },
+      "holiday_mode": {
+        "name": "Λειτουργία διακοπών"
       }
     }
   },

@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Buitentemperatuur"
       },
+      "frost_protection_min": {
+        "name": "Minimum vorstbescherming"
+      },
+      "frost_protection_max": {
+        "name": "Maximum vorstbescherming"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum oververhittingsbeveiliging"
+      },
+      "overheat_protection_max": {
+        "name": "Maximum oververhittingsbeveiliging"
+      },
+      "holiday_mode_start_date": {
+        "name": "Startdatum vakantiemodus"
+      },
+      "holiday_mode_end_date": {
+        "name": "Einddatum vakantiemodus"
+      },
       "zone_1_temperature": {
         "name": "Zone 1 temperatuur"
       },
@@ -162,6 +180,15 @@
       },
       "forced_dhw_active": {
         "name": "Geforceerd WW actief"
+      },
+      "frost_protection": {
+        "name": "Vorstbescherming"
+      },
+      "overheat_protection": {
+        "name": "Oververhittingsbeveiliging"
+      },
+      "holiday_mode": {
+        "name": "Vakantiemodus"
       }
     }
   },

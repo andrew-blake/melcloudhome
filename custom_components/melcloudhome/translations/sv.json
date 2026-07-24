@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Utomhustemperatur"
       },
+      "frost_protection_min": {
+        "name": "Frostskydd minimum"
+      },
+      "frost_protection_max": {
+        "name": "Frostskydd maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Överhettningsskydd minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Överhettningsskydd maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Semesterläge startdatum"
+      },
+      "holiday_mode_end_date": {
+        "name": "Semesterläge slutdatum"
+      },
       "zone_1_temperature": {
         "name": "Zon 1 temperatur"
       },
@@ -162,6 +180,15 @@
       },
       "forced_dhw_active": {
         "name": "Forcerat varmvatten aktivt"
+      },
+      "frost_protection": {
+        "name": "Frostskydd"
+      },
+      "overheat_protection": {
+        "name": "Överhettningsskydd"
+      },
+      "holiday_mode": {
+        "name": "Semesterläge"
       }
     }
   },

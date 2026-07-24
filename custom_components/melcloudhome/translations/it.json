@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Temperatura esterna"
       },
+      "frost_protection_min": {
+        "name": "Minimo protezione antigelo"
+      },
+      "frost_protection_max": {
+        "name": "Massimo protezione antigelo"
+      },
+      "overheat_protection_min": {
+        "name": "Minimo protezione surriscaldamento"
+      },
+      "overheat_protection_max": {
+        "name": "Massimo protezione surriscaldamento"
+      },
+      "holiday_mode_start_date": {
+        "name": "Data inizio modalità vacanza"
+      },
+      "holiday_mode_end_date": {
+        "name": "Data fine modalità vacanza"
+      },
       "zone_1_temperature": {
         "name": "Temperatura zona 1"
       },
@@ -162,6 +180,15 @@
       },
       "forced_dhw_active": {
         "name": "ACS forzata attiva"
+      },
+      "frost_protection": {
+        "name": "Protezione antigelo"
+      },
+      "overheat_protection": {
+        "name": "Protezione surriscaldamento"
+      },
+      "holiday_mode": {
+        "name": "Modalità vacanza"
       }
     }
   },

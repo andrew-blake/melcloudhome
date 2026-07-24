@@ -36,12 +36,31 @@ For each air conditioning unit, the following entities are created:
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
+- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; only created once frost protection has ever been configured)
+- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested: appears to be the submitting device's local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
 - **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
 - **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+- **Frost Protection**: `binary_sensor.melcloudhome_{short_id}_frost_protection` (only created once the unit has ever had frost protection configured)
+  - Attribute `active`: currently engaging (e.g. room has crossed the threshold) — see the min/max sensors above for the configured band
+- **Overheat Protection**: `binary_sensor.melcloudhome_{short_id}_overheat_protection` (only created once ever configured)
+  - Attribute `active`
+- **Holiday Mode**: `binary_sensor.melcloudhome_{short_id}_holiday_mode` (only created once ever configured)
+  - Attribute `active` — see the start/end date sensors above for the configured window
+
+All three reflect state read from the API only — the state is `on` when the mode is armed/configured (`enabled`), not only when it's currently engaging (`active`, exposed as an attribute); read-only, no control exposed yet.
+
+**Why read-only:** the API endpoints that actually enable/disable these modes (`POST /api/holidaymode`, `POST /api/protection/frost`, `POST /api/protection/overheat`) live on a different host (the web BFF, `melcloudhome.com`) than the mobile BFF this integration talks to for everything else, and this integration's architecture deliberately dropped web-BFF support (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)) after it caused an outage. Whether/how to reach those endpoints safely from the mobile side is still being investigated (one endpoint, `/monitor/holidaymode`, was confirmed to exist on the mobile BFF during that investigation; frost/overheat protection's mobile equivalents were not found after extensive testing). Until that's resolved, these entities only surface what the API already reports on every regular poll — no new write path, no new risk to the unit.
+
+**Why separate diagnostic sensors instead of just attributes:** `min`/`max`/dates were originally exposed as attributes on the binary sensors, but live testing showed Home Assistant's frontend doesn't surface `extra_state_attributes` by default (they're invisible without digging into Developer Tools → States) — from a user's perspective, toggling a mode in the MELCloud app appeared to do nothing in HA. Breaking the setpoints out into their own `sensor` entities makes them visible in the UI like any other sensor, and — since they're real entities, not hidden attributes — usable directly in automations and templates (e.g. an automation that reacts if the room is close to the configured frost-protection threshold, or a dashboard graphing how the setpoint has changed over time).
+
+**Tested locally**, in two rounds informed by real usage:
+1. Docker integration test suite (`make test-integration`) against mocked data covering entity creation/gating, state, and attributes.
+2. Live verification against a real HA instance with 3 live ATA units (2026-07-23): deployed, restarted, and exercised through several real on/off cycles on Frost Protection and Holiday Mode from the actual MELCloud app — confirmed entities appear/hide correctly per unit based on whether each mode has ever been configured, state correctly reflects `enabled`, and setpoint/date sensors display the right values. This round of live testing is what surfaced both design issues above (state mapping, attribute visibility) before they reached review.
 
 ### ATA Control Options
 

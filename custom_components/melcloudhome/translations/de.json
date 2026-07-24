@@ -104,6 +104,24 @@
       "outdoor_temperature": {
         "name": "Außentemperatur"
       },
+      "frost_protection_min": {
+        "name": "Frostschutz Minimum"
+      },
+      "frost_protection_max": {
+        "name": "Frostschutz Maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Überhitzungsschutz Minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Überhitzungsschutz Maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Urlaubsmodus Startdatum"
+      },
+      "holiday_mode_end_date": {
+        "name": "Urlaubsmodus Enddatum"
+      },
       "zone_1_temperature": {
         "name": "Temperatur Zone 1"
       },
@@ -162,6 +180,15 @@
       },
       "forced_dhw_active": {
         "name": "Erzwungenes Warmwasser aktiv"
+      },
+      "frost_protection": {
+        "name": "Frostschutz"
+      },
+      "overheat_protection": {
+        "name": "Überhitzungsschutz"
+      },
+      "holiday_mode": {
+        "name": "Urlaubsmodus"
       }
     }
   },
