@@ -4,7 +4,7 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 
 > **Implementation Note:** This document provides a complete API comparison. Control endpoints for both device types are implemented in the integration. Telemetry endpoints (section 6) are mostly reference-only - see [melcloudhome-telemetry-endpoints.md](melcloudhome-telemetry-endpoints.md) for implementation status.
 
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-07-20
 
 ---
 
@@ -33,15 +33,16 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 | **Telemetry** | `GET /telemetry/telemetry/actual`<br/>(unitId as query param) | `GET /telemetry/telemetry/actual/{id}`<br/>(unitId in path) | ⚠️ **Different structure** |
 | **Energy** | `GET /telemetry/telemetry/energy/{id}` | `GET /telemetry/telemetry/energy/{id}` | ✅ **Identical** |
 | **Error Log** | `GET /monitor/ataunit/{id}/errorlog` | `GET /monitor/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
-| **Holiday Mode** | N/A (unit-level only) | `POST /api/holidaymode` | ❌ **ATW exclusive** |
-| **Frost Protection** | N/A | `POST /api/protection/frost` | ❌ **ATW exclusive** |
+| **Holiday Mode** | `POST /api/holidaymode` | `POST /api/holidaymode` | ✅ **Same endpoint** — confirmed for ATA 2026-07-20, corrects earlier "ATW exclusive" claim; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
+| **Frost Protection** | `POST /api/protection/frost` | `POST /api/protection/frost` | ✅ **Same endpoint** — confirmed for ATA 2026-07-20, corrects earlier "ATW exclusive" claim; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
+| **Overheat Protection** | `POST /api/protection/overheat` | *(unconfirmed — likely same endpoint by symmetry with Frost Protection, not yet tested on an ATW account)* | ⚠️ Confirmed for ATA only; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
 
 ### Key Observations
 
 - **Shared authentication:** 100% identical (AWS Cognito OAuth)
 - **Shared UserContext:** Single endpoint returns both device types
 - **Parallel structure:** Endpoints follow same pattern with different prefixes
-- **Multi-unit operations:** ATW supports batch operations (holiday mode, frost protection)
+- **Multi-unit, cross-type batch operations:** Holiday Mode, Frost Protection, and Overheat Protection are single building-level calls, not per-unit — the body takes a `units: {"ATA": [...], "ATW": [...]}` map, so one call can target a mix of both device types at once (confirmed for the `"ATA"` key 2026-07-20; the `"ATW"` key is documented from earlier ATW-only observation, mixing both in one call hasn't been tested).
 
 ---
 
@@ -218,6 +219,8 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 ---
 
 ## Telemetry Measures
+
+**Note:** `rssi` is listed below because it's technically exposed as a telemetry measure for both device types, but both also carry a top-level `rssi` field on `/context` that refreshes every ~60s (vs this endpoint's hourly cadence) — that's the field the integration actually uses, not telemetry polling.
 
 ### Air-to-Air Measures
 

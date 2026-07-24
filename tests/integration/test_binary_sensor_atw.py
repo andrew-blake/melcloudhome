@@ -76,6 +76,34 @@ async def test_atw_error_state_on_when_device_in_error(hass: HomeAssistant) -> N
 
 
 @pytest.mark.asyncio
+async def test_atw_error_state_exposes_error_code(hass: HomeAssistant) -> None:
+    """Test error state sensor exposes the device error code as attribute."""
+    mock_unit = create_mock_atw_unit(is_in_error=True, error_code="E4")
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+    await setup_atw_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    assert state.state == STATE_ON
+    assert state.attributes["error_code"] == "E4"
+
+
+@pytest.mark.asyncio
+async def test_atw_error_code_none_when_no_error(hass: HomeAssistant) -> None:
+    """Test error code attribute is None when device has no error."""
+    mock_unit = create_mock_atw_unit(is_in_error=False)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+    await setup_atw_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    assert state.state == STATE_OFF
+    assert state.attributes["error_code"] is None
+
+
+@pytest.mark.asyncio
 async def test_atw_forced_dhw_reflects_device_mode(hass: HomeAssistant) -> None:
     """Test forced DHW sensor reflects device forced_hot_water_mode."""
     mock_unit = create_mock_atw_unit(forced_hot_water_mode=False)

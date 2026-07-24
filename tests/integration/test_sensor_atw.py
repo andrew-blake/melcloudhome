@@ -340,7 +340,7 @@ async def test_atw_outdoor_temperature_not_created_when_none(
 
 @pytest.mark.asyncio
 async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
-    """Test ATW WiFi signal (RSSI) sensor is created (starts unavailable until telemetry fetched)."""
+    """Test ATW WiFi signal sensor uses RSSI from the current unit context."""
     mock_unit = create_mock_atw_unit()
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]
@@ -349,7 +349,6 @@ async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
 
     wifi_state = hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal")
     assert wifi_state is not None
-    # Sensor starts unavailable (no telemetry fetched yet - that happens on schedule)
-    assert wifi_state.state == "unavailable"
+    assert wifi_state.state == "-50"
     assert wifi_state.attributes["unit_of_measurement"] == "dBm"
     assert wifi_state.attributes["device_class"] == "signal_strength"

@@ -95,6 +95,53 @@ class TestBooleanParsing:
             assert unit.power is False, f"Failed for value: {value}"
 
 
+class TestErrorCodeParsing:
+    """Test ErrorCode setting parsing on ATA units."""
+
+    def test_error_code_parsed_when_present(self) -> None:
+        """Test that a non-empty ErrorCode is exposed on the unit."""
+        data = {
+            "id": "test-unit",
+            "givenDisplayName": "Test",
+            "settings": [
+                {"name": "IsInError", "value": "True"},
+                {"name": "ErrorCode", "value": "E6"},
+            ],
+            "capabilities": {},
+            "schedule": [],
+        }
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.is_in_error is True
+        assert unit.error_code == "E6"
+
+    def test_error_code_empty_string_becomes_none(self) -> None:
+        """Test that an empty ErrorCode (no error) is normalized to None."""
+        data = {
+            "id": "test-unit",
+            "givenDisplayName": "Test",
+            "settings": [
+                {"name": "IsInError", "value": "False"},
+                {"name": "ErrorCode", "value": ""},
+            ],
+            "capabilities": {},
+            "schedule": [],
+        }
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.error_code is None
+
+    def test_error_code_missing_becomes_none(self) -> None:
+        """Test that a missing ErrorCode setting is normalized to None."""
+        data = {
+            "id": "test-unit",
+            "givenDisplayName": "Test",
+            "settings": [],
+            "capabilities": {},
+            "schedule": [],
+        }
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.error_code is None
+
+
 class TestFloatParsing:
     """Test parse_float helper edge cases."""
 
