@@ -344,8 +344,10 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> float | None:
-        """Extract outdoor temperature from trendsummary response.
+    def _parse_outdoor_temp(
+        self, response: dict[str, Any] | list
+    ) -> tuple[float | None, datetime | None]:
+        """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
         [
@@ -363,7 +365,12 @@ class MELCloudHomeClient:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Outdoor temperature in Celsius, or None if not available
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
+            or (None, None) if not available. The timestamp lets consumers
+            detect stale data: units stop uploading outdoor temperature while
+            idle, so the latest datapoint can be hours old (issues #152, #171).
+            The API's "x" timestamps are naive but confirmed UTC (cross-checked
+            against the response's own Date header), hence the tzinfo attach.
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -373,12 +380,21 @@ class MELCloudHomeClient:
             if "OUTDOOR_TEMPERATURE" in label:
                 data = dataset.get("data", [])
                 if data:
-                    # Return latest value (last datapoint)
+                    # Return latest value (last datapoint) with its timestamp
                     value = data[-1].get("y")
-                    return float(value) if value is not None else None
-        return None  # No outdoor temp dataset found
+                    recorded_at = data[-1].get("x")
+                    if value is None:
+                        return None, None
+                    return float(value), (
+                        datetime.fromisoformat(str(recorded_at)).replace(tzinfo=UTC)
+                        if recorded_at is not None
+                        else None
+                    )
+        return None, None  # No outdoor temp dataset found
 
-    async def get_outdoor_temperature(self, unit_id: str) -> float | None:
+    async def get_outdoor_temperature(
+        self, unit_id: str
+    ) -> tuple[float | None, datetime | None]:
         """Get latest outdoor temperature for an ATA unit.
 
         Queries trendsummary endpoint with Daily period. The API ignores the
@@ -389,7 +405,8 @@ class MELCloudHomeClient:
             unit_id: ATA unit UUID
 
         Returns:
-            Outdoor temperature in Celsius, or None if not available
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
+            or (None, None) if not available
         """
         # Build time range: last 24 hours. Daily period covers units idle for up to
         # 24 hours; Hourly silently drops outdoor temp for units inactive > ~1 hour.
@@ -415,7 +432,7 @@ class MELCloudHomeClient:
                     params["from"],
                     params["to"],
                 )
-                return None
+                return None, None
             return self._parse_outdoor_temp(response)
         except Exception:
             # Log at debug level - outdoor temp is nice-to-have, not critical
@@ -424,7 +441,7 @@ class MELCloudHomeClient:
                 unit_id,
                 exc_info=True,
             )
-            return None
+            return None, None
 
     async def get_telemetry_actual(
         self,

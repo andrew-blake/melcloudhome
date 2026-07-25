@@ -1,6 +1,7 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from .const_ata import (
@@ -101,6 +102,9 @@ class AirToAirUnit:
     # Outdoor temperature monitoring (set by coordinator via trendsummary API)
     outdoor_temperature: float | None = None  # °C
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
+    # When the value was actually recorded by the unit. Idle units stop
+    # uploading outdoor temperature, so this can lag hours behind (issue #171)
+    outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":
