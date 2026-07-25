@@ -5,7 +5,7 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.4
+**Document Version:** 1.6
 **Last Updated:** 2026-07-20
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation; some sections verified by driven capture — see per-section evidence notes
@@ -952,22 +952,22 @@ PUT /monitor/cloudschedule/{unitId}
 - `days`: Array of day numbers, **confirmed** `0=Sunday, 1=Monday, 2=Tuesday, ..., 6=Saturday` — same convention as the ATW schedule API ([atw-api-reference.md](atw-api-reference.md#5-schedules)). Confirmed from three separate captures (`[2]` for a Tuesday-only entry, `[1, 0]` for a Monday+Sunday entry) plus an earlier passively-observed `[6]` for a Saturday entry — all consistent with this scheme and with no other scheme tried.
 - `time`: `HH:MM:SS` (24-hour) — matches the ATW schedule format.
 - `setPoint`: carries the target temperature as a plain number (confirmed `26` for a UI-set 26°C) — still unconfirmed whether this is a schedule-API-specific rename of `setTemperature` or a distinct field, but it behaves identically.
-- `operationMode`, `setFanSpeed`, `vaneVerticalDirection`, `vaneHorizontalDirection`: **confirmed integer-encoded** (not the strings the control endpoint `PUT /monitor/ataunit/{id}` uses). Confirmed pairs from these captures: `operationMode` `1`=Heat, `3`=Cool; `setFanSpeed` `0`=Auto, `3`=Three; `vaneVerticalDirection` `0`=Auto, `1`=Position 1; `vaneHorizontalDirection` `3`=Centre. Consistent with the separately-observed Scenes endpoint mapping (see below), now confirmed independently on this endpoint too.
+- `operationMode`, `setFanSpeed`, `vaneVerticalDirection`, `vaneHorizontalDirection`: **confirmed integer-encoded** (not the strings the control endpoint `PUT /monitor/ataunit/{id}` uses). Confirmed pairs from these captures: `operationMode` `1`=Heat, `3`=Cool; `setFanSpeed` `0`=Auto, `3`=Three; `vaneVerticalDirection` `0`=Auto, `1`=Position 1; `vaneHorizontalDirection` `3`=Centre. Consistent with the separately-observed [Scenes endpoint mapping](#create-scene), now confirmed independently on this endpoint too.
 - `enabled`: sent as **`false` in every captured create and update**, including ones where the UI's per-entry power on/off toggle was visibly ON (green) — that toggle maps to `power`, not `enabled`. What actually flips this field to `true`, or whether the web client ever does, was **not determined** in this session; don't assume it tracks the visible on/off state. The per-unit master switch below is a separate mechanism and wasn't tested for interaction with this field.
 - A "power-off" schedule was separately observed (passive HAR review) sending `null` for `operationMode`/`setPoint`/both vane fields alongside `power:false` — not re-confirmed in this session, but presumably still the Create-endpoint's flat-body behavior.
 
-**Enum mapping (confirmed on both Schedules and the adjacent Scenes endpoint):**
+**Enum mapping (confirmed on both Schedules and the adjacent [Scenes](#create-scene) endpoint):**
 
 | Field | Int value | Meaning | Confirmed on |
 |-------|-----------|---------|---------------|
 | `operationMode` | `1` | Heat | Schedules (this session) |
-| `operationMode` | `3` | Cool | Schedules + Scenes |
+| `operationMode` | `3` | Cool | Schedules + [Scenes](#create-scene) |
 | `setFanSpeed` | `0` | Auto | Schedules (this session) |
 | `setFanSpeed` | `3` | Three | Schedules (this session) |
-| `setFanSpeed` | `5` | Five | Scenes |
-| `vaneVerticalDirection` | `0` | Auto | Schedules + Scenes |
+| `setFanSpeed` | `5` | Five | [Scenes](#create-scene) |
+| `vaneVerticalDirection` | `0` | Auto | Schedules + [Scenes](#create-scene) |
 | `vaneVerticalDirection` | `1` | Position 1 | Schedules (this session) |
-| `vaneHorizontalDirection` | `3` | Centre | Schedules + Scenes |
+| `vaneHorizontalDirection` | `3` | Centre | Schedules + [Scenes](#create-scene) |
 
 ### Enable/Disable Schedules (master switch)
 
