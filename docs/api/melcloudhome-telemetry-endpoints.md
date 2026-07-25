@@ -16,16 +16,16 @@ This is a **complete API reference** documenting all read-only (GET) telemetry a
 
 **Currently Implemented:**
 - Energy consumption telemetry (Section 3) - Used for energy monitoring sensors in ATA devices
-- WiFi RSSI for ATA devices (sourced from UserContext, not telemetry polling endpoint)
+- WiFi RSSI for ATA and ATW devices (sourced from UserContext, not the telemetry polling endpoint)
 
 **Reference Only (Not Implemented):**
-- Actual telemetry data polling (Section 1) - Flow/return temps for ATW, RSSI via polling endpoint
+- Actual telemetry data polling (Section 1) - Flow/return temps for ATW
 - Operation mode history (Section 4) - Historical operation tracking
 - Error log endpoint (Section 2) - Device error history
 - Report types (Section 5) - Historical reporting features
 
 **Why not implemented?**
-- UserContext already provides current temperatures (zone, tank) and RSSI for ATA
+- UserContext already provides current temperatures (zone, tank) and RSSI for both ATA and ATW — the `rssi` measure exposed by this telemetry endpoint (Section 1) is a slower-refreshing duplicate of the same field
 - Telemetry polling requires separate API call per measure per device (significant API load)
 - Energy monitoring is the high-value use case and is implemented
 - Additional sensors (flow/return temps for ATW) can be added in future releases if users request them
@@ -330,11 +330,11 @@ GET /monitor/ataunit/{id}/errorlog
 
 ### Wi-Fi Signal Monitoring
 ```python
-# Track connectivity
-GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
+# Prefer the context poll — refreshes every ~60s vs this endpoint's hourly cadence
+GET /context  # unit.rssi, for both ATA and ATW
 
-# Create HA sensor for RSSI
-# Alert on weak signal
+# Only fall back to telemetry polling if a historical RSSI trend is needed
+GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
 ```
 
 ### Operation Mode Tracking

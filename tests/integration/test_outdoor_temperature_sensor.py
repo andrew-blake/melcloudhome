@@ -1,5 +1,6 @@
 """Integration tests for outdoor temperature sensor."""
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -42,10 +43,12 @@ async def setup_integration_with_outdoor_temp(hass: HomeAssistant) -> MockConfig
         [create_mock_ata_building(units=[living_room, bedroom])]
     )
 
-    async def mock_get_outdoor_temp(unit_id: str) -> float | None:
+    async def mock_get_outdoor_temp(
+        unit_id: str,
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 12.0
-        return None
+            return 12.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC)
+        return None, None
 
     def configure(client: Any) -> None:
         client.get_outdoor_temperature = AsyncMock(side_effect=mock_get_outdoor_temp)
@@ -71,6 +74,21 @@ async def test_outdoor_temperature_sensor_created_when_device_has_sensor(
     assert state.attributes["unit_of_measurement"] == "°C"
     assert state.attributes["device_class"] == "temperature"
     assert state.attributes["state_class"] == "measurement"
+
+
+async def test_outdoor_temperature_sensor_exposes_last_reading(
+    hass: HomeAssistant, setup_integration_with_outdoor_temp
+):
+    """Test last_reading attribute shows when the value was recorded.
+
+    Units stop uploading outdoor temperature while idle (issue #171), so the
+    sensor exposes the datapoint timestamp to make stale values detectable.
+    """
+    entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+    state = hass.states.get(entity_id)
+
+    assert state is not None
+    assert state.attributes["last_reading"] == "2026-02-07T11:55:00+00:00"
 
 
 async def test_outdoor_temperature_sensor_not_created_when_no_sensor(
@@ -148,12 +166,14 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         [create_mock_ata_building(units=[living_room, study])]
     )
 
-    async def mock_get_outdoor_temp(unit_id: str) -> float | None:
+    async def mock_get_outdoor_temp(
+        unit_id: str,
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 8.0
+            return 8.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC)
         if unit_id == STUDY_ID:
-            return 3.0
-        return None
+            return 3.0, datetime(2026, 2, 7, 11, 56, 0, tzinfo=UTC)
+        return None, None
 
     def configure(client: Any) -> None:
         client.get_outdoor_temperature = AsyncMock(side_effect=mock_get_outdoor_temp)
@@ -176,12 +196,14 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
     assert state_lr.state == "8.0"
     assert state_study.state == "3.0"
 
-    async def mock_get_outdoor_temp_updated(unit_id: str) -> float | None:
+    async def mock_get_outdoor_temp_updated(
+        unit_id: str,
+    ) -> tuple[float | None, datetime | None]:
         if unit_id == LIVING_ROOM_ID:
-            return 10.0
+            return 10.0, datetime(2026, 2, 7, 12, 5, 0, tzinfo=UTC)
         if unit_id == STUDY_ID:
-            return 1.0
-        return None
+            return 1.0, datetime(2026, 2, 7, 12, 6, 0, tzinfo=UTC)
+        return None, None
 
     # mock_client is the same instance the coordinator holds — update directly
     mock_client.get_outdoor_temperature = AsyncMock(
@@ -215,7 +237,7 @@ async def test_idle_unit_reprobed_after_polling_interval(
     )
 
     def configure(client: Any) -> None:
-        client.get_outdoor_temperature = AsyncMock(return_value=None)
+        client.get_outdoor_temperature = AsyncMock(return_value=(None, None))
         client.ata = MagicMock()
         client.ata.set_power = AsyncMock()
 
@@ -235,7 +257,9 @@ async def test_idle_unit_reprobed_after_polling_interval(
     assert unit.has_outdoor_temp_sensor is False
     assert unit.outdoor_temperature is None
 
-    mock_client.get_outdoor_temperature = AsyncMock(return_value=15.0)
+    mock_client.get_outdoor_temperature = AsyncMock(
+        return_value=(15.0, datetime(2026, 2, 7, 12, 0, 0, tzinfo=UTC))
+    )
     coordinator._last_outdoor_temp_poll.clear()
 
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)

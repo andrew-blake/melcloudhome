@@ -222,6 +222,8 @@ Returns complete user context including all buildings, devices, current states, 
 
 **Note:** This endpoint is **shared** between ATA and ATW devices.
 
+**RSSI:** The unit object carries a top-level `rssi` field (dBm), refreshed on every `/context` poll (~60s) — same as ATA. This is a faster-updating duplicate of the `rssi` measure also available via telemetry (Section 8); prefer this field over telemetry polling for WiFi signal strength.
+
 ### Response Structure
 ```json
 {
@@ -246,6 +248,7 @@ Returns complete user context including all buildings, devices, current states, 
           "macAddress": "AABBCCDDEEFF",
           "timeZone": "Europe/Madrid",
           "ftcModel": 3,
+          "rssi": -54,
           "isConnected": true,
           "isInError": false,
           "settings": [...],
@@ -483,6 +486,11 @@ POST /api/holidaymode
 - ISO 8601 datetime format
 - Set `enabled: false` to deactivate
 
+**Response shape note:** evidence level differs per field, confirmed via this integration's own mobile-BFF VCR cassettes (`tests/api/cassettes/test_get_devices.yaml`, line 667) — see [ata-api-reference.md](ata-api-reference.md#response-shape-in-get-context) for the full breakdown and the ATA `enabled`/`active` shape this compares against:
+- `frostProtection` carries `zone1Active`/`zone2Active` instead of a single `active` field — confirmed.
+- `holidayMode` carries a **single** `active` field, same shape as ATA — confirmed, *not* zone-split.
+- `overheatProtection` is `null` on every ATW unit observed so far, so its shape is unconfirmed on ATW.
+
 ---
 
 ## 7. Frost Protection
@@ -506,6 +514,8 @@ POST /api/protection/frost
 ```
 
 **Purpose:** Prevents system from freezing in cold weather by maintaining minimum temperatures.
+
+**Also see Overheat Protection:** `POST /api/protection/overheat`, same request shape (`enabled`/`min`/`max`/`units`) — confirmed for ATA (`units.ATA`) on 2026-07-20, see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode). Not yet confirmed with `units.ATW`, but presumed to work the same way given Holiday Mode and Frost Protection both turned out to be shared, non-ATW-exclusive endpoints.
 
 ---
 
@@ -556,7 +566,7 @@ GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:
 
 **Polling Recommendations:**
 - **Temperature measures:** Poll every 60 minutes (changes slowly)
-- **RSSI:** Poll every 60 minutes (diagnostic only)
+- **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
 - Use 4-hour lookback window for recent data
 
 ---
