@@ -117,10 +117,10 @@
         "name": "Aşırı ısınma koruması maksimum"
       },
       "holiday_mode_start_date": {
-        "name": "Tatil modu başlangıç tarihi"
+        "name": "Tatil modu başlangıcı"
       },
       "holiday_mode_end_date": {
-        "name": "Tatil modu bitiş tarihi"
+        "name": "Tatil modu bitişi"
       },
       "zone_1_temperature": {
         "name": "Alan 1 sıcaklığı"

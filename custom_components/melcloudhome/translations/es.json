@@ -117,10 +117,10 @@
         "name": "Máximo de protección contra sobrecalentamiento"
       },
       "holiday_mode_start_date": {
-        "name": "Fecha de inicio del modo vacaciones"
+        "name": "Inicio del modo vacaciones"
       },
       "holiday_mode_end_date": {
-        "name": "Fecha de fin del modo vacaciones"
+        "name": "Fin del modo vacaciones"
       },
       "zone_1_temperature": {
         "name": "Temperatura zona 1"

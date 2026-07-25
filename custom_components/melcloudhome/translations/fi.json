@@ -117,10 +117,10 @@
         "name": "Ylikuumenemissuojan maksimi"
       },
       "holiday_mode_start_date": {
-        "name": "Lomatilan alkupäivä"
+        "name": "Lomatilan alku"
       },
       "holiday_mode_end_date": {
-        "name": "Lomatilan loppupäivä"
+        "name": "Lomatilan loppu"
       },
       "zone_1_temperature": {
         "name": "Vyöhyke 1 lämpötila"

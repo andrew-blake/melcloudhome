@@ -117,10 +117,10 @@
         "name": "Überhitzungsschutz Maximum"
       },
       "holiday_mode_start_date": {
-        "name": "Urlaubsmodus Startdatum"
+        "name": "Urlaubsmodus Start"
       },
       "holiday_mode_end_date": {
-        "name": "Urlaubsmodus Enddatum"
+        "name": "Urlaubsmodus Ende"
       },
       "zone_1_temperature": {
         "name": "Temperatur Zone 1"

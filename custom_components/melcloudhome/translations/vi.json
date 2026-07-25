@@ -117,10 +117,10 @@
         "name": "Bảo vệ quá nhiệt tối đa"
       },
       "holiday_mode_start_date": {
-        "name": "Ngày bắt đầu chế độ nghỉ lễ"
+        "name": "Bắt đầu chế độ nghỉ lễ"
       },
       "holiday_mode_end_date": {
-        "name": "Ngày kết thúc chế độ nghỉ lễ"
+        "name": "Kết thúc chế độ nghỉ lễ"
       },
       "zone_1_temperature": {
         "name": "Nhiệt độ vùng 1"

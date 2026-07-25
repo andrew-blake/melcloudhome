@@ -117,10 +117,10 @@
         "name": "Överhettningsskydd maximum"
       },
       "holiday_mode_start_date": {
-        "name": "Semesterläge startdatum"
+        "name": "Semesterläge start"
       },
       "holiday_mode_end_date": {
-        "name": "Semesterläge slutdatum"
+        "name": "Semesterläge slut"
       },
       "zone_1_temperature": {
         "name": "Zon 1 temperatur"

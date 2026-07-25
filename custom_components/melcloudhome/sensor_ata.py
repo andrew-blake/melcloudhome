@@ -97,11 +97,12 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
     # Protection mode setpoints - separate sensors so the thresholds are visible
     # as first-class entities in the frontend, not just tucked away as attributes
     # on the frost_protection/overheat_protection binary sensors.
+    # No state_class: these are configured thresholds, not measurements that
+    # accumulate meaningful long-term statistics.
     ATASensorEntityDescription(
         key="frost_protection_min",
         translation_key="frost_protection_min",
         device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: (
@@ -113,7 +114,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         key="frost_protection_max",
         translation_key="frost_protection_max",
         device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: (
@@ -125,7 +125,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         key="overheat_protection_min",
         translation_key="overheat_protection_min",
         device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: (
@@ -137,7 +136,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         key="overheat_protection_max",
         translation_key="overheat_protection_max",
         device_class=SensorDeviceClass.TEMPERATURE,
-        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: (

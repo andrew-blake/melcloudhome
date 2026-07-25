@@ -117,10 +117,10 @@
         "name": "Overheat protection maximum"
       },
       "holiday_mode_start_date": {
-        "name": "Holiday mode start date"
+        "name": "Holiday mode start"
       },
       "holiday_mode_end_date": {
-        "name": "Holiday mode end date"
+        "name": "Holiday mode end"
       },
       "zone_1_temperature": {
         "name": "Zone 1 temperature"
