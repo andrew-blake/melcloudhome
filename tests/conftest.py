@@ -93,6 +93,11 @@ UUID_PATTERN = re.compile(
     r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
 )
 UUID_SENTINEL = "00000000-0000-0000-0000-000000000000"
+# Same self-evidently-fake shape as tools/anonymize_har.py, so a placeholder
+# is recognizable as such on sight and by a simple pattern match - no need to
+# track which values this process has already emitted.
+PLACEHOLDER_PREFIX = "aaaaaaaa-aaaa-aaaa-aaaa-"
+PLACEHOLDER_PATTERN = re.compile(r"^aaaaaaaa-aaaa-aaaa-aaaa-[0-9a-f]{12}$")
 # Query-string params on auth.melcloudhome.com / Cognito login-flow requests
 # (nonce, state, code_challenge, ...) are reproduced byte-for-byte between
 # recording and replay by the deterministic_pkce fixture (tests/api/conftest.py)
@@ -106,42 +111,19 @@ MOBILE_BFF_HOST = "mobile.bff.melcloudhome.com"
 # vcrpy runs before_record_request/before_record_response as part of its
 # match pipeline too, not only when actually writing a new interaction - so
 # it fires on ordinary cassette replay just as much as on a live recording
-# session. Existing cassette content already carries pseudonymized IDs
-# (see tools/anonymize_har.py and the retroactive cassette scrub); scrubbing
-# again on replay would hash an already-fake ID into a *different* fake ID,
-# breaking both VCR's URI matching and any fixture that asserts on a known
-# unit ID. Only a real recording session (real credentials, i.e. a
-# maintainer intentionally re-recording against a live account) can be
-# writing genuine real IDs into a cassette, so gate on that - same check
-# `authenticated_client` already uses to decide whether creds are real.
-def _recording_session_active() -> bool:
-    return os.getenv("MELCLOUD_USER", "***PLACEHOLDER***") != "***PLACEHOLDER***" and (
-        os.getenv("MELCLOUD_PASSWORD", "***PLACEHOLDER***") != "***PLACEHOLDER***"
-    )
-
-
-# vcrpy can also call a given hook more than once per request while hunting
-# for a match during a single recording session. A pure hash isn't
-# idempotent (hash(hash(x)) != hash(x)), so without this cache a value
-# that's already one of our own placeholders would get hashed again on the
-# second pass. Memoizing both directions makes repeat calls a no-op, same as
-# the mapping dict tools/anonymize_har.py uses for the same reason.
-_uuid_placeholder_cache: dict[str, str] = {}
-
-
+# session. pseudonymize_uuid is a pure function of its input: a value
+# already in the placeholder shape is recognized by PLACEHOLDER_PATTERN and
+# returned unchanged, so replaying a cassette never re-hashes an
+# already-scrubbed ID into a different one. That makes the function
+# idempotent by construction - no "are we actually recording" gate needed,
+# and no cache to remember which values it has already emitted.
 def pseudonymize_uuid(value: str) -> str:
-    """Deterministically replace a UUID with a stable, non-reversible placeholder."""
-    if (
-        value.lower() == UUID_SENTINEL
-        or value in _uuid_placeholder_cache.values()
-        or not _recording_session_active()
-    ):
+    """Deterministically replace a UUID with a stable, self-evidently-fake placeholder."""
+    lowered = value.lower()
+    if lowered == UUID_SENTINEL or PLACEHOLDER_PATTERN.match(lowered):
         return value
-    if value not in _uuid_placeholder_cache:
-        digest = hashlib.sha256(value.lower().encode()).hexdigest()
-        placeholder = f"{digest[0:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"
-        _uuid_placeholder_cache[value] = placeholder
-    return _uuid_placeholder_cache[value]
+    digest = hashlib.sha256(lowered.encode()).hexdigest()
+    return f"{PLACEHOLDER_PREFIX}{digest[:12]}"
 
 
 def scrub_body_string(body_string: str | bytes) -> str | bytes:
@@ -409,16 +391,16 @@ async def authenticated_auth(request_pacer) -> AsyncIterator[MELCloudHomeAuth]:
 @pytest.fixture
 def dining_room_unit_id() -> str:
     """ID of the Dining Room unit for testing (pseudonymized, matches cassettes)."""
-    return "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01"
+    return "aaaaaaaa-aaaa-aaaa-aaaa-1f2e69275164"
 
 
 @pytest.fixture
 def living_room_unit_id() -> str:
     """ID of the Living Room unit for testing (pseudonymized, matches cassettes)."""
-    return "40e80e68-f338-e41f-787d-40a7fbaf0624"
+    return "aaaaaaaa-aaaa-aaaa-aaaa-3dc9a6f7f311"
 
 
 @pytest.fixture
 def atw_unit_id() -> str:
     """ID of the ATW unit for VCR testing (pseudonymized, matches cassettes)."""
-    return "c7f4fe40-34e1-e8b6-ff50-17302662eb00"
+    return "aaaaaaaa-aaaa-aaaa-aaaa-98d77a4b9665"
