@@ -26,6 +26,13 @@
           "debug_mode": "Chỉ dành cho phát triển, kết nối với máy chủ giả lập cục bộ thay API của MELCloud"
         }
       },
+      "reauth_confirm": {
+        "title": "Xác thực lại",
+        "description": "Nhập lại mật khẩu cho {email}",
+        "data": {
+          "password": "Mật khẩu"
+        }
+      },
       "reconfigure": {
         "title": "Cấu hình lại",
         "description": "Cập nhật thông tin đăng nhập cho {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Tài khoản này đã được cấu hình",
+      "reauth_successful": "Xác thực lại thành công",
       "reconfigure_successful": "Cập nhật thông tin đăng nhập thành công"
     }
   },

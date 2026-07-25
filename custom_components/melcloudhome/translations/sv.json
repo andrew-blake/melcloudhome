@@ -26,6 +26,13 @@
           "debug_mode": "Endast för utveckling - ansluter till en lokal mock-server istället för MELClouds produktions-API"
         }
       },
+      "reauth_confirm": {
+        "title": "Autentisera på nytt",
+        "description": "Ange lösenordet för {email} på nytt",
+        "data": {
+          "password": "Lösenord"
+        }
+      },
       "reconfigure": {
         "title": "Konfigurera om",
         "description": "Uppdatera inloggningsuppgifter för {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Detta konto är redan konfigurerat",
+      "reauth_successful": "Autentiseringen har uppdaterats",
       "reconfigure_successful": "Inloggningsuppgifterna har uppdaterats"
     }
   },

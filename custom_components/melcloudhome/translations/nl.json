@@ -26,6 +26,13 @@
           "debug_mode": "Alleen voor ontwikkeling - verbindt met lokale mock-server in plaats van productie MELCloud API"
         }
       },
+      "reauth_confirm": {
+        "title": "Opnieuw verifiëren",
+        "description": "Voer opnieuw het wachtwoord in voor {email}",
+        "data": {
+          "password": "Wachtwoord"
+        }
+      },
       "reconfigure": {
         "title": "Opnieuw configureren",
         "description": "Wijzig inloggegevens voor {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Dit account is al geconfigureerd",
+      "reauth_successful": "Opnieuw verifiëren geslaagd",
       "reconfigure_successful": "Inloggegevens succesvol bijgewerkt"
     }
   },

@@ -26,6 +26,13 @@
           "debug_mode": "Μόνο για ανάπτυξη - συνδέεται σε τοπικό mock server αντί του API παραγωγής MELCloud"
         }
       },
+      "reauth_confirm": {
+        "title": "Επαναπιστοποίηση",
+        "description": "Εισάγετε ξανά τον κωδικό πρόσβασης για {email}",
+        "data": {
+          "password": "Κωδικός πρόσβασης"
+        }
+      },
       "reconfigure": {
         "title": "Επαναδιαμόρφωση",
         "description": "Ενημέρωση διαπιστευτηρίων για {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Αυτός ο λογαριασμός έχει ήδη διαμορφωθεί",
+      "reauth_successful": "Η επαναπιστοποίηση ολοκληρώθηκε επιτυχώς",
       "reconfigure_successful": "Τα διαπιστευτήρια ενημερώθηκαν επιτυχώς"
     }
   },

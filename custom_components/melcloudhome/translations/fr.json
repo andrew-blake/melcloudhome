@@ -26,6 +26,13 @@
           "debug_mode": "Réservé au développement – Se connecte à un serveur bouchon local au lieu de l'API MELCloud de production"
         }
       },
+      "reauth_confirm": {
+        "title": "Réauthentification",
+        "description": "Saisissez à nouveau le mot de passe pour {email}",
+        "data": {
+          "password": "Mot de passe"
+        }
+      },
       "reconfigure": {
         "title": "Reconfigurer",
         "description": "Mettre à jour les identifiants pour {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",
+      "reauth_successful": "Réauthentification réussie",
       "reconfigure_successful": "Identifiants mis à jour avec succès"
     }
   },

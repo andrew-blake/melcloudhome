@@ -26,6 +26,13 @@
           "debug_mode": "Apenas para desenvolvimento - liga-se ao servidor mock local em vez da API de produção do MELCloud"
         }
       },
+      "reauth_confirm": {
+        "title": "Autenticar novamente",
+        "description": "Introduza novamente a palavra-passe para {email}",
+        "data": {
+          "password": "Palavra-passe"
+        }
+      },
       "reconfigure": {
         "title": "Reconfigurar",
         "description": "Atualizar credenciais para {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Esta conta já está configurada",
+      "reauth_successful": "Autenticação atualizada com sucesso",
       "reconfigure_successful": "Credenciais atualizadas com sucesso"
     }
   },
