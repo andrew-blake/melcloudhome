@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Opnieuw verifiëren",
-        "description": "Voer opnieuw het wachtwoord in voor {email}",
+        "title": "Authenticatie is verlopen voor {name}",
+        "description": "Werk je wachtwoord bij voor {email}",
         "data": {
           "password": "Wachtwoord"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Dit account is al geconfigureerd",
-      "reauth_successful": "Opnieuw verifiëren geslaagd",
+      "reauth_successful": "Herauthenticatie geslaagd",
       "reconfigure_successful": "Inloggegevens succesvol bijgewerkt"
     }
   },

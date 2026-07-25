@@ -193,7 +193,10 @@ class MELCloudHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                     ),
                 }
             ),
-            description_placeholders={"email": entry.data[CONF_EMAIL]},
+            description_placeholders={
+                "email": entry.data[CONF_EMAIL],
+                "name": entry.title,
+            },
             errors=errors,
         )
 

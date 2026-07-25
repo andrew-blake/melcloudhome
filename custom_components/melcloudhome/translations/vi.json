@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Xác thực lại",
-        "description": "Nhập lại mật khẩu cho {email}",
+        "title": "Xác thực đã hết hạn cho {name}",
+        "description": "Vui lòng cập nhật mật khẩu của bạn cho {email}",
         "data": {
           "password": "Mật khẩu"
         }

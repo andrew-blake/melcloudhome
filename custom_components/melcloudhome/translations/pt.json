@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Autenticar novamente",
-        "description": "Introduza novamente a palavra-passe para {email}",
+        "title": "A autenticação expirou para {name}",
+        "description": "Por favor, atualize a sua palavra-passe para {email}",
         "data": {
           "password": "Palavra-passe"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Esta conta já está configurada",
-      "reauth_successful": "Autenticação atualizada com sucesso",
+      "reauth_successful": "Reautenticação bem sucedida",
       "reconfigure_successful": "Credenciais atualizadas com sucesso"
     }
   },

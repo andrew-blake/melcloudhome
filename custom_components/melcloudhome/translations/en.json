@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Re-authenticate",
-        "description": "Enter the password for {email} again",
+        "title": "Authentication expired for {name}",
+        "description": "Please update your password for {email}",
         "data": {
           "password": "Password"
         }

@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Autentisera på nytt",
-        "description": "Ange lösenordet för {email} på nytt",
+        "title": "Autentiseringen har upphört att gälla för {name}",
+        "description": "Uppdatera ditt lösenord för {email}",
         "data": {
           "password": "Lösenord"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Detta konto är redan konfigurerat",
-      "reauth_successful": "Autentiseringen har uppdaterats",
+      "reauth_successful": "Återautentisering lyckades",
       "reconfigure_successful": "Inloggningsuppgifterna har uppdaterats"
     }
   },

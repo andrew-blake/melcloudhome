@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Autentica di nuovo",
-        "description": "Inserisci di nuovo la password per {email}",
+        "title": "Autenticazione scaduta per {name}",
+        "description": "Aggiorna la tua password per {email}",
         "data": {
           "password": "Password"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Questo account è già configurato",
-      "reauth_successful": "Autenticazione aggiornata con successo",
+      "reauth_successful": "La riautenticazione è avvenuta con successo",
       "reconfigure_successful": "Credenziali aggiornate con successo"
     }
   },

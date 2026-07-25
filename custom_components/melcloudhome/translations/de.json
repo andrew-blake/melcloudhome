@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Erneut authentifizieren",
-        "description": "Geben Sie das Passwort für {email} erneut ein",
+        "title": "Authentifizierung für {name} abgelaufen",
+        "description": "Bitte aktualisiere dein Passwort für {email}",
         "data": {
           "password": "Passwort"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Dieses Konto ist bereits konfiguriert",
-      "reauth_successful": "Erneute Authentifizierung erfolgreich",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
       "reconfigure_successful": "Zugangsdaten erfolgreich aktualisiert"
     }
   },

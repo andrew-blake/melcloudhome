@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Volver a autenticar",
-        "description": "Introduce de nuevo la contraseña de {email}",
+        "title": "Autenticación caducada para {name}",
+        "description": "Por favor, actualiza tu contraseña para {email}",
         "data": {
           "password": "Contraseña"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Esta cuenta ya está configurada",
-      "reauth_successful": "Autenticación actualizada correctamente",
+      "reauth_successful": "La autenticación se volvió a realizar correctamente",
       "reconfigure_successful": "Credenciales actualizadas correctamente"
     }
   },

@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Uudelleentodennus",
-        "description": "Anna salasana uudelleen käyttäjälle {email}",
+        "title": "Todennus vanhentui kohteella {name}",
+        "description": "Päivitä salasanasi tilille {email}",
         "data": {
           "password": "Salasana"
         }

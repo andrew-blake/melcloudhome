@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Yeniden kimlik doğrula",
-        "description": "{email} için şifrenizi yeniden girin",
+        "title": "{name} için kimlik doğrulamanın süresi doldu",
+        "description": "Lütfen {email} şifrenizi güncelleyin",
         "data": {
           "password": "Şifre"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Bu hesap zaten kurulu",
-      "reauth_successful": "Kimlik doğrulama başarıyla yenilendi",
+      "reauth_successful": "Yeniden kimlik doğrulama başarılı oldu",
       "reconfigure_successful": "Bilgileriniz başarıyla güncellendi."
     }
   },

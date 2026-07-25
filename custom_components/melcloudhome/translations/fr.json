@@ -27,8 +27,8 @@
         }
       },
       "reauth_confirm": {
-        "title": "Réauthentification",
-        "description": "Saisissez à nouveau le mot de passe pour {email}",
+        "title": "L'authentification a expiré pour {name}",
+        "description": "Veuillez mettre à jour votre mot de passe pour {email}",
         "data": {
           "password": "Mot de passe"
         }
@@ -49,7 +49,7 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",
-      "reauth_successful": "Réauthentification réussie",
+      "reauth_successful": "La ré-authentification a réussi",
       "reconfigure_successful": "Identifiants mis à jour avec succès"
     }
   },
