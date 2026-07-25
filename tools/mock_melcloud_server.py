@@ -253,7 +253,7 @@ class MockMELCloudServer:
                 "ftc_model": 4,  # API internal value, mapping to physical FTC controller unknown
                 "outdoor_temperature": 7.5,
             },
-            "aed2afac-01a5-4c4c-8d58-95989aa1c71e": {
+            "aed21234-5678-9abc-def0-123456789abc": {
                 "name": "Dual Zone Heat Pump",
                 "power": True,
                 "operation_mode": "Heating",
@@ -301,7 +301,7 @@ class MockMELCloudServer:
                 "name": "Shared Building",
                 "timezone": "Europe/Madrid",
                 "ata_unit_ids": [],
-                "atw_unit_ids": ["aed2afac-01a5-4c4c-8d58-95989aa1c71e"],
+                "atw_unit_ids": ["aed21234-5678-9abc-def0-123456789abc"],
             },
         }
 

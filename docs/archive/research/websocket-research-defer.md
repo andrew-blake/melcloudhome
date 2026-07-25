@@ -199,8 +199,12 @@ wss://ws.melcloudhome.com/?hash={hash}
 ## Documentation for Future Reference
 
 ### Working cURL Command
+
+The `hash` query parameter is the per-account WebSocket token returned by the
+token endpoint — supply your own; the placeholder below is not a real value.
+
 ```bash
-curl 'wss://ws.melcloudhome.com/?hash=0125be99-65cb-4c97-a705-24794d6774b7' \
+curl 'wss://ws.melcloudhome.com/?hash=<your-ws-hash>' \
   -H 'Upgrade: websocket' \
   -H 'Origin: https://melcloudhome.com' \
   -H 'Connection: Upgrade' \
