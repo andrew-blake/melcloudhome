@@ -609,6 +609,8 @@ POST /api/holidaymode
 ```
 *(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
 
+⚠️ **Unverified report:** a contributor has stated that a GET probe against `/monitor/holidaymode` on the mobile BFF returned `405 Method Not Allowed` with an `Allow: POST` header, which would mean the route exists there too. This is **not backed by a saved artifact** (no HAR or request/response transcript was committed) and hasn't been independently re-verified, so it's noted here rather than promoted to "confirmed." Frost/overheat protection's mobile-BFF equivalents remain unconfirmed (reportedly ~35 naming variants tried, none found).
+
 **Request Body (confirmed):**
 
 ```json
