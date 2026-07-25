@@ -38,8 +38,8 @@ class ATABinarySensorEntityDescription(
     attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
     """Function to extract extra state attributes from unit data."""
 
-    should_create_fn: Callable[[AirToAirUnit], bool] | None = None
-    """Function to determine if sensor should be created. If None, uses available_fn."""
+    should_create_fn: Callable[[AirToAirUnit], bool] = lambda x: True
+    """Function to determine if sensor should be created."""
 
 
 ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
@@ -59,8 +59,12 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda unit: True,  # Connection is determined by coordinator
     ),
-    # Protection modes - only created once a unit has ever had the mode configured
-    # (the API leaves these objects null until then, then persists them even when disabled)
+    # Protection modes. Overheat protection and holiday mode are only created
+    # once a unit has ever had the mode configured (the API leaves those
+    # objects null until then, then persists them even when disabled). Frost
+    # protection is different: every ATA unit reports a frostProtection
+    # object with a server-side default, so its sensor is created whenever
+    # the API reports the object at all, not only once a user has configured it.
     # State reflects "enabled" (armed/configured) - the everyday question a user
     # checks in HA - not "active" (currently engaging), which stays off unless the
     # room has actually crossed the threshold; "active" is exposed as an attribute.

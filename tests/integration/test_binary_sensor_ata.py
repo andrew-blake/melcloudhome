@@ -189,7 +189,20 @@ async def test_frost_protection_only_created_when_configured(
 
 
 @pytest.mark.asyncio
-async def test_protection_mode_state_reflects_enabled_flag(hass: HomeAssistant) -> None:
+@pytest.mark.parametrize(
+    ("enabled", "active", "expected_state"),
+    [
+        pytest.param(True, False, STATE_ON, id="enabled_and_inactive_is_on"),
+        # Real accounts observed so far always have enabled=False (the mode
+        # has never been armed) - this guards the state-vs-active design
+        # decision holds even in the (currently synthetic) case where a unit
+        # reports active=True while enabled=False.
+        pytest.param(False, True, STATE_OFF, id="disabled_but_active_is_off"),
+    ],
+)
+async def test_protection_mode_state_reflects_enabled_flag(
+    hass: HomeAssistant, enabled: bool, active: bool, expected_state: str
+) -> None:
     """Test protection mode sensors report on/off based on 'enabled', not 'active'.
 
     'enabled' (armed/configured) is what a user checks after toggling the mode
@@ -198,7 +211,7 @@ async def test_protection_mode_state_reflects_enabled_flag(hass: HomeAssistant) 
     """
     unit = create_mock_ata_unit(
         overheat_protection=ProtectionModeState(
-            enabled=True, active=False, min=35, max=37
+            enabled=enabled, active=active, min=35, max=37
         ),
     )
     mock_context = create_mock_ata_user_context(
@@ -208,7 +221,7 @@ async def test_protection_mode_state_reflects_enabled_flag(hass: HomeAssistant) 
 
     state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_overheat_protection")
     assert state is not None
-    assert state.state == STATE_ON
+    assert state.state == expected_state
 
 
 @pytest.mark.asyncio

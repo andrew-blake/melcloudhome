@@ -56,13 +56,7 @@ async def async_setup_entry(
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             for description in ATA_BINARY_SENSOR_TYPES:
-                # Use should_create_fn if defined, otherwise use available_fn
-                create_check = (
-                    description.should_create_fn
-                    if description.should_create_fn
-                    else description.available_fn
-                )
-                if create_check(unit):
+                if description.should_create_fn(unit):
                     entities.append(
                         ATABinarySensor(coordinator, unit, building, entry, description)
                     )
