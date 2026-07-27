@@ -5,8 +5,8 @@
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
-**Document Version:** 1.6
-**Last Updated:** 2026-07-20
+**Document Version:** 1.7
+**Last Updated:** 2026-07-27
 **Device Type:** Air-to-Air Air Conditioning Units
 **Method:** Passive UI observation; some sections verified by driven capture — see per-section evidence notes
 
@@ -1046,6 +1046,7 @@ Two sources feed this section: a passive 2026-07-11 HAR review of the web app (d
 | 1.4 | 2026-07-20 | Added Scenes section and legacy-web Trend Summary variant, sourced from 2026-07-11 web-app HAR capture |
 | 1.5 | 2026-07-20 | Added Schedules section (cloud-schedule CRUD), sourced from 2026-07-11 web-app HAR capture |
 | 1.6 | 2026-07-20 | Schedules section rewritten with confirmed data from a live driven capture: day-number encoding and int-typed mode/fan/vane fields moved from inferred to confirmed; documented the Update (PUT) endpoint and its distinct nested body shape |
+| 1.7 | 2026-07-27 | Flagged the mobile-BFF `/monitor/holidaymode` route as reported-but-unverified rather than confirmed, as no capture artifact backs it |
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
