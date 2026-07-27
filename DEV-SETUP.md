@@ -68,12 +68,12 @@ The "Connect to Mock Server" checkbox connects to the mock server instead of pro
 
 ### Mock Server Test Devices
 
-The mock server provides three pre-configured test devices:
+The mock server provides four pre-configured test devices, defined inline in `tools/mock_melcloud_server.py`:
 
 **ATA Devices (Air-to-Air Heat Pumps):**
 
-1. **Living Room**
-   - UUID: `0efc1234-5678-9abc-def0-123456787db`
+1. **Living Room AC**
+   - UUID: `0efc1234-5678-9abc-def0-1234567887db`
    - Entity prefix: `melcloudhome_0efc_87db`
    - Example entity: `climate.melcloudhome_0efc_87db_climate`
    - Model: MSZ-AP35VG
@@ -82,17 +82,17 @@ The mock server provides three pre-configured test devices:
    - Vane control: Horizontal and Vertical
    - Current: 20°C → Target: 22°C
 
-2. **Bedroom**
+2. **Bedroom AC**
    - UUID: `bf8d5678-90ab-cdef-0123-456789ab5119`
    - Entity prefix: `melcloudhome_bf8d_5119`
    - Example entity: `climate.melcloudhome_bf8d_5119_climate`
    - Model: MSZ-LN25VG
-   - Same capabilities as Living Room
+   - Same capabilities as Living Room AC
    - Current: 18°C → Target: 20°C
 
-**ATW Device (Air-to-Water Heat Pump / Ecodan):**
+**ATW Devices (Air-to-Water Heat Pumps / Ecodan):**
 
-3. **Ecodan System**
+3. **House Heat Pump**
    - UUID: `bf2d256c-42ac-4799-a6d8-c6ab433e5666`
    - Entity prefix: `melcloudhome_bf2d_5666`
    - Example entities:
@@ -105,10 +105,21 @@ The mock server provides three pre-configured test devices:
    - Outside temperature: 5°C
    - 3-way valve: Zone heating mode
 
+4. **Dual Zone Heat Pump**
+   - UUID: `aed21234-5678-9abc-def0-123456789abc`
+   - Entity prefix: `melcloudhome_aed2_9abc`
+   - Mock device (ftcModel: 5), two heating zones (`hasZone2: true`)
+   - Zone 1: Target 19°C, Current 21°C — Zone 2: Target 21°C, Current 21°C
+   - Hot water tank: Target 40°C, Current 40°C
+   - Outside temperature: 3°C
+
+Devices 1–3 belong to the owned building "My Home" (`Europe/London`). Device 4 sits in the guest building "Shared Building" (`Europe/Madrid`), so it exercises the shared-access code path — the same topology as a real account with guest access to someone else's building.
+
 **Customizing Mock Data:**
 
-To modify device characteristics or add new devices:
-1. Edit `mock-server/data/*.json` files
+Device definitions live inline in `tools/mock_melcloud_server.py` — `_init_ata_devices()` / `_init_atw_devices()` for the devices themselves, and `_init_buildings()` / `_init_guest_buildings()` for which building each one belongs to. To modify device characteristics or add new devices:
+
+1. Edit `tools/mock_melcloud_server.py`
 2. Rebuild mock server: `make dev-rebuild`
 3. Restart environment: `make dev-restart`
 

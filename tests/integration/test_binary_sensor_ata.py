@@ -157,10 +157,16 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_frost_protection_only_created_when_configured(
+async def test_frost_protection_created_when_api_reports_object(
     hass: HomeAssistant,
 ) -> None:
-    """Test frost protection sensor is only created for units with the mode ever set."""
+    """Test frost protection sensor is created only when the API reports the object.
+
+    Every real ATA unit carries a frostProtection object as a server-side default,
+    so in practice this sensor is created for all of them - it is not gated on the
+    owner having ever configured the mode. Overheat protection and holiday mode are
+    the ones the API leaves null until first configured.
+    """
     unit_with_frost = create_mock_ata_unit(
         unit_id="aaaa1234-5678-9abc-def0-123456789999",
         name="Unit With Frost",
