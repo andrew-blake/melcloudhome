@@ -117,6 +117,16 @@ MOBILE_BFF_HOST = "mobile.bff.melcloudhome.com"
 # already-scrubbed ID into a different one. That makes the function
 # idempotent by construction - no "are we actually recording" gate needed,
 # and no cache to remember which values it has already emitted.
+#
+# Heads-up if you ever re-record against a live account: the placeholders
+# currently committed in tests/api/cassettes/ were produced by an earlier
+# derivation than the one below, so re-recording will emit *different*
+# placeholders for the same real IDs. Both are equally valid - they are
+# opaque stand-ins, nothing decodes them - but the *_unit_id fixtures at the
+# bottom of this file hardcode the committed values, so update them in the
+# same commit or VCR's URI matching will fail to find the interaction.
+# Deliberately not rewritten up front: it would churn every cassette to avoid
+# one self-announcing test failure.
 def pseudonymize_uuid(value: str) -> str:
     """Deterministically replace a UUID with a stable, self-evidently-fake placeholder."""
     lowered = value.lower()
