@@ -42,13 +42,13 @@ MELCloud Home API provides energy consumption data via a telemetry endpoint. Thi
 
 **Example Request:**
 ```
-GET /api/telemetry/energy/4c6fd61a-c825-4cb5-300e-3d0ba2c70c01?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
+GET /api/telemetry/energy/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
 ```
 
 **Example Response:**
 ```json
 {
-  "deviceId": "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01",
+  "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825",
   "measureData": [
     {
       "type": "cumulativeEnergyConsumedSinceLastUpload",

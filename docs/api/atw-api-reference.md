@@ -610,7 +610,7 @@ GET /telemetry/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:
 **Actual Response Format** (from VCR cassette):
 ```json
 {
-  "deviceId": "a3f61c8e-9b24-4d17-8e5a-6f2d91c47b30",
+  "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-a3f61c8e9b24",
   "measureData": [{
     "type": "intervalEnergyConsumed",
     "values": [

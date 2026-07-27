@@ -36,13 +36,13 @@ GET /api/telemetry/energy/{unit_id}
 
 **Test Date:** 2025-11-19
 **Test Devices:**
-- Dining Room (4c6fd61a-c825-4cb5-300e-3d0ba2c70c01) ✅
-- Living Room (d22a6c27-1c6a-bf9f-dd1b-0bb2642a1112) ✅
+- Dining Room (aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825) ✅
+- Living Room (aaaaaaaa-aaaa-aaaa-aaaa-d22a6c271c6a) ✅
 
 **Sample Data:**
 ```json
 {
-  "deviceId": "4c6fd61a-c825-4cb5-300e-3d0ba2c70c01",
+  "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825",
   "measureData": [{
     "type": "cumulativeEnergyConsumedSinceLastUpload",
     "values": [
