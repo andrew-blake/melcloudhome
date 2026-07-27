@@ -84,8 +84,8 @@ async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> 
 
 
 @pytest.mark.asyncio
-async def test_atw_sensor_unavailable_when_temp_none(hass: HomeAssistant) -> None:
-    """Test ATW sensors unavailable when temperature is None."""
+async def test_atw_sensor_unknown_when_temp_none(hass: HomeAssistant) -> None:
+    """Test ATW sensors read unknown when temperature is None."""
     mock_unit = create_mock_atw_unit(
         room_temperature_zone1=None, tank_water_temperature=None
     )
@@ -97,8 +97,8 @@ async def test_atw_sensor_unavailable_when_temp_none(hass: HomeAssistant) -> Non
     zone_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_zone_1_temperature")
     tank_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_tank_temperature")
 
-    assert zone_temp.state == "unavailable"
-    assert tank_temp.state == "unavailable"
+    assert zone_temp.state == "unknown"
+    assert tank_temp.state == "unknown"
 
 
 @pytest.mark.asyncio
@@ -165,8 +165,8 @@ async def test_atw_energy_sensors_created_when_capability_present(
         # COP = 0.0 / 0.0 = None (can't divide by zero)
         assert float(consumed.state) == 0.0
         assert float(produced.state) == 0.0
-        # COP is unavailable on first init (consumed = 0)
-        assert cop.state == "unavailable"
+        # COP is unknown on first init (consumed = 0)
+        assert cop.state == "unknown"
 
 
 @pytest.mark.asyncio
@@ -186,10 +186,10 @@ async def test_atw_energy_sensors_not_created_without_capability(
 
 
 @pytest.mark.asyncio
-async def test_atw_energy_sensors_unavailable_when_values_none(
+async def test_atw_energy_sensors_unknown_when_values_none(
     hass: HomeAssistant,
 ) -> None:
-    """Test energy sensors unavailable when energy values are None."""
+    """Test energy sensors read unknown when energy values are None."""
     mock_unit = create_mock_atw_unit(
         has_energy_meter=True,
         energy_consumed=None,
@@ -209,17 +209,17 @@ async def test_atw_energy_sensors_unavailable_when_values_none(
     assert produced is not None
     assert cop is not None
 
-    assert consumed.state == "unavailable"
-    assert produced.state == "unavailable"
-    assert cop.state == "unavailable"
+    assert consumed.state == "unknown"
+    assert produced.state == "unknown"
+    assert cop.state == "unknown"
 
 
 @pytest.mark.asyncio
 async def test_atw_cop_calculation_correct(hass: HomeAssistant) -> None:
     """Test COP sensor calculates correctly from consumed and produced energy.
 
-    On first init, energy values start at 0.0, so COP is unavailable (divide by zero).
-    This test verifies the COP sensor is created and becomes unavailable when consumed=0.
+    On first init, energy values start at 0.0, so COP is unknown (divide by zero).
+    This test verifies the COP sensor is created and reads unknown when consumed=0.
     """
     mock_unit = create_mock_atw_unit(has_energy_meter=True)
     mock_context = create_mock_atw_user_context(
@@ -254,8 +254,8 @@ async def test_atw_cop_calculation_correct(hass: HomeAssistant) -> None:
         # First init: values start at 0.0
         assert float(consumed.state) == 0.0
         assert float(produced.state) == 0.0
-        # COP unavailable when consumed = 0 (divide by zero)
-        assert cop.state == "unavailable"
+        # COP unknown when consumed = 0 (divide by zero)
+        assert cop.state == "unknown"
 
 
 @pytest.mark.asyncio
@@ -381,4 +381,4 @@ async def test_telemetry_sensors_created_without_telemetry_data(
         entity_id = f"sensor.melcloudhome_0efc_9abc_{measure}"
         state = hass.states.get(entity_id)
         assert state is not None, f"{entity_id} was not created"
-        assert state.state == "unavailable"
+        assert state.state == "unknown"

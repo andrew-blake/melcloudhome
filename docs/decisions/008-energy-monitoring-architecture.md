@@ -1,6 +1,6 @@
 # ADR-008: Energy Monitoring Architecture
 
-**Status:** Accepted
+**Status:** Accepted — availability rules since amended by [ADR-020](020-unknown-for-missing-readings.md): a missing energy value reads `unknown`, not `unavailable`
 **Date:** 2025-11-19
 **Deciders:** Development Team
 **Related:** ADR-006 (Entity Description Pattern)

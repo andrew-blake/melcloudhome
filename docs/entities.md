@@ -164,7 +164,7 @@ For each heat pump system, the following entities are created:
 - **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 
-All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unavailable`. That is expected.
+All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unknown`. That is expected.
 
 **Purpose:** Monitor heating system efficiency and performance
 
@@ -176,7 +176,7 @@ All of these except the Zone 2 pair are created for every heat pump. Not every c
 **Data density:** 10-15 datapoints per hour during active heating (sparse when idle)
 **Statistics:** HA auto-creates statistics and history graphs automatically
 
-**Note:** Boiler temps may show "unavailable" if no external boiler present (normal behavior)
+**Note:** Boiler temps may show "unknown" if no external boiler present (normal behavior)
 
 **WiFi Signal Sensor:**
 

@@ -37,15 +37,12 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     value_fn: Callable[[AirToAirUnit], float | str | None]
     """Function to extract sensor value from unit data."""
 
-    available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
-    """Function to determine if sensor is available."""
-
     should_create_fn: Callable[[AirToAirUnit], bool] = lambda x: True
     """Whether to create the sensor at all.
 
     Must test something stable about the unit (a capability, a model trait) - never
     a value that comes and goes, because creation is only evaluated once at setup.
-    Use available_fn for anything transient.
+    A transient missing value reads as state `unknown` instead.
     """
 
     attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
@@ -62,7 +59,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature,
-        available_fn=lambda unit: unit.room_temperature is not None,
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm
@@ -75,11 +71,10 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: unit.rssi,
-        available_fn=lambda unit: unit.rssi is not None,
     ),
     # Energy consumption sensor
     # Created if device has energy meter capability, even if no initial data
-    # Becomes available once energy data is fetched (polls every 30 minutes)
+    # Reads unknown until energy data is fetched (polls every 30 minutes)
     ATASensorEntityDescription(
         key="energy",  # Entity ID: sensor.melcloud_*_energy
         translation_key="energy",
@@ -88,7 +83,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=lambda unit: unit.energy_consumed,
         should_create_fn=lambda unit: unit.capabilities.has_energy_consumed_meter,
-        available_fn=lambda unit: unit.energy_consumed is not None,
     ),
     # Outdoor temperature - ambient temperature from outdoor unit sensor
     # Only created for devices where outdoor sensor detected during capability discovery
@@ -100,7 +94,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.outdoor_temperature,
-        available_fn=lambda unit: unit.outdoor_temperature is not None,
         should_create_fn=lambda unit: unit.has_outdoor_temp_sensor,
         # Units stop uploading outdoor temperature while idle, so the value
         # can be hours old (issue #171): surface when it was recorded
@@ -242,7 +235,4 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
             return False
 
         # Check if device is in error state
-        if device.is_in_error:
-            return False
-
-        return self.entity_description.available_fn(device)
+        return not device.is_in_error

@@ -1,6 +1,6 @@
 # ADR-006: Adopt Entity Description Pattern for Sensors
 
-**Status:** Accepted
+**Status:** Accepted — `available_fn` since removed by [ADR-020](020-unknown-for-missing-readings.md)
 **Date:** 2025-11-17
 **Context:** Session 9 - Pre-v1.2 research and planning
 

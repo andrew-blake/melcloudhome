@@ -1060,14 +1060,14 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
     When energy API call fails during initial setup:
     1. Coordinator logs error but doesn't crash
     2. Integration continues to function normally
-    3. Sensor is created but shows as unavailable (no data fetched yet)
+    3. Sensor is created but reads unknown (no data fetched yet)
     4. Stored cumulative totals are preserved in coordinator state
 
-    Note: Current behavior shows sensor as unavailable when initial fetch fails.
-    This is because unit.energy_consumed is only set after successful API fetch.
+    Note: unit.energy_consumed is only set after a successful API fetch, so the
+    sensor reads unknown until one succeeds.
 
     Validates: Error handling prevents integration crash
-    Tests through: hass.states (sensor exists but unavailable)
+    Tests through: hass.states (sensor exists but reads unknown)
     """
     mock_context = create_mock_ata_energy_context()
 
@@ -1109,9 +1109,9 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
-        # Current behavior: sensor shows unavailable when initial fetch fails
-        # This is because unit.energy_consumed is None (not populated from storage)
-        assert state.state == "unavailable"
+        # Sensor reads unknown when the initial fetch fails - energy_consumed
+        # is None (not populated from storage)
+        assert state.state == "unknown"
 
         # Verify integration didn't crash - other sensors still work
         climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")

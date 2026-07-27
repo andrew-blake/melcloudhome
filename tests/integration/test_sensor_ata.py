@@ -185,7 +185,7 @@ async def test_energy_sensor_availability(hass: HomeAssistant) -> None:
 
         energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert energy_state is not None
-        assert energy_state.state == "unavailable"
+        assert energy_state.state == "unknown"
 
         temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
         assert temp_state is not None
@@ -275,11 +275,11 @@ async def test_holiday_mode_date_sensors(hass: HomeAssistant) -> None:
 async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) -> None:
     """Test room temperature and wifi signal survive a setup with no readings.
 
-    Regression test. Creation used to fall back to available_fn when a description
-    had no should_create_fn, so a unit reporting no room temperature or RSSI at the
-    moment of setup - an offline unit during a Home Assistant restart - permanently
-    lost those entities until the integration was reloaded. available_fn is meant to
-    render an entity unavailable, not to suppress its creation.
+    Regression test. Creation used to fall back to the availability gate when a
+    description had no should_create_fn, so a unit reporting no room temperature or
+    RSSI at the moment of setup - an offline unit during a Home Assistant restart -
+    permanently lost those entities until the integration was reloaded. A missing
+    value must read as `unknown`, never suppress creation.
     """
     unit = create_mock_ata_unit(room_temperature=None, rssi=None)
     mock_context = create_mock_ata_user_context(
@@ -293,4 +293,4 @@ async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) 
     ):
         state = hass.states.get(entity_id)
         assert state is not None, f"{entity_id} was not created"
-        assert state.state == "unavailable"
+        assert state.state == "unknown"
