@@ -164,6 +164,8 @@ For each heat pump system, the following entities are created:
 - **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 
+All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unavailable`. That is expected.
+
 **Purpose:** Monitor heating system efficiency and performance
 
 - Flow vs return delta indicates heat transfer efficiency

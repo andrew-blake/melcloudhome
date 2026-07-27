@@ -352,3 +352,33 @@ async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
     assert wifi_state.state == "-50"
     assert wifi_state.attributes["unit_of_measurement"] == "dBm"
     assert wifi_state.attributes["device_class"] == "signal_strength"
+
+
+@pytest.mark.asyncio
+async def test_telemetry_sensors_created_without_telemetry_data(
+    hass: HomeAssistant,
+) -> None:
+    """Test flow/return sensors exist even when no telemetry has arrived.
+
+    Regression test: creation used to be gated on the measure already being present,
+    so a failed telemetry poll at setup dropped the sensor until the next reload.
+    """
+    unit = create_mock_atw_unit()
+    assert not unit.telemetry, "expected a mock ATW unit to start with no telemetry"
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[unit])]
+    )
+    await setup_atw_integration_custom(hass, mock_context)
+
+    for measure in (
+        "flow_temperature",
+        "return_temperature",
+        "flow_temperature_zone1",
+        "return_temperature_zone1",
+        "flow_temperature_boiler",
+        "return_temperature_boiler",
+    ):
+        entity_id = f"sensor.melcloudhome_0efc_9abc_{measure}"
+        state = hass.states.get(entity_id)
+        assert state is not None, f"{entity_id} was not created"
+        assert state.state == "unavailable"

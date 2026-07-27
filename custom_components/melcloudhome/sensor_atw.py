@@ -70,22 +70,7 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
 
 
 def _reports_telemetry(measure: str) -> Callable[[AirToWaterUnit], bool]:
-    """Build a check for whether a unit reports a given telemetry measure.
-
-    Used for BOTH creation and availability on the telemetry sensors, which is a
-    compromise worth spelling out. The telemetry API exposes no capability flag,
-    so "has this measure ever arrived" is the only signal available for "does this
-    heat pump have this sensor" - and it is not a stable property, so it breaks the
-    rule in should_create_fn's docstring.
-
-    The alternative is creating all of them for every unit. Rejected because the one
-    real ATW unit we have a recording for returns data for flowTemperature and
-    returnTemperature but an empty series for the zone1 and boiler variants over the
-    same window - so 4 of 6 would be permanently unavailable on that hardware, and
-    entities are far easier to create than to withdraw.
-
-    ponytail: replace with a real capability check if the API ever grows one.
-    """
+    """Availability only - never entity creation (a failed poll must not drop it)."""
     return lambda unit: unit.telemetry.get(measure) is not None
 
 
@@ -98,7 +83,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature_zone1,
-        should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
     # Zone 2 room temperature (only if device has zone 2)
@@ -120,7 +104,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.tank_water_temperature,
-        should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.tank_water_temperature is not None,
     ),
     # Outdoor temperature (from settings response)
@@ -153,7 +136,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature"),
-        should_create_fn=_reports_telemetry("flow_temperature"),
         available_fn=_reports_telemetry("flow_temperature"),
     ),
     ATWSensorEntityDescription(
@@ -163,7 +145,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature"),
-        should_create_fn=_reports_telemetry("return_temperature"),
         available_fn=_reports_telemetry("return_temperature"),
     ),
     ATWSensorEntityDescription(
@@ -173,7 +154,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
-        should_create_fn=_reports_telemetry("flow_temperature_zone1"),
         available_fn=_reports_telemetry("flow_temperature_zone1"),
     ),
     ATWSensorEntityDescription(
@@ -183,7 +163,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
-        should_create_fn=_reports_telemetry("return_temperature_zone1"),
         available_fn=_reports_telemetry("return_temperature_zone1"),
     ),
     # Zone 2 telemetry (flow/return temperatures)
@@ -214,7 +193,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
-        should_create_fn=_reports_telemetry("flow_temperature_boiler"),
         available_fn=_reports_telemetry("flow_temperature_boiler"),
     ),
     ATWSensorEntityDescription(
@@ -224,7 +202,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
-        should_create_fn=_reports_telemetry("return_temperature_boiler"),
         available_fn=_reports_telemetry("return_temperature_boiler"),
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
@@ -238,7 +215,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda unit: unit.rssi,
-        should_create_fn=lambda unit: True,
         available_fn=lambda unit: unit.rssi is not None,
     ),
     # Energy monitoring sensors
