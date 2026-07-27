@@ -336,7 +336,7 @@ def _has_energy_production_capability(unit: AirToWaterUnit) -> bool:
 **Testing:**
 - API tests: `tests/api/test_energy_atw.py` (73 tests)
 - Integration tests: `tests/integration/test_sensor_atw.py` (123 tests)
-- Test device: Belgrade ERSC-VM2D (unit ID: `37de5a0f-4d42-4e9e-92f4-362aada35f18`)
+- Test device: Belgrade ERSC-VM2D (unit ID: `a3f61c8e-9b24-4d17-8e5a-6f2d91c47b30`)
 
 ---
 

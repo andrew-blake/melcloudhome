@@ -20,7 +20,7 @@ Usage:
     python energy_monitoring_recorder.py --duration 180
 
     # Focus on specific unit
-    python energy_monitoring_recorder.py --unit-id 0efce33f-5847-4042-88eb-aaf3ff6a76db
+    python energy_monitoring_recorder.py --unit-id 4c6fd61a-c825-4cb5-300e-3d0ba2c70c01
 
 Environment:
     MELCLOUD_USER - MELCloud email

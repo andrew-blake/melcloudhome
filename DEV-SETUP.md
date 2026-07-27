@@ -73,7 +73,7 @@ The mock server provides three pre-configured test devices:
 **ATA Devices (Air-to-Air Heat Pumps):**
 
 1. **Living Room**
-   - UUID: `0efce33f-5847-4042-88eb-aaf3ff6a76db`
+   - UUID: `0efc1234-5678-9abc-def0-123456787db`
    - Entity prefix: `melcloudhome_0efc_87db`
    - Example entity: `climate.melcloudhome_0efc_87db_climate`
    - Model: MSZ-AP35VG
