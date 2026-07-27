@@ -9,6 +9,8 @@ Tests focus on edge cases in helper functions that could cause real bugs:
 Avoids theatre: Only tests non-trivial logic with real edge cases.
 """
 
+from typing import Any
+
 from custom_components.melcloudhome.api.models_ata import AirToAirUnit
 from custom_components.melcloudhome.api.parsing import (
     parse_bool,
@@ -337,3 +339,79 @@ class TestCapabilitiesEdgeCases:
         }
         unit = AirToAirUnit.from_dict(data)
         assert unit.capabilities is not None
+
+
+class TestProtectionModeParsing:
+    """Test frostProtection/overheatProtection/holidayMode parsing on ATA units.
+
+    These are top-level keys on the unit dict (siblings of "settings" and
+    "capabilities"), not entries in the settings name-value array.
+    """
+
+    def _base_data(self, **top_level: Any) -> dict[str, Any]:
+        return {
+            "id": "test-unit",
+            "givenDisplayName": "Test",
+            "settings": [],
+            "capabilities": {},
+            "schedule": [],
+            **top_level,
+        }
+
+    def test_frost_protection_parsed_when_configured(self) -> None:
+        """Test a fully-populated frostProtection object is parsed."""
+        data = self._base_data(
+            frostProtection={"enabled": True, "active": False, "min": 10, "max": 12}
+        )
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.frost_protection is not None
+        assert unit.frost_protection.enabled is True
+        assert unit.frost_protection.active is False
+        assert unit.frost_protection.min == 10.0
+        assert unit.frost_protection.max == 12.0
+
+    def test_overheat_protection_parsed_when_configured(self) -> None:
+        """Test a fully-populated overheatProtection object is parsed."""
+        data = self._base_data(
+            overheatProtection={"enabled": True, "active": True, "min": 35, "max": 37}
+        )
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.overheat_protection is not None
+        assert unit.overheat_protection.enabled is True
+        assert unit.overheat_protection.active is True
+        assert unit.overheat_protection.min == 35.0
+        assert unit.overheat_protection.max == 37.0
+
+    def test_holiday_mode_parsed_with_dates(self) -> None:
+        """Test holidayMode parses startDate/endDate instead of min/max."""
+        data = self._base_data(
+            holidayMode={
+                "enabled": True,
+                "active": False,
+                "startDate": "2026-07-20T18:30:53.79",
+                "endDate": "2026-07-22T12:00:00",
+            }
+        )
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.holiday_mode is not None
+        assert unit.holiday_mode.enabled is True
+        assert unit.holiday_mode.start_date == "2026-07-20T18:30:53.79"
+        assert unit.holiday_mode.end_date == "2026-07-22T12:00:00"
+
+    def test_protection_modes_null_when_never_configured(self) -> None:
+        """Test that a null value (never configured) becomes None, not an empty object."""
+        data = self._base_data(
+            frostProtection=None, overheatProtection=None, holidayMode=None
+        )
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.frost_protection is None
+        assert unit.overheat_protection is None
+        assert unit.holiday_mode is None
+
+    def test_protection_modes_missing_keys_become_none(self) -> None:
+        """Test that entirely absent keys also normalize to None."""
+        data = self._base_data()
+        unit = AirToAirUnit.from_dict(data)
+        assert unit.frost_protection is None
+        assert unit.overheat_protection is None
+        assert unit.holiday_mode is None

@@ -36,12 +36,27 @@ For each air conditioning unit, the following entities are created:
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
+- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
+- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested: appears to be the submitting device's local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
 - **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
 - **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
+- **Frost Protection**: `binary_sensor.melcloudhome_{short_id}_frost_protection` (created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
+  - Attribute `active`: currently engaging (e.g. room has crossed the threshold) — see the min/max sensors above for the configured band
+- **Overheat Protection**: `binary_sensor.melcloudhome_{short_id}_overheat_protection` (only created once ever configured)
+  - Attribute `active`
+- **Holiday Mode**: `binary_sensor.melcloudhome_{short_id}_holiday_mode` (only created once ever configured)
+  - Attribute `active` — see the start/end date sensors above for the configured window
+
+All three reflect state read from the API only — the state is `on` when the mode is armed/configured (`enabled`), not only when it's currently engaging (`active`, exposed as an attribute); read-only, no control exposed yet.
+
+**Why read-only:** the API endpoints that actually enable/disable these modes (`POST /api/holidaymode`, `POST /api/protection/frost`, `POST /api/protection/overheat`) live on a different host (the web BFF, `melcloudhome.com`) than the mobile BFF this integration talks to for everything else, and this integration's architecture deliberately dropped web-BFF support (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)) after it caused an outage. Whether/how to reach those endpoints safely from the mobile side is still being investigated (a GET probe against `/monitor/holidaymode` on the mobile BFF returned `405 Method Not Allowed` with `Allow: POST`, suggesting the route exists there too — reported but not backed by a saved artifact, see the evidence note under [Holiday Mode](api/ata-api-reference.md#holiday-mode); frost/overheat protection's mobile equivalents were not found after extensive testing). Until that's resolved, these entities only surface what the API already reports on every regular poll — no new write path, no new risk to the unit.
+
+Entities are created once, at integration setup. A mode configured for the first time in the MELCloud app won't appear in HA until the integration reloads.
 
 ### ATA Control Options
 

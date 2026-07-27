@@ -56,9 +56,10 @@ async def async_setup_entry(
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             for description in ATA_BINARY_SENSOR_TYPES:
-                entities.append(
-                    ATABinarySensor(coordinator, unit, building, entry, description)
-                )
+                if description.should_create_fn(unit):
+                    entities.append(
+                        ATABinarySensor(coordinator, unit, building, entry, description)
+                    )
 
     # ATW (Air-to-Water) binary sensors
     for building in coordinator.data.buildings:

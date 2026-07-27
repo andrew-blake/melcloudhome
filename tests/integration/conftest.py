@@ -17,7 +17,10 @@ if TYPE_CHECKING:
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.api.models import Building, UserContext
-    from custom_components.melcloudhome.api.models_ata import AirToAirUnit
+    from custom_components.melcloudhome.api.models_ata import (
+        AirToAirUnit,
+        ProtectionModeState,
+    )
     from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 
 # Import fixtures from pytest-homeassistant-custom-component
@@ -328,6 +331,9 @@ def create_mock_ata_unit(
     energy_consumed: float | None = None,
     has_outdoor_sensor: bool = False,
     outdoor_temperature: float | None = None,
+    frost_protection: "ProtectionModeState | None" = None,
+    overheat_protection: "ProtectionModeState | None" = None,
+    holiday_mode: "ProtectionModeState | None" = None,
 ) -> "AirToAirUnit":
     """Create a mock AirToAirUnit for testing."""
     from custom_components.melcloudhome.api.models_ata import (
@@ -353,6 +359,9 @@ def create_mock_ata_unit(
         energy_consumed=energy_consumed,
         has_outdoor_temp_sensor=has_outdoor_sensor,
         outdoor_temperature=outdoor_temperature,
+        frost_protection=frost_protection,
+        overheat_protection=overheat_protection,
+        holiday_mode=holiday_mode,
     )
 
 

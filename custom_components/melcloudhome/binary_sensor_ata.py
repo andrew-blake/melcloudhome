@@ -38,6 +38,9 @@ class ATABinarySensorEntityDescription(
     attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
     """Function to extract extra state attributes from unit data."""
 
+    should_create_fn: Callable[[AirToAirUnit], bool] = lambda x: True
+    """Function to determine if sensor should be created."""
+
 
 ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
     # Error state - indicates if device is in error condition
@@ -55,6 +58,51 @@ ATA_BINARY_SENSOR_TYPES: tuple[ATABinarySensorEntityDescription, ...] = (
         translation_key="connection_state",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda unit: True,  # Connection is determined by coordinator
+    ),
+    # Protection modes. Overheat protection and holiday mode are only created
+    # once a unit has ever had the mode configured (the API leaves those
+    # objects null until then, then persists them even when disabled). Frost
+    # protection is different: every ATA unit reports a frostProtection
+    # object with a server-side default, so its sensor is created whenever
+    # the API reports the object at all, not only once a user has configured it.
+    # State reflects "enabled" (armed/configured) - the everyday question a user
+    # checks in HA - not "active" (currently engaging), which stays off unless the
+    # room has actually crossed the threshold; "active" is exposed as an attribute.
+    # min/max/start_date/end_date are separate sensor entities (sensor_ata.py),
+    # not attributes here, so they're visible as first-class entities in the
+    # frontend rather than hidden in a details panel.
+    ATABinarySensorEntityDescription(
+        key="frost_protection",
+        translation_key="frost_protection",
+        value_fn=lambda unit: bool(
+            unit.frost_protection and unit.frost_protection.enabled
+        ),
+        should_create_fn=lambda unit: unit.frost_protection is not None,
+        attributes_fn=lambda unit: (
+            {"active": unit.frost_protection.active} if unit.frost_protection else {}
+        ),
+    ),
+    ATABinarySensorEntityDescription(
+        key="overheat_protection",
+        translation_key="overheat_protection",
+        value_fn=lambda unit: bool(
+            unit.overheat_protection and unit.overheat_protection.enabled
+        ),
+        should_create_fn=lambda unit: unit.overheat_protection is not None,
+        attributes_fn=lambda unit: (
+            {"active": unit.overheat_protection.active}
+            if unit.overheat_protection
+            else {}
+        ),
+    ),
+    ATABinarySensorEntityDescription(
+        key="holiday_mode",
+        translation_key="holiday_mode",
+        value_fn=lambda unit: bool(unit.holiday_mode and unit.holiday_mode.enabled),
+        should_create_fn=lambda unit: unit.holiday_mode is not None,
+        attributes_fn=lambda unit: (
+            {"active": unit.holiday_mode.active} if unit.holiday_mode else {}
+        ),
     ),
 )
 

@@ -13,6 +13,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.core import HomeAssistant
 
+from custom_components.melcloudhome.api.models_ata import ProtectionModeState
+
 from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
@@ -188,3 +190,82 @@ async def test_energy_sensor_availability(hass: HomeAssistant) -> None:
         temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
         assert temp_state is not None
         assert float(temp_state.state) == 20.0
+
+
+@pytest.mark.asyncio
+async def test_frost_protection_setpoint_sensors_only_when_configured(
+    hass: HomeAssistant,
+) -> None:
+    """Test frost protection min/max sensors are only created when configured."""
+    unit_with_frost = create_mock_ata_unit(
+        unit_id="aaaa1234-5678-9abc-def0-123456789999",
+        name="Unit With Frost",
+        frost_protection=ProtectionModeState(
+            enabled=True, active=False, min=10, max=12
+        ),
+    )
+    unit_without_frost = create_mock_ata_unit(
+        unit_id="bbbb1234-5678-9abc-def0-123456788888",
+        name="Unit Without Frost",
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_frost, unit_without_frost])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    min_state = hass.states.get("sensor.melcloudhome_aaaa_9999_frost_protection_min")
+    max_state = hass.states.get("sensor.melcloudhome_aaaa_9999_frost_protection_max")
+    assert min_state is not None
+    assert float(min_state.state) == 10
+    assert max_state is not None
+    assert float(max_state.state) == 12
+
+    assert hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_min") is None
+    assert hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_max") is None
+
+
+@pytest.mark.asyncio
+async def test_overheat_protection_setpoint_sensors(hass: HomeAssistant) -> None:
+    """Test overheat protection min/max sensors reflect the configured band."""
+    unit = create_mock_ata_unit(
+        overheat_protection=ProtectionModeState(
+            enabled=True, active=False, min=35, max=37
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    min_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_overheat_protection_min")
+    max_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_overheat_protection_max")
+    assert min_state is not None
+    assert float(min_state.state) == 35
+    assert max_state is not None
+    assert float(max_state.state) == 37
+
+
+@pytest.mark.asyncio
+async def test_holiday_mode_date_sensors(hass: HomeAssistant) -> None:
+    """Test holiday mode start/end date sensors expose the raw API strings."""
+    unit = create_mock_ata_unit(
+        holiday_mode=ProtectionModeState(
+            enabled=True,
+            active=False,
+            start_date="2026-07-20T18:30:53.79",
+            end_date="2026-07-22T12:00:00",
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    start_state = hass.states.get(
+        "sensor.melcloudhome_a1b2_9abc_holiday_mode_start_date"
+    )
+    end_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_end_date")
+    assert start_state is not None
+    assert start_state.state == "2026-07-20T18:30:53.79"
+    assert end_state is not None
+    assert end_state.state == "2026-07-22T12:00:00"
