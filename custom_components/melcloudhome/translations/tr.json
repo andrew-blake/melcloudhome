@@ -26,6 +26,13 @@
           "debug_mode": "Sadece geliştirme için - MELCloud sunucusu yerine lokal Mock Sever'a bağlanılacak"
         }
       },
+      "reauth_confirm": {
+        "title": "{name} için kimlik doğrulamanın süresi doldu",
+        "description": "Lütfen {email} şifrenizi güncelleyin",
+        "data": {
+          "password": "Şifre"
+        }
+      },
       "reconfigure": {
         "title": "Yeniden düzenle",
         "description": "{email} için bilgilerinizi güncelleyin",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Bu hesap zaten kurulu",
+      "reauth_successful": "Yeniden kimlik doğrulama başarılı oldu",
       "reconfigure_successful": "Bilgileriniz başarıyla güncellendi."
     }
   },

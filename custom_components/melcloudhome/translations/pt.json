@@ -26,6 +26,13 @@
           "debug_mode": "Apenas para desenvolvimento - liga-se ao servidor mock local em vez da API de produção do MELCloud"
         }
       },
+      "reauth_confirm": {
+        "title": "A autenticação expirou para {name}",
+        "description": "Por favor, atualize a sua palavra-passe para {email}",
+        "data": {
+          "password": "Palavra-passe"
+        }
+      },
       "reconfigure": {
         "title": "Reconfigurar",
         "description": "Atualizar credenciais para {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Esta conta já está configurada",
+      "reauth_successful": "Reautenticação bem sucedida",
       "reconfigure_successful": "Credenciais atualizadas com sucesso"
     }
   },

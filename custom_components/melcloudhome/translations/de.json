@@ -26,6 +26,13 @@
           "debug_mode": "Nur für Entwicklung - verbindet mit dem lokalen Mock-Server statt den Produktions-MELCloud-APIs"
         }
       },
+      "reauth_confirm": {
+        "title": "Authentifizierung für {name} abgelaufen",
+        "description": "Bitte aktualisiere dein Passwort für {email}",
+        "data": {
+          "password": "Passwort"
+        }
+      },
       "reconfigure": {
         "title": "Neu konfigurieren",
         "description": "Aktualisieren Sie die Zugangsdaten für {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Dieses Konto ist bereits konfiguriert",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
       "reconfigure_successful": "Zugangsdaten erfolgreich aktualisiert"
     }
   },

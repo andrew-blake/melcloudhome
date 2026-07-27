@@ -39,3 +39,27 @@ def test_all_translation_files_match_english_keys() -> None:
         extra = keys - english
         assert not missing, f"{file.name} missing keys: {sorted(missing)}"
         assert not extra, f"{file.name} extra keys: {sorted(extra)}"
+
+
+def test_english_covers_every_config_flow_string() -> None:
+    """Parity above only compares against en.json — this checks en.json itself.
+
+    Keys listed here are the step IDs, abort reasons and error codes
+    ``config_flow.py`` can actually return.
+    """
+    config = json.loads((TRANSLATIONS_DIR / "en.json").read_text(encoding="utf-8"))[
+        "config"
+    ]
+
+    assert set(config["step"]) >= {"user", "reauth_confirm", "reconfigure"}
+    assert set(config["abort"]) >= {
+        "already_configured",
+        "reauth_successful",
+        "reconfigure_successful",
+    }
+    assert set(config["error"]) >= {
+        "invalid_auth",
+        "cannot_connect",
+        "service_unavailable",
+        "unknown",
+    }
