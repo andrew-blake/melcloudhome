@@ -212,6 +212,26 @@ class MockMELCloudServer:
                 "vane_horizontal_direction": "Auto",
                 "in_standby_mode": False,
                 "is_in_error": False,
+                # All three configured, so the full set of protection-mode
+                # entities is exercised in the dev environment.
+                "frost_protection": {
+                    "active": False,
+                    "enabled": True,
+                    "min": 10,
+                    "max": 12,
+                },
+                "overheat_protection": {
+                    "active": False,
+                    "enabled": False,
+                    "min": 35,
+                    "max": 37,
+                },
+                "holiday_mode": {
+                    "enabled": True,
+                    "active": False,
+                    "startDate": "2026-07-20T18:30:53.79",
+                    "endDate": "2026-07-22T12:00:00",
+                },
             },
             "bf8d5678-90ab-cdef-0123-456789ab5119": {
                 "name": "Bedroom AC",
@@ -224,6 +244,18 @@ class MockMELCloudServer:
                 "vane_horizontal_direction": "Centre",
                 "in_standby_mode": False,
                 "is_in_error": False,
+                # Frost protection only, at the server-side default the real API
+                # returns for every ATA unit whether or not it was ever set up.
+                # Overheat and holiday mode stay null, so this unit covers the
+                # "entity not created" path.
+                "frost_protection": {
+                    "active": False,
+                    "enabled": False,
+                    "min": 10,
+                    "max": 12,
+                },
+                "overheat_protection": None,
+                "holiday_mode": None,
             },
         }
 
@@ -272,6 +304,20 @@ class MockMELCloudServer:
                 "ftc_model": 5,
                 "outdoor_temperature": 3.0,
             },
+        }
+
+    def _ata_protection_modes(self, unit_id: str) -> dict[str, Any]:
+        """Return the unit-level protection-mode objects for an ATA unit.
+
+        These sit alongside "settings" and "capabilities" in the real /context
+        payload, not inside them, and are null until the mode has been configured
+        (except frostProtection, which the API defaults on every unit).
+        """
+        state = self.ata_states[unit_id]
+        return {
+            "frostProtection": state.get("frost_protection"),
+            "overheatProtection": state.get("overheat_protection"),
+            "holidayMode": state.get("holiday_mode"),
         }
 
     def _init_buildings(self) -> dict[str, dict[str, Any]]:
@@ -594,6 +640,7 @@ class MockMELCloudServer:
                         "settings": self._build_ata_settings(unit_id),
                         "capabilities": self._get_ata_capabilities(),
                         "schedule": [],
+                        **self._ata_protection_modes(unit_id),
                     }
                 )
 
@@ -638,6 +685,7 @@ class MockMELCloudServer:
                         "settings": self._build_ata_settings(unit_id),
                         "capabilities": self._get_ata_capabilities(),
                         "schedule": [],
+                        **self._ata_protection_modes(unit_id),
                     }
                 )
 
