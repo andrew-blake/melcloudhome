@@ -40,8 +40,13 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
     """Function to determine if sensor is available."""
 
-    should_create_fn: Callable[[AirToAirUnit], bool] | None = None
-    """Function to determine if sensor should be created. If None, uses available_fn."""
+    should_create_fn: Callable[[AirToAirUnit], bool] = lambda x: True
+    """Whether to create the sensor at all.
+
+    Must test something stable about the unit (a capability, a model trait) - never
+    a value that comes and goes, because creation is only evaluated once at setup.
+    Use available_fn for anything transient.
+    """
 
     attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
     """Function to extract extra state attributes from unit data."""

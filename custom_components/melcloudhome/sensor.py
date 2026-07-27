@@ -47,13 +47,7 @@ async def async_setup_entry(
                 unit.outdoor_temperature,
             )
             for description in ATA_SENSOR_TYPES:
-                # Use should_create_fn if defined, otherwise use available_fn
-                create_check = (
-                    description.should_create_fn
-                    if description.should_create_fn
-                    else description.available_fn
-                )
-                if create_check(unit):
+                if description.should_create_fn(unit):
                     entities.append(
                         ATASensor(coordinator, unit, building, entry, description)
                     )
