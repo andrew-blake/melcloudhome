@@ -71,7 +71,7 @@ async def main() -> None:
 
     # Get unit ID from command line or use default
     unit_id = (
-        sys.argv[1] if len(sys.argv) > 1 else "0efce33f-5847-4042-88eb-aaf3ff6a76db"
+        sys.argv[1] if len(sys.argv) > 1 else "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825"
     )
 
     print("MELCloud Home Vane Position Test")

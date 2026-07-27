@@ -269,3 +269,28 @@ async def test_holiday_mode_date_sensors(hass: HomeAssistant) -> None:
     assert start_state.state == "2026-07-20T18:30:53.79"
     assert end_state is not None
     assert end_state.state == "2026-07-22T12:00:00"
+
+
+@pytest.mark.asyncio
+async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) -> None:
+    """Test room temperature and wifi signal survive a setup with no readings.
+
+    Regression test. Creation used to fall back to available_fn when a description
+    had no should_create_fn, so a unit reporting no room temperature or RSSI at the
+    moment of setup - an offline unit during a Home Assistant restart - permanently
+    lost those entities until the integration was reloaded. available_fn is meant to
+    render an entity unavailable, not to suppress its creation.
+    """
+    unit = create_mock_ata_unit(room_temperature=None, rssi=None)
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    for entity_id in (
+        "sensor.melcloudhome_a1b2_9abc_room_temperature",
+        "sensor.melcloudhome_a1b2_9abc_wifi_signal",
+    ):
+        state = hass.states.get(entity_id)
+        assert state is not None, f"{entity_id} was not created"
+        assert state.state == "unavailable"

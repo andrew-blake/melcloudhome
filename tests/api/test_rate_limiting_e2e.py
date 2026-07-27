@@ -29,7 +29,7 @@ class TestRateLimitingE2E:
         Requires: make dev-up (mock server with rate limiting enabled)
 
         Mock server devices:
-        - ATA 1: 0efc1234-5678-9abc-def0-123456787db (Living Room AC)
+        - ATA 1: 0efc1234-5678-9abc-def0-1234567887db (Living Room AC)
         - ATA 2: bf8d5678-90ab-cdef-0123-456789ab5119 (Bedroom AC)
         - ATW 1: bf2d256c-42ac-4799-a6d8-c6ab433e5666 (House Heat Pump)
         """

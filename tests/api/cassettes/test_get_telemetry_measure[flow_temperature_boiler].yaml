@@ -662,10 +662,10 @@ interactions:
       authorization:
       - '***REDACTED***'
     method: GET
-    uri: https://mobile.bff.melcloudhome.com/telemetry/telemetry/actual/8e61d4cb-bc08-4424-bb5c-8bce84857637?from=2026-01-14+12:00&to=2026-01-14+16:00&measure=flow_temperature_boiler
+    uri: https://mobile.bff.melcloudhome.com/telemetry/telemetry/actual/aaaaaaaa-aaaa-aaaa-aaaa-98d77a4b9665?from=2026-01-14+12:00&to=2026-01-14+16:00&measure=flow_temperature_boiler
   response:
     body:
-      string: '{"measureData":[{"deviceId":"8e61d4cb-bc08-4424-bb5c-8bce84857637","type":"flowTemperatureBoiler","values":[]}]}'
+      string: '{"measureData":[{"deviceId":"aaaaaaaa-aaaa-aaaa-aaaa-98d77a4b9665","type":"flowTemperatureBoiler","values":[]}]}'
     headers:
       Connection:
       - keep-alive

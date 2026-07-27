@@ -26,6 +26,13 @@
           "debug_mode": "Vain kehityskäyttöön - yhteys paikalliseen testipalvelimeen virallisen MELCloud API:n sijaan"
         }
       },
+      "reauth_confirm": {
+        "title": "Todennus vanhentui kohteella {name}",
+        "description": "Päivitä salasanasi tilille {email}",
+        "data": {
+          "password": "Salasana"
+        }
+      },
       "reconfigure": {
         "title": "Uudelleenkonfigurointi",
         "description": "Kirjautumistietojen päivittäminen käyttäjälle {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Tämä tili on jo konfiguroitu",
+      "reauth_successful": "Uudelleentodennus onnistui",
       "reconfigure_successful": "Kirjautumistiedot päivitetty onnistuneesti"
     }
   },

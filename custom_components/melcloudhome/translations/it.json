@@ -26,6 +26,13 @@
           "debug_mode": "Solo per sviluppo - si connette al server mock locale invece che alle API MELCloud di produzione"
         }
       },
+      "reauth_confirm": {
+        "title": "Autenticazione scaduta per {name}",
+        "description": "Aggiorna la tua password per {email}",
+        "data": {
+          "password": "Password"
+        }
+      },
       "reconfigure": {
         "title": "Riconfigura",
         "description": "Aggiorna le credenziali per {email}",
@@ -42,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Questo account è già configurato",
+      "reauth_successful": "La riautenticazione è avvenuta con successo",
       "reconfigure_successful": "Credenziali aggiornate con successo"
     }
   },

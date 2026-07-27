@@ -68,7 +68,7 @@ async def test_ws_inbound_frames_ignored_and_disconnect_cleans_up(mock_client):
     assert server.ws_clients == set()
 
 
-ATA_ID = "0efc1234-5678-9abc-def0-123456787db"  # Living Room AC (seeded)
+ATA_ID = "0efc1234-5678-9abc-def0-1234567887db"  # Living Room AC (seeded)
 
 
 async def test_put_emits_typed_delta_to_all_sockets(mock_client):
