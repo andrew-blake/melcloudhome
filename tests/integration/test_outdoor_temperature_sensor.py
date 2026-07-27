@@ -19,7 +19,7 @@ from .conftest import (
 )
 
 # Test device UUIDs (match mock server IDs)
-LIVING_ROOM_ID = "0efc1234-5678-9abc-def0-123456787db"  # Has outdoor sensor
+LIVING_ROOM_ID = "0efc1234-5678-9abc-def0-1234567887db"  # Has outdoor sensor
 BEDROOM_ID = "5b3e4321-8765-cba9-fed0-abcdef987a9b"  # No outdoor sensor
 STUDY_ID = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"  # Has outdoor sensor (2nd unit)
 TEST_BUILDING_ID = "building-test-id"

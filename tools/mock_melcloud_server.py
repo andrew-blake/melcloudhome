@@ -201,7 +201,7 @@ class MockMELCloudServer:
         Note: Using UUIDs for cleaner entity names (e.g., "MELCloudHome 0efc 76db")
         """
         return {
-            "0efc1234-5678-9abc-def0-123456787db": {
+            "0efc1234-5678-9abc-def0-1234567887db": {
                 "name": "Living Room AC",
                 "power": True,
                 "operation_mode": "Heat",
@@ -282,7 +282,7 @@ class MockMELCloudServer:
                 "name": "My Home",
                 "timezone": "Europe/London",
                 "ata_unit_ids": [
-                    "0efc1234-5678-9abc-def0-123456787db",
+                    "0efc1234-5678-9abc-def0-1234567887db",
                     "bf8d5678-90ab-cdef-0123-456789ab5119",
                 ],
                 "atw_unit_ids": ["bf2d256c-42ac-4799-a6d8-c6ab433e5666"],
@@ -1177,7 +1177,7 @@ class MockMELCloudServer:
             current += timedelta(minutes=10)
 
         # Check if device has outdoor sensor (Living Room AC has it, Bedroom doesn't)
-        has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-123456787db"
+        has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-1234567887db"
 
         datasets = [
             {
