@@ -1,11 +1,14 @@
 """Shared test fixtures for API tests."""
 
 import contextlib
+import hashlib
 import os
+import re
 import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import pytest
 import pytest_asyncio
@@ -78,10 +81,53 @@ def socket_allow_hosts():
 
 
 # Configure VCR to filter sensitive data
+
+# Real business-data UUIDs (unit/building/user/system/schedule/scene IDs) get
+# swapped for a deterministic placeholder derived from their own hash - same
+# input always maps to the same output, so an ID appearing in multiple
+# places (e.g. a unit ID returned by GET /context and then used in the URI
+# of a later PUT) stays consistent with itself after scrubbing, without
+# needing any shared state across the separate before_record hooks VCR
+# calls per interaction.
+UUID_PATTERN = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+)
+UUID_SENTINEL = "00000000-0000-0000-0000-000000000000"
+# Same self-evidently-fake shape as tools/anonymize_har.py, so a placeholder
+# is recognizable as such on sight and by a simple pattern match - no need to
+# track which values this process has already emitted.
+PLACEHOLDER_PREFIX = "aaaaaaaa-aaaa-aaaa-aaaa-"
+PLACEHOLDER_PATTERN = re.compile(r"^aaaaaaaa-aaaa-aaaa-aaaa-[0-9a-f]{12}$")
+# Query-string params on auth.melcloudhome.com / Cognito login-flow requests
+# (nonce, state, code_challenge, ...) are reproduced byte-for-byte between
+# recording and replay by the deterministic_pkce fixture (tests/api/conftest.py)
+# seeding the RNG that generates them - VCR's request matching depends on
+# that. Only mobile-BFF URIs carry real business-data IDs, so URI scrubbing
+# is restricted to that host; body content is never used for VCR matching,
+# so it's safe to scrub unconditionally regardless of host.
+MOBILE_BFF_HOST = "mobile.bff.melcloudhome.com"
+
+
+# vcrpy runs before_record_request/before_record_response as part of its
+# match pipeline too, not only when actually writing a new interaction - so
+# it fires on ordinary cassette replay just as much as on a live recording
+# session. pseudonymize_uuid is a pure function of its input: a value
+# already in the placeholder shape is recognized by PLACEHOLDER_PATTERN and
+# returned unchanged, so replaying a cassette never re-hashes an
+# already-scrubbed ID into a different one. That makes the function
+# idempotent by construction - no "are we actually recording" gate needed,
+# and no cache to remember which values it has already emitted.
+def pseudonymize_uuid(value: str) -> str:
+    """Deterministically replace a UUID with a stable, self-evidently-fake placeholder."""
+    lowered = value.lower()
+    if lowered == UUID_SENTINEL or PLACEHOLDER_PATTERN.match(lowered):
+        return value
+    digest = hashlib.sha256(lowered.encode()).hexdigest()
+    return f"{PLACEHOLDER_PREFIX}{digest[:12]}"
+
+
 def scrub_body_string(body_string: str | bytes) -> str | bytes:
     """Scrub sensitive data from a body string or bytes."""
-    import re
-
     # Handle bytes
     if isinstance(body_string, bytes):
         # Decode, scrub, encode back
@@ -159,13 +205,31 @@ def scrub_body_string(body_string: str | bytes) -> str | bytes:
         r'"id_token":"[^"]+?"', '"id_token":"***REDACTED***"', body_string
     )
 
+    # Scrub real unit/building/user/system/schedule/scene IDs. Body content
+    # isn't part of VCR's request matching, so this is safe unconditionally.
+    body_string = UUID_PATTERN.sub(lambda m: pseudonymize_uuid(m.group()), body_string)
+
     return body_string
+
+
+def _scrub_uri_ids(uri: str) -> str:
+    """Scrub real business-data IDs from a request URI's path.
+
+    Restricted to the mobile BFF host - never touches auth.melcloudhome.com /
+    Cognito URIs, whose query strings must stay byte-identical to what
+    deterministic_pkce reproduces at replay time.
+    """
+    if urlparse(uri).hostname != MOBILE_BFF_HOST:
+        return uri
+    return UUID_PATTERN.sub(lambda m: pseudonymize_uuid(m.group()), uri)
 
 
 def scrub_sensitive_request(request: Any) -> Any:
     """Scrub sensitive data from request."""
     # VCR passes request as dict during serialization
     if isinstance(request, dict):
+        if request.get("uri"):
+            request["uri"] = _scrub_uri_ids(request["uri"])
         # Scrub request body
         if request.get("body"):
             body = request["body"]
@@ -174,7 +238,9 @@ def scrub_sensitive_request(request: Any) -> Any:
             elif isinstance(body, str):
                 request["body"] = scrub_body_string(body)
     else:
-        # If it's a Request object, try to access body attribute
+        # If it's a Request object, try to access uri/body attributes
+        if hasattr(request, "uri") and request.uri:
+            request.uri = _scrub_uri_ids(request.uri)
         if hasattr(request, "body") and request.body and isinstance(request.body, str):
             request.body = scrub_body_string(request.body)
 
@@ -324,17 +390,17 @@ async def authenticated_auth(request_pacer) -> AsyncIterator[MELCloudHomeAuth]:
 
 @pytest.fixture
 def dining_room_unit_id() -> str:
-    """ID of the Dining Room unit for testing."""
-    return "0efce33f-5847-4042-88eb-aaf3ff6a76db"
+    """ID of the Dining Room unit for testing (pseudonymized, matches cassettes)."""
+    return "aaaaaaaa-aaaa-aaaa-aaaa-1f2e69275164"
 
 
 @pytest.fixture
 def living_room_unit_id() -> str:
-    """ID of the Living Room unit for testing."""
-    return "bf8d1e84-95cc-44d8-ab9b-25b87a945119"
+    """ID of the Living Room unit for testing (pseudonymized, matches cassettes)."""
+    return "aaaaaaaa-aaaa-aaaa-aaaa-3dc9a6f7f311"
 
 
 @pytest.fixture
 def atw_unit_id() -> str:
-    """ID of the ATW unit for VCR testing (real guest device)."""
-    return "8e61d4cb-bc08-4424-bb5c-8bce84857637"
+    """ID of the ATW unit for VCR testing (pseudonymized, matches cassettes)."""
+    return "aaaaaaaa-aaaa-aaaa-aaaa-98d77a4b9665"
