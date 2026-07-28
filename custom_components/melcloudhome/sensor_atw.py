@@ -62,7 +62,7 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
 
     Must test something stable about the unit (a capability, a model trait) - never
     a value that comes and goes, because creation is only evaluated once at setup.
-    A transient missing value reads as state `unknown` instead.
+    A transient missing value reads as state `unknown`; it never gates creation.
     """
 
 
