@@ -152,10 +152,11 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         ),
         should_create_fn=lambda unit: unit.overheat_protection is not None,
     ),
-    # Holiday mode timestamps are device-local wall time, not UTC (verified
-    # 2026-07-23 Rome device, 2026-07-28 UK device). The building `timezone`
-    # field is unreliable, so no safe conversion exists - exposed as raw
-    # strings, no TIMESTAMP device class.
+    # Holiday mode timestamps are local wall time, not UTC (verified
+    # 2026-07-23 Italy, 2026-07-28 UK; submitter and device were co-located
+    # both times, so device-local vs submitter-local is undetermined). The
+    # building `timezone` field is unreliable, so no safe conversion exists -
+    # exposed as raw strings, no TIMESTAMP device class.
     ATASensorEntityDescription(
         key="holiday_mode_start_date",
         translation_key="holiday_mode_start_date",

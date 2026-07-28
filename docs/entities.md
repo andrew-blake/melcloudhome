@@ -38,7 +38,7 @@ For each air conditioning unit, the following entities are created:
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
 - **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
 - **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
-- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested: appears to be the submitting device's local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
