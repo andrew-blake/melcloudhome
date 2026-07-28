@@ -32,9 +32,6 @@ class ATABinarySensorEntityDescription(
     value_fn: Callable[[AirToAirUnit], bool]
     """Function to extract binary sensor value from unit data."""
 
-    available_fn: Callable[[AirToAirUnit], bool] = lambda x: True
-    """Function to determine if sensor is available."""
-
     attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
     """Function to extract extra state attributes from unit data."""
 
@@ -168,8 +165,4 @@ class ATABinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        device = self.coordinator.get_ata_device(self._unit_id)
-        if device is None:
-            return False
-
-        return self.entity_description.available_fn(device)
+        return self.coordinator.get_ata_device(self._unit_id) is not None

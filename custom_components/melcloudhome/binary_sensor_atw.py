@@ -32,9 +32,6 @@ class ATWBinarySensorEntityDescription(
     value_fn: Callable[[AirToWaterUnit], bool]
     """Function to extract binary sensor value from unit data."""
 
-    available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
-    """Function to determine if sensor is available."""
-
     attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
     """Function to extract extra state attributes from unit data."""
 
@@ -122,8 +119,4 @@ class ATWBinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        device = self.coordinator.get_atw_device(self._unit_id)
-        if device is None:
-            return False
-
-        return self.entity_description.available_fn(device)
+        return self.coordinator.get_atw_device(self._unit_id) is not None

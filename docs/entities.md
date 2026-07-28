@@ -38,7 +38,7 @@ For each air conditioning unit, the following entities are created:
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
 - **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
 - **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
-- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested: appears to be the submitting device's local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
@@ -56,7 +56,7 @@ All three reflect state read from the API only — the state is `on` when the mo
 
 **Why read-only:** the API endpoints that actually enable/disable these modes (`POST /api/holidaymode`, `POST /api/protection/frost`, `POST /api/protection/overheat`) live on a different host (the web BFF, `melcloudhome.com`) than the mobile BFF this integration talks to for everything else, and this integration's architecture deliberately dropped web-BFF support (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)) after it caused an outage. Whether/how to reach those endpoints safely from the mobile side is still being investigated (a GET probe against `/monitor/holidaymode` on the mobile BFF returned `405 Method Not Allowed` with `Allow: POST`, suggesting the route exists there too — reported but not backed by a saved artifact, see the evidence note under [Holiday Mode](api/ata-api-reference.md#holiday-mode); frost/overheat protection's mobile equivalents were not found after extensive testing). Until that's resolved, these entities only surface what the API already reports on every regular poll — no new write path, no new risk to the unit.
 
-Entities are created once, at integration setup. A mode configured for the first time in the MELCloud app won't appear in HA until the integration reloads.
+These modes are configured by the account's **primary owner** — guest accounts don't see the settings in either the web or mobile app (a guest-account integration still reads their state). Entities are created once, at integration setup: a mode configured for the first time won't appear in HA until the integration is reloaded. Once a mode has ever been configured its entities persist — removing a device from the mode turns the binary sensor `off` rather than removing anything.
 
 ### ATA Control Options
 
@@ -164,7 +164,7 @@ For each heat pump system, the following entities are created:
 - **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 
-All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unavailable`. That is expected.
+All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unknown`. That is expected.
 
 **Purpose:** Monitor heating system efficiency and performance
 
@@ -176,7 +176,7 @@ All of these except the Zone 2 pair are created for every heat pump. Not every c
 **Data density:** 10-15 datapoints per hour during active heating (sparse when idle)
 **Statistics:** HA auto-creates statistics and history graphs automatically
 
-**Note:** Boiler temps may show "unavailable" if no external boiler present (normal behavior)
+**Note:** Boiler temps may show "unknown" if no external boiler present (normal behavior)
 
 **WiFi Signal Sensor:**
 
