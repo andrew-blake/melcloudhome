@@ -152,17 +152,10 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         ),
         should_create_fn=lambda unit: unit.overheat_protection is not None,
     ),
-    # Holiday mode window - raw ISO strings as observed from the API, exposed
-    # as-is rather than parsed into a UTC-aware datetime / TIMESTAMP device
-    # class (unlike outdoor-temp's recorded_at - see #173 - which is confirmed
-    # UTC). Live-tested 2026-07-23: set a start time "1 hour from now" on a
-    # device physically in Europe/Rome; the raw value matched Rome's local
-    # wall clock at that moment, not UTC. The building object's own `timezone`
-    # field (e.g. "Europe/Athens" on this account) looked like it might
-    # explain the offset but was a coincidence - Athens is UTC+1 ahead of
-    # Rome, which happens to cancel out a "+1 hour" test value - and does not
-    # reliably describe what these fields mean. No safe general conversion
-    # is known, so left as a naive passthrough string.
+    # Holiday mode timestamps are device-local wall time, not UTC (verified
+    # 2026-07-23 Rome device, 2026-07-28 UK device). The building `timezone`
+    # field is unreliable, so no safe conversion exists - exposed as raw
+    # strings, no TIMESTAMP device class.
     ATASensorEntityDescription(
         key="holiday_mode_start_date",
         translation_key="holiday_mode_start_date",
