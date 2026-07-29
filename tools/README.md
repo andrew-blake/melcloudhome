@@ -328,6 +328,44 @@ python tools/dump_device_state.py --unit-id <uuid>    # Single device
 
 Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
 
+### `outdoor_temp_recorder.py`
+
+Long-running recorder for outdoor-temperature integrity investigations
+(issues #152/#171 and the trendsummary synthetic-point bug). Every interval it
+records, per ATA unit: raw trendsummary datapoints at **both** Hourly and Daily
+periods, the first ATW unit's native `OutdoorTemperature` context field (a
+control group that bypasses trendsummary), and Home Assistant's currently
+reported outdoor temperature — including the `last_reading` attribute, so the
+integration's claimed staleness can be validated against the raw API. Units
+are discovered from `/context`; HA entity IDs are derived from unit UUIDs.
+
+```bash
+source .env
+uv run tools/outdoor_temp_recorder.py --interval-minutes 5 --duration-hours 24
+```
+
+Requires `MELCLOUD_USER`/`MELCLOUD_PASSWORD` and `HA_URL` + `HA_TOKEN` (or
+`HA_API_KEY`). Point `HA_URL` at a hostname with a valid certificate; the
+`--insecure` flag exists only as a fallback for self-signed LAN setups.
+CSVs land in `diagnostics/outdoor-temp-recorder/` (gitignored) by default.
+For an overnight run on macOS, wrap in `caffeinate -i` so the machine stays awake.
+
+### `plot_outdoor_temp_grid.py`
+
+Renders recorder output as a comparison grid — one column per unit, one row per
+series (HA state / direct Daily / direct Hourly / optional real-world reference
+sensor / `last_reading` staleness sawtooth), with shading for outdoor-unit
+cooling activity (via `--zones`) and the Daily-period BST-midnight anomaly
+windows. This is the chart format used in the
+[issue #152](https://github.com/andrew-blake/melcloudhome/issues/152) investigation.
+
+```bash
+uv run tools/plot_outdoor_temp_grid.py --start 2026-07-28T20:00:00 --end 2026-07-29T06:00:00
+```
+
+Dependencies (matplotlib) are declared inline (PEP 723), so `uv run` provisions
+them automatically. Run `--help` for the unit/reference/zone options.
+
 ## Home Assistant Diagnostic Tools
 
 ### `find_corrupt_energy_readings.py`

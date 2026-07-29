@@ -672,7 +672,9 @@ Returns historical temperature data for chart display. Used by integration to fe
 - `from` - Start datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
 - `to` - End datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
 
-**Note:** With `period=Daily` the API ignores `from`/`to` and returns all available historical data (observed: 200+ datapoints spanning several weeks). With `period=Hourly` the API only includes data for the requested window, so idle units that haven't run recently return an empty dataset.
+**Note:** With `period=Daily` the API ignores `from`/`to` and returns all available historical data (observed: 200+ datapoints spanning several weeks). With `period=Hourly` the API honours the requested window (verified up to 7 days), so idle units that haven't run inside the window return no genuine readings.
+
+**Datapoint semantics (verified against prod, 2026-07-28):** responses mix two kinds of points. Genuine unit readings appear only under `period=Hourly` and carry the unit's actual upload time with arbitrary seconds (e.g. `07:15:24`). Synthetic chart points pad the series: bucket-aligned repeats of the last value (seconds `== 0`), and a final point stamped with the query's own `to` parameter echoed back verbatim. `period=Daily` returns *only* 30-minute bucket aggregates plus the `to`-echo — no genuine reading timestamps — and its latest value can diverge from the unit's actual latest reading. The `to`-echo means the last datapoint's timestamp always looks fresh regardless of how stale the data is. A separate Daily-only artifact was observed twice (2026-06-24 and 2026-07-25) where the freshest label led the query time by up to an hour during 00:00–01:00 BST — consistent with local-time bucket labels read as UTC, but the mechanism was never confirmed and is moot now that the integration only uses `Hourly` genuine readings.
 
 **Example Request:**
 
@@ -714,17 +716,16 @@ GET /report/v1/trendsummary?unitId=aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825&period=D
 **Integration Usage:**
 
 - Polled every 30 minutes (initial probe on startup, then periodic updates)
-- Uses `period=Daily` — returns all available historical data regardless of `from`/`to`
-- Extracts latest outdoor temperature value from OUTDOOR_TEMPERATURE dataset (last array element)
+- Uses `period=Hourly` with a 7-day window, `to` truncated to seconds=0 so the `to`-echo point is recognisable as synthetic
+- Extracts the latest genuine reading (last datapoint with seconds ≠ 0) from the OUTDOOR_TEMPERATURE dataset — value and `last_reading` timestamp both come from that reading
 - Not all devices have outdoor sensors (capability auto-detected at runtime)
-- Dataset absent for devices without outdoor sensor; `Hourly` period also returns empty dataset for idle units
+- Dataset absent for devices without outdoor sensor; units idle for the whole 7-day window return no genuine readings, and the coordinator keeps the previous value
 
 **Notes:**
 
 - Response includes chart styling metadata (colors, borders, etc.)
 - Multiple temperature datasets returned in single call
 - Used by MELCloud web UI for temperature graphs
-- Integration sends a 24-hour `from`/`to` window but Daily period ignores it and returns all historical data
 
 ### Trend Summary — Legacy Web Host Variant (not integrated)
 

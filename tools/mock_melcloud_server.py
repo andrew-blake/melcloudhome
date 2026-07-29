@@ -1211,18 +1211,28 @@ class MockMELCloudServer:
         else:
             from_time = to_time - timedelta(hours=1)
 
-        # Generate datapoints (every 10 minutes)
+        # Generate datapoints (every 10 minutes). Like the real API, genuine
+        # readings carry arbitrary seconds (here :26) while synthetic points
+        # are seconds-aligned: the response ends with an echo of the query's
+        # "to" timestamp repeating the last value, which clients must not
+        # mistake for a reading.
         datapoints_room = []
         datapoints_set = []
         datapoints_outdoor = []
 
-        current = from_time
+        current = from_time.replace(second=26)
         while current <= to_time:
             timestamp = current.isoformat()
             datapoints_room.append({"x": timestamp, "y": 20.5})
             datapoints_set.append({"x": timestamp, "y": 21.0})
             datapoints_outdoor.append({"x": timestamp, "y": 12.0})
             current += timedelta(minutes=10)
+
+        # Synthetic to-echo point (server pads the chart to "now")
+        echo = to_time.isoformat()
+        datapoints_room.append({"x": echo, "y": 20.5})
+        datapoints_set.append({"x": echo, "y": 21.0})
+        datapoints_outdoor.append({"x": echo, "y": 12.0})
 
         # Check if device has outdoor sensor (Living Room AC has it, Bedroom doesn't)
         has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-1234567887db"
