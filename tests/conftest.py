@@ -259,9 +259,13 @@ def scrub_sensitive_request(request: Any) -> Any:
 
 def scrub_sensitive_data(response: dict[str, Any]) -> dict[str, Any]:
     """Scrub sensitive data from VCR cassettes."""
-    # Remove Set-Cookie headers to avoid storing session cookies
-    if "set-cookie" in response["headers"]:
-        response["headers"]["set-cookie"] = ["***REDACTED***"]
+    # Remove cookie headers to avoid storing session cookies. The recorded
+    # header key is "Set-Cookie", so the lookup must be case-insensitive —
+    # vcrpy's filter_headers only covers request headers, this hook is the
+    # sole scrubber for the response side.
+    for key in list(response.get("headers", {})):
+        if key.lower() in ("set-cookie", "cookie"):
+            response["headers"][key] = ["***REDACTED***"]
 
     # Scrub response body
     if response.get("body"):

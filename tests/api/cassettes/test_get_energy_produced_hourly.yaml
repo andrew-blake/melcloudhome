@@ -127,11 +127,7 @@ interactions:
       Server:
       - Kestrel
       Set-Cookie:
-      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8IRLia7XffNJh2SAFm28gtmZFRd0pMA29vH8V0wMm_au3V2rxobjLTX701rvGnRqsVdabt4M2Wi5-19oN8Y4Y5imv_B8GRuPsS3Spo36pmuXPObe7E0K5003zxjgT8tfz-sC6KvXfLjmUsg6C9TIy94zUEjh-qKCUfcILK-XZ4JloNu32tDwri6S3nDjIZgw0LUF8YC_yVzyHj44ZJQnHqD7qQXS5Oqdry_XNTkcmBUw3TUU9D1MWFZUehfng_OOrogBfg5XuE6Nzx6ShG1unGE=N;
-        expires=Sun, 12 Apr 2026 13:35:43 GMT; path=/signin-oidc-meu; secure; samesite=none;
-        httponly
-      - .AspNetCore.Correlation.l2cKLTgkPQT4VTmxaParNKffM9cebZP8viVECR-14o8=N; expires=Sun,
-        12 Apr 2026 13:35:43 GMT; path=/signin-oidc-meu; secure; samesite=none; httponly
+      - '***REDACTED***'
       apigw-requestid:
       - btVWzgxHjoEEM0g=
     status:
@@ -168,12 +164,7 @@ interactions:
       Server:
       - Server
       Set-Cookie:
-      - XSRF-TOKEN=bf1a70a1-3b32-473b-84a1-48be654990fe; Path=/; Secure; HttpOnly;
-        SameSite=Lax
-      - csrf-state=639115968431645721.MWU4NzMxODctZTU0Zi00MjQ3LTg3ZDUtNDQ3MjA0NTg3MTZjOGY4ZDE0Y2EtMjY5NC00MDA1LWFlN2UtZmU0MjE2N2I1NmVl;
-        Expires=Sun, 12-Apr-2026 13:25:43 GMT; Path=/; Secure; HttpOnly; SameSite=None
-      - csrf-state-legacy=639115968431645721.MWU4NzMxODctZTU0Zi00MjQ3LTg3ZDUtNDQ3MjA0NTg3MTZjOGY4ZDE0Y2EtMjY5NC00MDA1LWFlN2UtZmU0MjE2N2I1NmVl;
-        Expires=Sun, 12-Apr-2026 13:25:43 GMT; Path=/; Secure; HttpOnly
+      - '***REDACTED***'
       Strict-Transport-Security:
       - max-age=31536000 ; includeSubDomains
       X-Content-Type-Options:
@@ -247,7 +238,7 @@ interactions:
         profile&amp;code_challenge=Z-n6D3D7VLIzr5g1pinVAYeQVGT5vhaf_adA3wzDt9Q&amp;code_challenge_method=S256&amp;nonce=639115968431645721.MWU4NzMxODctZTU0Zi00MjQ3LTg3ZDUtNDQ3MjA0NTg3MTZjOGY4ZDE0Y2EtMjY5NC00MDA1LWFlN2UtZmU0MjE2N2I1NmVl&amp;state=CfDJ8IRLia7XffNJh2SAFm28gtlPoIAVlw1DzLBGZyWpuaBKWpqqInPpBZwqzNnvtcZSpkBy8EeKF-Huo5I3G7MRB16yxmEcgl9Fs7aj2y2fwgk31K79sel752loryPr8Rnrn3vHbiDkOcSm59mX_W9GQtTeCMWtmqRduxcI_QIXEiGOEqNQ9_KBGfxt1o_6sTCMO-EMmQfs3cudtTOhuqiyfL5ephBgJpOH1KuhCdGpxjxxM1x0d45AsMyagVsgiFX9wbtjxDNG-MfVBUnZKH8yqQsvGTrfzdRTXWLcLqGiRbZvAlEz5xwzfaQEYb2eRHJiU6-kvi9a6silcKZ1RftmXQLdTu9fHTqX8Bhn2CvTQWbQbqHZSs0kAHdf5wFZ6hWzFvAMQsFCEN0d3Fx0WAmFjmSKsdjg7B9lWpUE0LXj5gto-vSJbitE9NBlxA93fAiLPsHV4leO6GIrOBtYLlouw7PSCjD_6GbhhkpJ5fFa3yd6oqrB6776i-wgR9CHYD1Fz4SCH2CelPX57eRurmKbqKyOXeo9g-h5WUo88EHGSdv35wswiKTMIgFNylrBAKwkn2Fq1l8ut5kGGIbDINeNDpUpmNgAgLkwpfN061d5zzYM31-GfKaUifB_pYcTFaLGR928P-mZUKo4yTcUM7rAE1aYqHFUJVv8-frsZu4Fh-VC\"
         method=\"POST\" name=\"cognitoSignInForm\"\n              class=\"cognito-asf\"
         onsubmit=\"onSubmitLoginForm(this);\"><input type=\"hidden\" name=\"_csrf\"
-        value=\"bf1a70a1-3b32-473b-84a1-48be654990fe\"/>\n\n            \n\n            \n
+        value=\"aaaaaaaa-aaaa-aaaa-aaaa-f83273f2b622\"/>\n\n            \n\n            \n
         \           <label for=\"signInFormUsername\" class=\"label-customizable\">Email</label>\n
         \           <div>\n                <input id=\"signInFormUsername\" name=\"username\"
         type=\"text\" class=\"form-control inputField-customizable\"\n                   placeholder=\"***REDACTED_EMAIL***\"
@@ -277,7 +268,7 @@ interactions:
         profile&amp;code_challenge=Z-n6D3D7VLIzr5g1pinVAYeQVGT5vhaf_adA3wzDt9Q&amp;code_challenge_method=S256&amp;nonce=639115968431645721.MWU4NzMxODctZTU0Zi00MjQ3LTg3ZDUtNDQ3MjA0NTg3MTZjOGY4ZDE0Y2EtMjY5NC00MDA1LWFlN2UtZmU0MjE2N2I1NmVl&amp;state=CfDJ8IRLia7XffNJh2SAFm28gtlPoIAVlw1DzLBGZyWpuaBKWpqqInPpBZwqzNnvtcZSpkBy8EeKF-Huo5I3G7MRB16yxmEcgl9Fs7aj2y2fwgk31K79sel752loryPr8Rnrn3vHbiDkOcSm59mX_W9GQtTeCMWtmqRduxcI_QIXEiGOEqNQ9_KBGfxt1o_6sTCMO-EMmQfs3cudtTOhuqiyfL5ephBgJpOH1KuhCdGpxjxxM1x0d45AsMyagVsgiFX9wbtjxDNG-MfVBUnZKH8yqQsvGTrfzdRTXWLcLqGiRbZvAlEz5xwzfaQEYb2eRHJiU6-kvi9a6silcKZ1RftmXQLdTu9fHTqX8Bhn2CvTQWbQbqHZSs0kAHdf5wFZ6hWzFvAMQsFCEN0d3Fx0WAmFjmSKsdjg7B9lWpUE0LXj5gto-vSJbitE9NBlxA93fAiLPsHV4leO6GIrOBtYLlouw7PSCjD_6GbhhkpJ5fFa3yd6oqrB6776i-wgR9CHYD1Fz4SCH2CelPX57eRurmKbqKyOXeo9g-h5WUo88EHGSdv35wswiKTMIgFNylrBAKwkn2Fq1l8ut5kGGIbDINeNDpUpmNgAgLkwpfN061d5zzYM31-GfKaUifB_pYcTFaLGR928P-mZUKo4yTcUM7rAE1aYqHFUJVv8-frsZu4Fh-VC\"
         method=\"POST\" name=\"cognitoSignInForm\"\n              class=\"cognito-asf\"
         onsubmit=\"onSubmitLoginForm(this);\"><input type=\"hidden\" name=\"_csrf\"
-        value=\"bf1a70a1-3b32-473b-84a1-48be654990fe\"/>\n\n            \n\n            \n
+        value=\"aaaaaaaa-aaaa-aaaa-aaaa-f83273f2b622\"/>\n\n            \n\n            \n
         \           <label for=\"signInFormUsername\" class=\"label-customizable\">Email</label>\n
         \           <div>\n                <input id=\"signInFormUsername\" name=\"username\"
         type=\"text\" class=\"form-control inputField-customizable\"\n                   placeholder=\"***REDACTED_EMAIL***\"
@@ -379,13 +370,7 @@ interactions:
       Server:
       - Server
       Set-Cookie:
-      - XSRF-TOKEN=""; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/; Secure; HttpOnly;
-        SameSite=Lax
-      - XSRF-TOKEN=cfa596d9-ce21-4c09-9d6a-98bb23dc78d9; Path=/; Secure; HttpOnly;
-        SameSite=Lax
-      - cognito="H4sIAAAAAAAAAAHiAB3//eipdjKP7AYkpteAnUIekzfurj8tMbZTVGPmySHgZxf+j2RGl4mOajqD3BxKgpujMQ4fIElnyUXrUl4ln+dstT/eiw6BELgAM+LLE0XKLs1NPc2YVOJOoC3ybI6WAWWgEaglgyuboZfoNt9mN0sVlN9YZGaccCCHzTTh42cSx5vuP1EiL0x2mPKSGi4EoVVJA4OWyvmT59GjGqw4j40gADn5PQHicKrGgAbnWuscHWgpbVc/o7Q/C9SBtChBkbW3Ec4Fmpeq7cFNYoWbgvQDI7TdGsKg2BJAexrfm2CX4N6miCiZUcviAAAA.H4sIAAAAAAAAAAEgAN//yh2YXx0uf7KCxZBKQoqnvV/PV7VDB9tmZvIHmaDQtnc6eqIXIAAAAA==.3";
-        Version=1; Domain=live-melcloudhome.auth.eu-west-1.amazoncognito.com; Max-Age=3600;
-        Expires=Sun, 12-Apr-2026 14:20:43 GMT; Path=/; Secure; HttpOnly; SameSite=Lax
+      - '***REDACTED***'
       Strict-Transport-Security:
       - max-age=31536000 ; includeSubDomains
       X-Content-Type-Options:
@@ -441,13 +426,7 @@ interactions:
       Server:
       - Kestrel
       Set-Cookie:
-      - .AspNetCore.Correlation.l2cKLTgkPQT4VTmxaParNKffM9cebZP8viVECR-14o8=; expires=Thu,
-        01 Jan 1970 00:00:00 GMT; path=/signin-oidc-meu; secure; samesite=none; httponly
-      - .AspNetCore.OpenIdConnect.Nonce.CfDJ8IRLia7XffNJh2SAFm28gtmZFRd0pMA29vH8V0wMm_au3V2rxobjLTX701rvGnRqsVdabt4M2Wi5-19oN8Y4Y5imv_B8GRuPsS3Spo36pmuXPObe7E0K5003zxjgT8tfz-sC6KvXfLjmUsg6C9TIy94zUEjh-qKCUfcILK-XZ4JloNu32tDwri6S3nDjIZgw0LUF8YC_yVzyHj44ZJQnHqD7qQXS5Oqdry_XNTkcmBUw3TUU9D1MWFZUehfng_OOrogBfg5XuE6Nzx6ShG1unGE=;
-        expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/signin-oidc-meu; secure; samesite=none;
-        httponly
-      - idsrv.external=CfDJ8IRLia7XffNJh2SAFm28gtltKlobmjAbDNtSuyT4r0eXpevpoJlo0XMYaj4QKSKLtaCCEPj5cJfTpGYjgSNEUgwDolumYzWrwwDLHrZ4aw_hV-bvBSPkjgDUlrLibTCihcSptvosGj-Fl1Ih5chiFQDA9SuoGeOSxBJ3MPwuK2W-h6Lya5BmupAuzmyU-hhxYnN2RMWv3W4rcIrkM1UKLDb0AyTTDUCFgLgSqDjaEZeisxPS6togdQUXbVCgArLyYt69hqIqr3h0kxEsWn5IFj--DYLg0OAMoF91gV7n1dg09yKHEKaIAGSa5EJw0lLaZZVnHg5eaMjFfrhIeY0GyQf9NwgoNDmo0cEqPeCIIQ2X0v0n17Zv5H2zMNVastt2IrFWcf6AcyTPS8N8j9Cp7yMSAPd6KbYwNumhzNJUtUhxYhjKPF9rAU3ids9yxueKv60uB3Pg-7qGTsjjze0SZG_WrEWrpPmIHFuttIjvBPTkal9JRwTQkNeIX9iydxewB7hnKAbrtf2n-eLFbxDoaUF0zjuBqxFSNppYKbN42b6cASQFkhrxMXQjYIODo-R9aUr9NFi8Mal9QpNFkm1jcN0hisSm844evx8T91m9R3ST80rWJy5qZi3R80D1JB9PjbemcvPXd0HrSUuV-nekvzCQcqI2GvCDAZbKz-KMSRtw0r6SdXdjrIXyZ0xTwYNgRapoOttvaeI6cyFV7PgqXRo4hUoWmGfaImo94lIsWLZlEZXv7R_EDtuS2m3aoGT3oQWVON-4CDA1aH143_hym06cKZLsfe6cV4Zv9imzBcSjcYk03iXtFiNpj68C7e6D6iM84pfUxOylJyqaVPmSIznUdIrYBq2bAqkq5Cpyr_gPIxeCLvISmqeDeigPVfRufWT_efVjn35v3WFk14hc_XWKXxH8SBOQJl88xPViAN2WQxwXsddtvWAxnrMZrC4F29so3m9IOLsVQTGDV5mcuCzH-quJe9emmXRD8AZJ8eGZvnT8onFRXe3ReqR3THiEhoz3Dbj6TKO3XRsPVZuZTKcnDlelrEKa0JDeXuxEKjsEU2i25iQZ0fkiFIBedMspB4FnJBcacUGa_Nd808z2z7Em0xWwrJ8ANyW0HnRz9YSbmSVfV452bDHMGiCjacJsr5ea0uBj0wJd4YGQVnYkMRQU1FtYHIQBqXOE1eQ5pU4PShb9AoaGTlfyCsIEO8wDDRHUlZKzfw4cpNwe58AAvmOfgfJmVE0EgX5vxK_xwyulSgVPdoVuhHyOZ03_BzEULxc6B-G0jfJQwYPYBjAns0RLiqXTcrKe-z7MAg8Rqm2p1dBmQPWu5eMo31UfdY38zOMgVeI_nsyGBhq2csncvbMJiCQ4LnFSEwvUeWWM-oq0t3NIluhKf9kjNFtBCu3iPGbmq08vuM2xuZhqyRVHTHtrGABTwBU8NZU9BAI5zR5r1ISB-NFT1Jv_QqLEIQ3f54wYBLW0c162vN4jaxoGMYz2zvrtBqg0ll0c-LcmqPVd3UPOvWuR0o4pkQfy0WsXxOf5trhHu2BSOrXjvmeLHvcVNOlJvkLqmnjeyWCc3UB7VnXVNQ2kSLHVRjuyLWEnfQ809TfX4WUjB1AStHXzaBzx-uptgFpEMnKwhliVOMnMo3Z4kqkihU5NGNgK9MCdNQ1DnmkdeGvXrzdybU5mS2U64qGSG2fHCH5GjV_HZjDqLHnXdyFAOSiaPHijjCOLyv6n5yaPfkk-ElZiebclu75AkXtyJzirzEyhaW3TeQux6RfjPAthdnWVrVE-Ky5KYroZLFZIxL1kJDLcfY2sjj4vTRZ_GA7iongirz7GedEvf6eaDxCPGI92OydIx6b5sbiZsZVS_isgBjEtTKn69ipSaaWKfMgfUm5lSaW1-yBWzkiUtnp1xFxjy4aK7frkjgesVDxMktkUkjw5SVou0lls2dPJGFedyF9YJgToyhZMmh67R2ZP5sr3VbsdBUFzT1OnGzplRtcU5lhBNw3CPu1r0mINBK1N9d7WBeLVbXdK9WUyrEZpDNJLxNH0BHtIl_SBs651SPP5U_fiPjgok71mOIH1bNAnxHVwBeJTRaMm3GUz6ztgArjrWkduDQw7-NsI4UZz66leYRlKIj7a4Xkm2qiY8t9VEqKbJ_k4XBBF2gHPtWbsTptJLsFkTt1OlNX4jaWyt4OwZMSLogJDIAl79sQsz6QVv3V3TfdH5PfYeJ0pxl6Mcj129u0z_CriitCneK4fGLNkshJWu10XkZFWWXMWiEm_Tq5gw1AiVYeaHddZcmLgplXhwZqQ5YwIO7PbymbYI955addWBEHAYeZ-wNfXfXmLVPUYIxREDZoNJVNNiOu5BdzsoTDA5czcc-ALKa81K-CsGHnHdpkx2GkFO9e9p5N5FU7LlltiiLz9lv0GCL8E8Y2qJCr5vOb_tofcUjA2oG9lTZkYZ3irXGuFi_00JyUriRg87G9vM3bu6o_jyrvKXPx3BvUZw2o_Qg;
-        path=/; secure; samesite=none; httponly
+      - '***REDACTED***'
       apigw-requestid:
       - btVW6hYwjoEEMgQ=
     status:
@@ -495,11 +474,7 @@ interactions:
       Server:
       - Kestrel
       Set-Cookie:
-      - idsrv.session=5652DC275C0D5DAE6A385563EEE3C8E0; path=/; secure; samesite=none
-      - .AspNetCore.Identity.Application=CfDJ8IRLia7XffNJh2SAFm28gtkMCFG5gtYzvozpwz_gMmFviQ-hHBbw24ojtIZ3Tx4eUnHZU9gmy_QE3koZcU9AwkI67av_ULcvX1_kz1h-DRoNh1ldbTnLMvnhGEWrf6hwBdVJPv3zXrhXLrgbuzFUVlghQgN2H5qbFPOkqBWAh2akqLsJEzX0tii-t_3rfUXziab1hFYRUGBgtbYCRCXtDhI0FFrVJVRSdC7Vhr4pSekwh9FHvSW6WjmphlEiILQDGbkAG14KT9tAXQI4GboDTOlfF_glnz3Ro4xsxGgjSBFYbGJoQGjS6FAe3J8aWVfp4NFdNUPBC5NaDvPMS1rQubz8QG-QPvorC5InFQ9swvRfTWe4qnbWv-oz8Vi7Iek3s8tkvibUlsRs9jhsEJzJ9YzoqDofQb7DHt5tKqJc0wQ52UNWiBtSR3rD7RBlwR2vsqpeMLNFWcGU1r4WTFWB4tq0uj28oJAIYnY2FDi0FuZDq17cczc0KRaIgX69kYluYUYpseqoCax8vN9c9QO4-_zwjoPZppfBPPQAXbvVcVoyawb8SIT94bN_ZVGfdM-HfTypJJOpov83WkVaumhUmjc4BzTBNY9-y6ajyxGQjVdl9_MnAru8sg5CgINVfUSB6zcEPJlia6mvm1N5VsRl7sc;
-        path=/; secure; samesite=lax; httponly
-      - idsrv.external=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; secure; samesite=none;
-        httponly
+      - '***REDACTED***'
       apigw-requestid:
       - btVW8hi4joEEMrQ=
     status:
@@ -603,10 +578,7 @@ interactions:
       Server:
       - Kestrel
       Set-Cookie:
-      - ConsentResponse.7IM8S-vnAEq4zlx2-VFNpeXFYSIpVUhSMnwOESEh5uc=.; expires=Sat,
-        01 Jan 2000 00:00:00 GMT; path=/; secure; httponly
-      - .AspNetCore.Identity.Application=CfDJ8IRLia7XffNJh2SAFm28gtmk3PN-Zi3kwF1YGUv-OXmCS_6srZTQ5Uj3K9WbsCwiZCNYjMG54fJyWvwa6liui7Ni29ek1zTJupQSatxPUXurNsV2A7qatibfo9kxNR3t4YzLgRBRLZoNXHSx-Bvts3QP1tKXovcOn4lOSUsFe9aupmyPubQ517y4kUXWEl8HnqvxOTtPgagivsLCzxWqQPnj2oL-kluBoMisQcakutt_Qg6nQfk_UTjHfwn52RfCcFt0iXtlPImzYicC_O1X7FydfTrB_3GpwM_5kX1wYrw1EhcmxTblf91g_VVrB8LozV7H_jgKtLRHlKQqH_HmddQPQXhPIgCkrquwt6MtfYispiBXrZaSXO96YZotjzMvV4Heu6UchWRmYHPc8o--bJFUn1QC5h-1BTSNLPF_ov4kdPUUbDp-N7Mat3dh7htTXoYa4OoDScmQQteg2tRbVcpojKUNoK3PBgYuidmZyPojOe8Lzht66lztxzLGBwzr4JChU0qTDBX4UHWheNDu_yhHryyOERq7yng_5-QJ7Y2VMUPFo6WKglRI2w-A0FYwt_zE2xumflCzADwnwxLKTlV9XdMxkK-rJ29lqnqy_dsM_Afb3jYmNedimO9yjyubc7A5M_SlzgRQxrv8LyD3DgYQrLe5AmJpqSfE2JCECf7-F5viNbCOqaIodxdGPdvUdQ;
-        path=/; secure; samesite=lax; httponly
+      - '***REDACTED***'
       apigw-requestid:
       - btVW-gg4DoEEMXg=
     status:
