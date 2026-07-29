@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
 
-@freeze_time("2026-02-03 12:30:00", real_asyncio=True)
+@freeze_time("2026-07-28 09:30:00", real_asyncio=True)
 @pytest.mark.vcr()
 @pytest.mark.asyncio
 async def test_get_outdoor_temperature(

@@ -361,16 +361,28 @@ class MELCloudHomeClient:
           }
         ]
 
+        The response mixes genuine unit readings with synthetic chart points
+        the server appends: bucket-aligned repeats of the last value (e.g.
+        08:00:00, 09:00:00) and a final point stamped with the query's own
+        "to" parameter echoed back verbatim. Genuine readings carry the unit's
+        actual upload time with arbitrary seconds (e.g. 07:15:24), so points
+        with seconds == 0 are treated as synthetic and skipped — the caller
+        sends a seconds-aligned "to" precisely so the echo point is caught by
+        the same rule. A genuine reading landing exactly on :00 seconds is
+        rare and costs at most falling back to the previous reading.
+
         Args:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
-            or (None, None) if not available. The timestamp lets consumers
-            detect stale data: units stop uploading outdoor temperature while
-            idle, so the latest datapoint can be hours old (issues #152, #171).
-            The API's "x" timestamps are naive but confirmed UTC (cross-checked
-            against the response's own Date header), hence the tzinfo attach.
+            Tuple of (temperature in Celsius, UTC-aware datetime of the
+            reading), or (None, None) if the response holds no genuine
+            reading. The timestamp lets consumers detect stale data: units
+            stop uploading outdoor temperature while idle, so the latest
+            reading can be hours old (issues #152, #171). The "x" timestamps
+            are naive but confirmed UTC: across ~1,700 genuine readings from
+            actively-uploading units, none led the UTC query time, which
+            local-time (BST, UTC+1) stamps would by up to an hour.
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -378,18 +390,20 @@ class MELCloudHomeClient:
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
-                data = dataset.get("data", [])
-                if data:
-                    # Return latest value (last datapoint) with its timestamp
-                    value = data[-1].get("y")
-                    recorded_at = data[-1].get("x")
-                    if value is None:
-                        return None, None
-                    return float(value), (
-                        datetime.fromisoformat(str(recorded_at)).replace(tzinfo=UTC)
-                        if recorded_at is not None
-                        else None
+                for point in reversed(dataset.get("data", [])):
+                    recorded_at = point.get("x")
+                    if recorded_at is None:
+                        continue
+                    timestamp = datetime.fromisoformat(str(recorded_at)).replace(
+                        tzinfo=UTC
                     )
+                    if timestamp.second == 0:
+                        continue  # Synthetic chart point, not a unit reading
+                    value = point.get("y")
+                    if value is None:
+                        continue  # Reading without a value; try older points
+                    return float(value), timestamp
+                return None, None  # No genuine reading in the window
         return None, None  # No outdoor temp dataset found
 
     async def get_outdoor_temperature(
@@ -397,9 +411,12 @@ class MELCloudHomeClient:
     ) -> tuple[float | None, datetime | None]:
         """Get latest outdoor temperature for an ATA unit.
 
-        Queries trendsummary endpoint with Daily period. The API ignores the
-        from/to range for Daily and returns all available historical data, so
-        the most recent datapoint is always as fresh as the last time the unit ran.
+        Queries trendsummary with Hourly period, which is the only period
+        whose datapoints carry genuine reading timestamps — Daily returns
+        30-minute bucket aggregates whose labels are not reading times and
+        whose values can diverge from the actual latest reading (issue #152's
+        quality problems, plus a midnight-rollover artifact where the freshest
+        Daily label leads the query time by up to an hour).
 
         Args:
             unit_id: ATA unit UUID
@@ -408,15 +425,18 @@ class MELCloudHomeClient:
             Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available
         """
-        # Build time range: last 24 hours. Daily period covers units idle for up to
-        # 24 hours; Hourly silently drops outdoor temp for units inactive > ~1 hour.
-        now = datetime.now(UTC)
-        from_time = now - timedelta(hours=24)
+        # 7-day lookback: units stop uploading while idle, so a short window
+        # returns no genuine readings for them (the bug behind #111). The
+        # coordinator keeps the previous value when this returns None.
+        # "to" is truncated to seconds=0 so the server's to-echo point is
+        # identifiable as synthetic (see _parse_outdoor_temp).
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        from_time = now - timedelta(days=7)
 
         # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
         params = {
             "unitId": unit_id,
-            "period": "Daily",
+            "period": "Hourly",
             "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
             "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
         }
