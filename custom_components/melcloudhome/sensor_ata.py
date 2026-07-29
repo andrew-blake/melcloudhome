@@ -94,9 +94,8 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.outdoor_temperature,
-        should_create_fn=lambda unit: unit.has_outdoor_temp_sensor,
-        # Units stop uploading outdoor temperature while idle, so the value
-        # can be hours old (issue #171): surface when it was recorded
+        # Always created; "unknown" until a reading arrives.
+        # last_reading surfaces staleness: idle units stop uploading (#152/#171).
         attributes_fn=lambda unit: {
             "last_reading": unit.outdoor_temp_recorded_at.isoformat()
             if unit.outdoor_temp_recorded_at

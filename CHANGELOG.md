@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
-- **New entities appear after upgrading.** MELCloud reports a frost protection setting for every air conditioning unit, so each one gains a "Frost protection" sensor with minimum and maximum temperatures — even if you have never used the feature. "Overheat protection" and "Holiday mode" appear only on units where you have set them up; if you set one up for the first time (these modes are managed by the account owner in the MELCloud Home app), reload the integration to make it show. (#205)
+- **New entities appear after upgrading.** MELCloud reports a frost protection setting for every air conditioning unit, so each one gains a "Frost protection" sensor with minimum and maximum temperatures — even if you have never used the feature. "Overheat protection" and "Holiday mode" appear only on units where you have set them up (these modes are managed by the account owner in the MELCloud Home app); a mode set up for the first time appears after Home Assistant next restarts. (#205)
 - **Sensors show "unknown" instead of "unavailable" when a reading is missing.** "Unavailable" now means only that the device cannot be reached - MELCloud down, the unit offline, or its sharing removed. A sensor whose unit is reachable but has not supplied that particular value - outdoor temperature while a unit is idle, for example - reads "unknown". If an automation of yours checks these sensors for "unavailable", update it; templates using `has_value()` behave exactly as before. (#222)
 
 ### Fixed
@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Room temperature and WiFi signal sensors could go missing entirely. If Home Assistant restarted while an air conditioning unit was offline or not reporting, those sensors were never created, and only came back after reloading the integration. They are now always created and simply show as "unknown" until a reading arrives. (#219)
 - The "sign in again" prompt was missing its wording. When MELCloud needed you to re-enter your password, the dialog appeared with no title or explanation, and showed placeholder text instead of your language. It now reads properly in all 13 supported languages. (#209)
 - Heat pump flow and return temperature sensors could be missing after a restart. They were only created if a reading had already arrived, so a brief connection problem while Home Assistant was starting made them disappear until you reloaded the integration. They are now always created, and show as "unknown" if your heat pump does not report that particular reading - if several of them stay "unknown" permanently, please let us know in a GitHub issue. (#220)
+- Outdoor temperature sensors could go missing after a restart. The sensor was only created if its first reading happened to arrive during startup, so a brief connection problem could drop it for the whole session until you reloaded - and on air conditioning units that share one outdoor unit, one could disappear while the other kept working. They are now always created and show as "unknown" until a reading arrives. (#226)
 
 
 ## [2.3.5] - 2026-07-06

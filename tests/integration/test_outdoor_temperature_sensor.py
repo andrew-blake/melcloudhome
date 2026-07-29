@@ -91,12 +91,15 @@ async def test_outdoor_temperature_sensor_exposes_last_reading(
     assert state.attributes["last_reading"] == "2026-02-07T11:55:00+00:00"
 
 
-async def test_outdoor_temperature_sensor_not_created_when_no_sensor(
+async def test_outdoor_temperature_sensor_created_but_unknown_when_no_sensor(
     hass: HomeAssistant, setup_integration_with_outdoor_temp
 ):
-    """Test outdoor temp sensor NOT created for device without outdoor sensor."""
+    """Outdoor temp sensor is always created; a unit with no reading shows
+    'unknown', not dropped."""
     entity_id = "sensor.melcloudhome_5b3e_7a9b_outdoor_temperature"
-    assert hass.states.get(entity_id) is None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.state == "unknown"
 
 
 async def test_outdoor_temperature_updates_on_coordinator_refresh(
@@ -116,10 +119,11 @@ async def test_outdoor_temperature_updates_on_coordinator_refresh(
     assert state_after.state == "12.0"
 
 
-async def test_outdoor_temperature_unavailable_when_api_fails(
+async def test_outdoor_temperature_created_and_unknown_when_first_poll_fails(
     hass: HomeAssistant,
 ):
-    """Test outdoor temp sensor shows unavailable when API fails."""
+    """A failed outdoor poll at setup must not drop the sensor: the unit is
+    reachable, so it is created and shows 'unknown' until a reading arrives."""
     living_room = create_mock_ata_unit(
         unit_id=LIVING_ROOM_ID,
         name="Living Room AC",
@@ -137,7 +141,9 @@ async def test_outdoor_temperature_unavailable_when_api_fails(
     await setup_ata_integration_custom(hass, mock_context, configure_client=configure)
 
     entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
-    assert hass.states.get(entity_id) is None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.state == "unknown"
 
 
 @freeze_time("2026-02-07 12:00:00", real_asyncio=True)
