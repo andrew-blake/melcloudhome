@@ -718,8 +718,8 @@ GET /report/v1/trendsummary?unitId=aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825&period=D
 - Polled every 30 minutes (initial probe on startup, then periodic updates)
 - Uses `period=Hourly` with a 7-day window, `to` truncated to seconds=0 so the `to`-echo point is recognisable as synthetic
 - Extracts the latest genuine reading (last datapoint with seconds ≠ 0) from the OUTDOOR_TEMPERATURE dataset — value and `last_reading` timestamp both come from that reading
-- Not all devices have outdoor sensors (capability auto-detected at runtime)
-- Dataset absent for devices without outdoor sensor; units idle for the whole 7-day window return no genuine readings, and the coordinator keeps the previous value
+- The sensor entity is always created; it reads `unknown` until a genuine reading arrives (permanently for units that never report outdoor temperature)
+- Units idle for the whole 7-day window return no genuine readings, and the coordinator keeps the previous value
 
 **Notes:**
 

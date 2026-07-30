@@ -323,19 +323,20 @@ async def test_atw_outdoor_temperature_sensor_created(hass: HomeAssistant) -> No
 
 
 @pytest.mark.asyncio
-async def test_atw_outdoor_temperature_not_created_when_none(
+async def test_atw_outdoor_temperature_created_but_unknown_when_none(
     hass: HomeAssistant,
 ) -> None:
-    """Test ATW outdoor temperature sensor is not created when field absent from API."""
+    """ATW outdoor temp sensor is always created; a unit not reporting it shows
+    'unknown', not dropped."""
     mock_unit = create_mock_atw_unit(outdoor_temperature=None)
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    # Entity should not exist at all — not permanently unavailable
     state = hass.states.get("sensor.melcloudhome_0efc_9abc_outdoor_temperature")
-    assert state is None
+    assert state is not None
+    assert state.state == "unknown"
 
 
 @pytest.mark.asyncio

@@ -33,7 +33,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 - Sensors (room temperature, outdoor temperature*, WiFi signal, connection status)
 - [Real-time updates](#real-time-updates) via WebSocket push, plus 60-second polling (30-minute for outdoor temperature)
 
-*Auto-detected from device capabilities - not all units have outdoor temperature sensors
+*Always created; reads `unknown` on units that don't report an outdoor temperature
 
 ### Air-to-Water (ATW) - Heat Pumps
 
@@ -129,7 +129,7 @@ The integration creates the following entities for each device:
 **Air-to-Air (ATA) Systems:**
 
 - Climate control (HVAC modes, temperature, fan speeds, swing)
-- Sensors (room temperature, outdoor temperature*, WiFi signal, energy consumption)
+- Sensors (room temperature, outdoor temperature, WiFi signal, energy consumption)
 - Binary sensors (error state, connection status)
 
 **Air-to-Water (ATW) Heat Pumps:**
