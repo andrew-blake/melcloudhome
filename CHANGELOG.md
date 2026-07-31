@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
+- Now available directly in the HACS default repository — search "MELCloud Home" in HACS to install, no need to add it as a custom repository. Existing installs via the custom repository keep working as-is; removing the custom repository entry is optional cleanup, not required. (#83)
 
 
 ## [2.3.5] - 2026-07-06
