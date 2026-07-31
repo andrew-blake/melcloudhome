@@ -16,16 +16,16 @@ This is a **complete API reference** documenting all read-only (GET) telemetry a
 
 **Currently Implemented:**
 - Energy consumption telemetry (Section 3) - Used for energy monitoring sensors in ATA devices
-- WiFi RSSI for ATA devices (sourced from UserContext, not telemetry polling endpoint)
+- WiFi RSSI for ATA and ATW devices (sourced from UserContext, not the telemetry polling endpoint)
 
 **Reference Only (Not Implemented):**
-- Actual telemetry data polling (Section 1) - Flow/return temps for ATW, RSSI via polling endpoint
+- Actual telemetry data polling (Section 1) - Flow/return temps for ATW
 - Operation mode history (Section 4) - Historical operation tracking
 - Error log endpoint (Section 2) - Device error history
 - Report types (Section 5) - Historical reporting features
 
 **Why not implemented?**
-- UserContext already provides current temperatures (zone, tank) and RSSI for ATA
+- UserContext already provides current temperatures (zone, tank) and RSSI for both ATA and ATW — the `rssi` measure exposed by this telemetry endpoint (Section 1) is a slower-refreshing duplicate of the same field
 - Telemetry polling requires separate API call per measure per device (significant API load)
 - Energy monitoring is the high-value use case and is implemented
 - Additional sensors (flow/return temps for ATW) can be added in future releases if users request them
@@ -60,7 +60,7 @@ Retrieves time-series data for various measurements over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
+GET /telemetry/telemetry/actual/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from=2025-11-16%2008:00&to=2025-11-16%2008:59&measure=room_temperature
 ```
 
 **Response Format:**
@@ -68,7 +68,7 @@ GET /telemetry/telemetry/actual/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-1
 {
   "measureData": [
     {
-      "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+      "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825",
       "type": "roomTemperature",
       "values": [
         {
@@ -123,7 +123,7 @@ Retrieves operation mode changes over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2008:00&to=2025-11-16%2008:33
+GET /telemetry/telemetry/operationmode/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from=2025-11-16%2008:00&to=2025-11-16%2008:33
 ```
 
 **Response Format:**
@@ -131,7 +131,7 @@ GET /telemetry/telemetry/operationmode/0efce33f-5847-4042-88eb-aaf3ff6a76db?from
 {
   "operationModeData": [
     {
-      "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+      "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825",
       "values": [
         {
           "time": "2025-11-16 08:00:00.000000000",
@@ -172,13 +172,13 @@ Retrieves energy consumption data over a specified time range.
 
 **Example Request:**
 ```
-GET /telemetry/telemetry/energy/0efce33f-5847-4042-88eb-aaf3ff6a76db?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
+GET /telemetry/telemetry/energy/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
 ```
 
 **Response Format:**
 ```json
 {
-  "deviceId": "0efce33f-5847-4042-88eb-aaf3ff6a76db",
+  "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825",
   "measureData": [
     {
       "type": "cumulativeEnergyConsumedSinceLastUpload",
@@ -236,7 +236,7 @@ Retrieves error history for the specified unit.
 
 **Example Request:**
 ```
-GET /monitor/ataunit/0efce33f-5847-4042-88eb-aaf3ff6a76db/errorlog
+GET /monitor/ataunit/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825/errorlog
 ```
 
 **Response Format (No Errors):**
@@ -278,12 +278,12 @@ The MELCloud Home UI provides 4 report types:
 - **Endpoint:** `/telemetry/telemetry/actual/{unit_id}`
 - **Measures:** `room_temperature`, `set_temperature`
 - **Time ranges:** Hour, Day, Week, Month
-- **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/trendsummary`
+- **URL:** `/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825/trendsummary`
 
 ### 2. ERROR LOG Report
 - **Endpoint:** `/monitor/ataunit/{unit_id}/errorlog`
 - **Shows:** Error code, start time, end time
-- **URL:** `/0efce33f-5847-4042-88eb-aaf3ff6a76db/uniterrorlog`
+- **URL:** `/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825/uniterrorlog`
 
 ### 3. ENERGY Report
 - **Endpoint:** `/telemetry/telemetry/energy/{unit_id}`
@@ -330,11 +330,11 @@ GET /monitor/ataunit/{id}/errorlog
 
 ### Wi-Fi Signal Monitoring
 ```python
-# Track connectivity
-GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
+# Prefer the context poll — refreshes every ~60s vs this endpoint's hourly cadence
+GET /context  # unit.rssi, for both ATA and ATW
 
-# Create HA sensor for RSSI
-# Alert on weak signal
+# Only fall back to telemetry polling if a historical RSSI trend is needed
+GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
 ```
 
 ### Operation Mode Tracking
@@ -504,4 +504,4 @@ async def safe_telemetry_fetch(session, unit_id, measure):
 
 **Discovery Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
-**Location:** Dining Room unit (0efce33f-5847-4042-88eb-aaf3ff6a76db)
+**Location:** Dining Room unit (aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825)

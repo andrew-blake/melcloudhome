@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import IO
 
 from mitmproxy import ctx, http
 from mitmproxy.io import FlowWriter
@@ -29,13 +30,15 @@ DOMAINS = [
 class MELCloudCapture:
     def __init__(self) -> None:
         self.writer: FlowWriter | None = None
+        self._file: IO[bytes] | None = None
         self.flow_count = 0
 
     def load(self, loader: object) -> None:
         CAPTURES_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d-%H%M%S")
         outfile = CAPTURES_DIR / f"{timestamp}.flow"
-        self.writer = FlowWriter(open(outfile, "wb"))  # noqa: SIM115
+        self._file = open(outfile, "wb")  # noqa: SIM115
+        self.writer = FlowWriter(self._file)
         ctx.log.warn(f"Saving flows to {outfile}")
         # Suppress default mitmdump output — this script logs MELCloud traffic itself
         ctx.options.flow_detail = 0
@@ -67,6 +70,10 @@ class MELCloudCapture:
 
         if self.writer:
             self.writer.add(flow)
+
+    def done(self) -> None:
+        if self._file:
+            self._file.close()
 
 
 addons = [MELCloudCapture()]

@@ -365,6 +365,12 @@ async def test_reauth_flow_success(
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
+    # Both placeholders used by the reauth_confirm strings must be supplied,
+    # or the form renders a literal "{name}"/"{email}"
+    assert result["description_placeholders"] == {
+        "email": "test@example.com",
+        "name": entry.title,
+    }
 
     # Submit new password
     result = await hass.config_entries.flow.async_configure(

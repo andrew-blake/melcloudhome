@@ -48,3 +48,13 @@ class ControlClientBase:
             await self._async_request_refresh()  # type: ignore[attr-defined]
 
         self._refresh_debounce_task = self._hass.async_create_task(_delayed_refresh())
+
+    def cancel_pending_refresh(self) -> None:
+        """Cancel any pending debounced refresh (call on shutdown).
+
+        A refresh queued <=2s before unload must not fire after the client
+        session is closed — it would resurrect a fresh ClientSession that
+        nothing ever closes.
+        """
+        if self._refresh_debounce_task and not self._refresh_debounce_task.done():
+            self._refresh_debounce_task.cancel()

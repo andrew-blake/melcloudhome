@@ -1,6 +1,5 @@
 """Air-to-Air (A/C) control client for MELCloud Home API."""
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from .const_ata import (
@@ -15,8 +14,6 @@ from .const_ata import (
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class ATAControlClient:

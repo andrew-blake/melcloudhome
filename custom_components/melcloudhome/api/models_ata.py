@@ -1,7 +1,7 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
-import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from .const_ata import (
@@ -16,12 +16,39 @@ from .parsing import (
     parse_float as _parse_float,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
-
 # ==============================================================================
 # Air-to-Air (A/C) Models
 # ==============================================================================
+
+
+@dataclass
+class ProtectionModeState:
+    """Shared shape for frost/overheat protection and holiday mode.
+
+    Sourced from GET /context, where these objects are null until a mode has
+    ever been configured on a unit, then persist even when disabled.
+    """
+
+    enabled: bool
+    active: bool
+    min: float | None = None
+    max: float | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "ProtectionModeState | None":
+        """Create from an API frostProtection/overheatProtection/holidayMode object."""
+        if not data:
+            return None
+        return cls(
+            enabled=_parse_bool(data.get("enabled")),
+            active=_parse_bool(data.get("active")),
+            min=_parse_float(data.get("min")),
+            max=_parse_float(data.get("max")),
+            start_date=data.get("startDate"),
+            end_date=data.get("endDate"),
+        )
 
 
 @dataclass
@@ -97,6 +124,7 @@ class AirToAirUnit:
     vane_horizontal_direction: str | None
     in_standby_mode: bool
     is_in_error: bool
+    error_code: str | None
     rssi: int | None
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
@@ -104,6 +132,13 @@ class AirToAirUnit:
     # Outdoor temperature monitoring (set by coordinator via trendsummary API)
     outdoor_temperature: float | None = None  # °C
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
+    # When the value was actually recorded by the unit. Idle units stop
+    # uploading outdoor temperature, so this can lag hours behind (issue #171)
+    outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
+    # Protection modes (from GET /context; null until ever configured on this unit)
+    frost_protection: ProtectionModeState | None = None
+    overheat_protection: ProtectionModeState | None = None
+    holiday_mode: ProtectionModeState | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToAirUnit":
@@ -153,6 +188,10 @@ class AirToAirUnit:
             # Return as-is (unknown value)
             return value
 
+        # Parse error code - convert empty string to None
+        error_code_value = settings.get("ErrorCode", "")
+        error_code = error_code_value if error_code_value else None
+
         return cls(
             id=data["id"],
             name=data.get("givenDisplayName", "Unknown"),
@@ -169,6 +208,12 @@ class AirToAirUnit:
             ),
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
             is_in_error=_parse_bool(settings.get("IsInError")),
+            error_code=error_code,
             rssi=data.get("rssi"),
             capabilities=capabilities,
+            frost_protection=ProtectionModeState.from_dict(data.get("frostProtection")),
+            overheat_protection=ProtectionModeState.from_dict(
+                data.get("overheatProtection")
+            ),
+            holiday_mode=ProtectionModeState.from_dict(data.get("holidayMode")),
         )

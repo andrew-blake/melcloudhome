@@ -2,7 +2,7 @@
 
 Visual architecture documentation for the MELCloud Home custom integration for Home Assistant.
 
-**Last Updated:** 2026-04-20
+**Last Updated:** 2026-07-20
 
 **Terminology:** This document uses **ATA** (Air-to-Air) and **ATW** (Air-to-Water) to refer to the two device types.
 
@@ -15,6 +15,7 @@ Visual architecture documentation for the MELCloud Home custom integration for H
 3. **Multi-Type Container** - `UserContext` holds both device types in parallel arrays
 4. **Device-Specific Methods** - Method names indicate which device type they control
 5. **Equal Device Type Support** - ATA and ATW devices have full feature parity in their respective domains
+6. **Push Accelerates, REST Decides** - The WebSocket listener only signals that state is stale; entity state always comes from the REST `/context` parser, and all writes go over REST (see [ADR-019](decisions/019-websocket-realtime-updates.md))
 
 **API target:** MELCloud mobile API at `https://mobile.bff.melcloudhome.com` (see [ADR-017](decisions/017-migrate-to-mobile-bff.md)). Canonical endpoint/auth constants live in [`api/const_shared.py`](../custom_components/melcloudhome/api/const_shared.py).
 
@@ -37,6 +38,7 @@ graph LR
 
     subgraph "MELCloud Home Integration"
         Coordinator[Update Coordinator<br/>Polling & State Management]
+        WSListener[MELCloudHomeWebSocket<br/>Real-Time Delta Listener]
 
         subgraph "Control Client Layer"
             ControlATA[ATAControlClient<br/>Dedup, Validation & Debounce]
@@ -58,6 +60,10 @@ graph LR
         ATAAPI["PUT /monitor/ataunit/{id}<br/>(ATA Control)"]
         ATWAPI["PUT /monitor/atwunit/{id}<br/>(ATW Control)"]
         TelemetryAPI["GET /telemetry/...<br/>/report/v1/trendsummary<br/>(Energy/Telemetry)"]
+    end
+    subgraph "MELCloud WebSocket<br/>ws.melcloudhome.com"
+        WSHash["WS hash endpoint<br/>(Bearer → short-lived hash)"]
+        WSAPI["wss://?hash=...<br/>(server-push deltas only)"]
     end
     subgraph "Auth (OAuth 2.0 + PKCE)"
         IdP["IdentityServer<br/>auth.melcloudhome.com"]
@@ -86,6 +92,11 @@ graph LR
     Client --> ATAAPI
     Client --> ATWAPI
     Client --> TelemetryAPI
+
+    Coordinator -->|owns, entry-scoped task| WSListener
+    WSListener --> WSHash
+    WSAPI -->|unitStateChanged deltas| WSListener
+    WSListener -->|"on_delta → debounced refresh"| Coordinator
 ```
 
 **Key Points:**
@@ -96,6 +107,7 @@ graph LR
 - **Shared auth** — one OAuth session (access + refresh tokens) for all endpoints
 - **UserContext** (`/context`) returns both device types in one response
 - **Telemetry** is separate from state polling — `/telemetry/...` (30m energy, 60m flow/return) and `/report/v1/trendsummary` (30m ATA outdoor temp) each run on independent timers
+- **WebSocket listener** (default on) receives `unitStateChanged` deltas and triggers the debounced `/context` refresh — it never writes state and never sends commands; see [Real-Time WebSocket Updates](#real-time-websocket-updates-default-on)
 
 ---
 
@@ -307,6 +319,8 @@ sequenceDiagram
         Coord->>HA: Update state-backed entities
     end
 
+    Note over HA,Server: Real-time WebSocket deltas (default on) — out-of-band changes<br/>(remote, MELCloud app) trigger the same debounced /context refresh<br/>within ~2s instead of waiting for the next poll. Receive-only:<br/>commands never use the socket. See the WebSocket section below.
+
     Note over HA,Server: Independent telemetry timers (separate from state polling)
     loop Every 30 min — ATW energy
         APIClient->>Server: GET /telemetry/telemetry/energy/{id}
@@ -340,6 +354,7 @@ sequenceDiagram
 - **State polling**: Drives the 60-second `/context` refresh loop; dispatches updates to all platforms.
 - **Independent telemetry timers**: Separate 30-minute energy timer, 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), and 60-minute ATW flow/return telemetry timer.
 - **Re-auth ladder** (`_run_with_reauth`, guarded by `_reauth_lock`): retry-once → refresh_token → full login → `ConfigEntryAuthFailed` (triggers HA repair UI) if all fail. This is the single place in the integration that runs re-login on auth failure.
+- **WebSocket lifecycle**: `_async_setup_websocket` launches `MELCloudHomeWebSocket` as an entry-scoped background task when enabled (default on, `enable_websocket` option); `_on_ws_delta` feeds each delta into the same debounced refresh the control clients use. HA cancels the task on entry unload/reload.
 
 ---
 
@@ -367,7 +382,7 @@ graph TD
     style ControlATW fill:#f0ffe1,stroke:#7cb342
     style APIClient fill:#e1f5ff,stroke:#039be5
 
-    note0["Coordinator:<br/>- State polling (60s)<br/>- Telemetry timers (30m / 60m)<br/>- Re-auth ladder via _run_with_reauth"]
+    note0["Coordinator:<br/>- State polling (60s)<br/>- Telemetry timers (30m / 60m)<br/>- Re-auth ladder via _run_with_reauth<br/>- WebSocket listener lifecycle (default on)"]
     note1["Control Layer:<br/>- Deduplication<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
     note2["API Layer:<br/>- HTTP/Bearer auth<br/>- Proactive token refresh<br/>- Device facades"]
 
@@ -612,13 +627,44 @@ Energy data is polled on its own 30-minute timer (`UPDATE_INTERVAL_ENERGY`), ind
 
 ---
 
+## Real-Time WebSocket Updates (Default On)
+
+An accelerator over REST polling, enabled by default (options toggle `enable_websocket` is an opt-out). It surfaces out-of-band changes — physical remote, MELCloud app, another HA instance — in seconds instead of waiting for the next 60-second poll. It is strictly receive-only: all commands go over REST, and a delta only tells the coordinator to re-read `/context`. See [ADR-019](decisions/019-websocket-realtime-updates.md) for the full rationale.
+
+```mermaid
+sequenceDiagram
+    participant Coord as Coordinator
+    participant WS as MELCloudHomeWebSocket<br/>(api/websocket.py)
+    participant Cloud as MELCloud
+
+    Coord->>WS: entry.async_create_background_task(run())
+    WS->>Cloud: GET WS_HASH_URL (Bearer) → {hash, userId}
+    WS->>Cloud: wss://ws.melcloudhome.com/?hash=...
+    Cloud-->>WS: unitStateChanged delta (changed settings only)
+    WS->>Coord: on_delta(unit_id, changed)
+    Coord->>Coord: debounced refresh (~2s)
+    Coord->>Cloud: GET /context (REST — source of truth)
+```
+
+**Key points:**
+
+- **REST stays the source of truth.** Delta frames are never applied to entity state — they only trigger the existing debounced coordinator refresh. Frames are partial and inconsistently typed, so entity state always comes from the proven REST parser (ADR-019).
+- **Best-effort by design.** Polling continues regardless of socket health; entities never go unavailable because of WebSocket state. Failures back off exponentially (5s → 300s, jittered, reset only after a session that connected and survived ≥60s) and the integration degrades to plain polling.
+- **A safety net for silent write drops.** MELCloud returns 200 and silently ignores PUTs that fail validation; the delta-triggered refresh snaps HA back to the server's actual state within ~2s instead of at the next 60s poll.
+- **Normal churn:** the server drops every connection at a hard 2-hour AWS API Gateway cap; reconnection is routine. Lost/restored transitions log at INFO.
+- **Lifecycle:** the listener is HA-agnostic; the coordinator launches it as an entry-scoped background task, so HA cancels it on entry unload/reload. In debug/mock mode it connects to the mock server's WS endpoint (zero prod contact).
+
+---
+
 ## Related Documentation
 
 - **ADR-011:** [Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md)
 - **ADR-012:** [ATW Entity Architecture](decisions/012-atw-entity-architecture.md)
 - **ADR-016:** [ATW Energy Monitoring Implementation](decisions/016-implement-atw-energy-monitoring.md)
 - **ADR-017:** [Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) (supersedes ADR-002)
+- **ADR-019:** [Real-Time WebSocket Updates](decisions/019-websocket-realtime-updates.md) (supersedes ADR-007)
 - **ATA API Reference:** [ata-api-reference.md](api/ata-api-reference.md)
 - **ATW API Reference:** [atw-api-reference.md](api/atw-api-reference.md)
 - **Device Comparison:** [device-type-comparison.md](api/device-type-comparison.md)
 - **Mobile API Capture Notes:** [research/mobile-bff-captures/README.md](research/mobile-bff-captures/README.md)
+- **Web BFF & WebSocket Capture Notes:** [research/web-bff-websocket-capture/README.md](research/web-bff-websocket-capture/README.md)

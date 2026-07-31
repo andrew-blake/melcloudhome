@@ -34,4 +34,5 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         "set_tank_water_temperature": unit.set_tank_water_temperature,
         "forced_hot_water_mode": unit.forced_hot_water_mode,
         "has_zone2": unit.has_zone2,
+        "outdoor_temperature": unit.outdoor_temperature,
     }

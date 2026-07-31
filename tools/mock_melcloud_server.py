@@ -39,6 +39,19 @@ from aiohttp import web
 # Configure module logger
 logger = logging.getLogger(__name__)
 
+
+def _safe_log(value: Any) -> str:
+    """Strip newlines from request-controlled values before logging.
+
+    Prevents log forging (CWE-117): without this, a value containing
+    \\r or \\n could make a single log call appear as multiple log lines.
+    Always coerces to str and replaces — no branching — since CodeQL's
+    log-injection sanitizer recognition requires an unconditional
+    replace() call to treat this as a barrier.
+    """
+    return str(value).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+
+
 # Rate limiting configuration
 ENABLE_RATE_LIMITING = True  # Set to False to disable for testing
 RATE_LIMIT_INTERVAL = 0.5  # seconds
@@ -47,11 +60,20 @@ RATE_LIMIT_INTERVAL = 0.5  # seconds
 rate_limit_lock = asyncio.Lock()
 last_request_time = 0.0
 
+# WS + control paths bypass rate limiting: prod's WS infra (API Gateway +
+# Lambda hash endpoint) is separate from the BFF the limiter simulates, and
+# the client opens /ws immediately after /ws/token — limiting them livelocks
+# the listener (token 200 -> upgrade 429 -> backoff -> repeat).
+RATE_LIMIT_EXEMPT_PATHS = {"/ws", "/ws/", "/ws/token", "/_mock/ws"}
+
 
 @web.middleware
 async def rate_limit_middleware(request, handler):
     """Enforce rate limiting on all requests."""
     if not ENABLE_RATE_LIMITING:
+        return await handler(request)
+
+    if request.path in RATE_LIMIT_EXEMPT_PATHS:
         return await handler(request)
 
     global last_request_time
@@ -75,8 +97,64 @@ async def rate_limit_middleware(request, handler):
     return await handler(request)
 
 
+# Fixed WS credential — the real Lambda issues a per-user uuid where
+# hash == userId (#175 capture); one constant is all the mock needs.
+MOCK_WS_HASH = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+# Wire-format mapping for ATA deltas, per the #175 captures: the socket sends
+# NATIVELY TYPED values (int enums, bools, floats) even though REST /context
+# stringifies everything. The integration only reads setting NAMES (values
+# trigger a refresh, never parsed), so unlisted enum ints are plausible
+# placeholders — only 3=Cool, 4=Fan, 0=Auto(fan) were captured.
+_ATA_OPERATION_MODE_ENUM = {"Heat": 1, "Dry": 2, "Cool": 3, "Fan": 4, "Automatic": 8}
+_ATA_VANE_ENUM = {"Auto": 0, "Swing": 7}  # 6/7 = swing captured; rest plausible
+# Only 0=Auto confirmed from capture; 1-5 for One..Five are plausible placeholders.
+_ATA_FAN_SPEED_ENUM = {"Auto": 0, "One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
+
+ATA_WIRE_MAP = {
+    "power": ("Power", bool),
+    "set_temperature": ("SetTemperature", float),
+    "operation_mode": ("OperationMode", lambda v: _ATA_OPERATION_MODE_ENUM.get(v, 1)),
+    "set_fan_speed": ("SetFanSpeed", lambda v: _ATA_FAN_SPEED_ENUM.get(v, 0)),
+    "vane_vertical_direction": (
+        "VaneVerticalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "vane_horizontal_direction": (
+        "VaneHorizontalDirection",
+        lambda v: _ATA_VANE_ENUM.get(v, 0),
+    ),
+    "in_standby_mode": ("InStandbyMode", bool),
+}
+
+
+def _delta_frame(unit_id: str, settings: list) -> list:
+    """One unitStateChanged frame in the wire shape the socket sends."""
+    return [
+        {
+            "messageType": "unitStateChanged",
+            "Data": {"id": unit_id, "settings": settings},
+        }
+    ]
+
+
+def _atw_wire_name(key: str) -> str:
+    """snake_case -> PascalCase. ASSUMPTION: no ATW frame has ever been
+    captured; verify against Andrew's prod soak (backlog) and correct here."""
+    return "".join(part.capitalize() for part in key.split("_"))
+
+
 # Paths that don't require Bearer auth
-AUTH_EXEMPT_PATHS = {"/api/login", "/api/auth/login", "/connect/token"}
+# /ws is hash-in-URL auth (the real client sends no Authorization header on
+# the upgrade — matching prod). Both spellings: the client builds
+# "{host}/?hash=", so the mock's path arrives as "/ws/" (trailing slash).
+AUTH_EXEMPT_PATHS = {
+    "/api/login",
+    "/api/auth/login",
+    "/connect/token",
+    "/ws",
+    "/ws/",
+}
 
 
 @web.middleware
@@ -103,12 +181,15 @@ async def bearer_auth_middleware(request, handler):
 class MockMELCloudServer:
     """Mock MELCloud Home API server supporting ATA and ATW devices."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock server with default device states."""
         self.ata_states = self._init_ata_devices()
         self.atw_states = self._init_atw_devices()
         self.buildings = self._init_buildings()
         self.guest_buildings = self._init_guest_buildings()
+        self.ws_clients: set[web.WebSocketResponse] = set()
+        self.ws_accept_then_close = False
+        self.ws_reject_hash = False
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -120,7 +201,7 @@ class MockMELCloudServer:
         Note: Using UUIDs for cleaner entity names (e.g., "MELCloudHome 0efc 76db")
         """
         return {
-            "0efc1234-5678-9abc-def0-123456787db": {
+            "0efc1234-5678-9abc-def0-1234567887db": {
                 "name": "Living Room AC",
                 "power": True,
                 "operation_mode": "Heat",
@@ -131,6 +212,26 @@ class MockMELCloudServer:
                 "vane_horizontal_direction": "Auto",
                 "in_standby_mode": False,
                 "is_in_error": False,
+                # All three configured, so the full set of protection-mode
+                # entities is exercised in the dev environment.
+                "frost_protection": {
+                    "active": False,
+                    "enabled": True,
+                    "min": 10,
+                    "max": 12,
+                },
+                "overheat_protection": {
+                    "active": False,
+                    "enabled": False,
+                    "min": 35,
+                    "max": 37,
+                },
+                "holiday_mode": {
+                    "enabled": True,
+                    "active": False,
+                    "startDate": "2026-07-20T18:30:53.79",
+                    "endDate": "2026-07-22T12:00:00",
+                },
             },
             "bf8d5678-90ab-cdef-0123-456789ab5119": {
                 "name": "Bedroom AC",
@@ -143,6 +244,18 @@ class MockMELCloudServer:
                 "vane_horizontal_direction": "Centre",
                 "in_standby_mode": False,
                 "is_in_error": False,
+                # Frost protection only, at the server-side default the real API
+                # returns for every ATA unit whether or not it was ever set up.
+                # Overheat and holiday mode stay null, so this unit covers the
+                # "entity not created" path.
+                "frost_protection": {
+                    "active": False,
+                    "enabled": False,
+                    "min": 10,
+                    "max": 12,
+                },
+                "overheat_protection": None,
+                "holiday_mode": None,
             },
         }
 
@@ -170,8 +283,9 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 4,  # API internal value, mapping to physical FTC controller unknown
+                "outdoor_temperature": 7.5,
             },
-            "aed2afac-01a5-4c4c-8d58-95989aa1c71e": {
+            "aed21234-5678-9abc-def0-123456789abc": {
                 "name": "Dual Zone Heat Pump",
                 "power": True,
                 "operation_mode": "Heating",
@@ -188,7 +302,22 @@ class MockMELCloudServer:
                 "in_standby_mode": False,
                 "is_in_error": False,
                 "ftc_model": 5,
+                "outdoor_temperature": 3.0,
             },
+        }
+
+    def _ata_protection_modes(self, unit_id: str) -> dict[str, Any]:
+        """Return the unit-level protection-mode objects for an ATA unit.
+
+        These sit alongside "settings" and "capabilities" in the real /context
+        payload, not inside them, and are null until the mode has been configured
+        (except frostProtection, which the API defaults on every unit).
+        """
+        state = self.ata_states[unit_id]
+        return {
+            "frostProtection": state.get("frost_protection"),
+            "overheatProtection": state.get("overheat_protection"),
+            "holidayMode": state.get("holiday_mode"),
         }
 
     def _init_buildings(self) -> dict[str, dict[str, Any]]:
@@ -199,7 +328,7 @@ class MockMELCloudServer:
                 "name": "My Home",
                 "timezone": "Europe/London",
                 "ata_unit_ids": [
-                    "0efc1234-5678-9abc-def0-123456787db",
+                    "0efc1234-5678-9abc-def0-1234567887db",
                     "bf8d5678-90ab-cdef-0123-456789ab5119",
                 ],
                 "atw_unit_ids": ["bf2d256c-42ac-4799-a6d8-c6ab433e5666"],
@@ -218,7 +347,7 @@ class MockMELCloudServer:
                 "name": "Shared Building",
                 "timezone": "Europe/Madrid",
                 "ata_unit_ids": [],
-                "atw_unit_ids": ["aed2afac-01a5-4c4c-8d58-95989aa1c71e"],
+                "atw_unit_ids": ["aed21234-5678-9abc-def0-123456789abc"],
             },
         }
 
@@ -288,6 +417,14 @@ class MockMELCloudServer:
             "/report/v1/trendsummary", self.get_trend_summary
         )
 
+        # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
+        app.router.add_get("/ws/token", self.handle_ws_token)
+        app.router.add_get("/ws", self.handle_ws_upgrade)
+        app.router.add_get("/ws/", self.handle_ws_upgrade)
+
+        # Test-only fault-injection control (not added to CORS)
+        app.router.add_post("/_mock/ws", self.handle_ws_control)
+
         # Add CORS to all routes
         for route in [
             auth_route,
@@ -307,6 +444,92 @@ class MockMELCloudServer:
             cors.add(route)
 
         return app
+
+    async def handle_ws_token(self, request: web.Request) -> web.Response:
+        """GET /ws/token - WS credential (bearer-checked by middleware)."""
+        return web.json_response({"hash": MOCK_WS_HASH, "userId": MOCK_WS_HASH})
+
+    async def handle_ws_upgrade(self, request: web.Request) -> web.WebSocketResponse:
+        """GET /ws?hash= - upgrade; server-push only, inbound is discarded."""
+        if self.ws_reject_hash or request.query.get("hash") != MOCK_WS_HASH:
+            raise web.HTTPForbidden(reason="bad hash")
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        if self.ws_accept_then_close:
+            await ws.close()  # churn scenario: 101 then instant close
+            return ws
+        self.ws_clients.add(ws)
+        logger.info("🔌 WS client connected (%d total)", len(self.ws_clients))
+        try:
+            async for _msg in ws:
+                pass  # real clients send nothing, not even a subscribe
+        finally:
+            self.ws_clients.discard(ws)
+            logger.info("🔌 WS client disconnected (%d left)", len(self.ws_clients))
+        return ws
+
+    async def _send_frame(self, frame: list) -> None:
+        """Send one frame to every connected socket, dropping dead ones."""
+        for ws in set(self.ws_clients):
+            try:
+                await ws.send_json(frame)
+            except (ConnectionResetError, RuntimeError):
+                self.ws_clients.discard(ws)
+
+    async def handle_ws_control(self, request: web.Request) -> web.Response:
+        """POST /_mock/ws - test-only fault injection (bearer-checked).
+
+        Requires the mock bearer like every other endpoint: the server binds
+        0.0.0.0 for Docker, so an unauthenticated control endpoint would let
+        any LAN peer inject faults when the mock runs outside a container.
+        """
+        body = await request.json()
+        action = body.get("action")
+        if action == "close-now":
+            for ws in set(self.ws_clients):
+                await ws.close()
+            self.ws_clients.clear()
+        elif action == "accept-then-close":
+            self.ws_accept_then_close = True
+        elif action == "reject-hash":
+            self.ws_reject_hash = True
+        elif action == "clear":
+            self.ws_accept_then_close = False
+            self.ws_reject_hash = False
+        elif action == "emit-delta":
+            if "unit_id" not in body or "settings" not in body:
+                return web.json_response(
+                    {"error": "emit-delta requires unit_id and settings"}, status=400
+                )
+            await self._send_frame(_delta_frame(body["unit_id"], body["settings"]))
+        elif action == "status":
+            return web.json_response({"clients": len(self.ws_clients)})
+        else:
+            return web.json_response({"error": f"unknown action {action}"}, status=400)
+        logger.info("🎛️  WS control: %s", _safe_log(action))
+        return web.json_response({"ok": True})
+
+    async def _broadcast_delta(self, unit_id, changed, wire_map=None):
+        """Push one unitStateChanged frame for `changed` to every socket.
+
+        wire_map maps internal keys -> (WireName, coercer); keys absent from
+        the map fall back to PascalCase name + raw value (the ATW path).
+        """
+        settings = []
+        for key, value in changed.items():
+            if wire_map and key in wire_map:
+                name, coerce = wire_map[key]
+                settings.append({"name": name, "value": coerce(value)})
+            else:
+                settings.append({"name": _atw_wire_name(key), "value": value})
+        if not settings or not self.ws_clients:
+            return
+        await self._send_frame(_delta_frame(unit_id, settings))
+        logger.info(
+            "📡 WS delta for %s: %s",
+            _safe_log(unit_id),
+            _safe_log([s["name"] for s in settings]),
+        )
 
     async def handle_login(self, request: web.Request) -> web.Response:
         """Mock OAuth login endpoint.
@@ -330,8 +553,15 @@ class MockMELCloudServer:
         # Validate password (for reauth testing)
         # Accept anything EXCEPT "WRONG_PASSWORD"
         if email and password:
+            # Sanitize before logging: strip newlines so request-controlled
+            # input can't forge fake log lines (CWE-117).
+            safe_email = (
+                str(email).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+            )
             if password == "WRONG_PASSWORD":
-                logger.warning("🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", email)
+                logger.warning(
+                    "🔐 Login: %s (mock - REJECTED: WRONG_PASSWORD)", safe_email
+                )
                 return web.json_response(
                     {
                         "error": "invalid_credentials",
@@ -340,7 +570,7 @@ class MockMELCloudServer:
                     status=401,
                 )
             else:
-                logger.info("🔐 Login: %s (mock - success)", email)
+                logger.info("🔐 Login: %s (mock - success)", safe_email)
                 return web.json_response(
                     {
                         "access_token": "mock-access-token-abc123",
@@ -410,6 +640,7 @@ class MockMELCloudServer:
                         "settings": self._build_ata_settings(unit_id),
                         "capabilities": self._get_ata_capabilities(),
                         "schedule": [],
+                        **self._ata_protection_modes(unit_id),
                     }
                 )
 
@@ -454,6 +685,7 @@ class MockMELCloudServer:
                         "settings": self._build_ata_settings(unit_id),
                         "capabilities": self._get_ata_capabilities(),
                         "schedule": [],
+                        **self._ata_protection_modes(unit_id),
                     }
                 )
 
@@ -526,7 +758,7 @@ class MockMELCloudServer:
 
         # Auto-create device if not found (permissive for testing)
         if unit_id not in self.ata_states:
-            logger.info(f"📝 Auto-creating ATA device: {unit_id}")
+            logger.info("📝 Auto-creating ATA device: %s", _safe_log(unit_id))
             self.ata_states[unit_id] = {
                 "name": f"ATA Device {len(self.ata_states) + 1}",
                 "power": False,
@@ -540,59 +772,68 @@ class MockMELCloudServer:
                 "is_in_error": False,
             }
 
-        logger.info("🌡️  ATA Control: %s", unit_id)
-        logger.debug("   Request: %s", json.dumps(body, indent=2))
+        logger.info("🌡️  ATA Control: %s", _safe_log(unit_id))
+        logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.ata_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values (sparse update pattern)
         # Permissive: Accept all values, warn if suspicious
 
         if body.get("power") is not None:
             state["power"] = body["power"]
-            logger.info("   ✅ Power: %s", body["power"])
+            logger.info("   ✅ Power: %s", _safe_log(body["power"]))
 
         if body.get("operationMode") is not None:
             mode = body["operationMode"]
             valid_modes = ["Heat", "Cool", "Automatic", "Dry", "Fan"]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual operation mode: %s", mode)
+                logger.warning("   ⚠️  Unusual operation mode: %s", _safe_log(mode))
             state["operation_mode"] = mode
-            logger.info("   ✅ Mode: %s", mode)
+            logger.info("   ✅ Mode: %s", _safe_log(mode))
 
         if body.get("setTemperature") is not None:
             temp = body["setTemperature"]
             if temp < 10 or temp > 35:
                 logger.warning(
-                    "   ⚠️  Temperature %.1f°C outside typical range (10-35°C)", temp
+                    "   ⚠️  Temperature %s°C outside typical range (10-35°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature"] = temp
-            logger.info("   ✅ Temperature: %.1f°C", temp)
+            logger.info("   ✅ Temperature: %s°C", _safe_log(temp))
 
         if body.get("setFanSpeed") is not None:
             state["set_fan_speed"] = body["setFanSpeed"]
-            logger.info("   ✅ Fan: %s", body["setFanSpeed"])
+            logger.info("   ✅ Fan: %s", _safe_log(body["setFanSpeed"]))
 
         if body.get("vaneVerticalDirection") is not None:
             state["vane_vertical_direction"] = body["vaneVerticalDirection"]
-            logger.info("   ✅ Vertical Vane: %s", body["vaneVerticalDirection"])
+            logger.info(
+                "   ✅ Vertical Vane: %s", _safe_log(body["vaneVerticalDirection"])
+            )
 
         if body.get("vaneHorizontalDirection") is not None:
             state["vane_horizontal_direction"] = body["vaneHorizontalDirection"]
-            logger.info("   ✅ Horizontal Vane: %s", body["vaneHorizontalDirection"])
+            logger.info(
+                "   ✅ Horizontal Vane: %s", _safe_log(body["vaneHorizontalDirection"])
+            )
 
         if body.get("inStandbyMode") is not None:
             state["in_standby_mode"] = body["inStandbyMode"]
-            logger.info("   ✅ Standby: %s", body["inStandbyMode"])
+            logger.info("   ✅ Standby: %s", _safe_log(body["inStandbyMode"]))
 
         # Print summary
         logger.info(
-            "📊 State: Power=%s, Mode=%s, Target=%.1f°C, Current=%.1f°C",
-            state["power"],
-            state["operation_mode"],
-            state["set_temperature"],
-            state["room_temperature"],
+            "📊 State: Power=%s, Mode=%s, Target=%s°C, Current=%s°C",
+            _safe_log(state["power"]),
+            _safe_log(state["operation_mode"]),
+            _safe_log(state["set_temperature"]),
+            _safe_log(state["room_temperature"]),
         )
+
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed, ATA_WIRE_MAP)
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
@@ -615,7 +856,7 @@ class MockMELCloudServer:
 
         # Auto-create device if not found (permissive for testing)
         if unit_id not in self.atw_states:
-            logger.info(f"📝 Auto-creating ATW device: {unit_id}")
+            logger.info("📝 Auto-creating ATW device: %s", _safe_log(unit_id))
             self.atw_states[unit_id] = {
                 "name": f"ATW Device {len(self.atw_states) + 1}",
                 "power": True,
@@ -635,25 +876,26 @@ class MockMELCloudServer:
                 "ftc_model": 4,
             }
 
-        logger.info("♨️  ATW Control: %s", unit_id)
-        logger.debug("   Request: %s", json.dumps(body, indent=2))
+        logger.info("♨️  ATW Control: %s", _safe_log(unit_id))
+        logger.debug("   Request: %s", _safe_log(json.dumps(body)))
 
         state = self.atw_states[unit_id]
+        before = dict(state)
 
         # Update state based on non-null values
         if body.get("power") is not None:
             state["power"] = body["power"]
-            logger.info("   ✅ Power: %s", body["power"])
+            logger.info("   ✅ Power: %s", _safe_log(body["power"]))
 
         if body.get("setTemperatureZone1") is not None:
             temp = body["setTemperatureZone1"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone temperature %.1f°C outside typical range (10-30°C)",
-                    temp,
+                    "   ⚠️  Zone temperature %s°C outside typical range (10-30°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature_zone1"] = temp
-            logger.info("   ✅ Zone 1 Target: %.1f°C", temp)
+            logger.info("   ✅ Zone 1 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone1") is not None:
             mode = body["operationModeZone1"]
@@ -665,19 +907,19 @@ class MockMELCloudServer:
                 "CoolFlowTemperature",
             ]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual zone operation mode: %s", mode)
+                logger.warning("   ⚠️  Unusual zone operation mode: %s", _safe_log(mode))
             state["operation_mode_zone1"] = mode
-            logger.info("   ✅ Zone 1 Mode: %s", mode)
+            logger.info("   ✅ Zone 1 Mode: %s", _safe_log(mode))
 
         if body.get("setTemperatureZone2") is not None:
             temp = body["setTemperatureZone2"]
             if temp < 10 or temp > 30:
                 logger.warning(
-                    "   ⚠️  Zone 2 temperature %.1f°C outside typical range (10-30°C)",
-                    temp,
+                    "   ⚠️  Zone 2 temperature %s°C outside typical range (10-30°C)",
+                    _safe_log(temp),
                 )
             state["set_temperature_zone2"] = temp
-            logger.info("   ✅ Zone 2 Target: %.1f°C", temp)
+            logger.info("   ✅ Zone 2 Target: %s°C", _safe_log(temp))
 
         if body.get("operationModeZone2") is not None:
             mode = body["operationModeZone2"]
@@ -689,22 +931,25 @@ class MockMELCloudServer:
                 "CoolFlowTemperature",
             ]
             if mode not in valid_modes:
-                logger.warning("   ⚠️  Unusual zone 2 operation mode: %s", mode)
+                logger.warning(
+                    "   ⚠️  Unusual zone 2 operation mode: %s", _safe_log(mode)
+                )
             state["operation_mode_zone2"] = mode
-            logger.info("   ✅ Zone 2 Mode: %s", mode)
+            logger.info("   ✅ Zone 2 Mode: %s", _safe_log(mode))
 
         if body.get("setTankWaterTemperature") is not None:
             temp = body["setTankWaterTemperature"]
             if temp < 40 or temp > 60:
                 logger.warning(
-                    "   ⚠️  DHW temperature %.1f°C outside typical range (40-60°C)", temp
+                    "   ⚠️  DHW temperature %s°C outside typical range (40-60°C)",
+                    _safe_log(temp),
                 )
             state["set_tank_water_temperature"] = temp
-            logger.info("   ✅ DHW Target: %.1f°C", temp)
+            logger.info("   ✅ DHW Target: %s°C", _safe_log(temp))
 
         if body.get("forcedHotWaterMode") is not None:
             state["forced_hot_water_mode"] = body["forcedHotWaterMode"]
-            logger.info("   ✅ Forced DHW: %s", body["forcedHotWaterMode"])
+            logger.info("   ✅ Forced DHW: %s", _safe_log(body["forcedHotWaterMode"]))
 
         if body.get("inStandbyMode") is not None:
             # Real device behavior: Cannot enter standby mode when powered on
@@ -716,20 +961,23 @@ class MockMELCloudServer:
                 # Don't change state - matches real ATW device behavior
             else:
                 state["in_standby_mode"] = body["inStandbyMode"]
-                logger.info("   ✅ Standby: %s", body["inStandbyMode"])
+                logger.info("   ✅ Standby: %s", _safe_log(body["inStandbyMode"]))
 
         # Update operation_mode STATUS based on 3-way valve logic
         self._update_atw_operation_mode(unit_id)
 
         # Print summary with 3-way valve status
         logger.info(
-            "📊 State: Zone1=%.1f°C→%.1f°C, DHW=%.1f°C→%.1f°C",
-            state["room_temperature_zone1"],
-            state["set_temperature_zone1"],
-            state["tank_water_temperature"],
-            state["set_tank_water_temperature"],
+            "📊 State: Zone1=%s°C→%s°C, DHW=%s°C→%s°C",
+            _safe_log(state["room_temperature_zone1"]),
+            _safe_log(state["set_temperature_zone1"]),
+            _safe_log(state["tank_water_temperature"]),
+            _safe_log(state["set_tank_water_temperature"]),
         )
         self._log_3way_valve_status(unit_id)
+
+        changed = {k: v for k, v in state.items() if before.get(k) != v}
+        await self._broadcast_delta(unit_id, changed)
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
@@ -806,7 +1054,11 @@ class MockMELCloudServer:
         unit_id = request.match_info.get("unit_id")
         measure = request.rel_url.query.get("measure", "flow_temperature")
 
-        logger.info("📊 Telemetry request: unit=%s, measure=%s", unit_id, measure)
+        logger.info(
+            "📊 Telemetry request: unit=%s, measure=%s",
+            _safe_log(unit_id),
+            _safe_log(measure),
+        )
 
         # Generate 4 hours of sparse data (realistic pattern)
         values = []
@@ -846,7 +1098,9 @@ class MockMELCloudServer:
                     }
                 )
 
-        logger.info("📊 Returning %d datapoints for %s", len(values), measure)
+        logger.info(
+            "📊 Returning %d datapoints for %s", len(values), _safe_log(measure)
+        )
 
         return web.Response(
             text=json.dumps(
@@ -879,7 +1133,9 @@ class MockMELCloudServer:
         measure = request.rel_url.query.get("measure", "interval_energy_consumed")
 
         logger.info(
-            "⚡ Energy telemetry request: unit=%s, measure=%s", unit_id, measure
+            "⚡ Energy telemetry request: unit=%s, measure=%s",
+            _safe_log(unit_id),
+            _safe_log(measure),
         )
 
         # Generate 24 hours of hourly energy data
@@ -892,14 +1148,23 @@ class MockMELCloudServer:
                 minute=0, second=0, microsecond=0
             )
 
+            # ATW interval_energy_* values are kWh (the real API contract);
+            # anything else (ATA cumulative measures) is Wh.
             if measure == "interval_energy_consumed":
-                # Consumed: 2000-4000 Wh per hour (2-4 kWh)
-                value = random.randint(2000, 4000)
+                # Consumed: 2-4 kWh per hour
+                value: float = random.randint(2000, 4000) / 1000
             elif measure == "interval_energy_produced":
-                # Produced: 6000-12000 Wh per hour (6-12 kWh, COP ~3)
-                value = random.randint(6000, 12000)
+                # Produced: 6-12 kWh per hour (COP ~3)
+                value = random.randint(6000, 12000) / 1000
             else:
                 value = 0
+
+            # Known cloud quirk (issue #161): the real API re-sends a corrupt
+            # 16-bit-wrapped reading (65536 * 100 Wh = 6553.6 kWh) for the
+            # same hour on every poll, for days. Reproduce it at today's
+            # 00:00 UTC so the hour key is stable across polls within a day.
+            if timestamp == now.replace(hour=0, minute=0, second=0, microsecond=0):
+                value = 6553.6 if measure.startswith("interval_energy") else 6553600
 
             values.append(
                 {
@@ -908,7 +1173,7 @@ class MockMELCloudServer:
                 }
             )
 
-        logger.info("⚡ Returning 24 hours of data for %s", measure)
+        logger.info("⚡ Returning 24 hours of data for %s", _safe_log(measure))
 
         return web.Response(
             text=json.dumps(
@@ -946,12 +1211,16 @@ class MockMELCloudServer:
         else:
             from_time = to_time - timedelta(hours=1)
 
-        # Generate datapoints (every 10 minutes)
+        # Generate datapoints (every 10 minutes). Like the real API, genuine
+        # readings carry arbitrary seconds (here :26) while synthetic points
+        # are seconds-aligned: the response ends with an echo of the query's
+        # "to" timestamp repeating the last value, which clients must not
+        # mistake for a reading.
         datapoints_room = []
         datapoints_set = []
         datapoints_outdoor = []
 
-        current = from_time
+        current = from_time.replace(second=26)
         while current <= to_time:
             timestamp = current.isoformat()
             datapoints_room.append({"x": timestamp, "y": 20.5})
@@ -959,8 +1228,14 @@ class MockMELCloudServer:
             datapoints_outdoor.append({"x": timestamp, "y": 12.0})
             current += timedelta(minutes=10)
 
+        # Synthetic to-echo point (server pads the chart to "now")
+        echo = to_time.isoformat()
+        datapoints_room.append({"x": echo, "y": 20.5})
+        datapoints_set.append({"x": echo, "y": 21.0})
+        datapoints_outdoor.append({"x": echo, "y": 12.0})
+
         # Check if device has outdoor sensor (Living Room AC has it, Bedroom doesn't)
-        has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-123456787db"
+        has_outdoor_sensor = unit_id == "0efc1234-5678-9abc-def0-1234567887db"
 
         datasets = [
             {
@@ -1026,7 +1301,7 @@ class MockMELCloudServer:
         method = request.method
 
         if method == "GET":
-            logger.info("📅 Schedule GET: %s", unit_id)
+            logger.info("📅 Schedule GET: %s", _safe_log(unit_id))
             # Return empty schedule array
             return web.json_response([])
 
@@ -1036,8 +1311,8 @@ class MockMELCloudServer:
             except json.JSONDecodeError:
                 return web.json_response({"error": "Invalid JSON"}, status=400)
 
-            logger.info("📅 Schedule POST: %s", unit_id)
-            logger.debug("   Schedule data: %s", json.dumps(body, indent=2))
+            logger.info("📅 Schedule POST: %s", _safe_log(unit_id))
+            logger.debug("   Schedule data: %s", _safe_log(json.dumps(body)))
 
             # Real API returns 200 with empty body
             return web.Response(status=200, body=b"")
@@ -1047,7 +1322,7 @@ class MockMELCloudServer:
     async def handle_schedule_enabled_get(self, request: web.Request) -> web.Response:
         """GET /monitor/atwcloudschedule/{unit_id}/enabled - Get schedule enabled status."""
         unit_id = request.match_info.get("unit_id")
-        logger.info("📅 Schedule Enabled GET: %s", unit_id)
+        logger.info("📅 Schedule Enabled GET: %s", _safe_log(unit_id))
 
         # Return schedule enabled status (true/false)
         enabled = True  # Default to enabled
@@ -1063,7 +1338,9 @@ class MockMELCloudServer:
             return web.json_response({"error": "Invalid JSON"}, status=400)
 
         enabled = body.get("enabled", True)
-        logger.info("📅 Schedule Enabled PUT: %s -> %s", unit_id, enabled)
+        logger.info(
+            "📅 Schedule Enabled PUT: %s -> %s", _safe_log(unit_id), _safe_log(enabled)
+        )
 
         # Real API returns 200 with empty body
         return web.Response(status=200, body=b"")
@@ -1090,12 +1367,16 @@ class MockMELCloudServer:
                 logger.warning("   ⚠️  Zone 1 %s suspended", action)
         elif mode == "Heating":
             zone_mode = state.get("operation_mode_zone1", "HeatRoomTemperature")
-            logger.info("   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", zone_mode)
+            logger.info(
+                "   🔄 3-Way Valve: → ZONE 1 HEATING (%s)", _safe_log(zone_mode)
+            )
         elif mode == "Cooling":
             zone_mode = state.get("operation_mode_zone1", "CoolRoomTemperature")
-            logger.info("   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", zone_mode)
+            logger.info(
+                "   🔄 3-Way Valve: → ZONE 1 COOLING (%s)", _safe_log(zone_mode)
+            )
         else:
-            logger.info("   🔄 3-Way Valve: IDLE (%s)", mode)
+            logger.info("   🔄 3-Way Valve: IDLE (%s)", _safe_log(mode))
 
     def _build_ata_settings(self, unit_id: str) -> list[dict]:
         """Build ATA settings array from state dict.
@@ -1122,6 +1403,7 @@ class MockMELCloudServer:
             },
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
+            {"name": "ErrorCode", "value": state.get("error_code", "")},
         ]
 
     def _build_atw_settings(self, unit_id: str) -> list[dict]:
@@ -1160,7 +1442,9 @@ class MockMELCloudServer:
             {"name": "HasZone2", "value": str(int(state["has_zone2"]))},
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
+            {"name": "ErrorCode", "value": state.get("error_code", "")},
             {"name": "FTCModel", "value": str(state["ftc_model"])},
+            {"name": "OutdoorTemperature", "value": str(state["outdoor_temperature"])},
         ]
 
         # Zone 2 settings (only if device has zone 2)

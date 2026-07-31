@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de MELCloud Home",
+        "data": {
+          "enable_websocket": "Actualizaciones en tiempo real"
+        },
+        "data_description": {
+          "enable_websocket": "Los cambios realizados con el mando a distancia o la aplicación MELCloud Home aparecen en pocos segundos."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Solo para desarrollo: conecta al servidor mock local en lugar de la API de producción de MELCloud"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autenticación caducada para {name}",
+        "description": "Por favor, actualiza tu contraseña para {email}",
+        "data": {
+          "password": "Contraseña"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Esta cuenta ya está configurada",
+      "reauth_successful": "La autenticación se volvió a realizar correctamente",
       "reconfigure_successful": "Credenciales actualizadas correctamente"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Temperatura exterior"
       },
+      "frost_protection_min": {
+        "name": "Mínimo de protección antiheladas"
+      },
+      "frost_protection_max": {
+        "name": "Máximo de protección antiheladas"
+      },
+      "overheat_protection_min": {
+        "name": "Mínimo de protección contra sobrecalentamiento"
+      },
+      "overheat_protection_max": {
+        "name": "Máximo de protección contra sobrecalentamiento"
+      },
+      "holiday_mode_start_date": {
+        "name": "Inicio del modo vacaciones"
+      },
+      "holiday_mode_end_date": {
+        "name": "Fin del modo vacaciones"
+      },
       "zone_1_temperature": {
         "name": "Temperatura zona 1"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Estado de conexión"
       },
+      "realtime_updates": {
+        "name": "Actualizaciones en tiempo real"
+      },
       "forced_dhw_active": {
         "name": "ACS forzado activo"
+      },
+      "frost_protection": {
+        "name": "Protección antiheladas"
+      },
+      "overheat_protection": {
+        "name": "Protección contra sobrecalentamiento"
+      },
+      "holiday_mode": {
+        "name": "Modo vacaciones"
       }
     }
   },

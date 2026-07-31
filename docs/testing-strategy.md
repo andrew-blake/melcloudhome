@@ -116,6 +116,14 @@ async def test_set_temperature(hass, setup_integration):
 
 **Coverage:** Config flow, entity platforms, coordinator, service calls
 
+**HA version coverage:** CI runs this tier twice — once against current HA
+(`make test`, latest `pytest-homeassistant-custom-component`) and once against the
+declared `hacs.json` floor (`make test-integration-floor`, phcc `0.13.269` =
+HA 2025.8.0). The floor pin lives in the Makefile and must be bumped together with
+any `hacs.json` floor raise — a stale pin silently keeps testing the old floor.
+Versions between the two endpoints are deliberately untested (two-point trade-off,
+not a full matrix).
+
 ---
 
 ### Tier 3: **Manual Testing** (Production HA) ✅

@@ -1,10 +1,25 @@
 # Environment
 .env
-.claude/settings.local.json
 CLAUDE.local.md
 
 # Internal development documentation
 _claude/
+
+# Claude Code local state. Per-machine runtime files and scratch state - none of
+# it is shareable, and some (agent registry, mailbox, scheduled tasks) holds
+# absolute paths or session data. Committed configuration under .claude/ that IS
+# shared, such as settings.json, is deliberately not listed here.
+.claude/settings.local.json
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
+.claude/routines/.state/
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/agent-registry.json
+.claude/agent-memory-local/
+.claude/first-run
+.claude/assistant-daemon-state.json
 
 # Home Assistant Configuration (not part of HACS distribution)
 automations.yaml
@@ -61,7 +76,14 @@ env/
 tools/energy_recording_*.json
 tools/recorder.log*
 *.har
+# Exception: curated, anonymized capture HARs under docs/ are PII-scrubbed and
+# safe to commit (see tools/anonymize_har.py + manual review before committing).
+!docs/research/**/*_anonymized.har
 *.zip
+
+# Diagnostic tool output (real account data, e.g. tools/outdoor_temp_inspect.py,
+# tools/spike_outdoor_temp_recorder.py)
+diagnostics/
 
 # Upgrade verification testing
 dev-config-snapshots/

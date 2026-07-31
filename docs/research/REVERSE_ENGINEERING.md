@@ -55,6 +55,38 @@ Open the MELCloud Home app on the iPhone and exercise the device:
 
 Stop mitmdump with `Ctrl-C` when done. Your capture lives at `tools/mitmproxy/captures/<timestamp>.flow`.
 
+### Capturing the real-time WebSocket
+
+`capture.py` records HTTP only. For the real-time WebSocket (issue #174) use
+`tools/mitmproxy/capture_ws.py` instead — it adds `ws.melcloudhome.com` and the
+WS-hash Lambda to the filter and logs every frame (direction + content) to a
+readable `<timestamp>-ws.jsonl`:
+
+```bash
+uv run mitmdump -s tools/mitmproxy/capture_ws.py
+```
+
+Two hard limitations to know before you spend time on this:
+
+- **iOS does not route the `wss` socket through the manual HTTP proxy.** With the
+  Wi-Fi proxy set, you capture all HTTP (the `{hash, userId}` fetch, the BFF
+  calls) but `ws.melcloudhome.com` shows **zero** hits — the app opens the socket
+  with a direct connection that ignores the proxy. To force the socket through
+  mitmproxy you need its **WireGuard mode** (`mitmdump --mode wireguard`, iPhone
+  joins via the WireGuard app + generated config).
+- **Even in WireGuard mode, mitmproxy relays this particular socket unreliably**
+  — it dies with `close_code=1006` abnormal-close storms (with or without an
+  addon that strips the `permessage-deflate` extension). Treat mitmproxy as
+  unable to give a clean live WS capture here.
+
+**Recommended instead — capture WS frames from the web app:** open
+`melcloudhome.com` in Chrome, DevTools → Network → filter **WS**, click the
+`ws.melcloudhome.com` entry → **Messages**. Change settings (from the app or the
+web UI) and each `unitStateChanged` frame appears with its value; **Save all as
+HAR** to export. (DevTools still won't show ping/pong control frames, but data
+frames, the handshake, and directions are all there.) Because the mobile and web
+credentials are identical (same `hash == userId`), the frames are equivalent.
+
 ### Anonymising for sharing
 
 Flow files contain your access tokens, refresh tokens, device IDs, and email address — **never share the raw `.flow`**. Export to HAR and anonymise:
@@ -173,5 +205,6 @@ The MELCloud mobile API controls real HVAC equipment. Before any real-hardware t
 
 - [`tools/mitmproxy/README.md`](../../tools/mitmproxy/README.md) — mitmproxy + iOS setup mechanics
 - [`docs/research/mobile-bff-captures/README.md`](mobile-bff-captures/README.md) — endpoint mapping, OAuth PKCE flow, prior captures
+- [`docs/research/web-bff-websocket-capture/README.md`](web-bff-websocket-capture/README.md) — web BFF login, real-time WebSocket protocol (issue #174)
 - [ADR-017](../decisions/017-migrate-to-mobile-bff.md) — decision to migrate from the legacy web API to the mobile API
 - [`docs/api/ata-api-reference.md`](../api/ata-api-reference.md) / [`docs/api/atw-api-reference.md`](../api/atw-api-reference.md) — schemas derived from prior captures

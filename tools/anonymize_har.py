@@ -21,6 +21,25 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+# OAuth/session handshake parameters: one-time secrets (sid, nonce, PKCE
+# challenge/verifier, authorization code, ASP.NET state blob) that appear in
+# login/logout redirect URLs — in entries[] URLs/headers, in queryString[]
+# name/value pairs, and in pages[].title.
+SENSITIVE_PARAMS = {
+    # WebSocket credential (?hash=<per-user uuid>). The generic UUID pass
+    # happens to catch today's format; scrub it explicitly so a format
+    # change (base64/hex) can't slip through.
+    "hash",
+    "sid",
+    "nonce",
+    "state",
+    "session_state",
+    "code",
+    "code_challenge",
+    "code_verifier",
+    "id_token_hint",
+}
+
 
 class HARAnonymizer:
     """Anonymizes HAR files while maintaining structure and relationships."""
@@ -163,7 +182,34 @@ class HARAnonymizer:
             r"\bFE[0-9A-Fa-f]{30}\b",  # Long format MACs
         ]
         for pattern in mac_patterns:
-            text = re.sub(pattern, lambda m: self.anonymize_mac(m.group()), text)
+            # The UUID pass above just replaced e.g. a scene ID's last block
+            # with a run of a single repeated letter (AAAAAAAAAAAA). That's
+            # valid MAC-pattern shape, so without this guard the MAC pass
+            # re-matches our own placeholder and double-mangles it into an
+            # unrelated hex counter - breaking the URL-vs-body ID link a
+            # reader relies on to cross-check requests against the same
+            # resource. Real MACs are never 12 identical hex digits.
+            text = re.sub(
+                pattern,
+                lambda m: (
+                    m.group()
+                    if len(set(m.group().lower())) <= 1
+                    else self.anonymize_mac(m.group())
+                ),
+                text,
+            )
+
+        # SENSITIVE_PARAMS in URLs: the UUID/token patterns above don't catch
+        # them (base64/hex blobs), so scrub the whole parameter value.
+        # Longest alternatives first so e.g. code_challenge isn't half-eaten
+        # by the shorter "code".
+        params = "|".join(sorted(SENSITIVE_PARAMS, key=len, reverse=True))
+        text = re.sub(
+            rf"([?&](?:{params})=)[^&\s\"']+",
+            r"\1REDACTED",
+            text,
+            flags=re.IGNORECASE,
+        )
 
         # Authorization tokens (Bearer tokens, etc.)
         if "bearer" in text.lower():
@@ -236,6 +282,14 @@ class HARAnonymizer:
                     )
                 elif key in ["authorization", "Authorization", "cookie", "Cookie"]:
                     result[key] = "ANONYMIZED"
+                elif (
+                    key == "value"
+                    and isinstance(value, str)
+                    and str(obj.get("name", "")).lower() in SENSITIVE_PARAMS
+                ):
+                    # HAR queryString[]/cookies[] name/value pairs carry the
+                    # bare parameter value, so the URL regex never sees it.
+                    result[key] = "REDACTED"
                 elif isinstance(value, str):
                     # HAR response bodies are JSON strings inside content.text.
                     # Parse and recursively anonymize, then re-serialize.

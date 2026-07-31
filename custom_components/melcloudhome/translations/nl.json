@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home-opties",
+        "data": {
+          "enable_websocket": "Realtime updates"
+        },
+        "data_description": {
+          "enable_websocket": "Wijzigingen via de afstandsbediening of de MELCloud Home-app verschijnen binnen enkele seconden."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Alleen voor ontwikkeling - verbindt met lokale mock-server in plaats van productie MELCloud API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authenticatie is verlopen voor {name}",
+        "description": "Werk je wachtwoord bij voor {email}",
+        "data": {
+          "password": "Wachtwoord"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Dit account is al geconfigureerd",
+      "reauth_successful": "Herauthenticatie geslaagd",
       "reconfigure_successful": "Inloggegevens succesvol bijgewerkt"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Buitentemperatuur"
       },
+      "frost_protection_min": {
+        "name": "Minimum vorstbescherming"
+      },
+      "frost_protection_max": {
+        "name": "Maximum vorstbescherming"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum oververhittingsbeveiliging"
+      },
+      "overheat_protection_max": {
+        "name": "Maximum oververhittingsbeveiliging"
+      },
+      "holiday_mode_start_date": {
+        "name": "Start vakantiemodus"
+      },
+      "holiday_mode_end_date": {
+        "name": "Einde vakantiemodus"
+      },
       "zone_1_temperature": {
         "name": "Zone 1 temperatuur"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Verbindingsstatus"
       },
+      "realtime_updates": {
+        "name": "Realtime updates"
+      },
       "forced_dhw_active": {
         "name": "Geforceerd WW actief"
+      },
+      "frost_protection": {
+        "name": "Vorstbescherming"
+      },
+      "overheat_protection": {
+        "name": "Oververhittingsbeveiliging"
+      },
+      "holiday_mode": {
+        "name": "Vakantiemodus"
       }
     }
   },

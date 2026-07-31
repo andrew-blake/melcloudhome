@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home-Optionen",
+        "data": {
+          "enable_websocket": "Echtzeit-Updates"
+        },
+        "data_description": {
+          "enable_websocket": "Änderungen über die Fernbedienung oder die MELCloud Home App erscheinen innerhalb weniger Sekunden."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Nur für Entwicklung - verbindet mit dem lokalen Mock-Server statt den Produktions-MELCloud-APIs"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authentifizierung für {name} abgelaufen",
+        "description": "Bitte aktualisiere dein Passwort für {email}",
+        "data": {
+          "password": "Passwort"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Dieses Konto ist bereits konfiguriert",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
       "reconfigure_successful": "Zugangsdaten erfolgreich aktualisiert"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Außentemperatur"
       },
+      "frost_protection_min": {
+        "name": "Frostschutz Minimum"
+      },
+      "frost_protection_max": {
+        "name": "Frostschutz Maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Überhitzungsschutz Minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Überhitzungsschutz Maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Urlaubsmodus Start"
+      },
+      "holiday_mode_end_date": {
+        "name": "Urlaubsmodus Ende"
+      },
       "zone_1_temperature": {
         "name": "Temperatur Zone 1"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Verbindungsstatus"
       },
+      "realtime_updates": {
+        "name": "Echtzeit-Updates"
+      },
       "forced_dhw_active": {
         "name": "Erzwungenes Warmwasser aktiv"
+      },
+      "frost_protection": {
+        "name": "Frostschutz"
+      },
+      "overheat_protection": {
+        "name": "Überhitzungsschutz"
+      },
+      "holiday_mode": {
+        "name": "Urlaubsmodus"
       }
     }
   },

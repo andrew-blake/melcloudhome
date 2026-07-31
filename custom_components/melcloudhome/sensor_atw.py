@@ -57,11 +57,13 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     value_fn: Callable[[AirToWaterUnit], float | str | None]
     """Function to extract sensor value from unit data."""
 
-    available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
-    """Function to determine if sensor is available."""
+    should_create_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
+    """Whether to create the sensor at all.
 
-    should_create_fn: Callable[[AirToWaterUnit], bool] | None = None
-    """Function to determine if sensor should be created. If None, uses available_fn."""
+    Must test something stable about the unit (a capability, a model trait) - never
+    a value that comes and goes, because creation is only evaluated once at setup.
+    A transient missing value reads as state `unknown`; it never gates creation.
+    """
 
 
 ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
@@ -73,8 +75,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature_zone1,
-        should_create_fn=lambda unit: True,
-        available_fn=lambda unit: unit.room_temperature_zone1 is not None,
     ),
     # Zone 2 room temperature (only if device has zone 2)
     ATWSensorEntityDescription(
@@ -85,7 +85,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature_zone2,
         should_create_fn=lambda unit: unit.has_zone2,
-        available_fn=lambda unit: unit.room_temperature_zone2 is not None,
     ),
     # Tank water temperature
     ATWSensorEntityDescription(
@@ -95,8 +94,15 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.tank_water_temperature,
-        should_create_fn=lambda unit: True,
-        available_fn=lambda unit: unit.tank_water_temperature is not None,
+    ),
+    # Outdoor temperature. Always created; "unknown" until a reading arrives.
+    ATWSensorEntityDescription(
+        key="outdoor_temperature",
+        translation_key="outdoor_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda unit: unit.outdoor_temperature,
     ),
     # Operation status (3-way valve position - raw API values)
     ATWSensorEntityDescription(
@@ -116,7 +122,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature"),
-        available_fn=lambda unit: unit.telemetry.get("flow_temperature") is not None,
     ),
     ATWSensorEntityDescription(
         key="return_temperature",
@@ -125,7 +130,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature"),
-        available_fn=lambda unit: unit.telemetry.get("return_temperature") is not None,
     ),
     ATWSensorEntityDescription(
         key="flow_temperature_zone1",
@@ -134,9 +138,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
-        available_fn=lambda unit: (
-            unit.telemetry.get("flow_temperature_zone1") is not None
-        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone1",
@@ -145,9 +146,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
-        available_fn=lambda unit: (
-            unit.telemetry.get("return_temperature_zone1") is not None
-        ),
     ),
     # Zone 2 telemetry (flow/return temperatures)
     ATWSensorEntityDescription(
@@ -158,9 +156,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
         should_create_fn=lambda unit: unit.has_zone2,
-        available_fn=lambda unit: (
-            unit.telemetry.get("flow_temperature_zone2") is not None
-        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone2",
@@ -170,9 +165,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
         should_create_fn=lambda unit: unit.has_zone2,
-        available_fn=lambda unit: (
-            unit.telemetry.get("return_temperature_zone2") is not None
-        ),
     ),
     ATWSensorEntityDescription(
         key="flow_temperature_boiler",
@@ -181,9 +173,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
-        available_fn=lambda unit: (
-            unit.telemetry.get("flow_temperature_boiler") is not None
-        ),
     ),
     ATWSensorEntityDescription(
         key="return_temperature_boiler",
@@ -192,9 +181,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
-        available_fn=lambda unit: (
-            unit.telemetry.get("return_temperature_boiler") is not None
-        ),
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm
@@ -206,13 +192,11 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda unit: unit.telemetry.get("rssi"),
-        should_create_fn=lambda unit: True,
-        available_fn=lambda unit: unit.telemetry.get("rssi") is not None,
+        value_fn=lambda unit: unit.rssi,
     ),
     # Energy monitoring sensors
     # Created if device has energy capability (measured or estimated), even if no initial data
-    # Becomes available once energy data is fetched (polls every 30 minutes)
+    # Reads unknown until energy data is fetched (polls every 30 minutes)
     ATWSensorEntityDescription(
         key="energy_consumed",
         translation_key="energy_consumed",
@@ -221,7 +205,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=lambda unit: unit.energy_consumed,
         should_create_fn=_has_energy_consumption_capability,
-        available_fn=lambda unit: unit.energy_consumed is not None,
     ),
     ATWSensorEntityDescription(
         key="energy_produced",
@@ -231,7 +214,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=lambda unit: unit.energy_produced,
         should_create_fn=_has_energy_production_capability,
-        available_fn=lambda unit: unit.energy_produced is not None,
     ),
     ATWSensorEntityDescription(
         key="cop",
@@ -241,7 +223,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=None,
         value_fn=lambda unit: unit.cop,
         should_create_fn=_has_energy_consumption_capability,  # COP requires consumption data
-        available_fn=lambda unit: unit.cop is not None,
     ),
 )
 
@@ -288,13 +269,7 @@ def _create_sensors_for_unit(
     """
     entities = []
     for description in descriptions:
-        # Use should_create_fn if defined, otherwise use available_fn
-        create_check: Callable[[AirToWaterUnit], bool] = (
-            description.should_create_fn
-            if description.should_create_fn
-            else description.available_fn
-        )
-        if create_check(unit):
+        if description.should_create_fn(unit):
             entities.append(ATWSensor(coordinator, unit, building, entry, description))
     return entities
 
@@ -342,7 +317,4 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
             return False
 
         # Check if device is in error state
-        if device.is_in_error:
-            return False
-
-        return self.entity_description.available_fn(device)
+        return not device.is_in_error

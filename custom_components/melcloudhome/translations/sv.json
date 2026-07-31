@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alternativ för MELCloud Home",
+        "data": {
+          "enable_websocket": "Realtidsuppdateringar"
+        },
+        "data_description": {
+          "enable_websocket": "Ändringar som görs med fjärrkontrollen eller MELCloud Home-appen visas inom några sekunder."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Endast för utveckling - ansluter till en lokal mock-server istället för MELClouds produktions-API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autentiseringen har upphört att gälla för {name}",
+        "description": "Uppdatera ditt lösenord för {email}",
+        "data": {
+          "password": "Lösenord"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Detta konto är redan konfigurerat",
+      "reauth_successful": "Återautentisering lyckades",
       "reconfigure_successful": "Inloggningsuppgifterna har uppdaterats"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Utomhustemperatur"
       },
+      "frost_protection_min": {
+        "name": "Frostskydd minimum"
+      },
+      "frost_protection_max": {
+        "name": "Frostskydd maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Överhettningsskydd minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Överhettningsskydd maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Semesterläge start"
+      },
+      "holiday_mode_end_date": {
+        "name": "Semesterläge slut"
+      },
       "zone_1_temperature": {
         "name": "Zon 1 temperatur"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Anslutningsstatus"
       },
+      "realtime_updates": {
+        "name": "Realtidsuppdateringar"
+      },
       "forced_dhw_active": {
         "name": "Forcerat varmvatten aktivt"
+      },
+      "frost_protection": {
+        "name": "Frostskydd"
+      },
+      "overheat_protection": {
+        "name": "Överhettningsskydd"
+      },
+      "holiday_mode": {
+        "name": "Semesterläge"
       }
     }
   },

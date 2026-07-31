@@ -3,9 +3,13 @@
 These fixtures require pytest-homeassistant-custom-component.
 """
 
-from typing import TYPE_CHECKING
+import asyncio
+import json
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import aiohttp
 import pytest
 
 if TYPE_CHECKING:
@@ -13,6 +17,10 @@ if TYPE_CHECKING:
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.api.models import Building, UserContext
+    from custom_components.melcloudhome.api.models_ata import (
+        AirToAirUnit,
+        ProtectionModeState,
+    )
     from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 
 # Import fixtures from pytest-homeassistant-custom-component
@@ -101,6 +109,7 @@ def create_mock_atw_unit(
     energy_consumed: float | None = None,
     energy_produced: float | None = None,
     cop: float | None = None,
+    outdoor_temperature: float | None = 15.0,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
 
@@ -143,6 +152,7 @@ def create_mock_atw_unit(
         energy_consumed=energy_consumed,
         energy_produced=energy_produced,
         cop=cop,
+        outdoor_temperature=outdoor_temperature,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
             has_heat_zone2=has_zone2,
@@ -241,3 +251,215 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         await hass.async_block_till_done()
 
         return entry
+
+
+async def _setup_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    with patch(MOCK_CLIENT_PATH) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        if configure_client is not None:
+            configure_client(mock_client)
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            options=options or {},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        return entry, mock_client
+
+
+async def setup_atw_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    """Set up ATW integration with a custom mock context.
+
+    Returns (entry, mock_client). Capture mock_client to configure mocks or
+    assert on calls after setup. Use configure_client for pre-setup mock wiring.
+    """
+    return await _setup_integration_custom(
+        hass, mock_context, configure_client=configure_client, options=options
+    )
+
+
+# =============================================================================
+# ATA (Air-to-Air) test helpers
+# =============================================================================
+
+TEST_ATA_UNIT_ID = "a1b2c3d4-5678-9abc-def0-123456789abc"
+TEST_ATA_BUILDING_ID = "building-ata-test-id"
+
+
+def create_mock_ata_unit(
+    unit_id: str = TEST_ATA_UNIT_ID,
+    name: str = "Test Unit",
+    power: bool = True,
+    operation_mode: str = "Heat",
+    set_temperature: float | None = 21.0,
+    room_temperature: float | None = 20.0,
+    set_fan_speed: str | None = "Auto",
+    vane_vertical: str | None = "Auto",
+    vane_horizontal: str | None = "Auto",
+    in_standby_mode: bool = False,
+    is_in_error: bool = False,
+    error_code: str | None = None,
+    rssi: int | None = -50,
+    has_energy_meter: bool = False,
+    energy_consumed: float | None = None,
+    has_outdoor_sensor: bool = False,
+    outdoor_temperature: float | None = None,
+    frost_protection: "ProtectionModeState | None" = None,
+    overheat_protection: "ProtectionModeState | None" = None,
+    holiday_mode: "ProtectionModeState | None" = None,
+) -> "AirToAirUnit":
+    """Create a mock AirToAirUnit for testing."""
+    from custom_components.melcloudhome.api.models_ata import (
+        AirToAirCapabilities,
+        AirToAirUnit,
+    )
+
+    return AirToAirUnit(
+        id=unit_id,
+        name=name,
+        power=power,
+        operation_mode=operation_mode,
+        set_temperature=set_temperature,
+        room_temperature=room_temperature,
+        set_fan_speed=set_fan_speed,
+        vane_vertical_direction=vane_vertical,
+        vane_horizontal_direction=vane_horizontal,
+        in_standby_mode=in_standby_mode,
+        is_in_error=is_in_error,
+        error_code=error_code,
+        rssi=rssi,
+        capabilities=AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter),
+        energy_consumed=energy_consumed,
+        has_outdoor_temp_sensor=has_outdoor_sensor,
+        outdoor_temperature=outdoor_temperature,
+        frost_protection=frost_protection,
+        overheat_protection=overheat_protection,
+        holiday_mode=holiday_mode,
+    )
+
+
+def create_mock_ata_building(
+    building_id: str = TEST_ATA_BUILDING_ID,
+    name: str = "Test Building",
+    units: list | None = None,
+) -> "Building":
+    """Create a mock Building with ATA units for testing."""
+    from custom_components.melcloudhome.api.models import Building
+
+    if units is None:
+        units = [create_mock_ata_unit()]
+    return Building(id=building_id, name=name, air_to_air_units=units)
+
+
+def create_mock_ata_user_context(buildings: list | None = None) -> "UserContext":
+    """Create a mock UserContext with ATA buildings for testing."""
+    from custom_components.melcloudhome.api.models import UserContext
+
+    if buildings is None:
+        buildings = [create_mock_ata_building()]
+    return UserContext(buildings=buildings)
+
+
+def create_mock_ata_energy_context() -> "UserContext":
+    """Create a mock UserContext with one energy-capable ATA unit.
+
+    Convenience wrapper for the common energy coordinator test setup.
+    """
+    return create_mock_ata_user_context(
+        [create_mock_ata_building(units=[create_mock_ata_unit(has_energy_meter=True)])]
+    )
+
+
+async def setup_ata_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    """Set up ATA integration with a custom mock context.
+
+    Returns (entry, mock_client). Capture mock_client to configure mocks or
+    assert on calls after setup. Use configure_client for pre-setup mock wiring.
+    """
+    return await _setup_integration_custom(
+        hass, mock_context, configure_client=configure_client, options=options
+    )
+
+
+# =============================================================================
+# WebSocket test fakes (shared by binary sensor + diagnostics tests)
+# =============================================================================
+
+
+class OpenFakeWS:
+    """Fake aiohttp WebSocket: yields queued frames, then stays open."""
+
+    def __init__(self, frames: list[Any]) -> None:
+        self._frames = list(frames)
+
+    async def __aenter__(self) -> "OpenFakeWS":
+        return self
+
+    async def __aexit__(self, *_exc: object) -> bool:
+        return False
+
+    def __aiter__(self) -> "OpenFakeWS":
+        return self
+
+    async def __anext__(self) -> Any:
+        if self._frames:
+            return self._frames.pop(0)
+        await asyncio.Event().wait()  # block until the task is cancelled
+        raise StopAsyncIteration
+
+
+def ws_text_frame(unit_id: str) -> MagicMock:
+    """Build a TEXT frame carrying one unitStateChanged delta."""
+    msg = MagicMock()
+    msg.type = aiohttp.WSMsgType.TEXT
+    msg.data = json.dumps(
+        [
+            {
+                "messageType": "unitStateChanged",
+                "Data": {"id": unit_id, "settings": [{"name": "Power"}]},
+            }
+        ]
+    )
+    return msg
+
+
+def wire_connected_ws(client: MagicMock, frames: list[Any]) -> None:
+    """Make the mocked client's WS path connect successfully."""
+    session = MagicMock()
+    session.ws_connect = MagicMock(return_value=OpenFakeWS(frames))
+    client.async_get_ws_hash = AsyncMock(return_value="HASH123")
+    client.async_ws_session = AsyncMock(return_value=session)
+    type(client).ws_host = "wss://example.invalid"

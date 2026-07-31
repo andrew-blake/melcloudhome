@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tùy chọn MELCloud Home",
+        "data": {
+          "enable_websocket": "Cập nhật theo thời gian thực"
+        },
+        "data_description": {
+          "enable_websocket": "Các thay đổi được thực hiện bằng điều khiển từ xa hoặc ứng dụng MELCloud Home sẽ hiển thị trong vài giây."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Chỉ dành cho phát triển, kết nối với máy chủ giả lập cục bộ thay API của MELCloud"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Xác thực đã hết hạn cho {name}",
+        "description": "Vui lòng cập nhật mật khẩu của bạn cho {email}",
+        "data": {
+          "password": "Mật khẩu"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Tài khoản này đã được cấu hình",
+      "reauth_successful": "Xác thực lại thành công",
       "reconfigure_successful": "Cập nhật thông tin đăng nhập thành công"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Nhiệt độ ngoài trời"
       },
+      "frost_protection_min": {
+        "name": "Bảo vệ chống đóng băng tối thiểu"
+      },
+      "frost_protection_max": {
+        "name": "Bảo vệ chống đóng băng tối đa"
+      },
+      "overheat_protection_min": {
+        "name": "Bảo vệ quá nhiệt tối thiểu"
+      },
+      "overheat_protection_max": {
+        "name": "Bảo vệ quá nhiệt tối đa"
+      },
+      "holiday_mode_start_date": {
+        "name": "Bắt đầu chế độ nghỉ lễ"
+      },
+      "holiday_mode_end_date": {
+        "name": "Kết thúc chế độ nghỉ lễ"
+      },
       "zone_1_temperature": {
         "name": "Nhiệt độ vùng 1"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Trạng thái kết nối"
       },
+      "realtime_updates": {
+        "name": "Cập nhật theo thời gian thực"
+      },
       "forced_dhw_active": {
         "name": "DHW bắt buộc đang hoạt động"
+      },
+      "frost_protection": {
+        "name": "Bảo vệ chống đóng băng"
+      },
+      "overheat_protection": {
+        "name": "Bảo vệ quá nhiệt"
+      },
+      "holiday_mode": {
+        "name": "Chế độ nghỉ lễ"
       }
     }
   },

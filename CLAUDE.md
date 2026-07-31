@@ -44,6 +44,7 @@ make zizmor                      # Security scan workflows (run before pushing w
 make test-build                  # Build Docker test images (after dep changes)
 make test-api                    # API unit tests (VCR, no Docker)
 make test-integration            # Integration tests (Docker, mocked API)
+make test-integration-floor      # Same suite on the hacs.json HA floor
 make test-e2e                    # E2E tests (Docker, mock server)
 make test                        # All tests with coverage
 ```

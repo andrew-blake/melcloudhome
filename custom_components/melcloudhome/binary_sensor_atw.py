@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -17,8 +17,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api.models import AirToWaterUnit, Building
 from .helpers import initialize_entity_base
 from .protocols import CoordinatorProtocol
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -34,8 +32,8 @@ class ATWBinarySensorEntityDescription(
     value_fn: Callable[[AirToWaterUnit], bool]
     """Function to extract binary sensor value from unit data."""
 
-    available_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
-    """Function to determine if sensor is available."""
+    attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
+    """Function to extract extra state attributes from unit data."""
 
 
 ATW_BINARY_SENSOR_TYPES: tuple[ATWBinarySensorEntityDescription, ...] = (
@@ -45,6 +43,7 @@ ATW_BINARY_SENSOR_TYPES: tuple[ATWBinarySensorEntityDescription, ...] = (
         translation_key="error_state",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda unit: unit.is_in_error,
+        attributes_fn=lambda unit: {"error_code": unit.error_code},
     ),
     # Connection state - indicates if device is connected and responding
     ATWBinarySensorEntityDescription(
@@ -99,6 +98,17 @@ class ATWBinarySensor(
         return self.entity_description.value_fn(device)
 
     @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
+            return None
+        return self.entity_description.attributes_fn(device)
+
+    @property
     def available(self) -> bool:
         """Return if entity is available."""
         # Connection sensor is always available (it reports connection status)
@@ -109,8 +119,4 @@ class ATWBinarySensor(
         if not self.coordinator.last_update_success:
             return False
 
-        device = self.coordinator.get_atw_device(self._unit_id)
-        if device is None:
-            return False
-
-        return self.entity_description.available_fn(device)
+        return self.coordinator.get_atw_device(self._unit_id) is not None

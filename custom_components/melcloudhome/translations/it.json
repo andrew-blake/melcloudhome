@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni di MELCloud Home",
+        "data": {
+          "enable_websocket": "Aggiornamenti in tempo reale"
+        },
+        "data_description": {
+          "enable_websocket": "Le modifiche effettuate con il telecomando o l'app MELCloud Home compaiono in pochi secondi."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Solo per sviluppo - si connette al server mock locale invece che alle API MELCloud di produzione"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autenticazione scaduta per {name}",
+        "description": "Aggiorna la tua password per {email}",
+        "data": {
+          "password": "Password"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Questo account è già configurato",
+      "reauth_successful": "La riautenticazione è avvenuta con successo",
       "reconfigure_successful": "Credenziali aggiornate con successo"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Temperatura esterna"
       },
+      "frost_protection_min": {
+        "name": "Minimo protezione antigelo"
+      },
+      "frost_protection_max": {
+        "name": "Massimo protezione antigelo"
+      },
+      "overheat_protection_min": {
+        "name": "Minimo protezione surriscaldamento"
+      },
+      "overheat_protection_max": {
+        "name": "Massimo protezione surriscaldamento"
+      },
+      "holiday_mode_start_date": {
+        "name": "Inizio modalità vacanza"
+      },
+      "holiday_mode_end_date": {
+        "name": "Fine modalità vacanza"
+      },
       "zone_1_temperature": {
         "name": "Temperatura zona 1"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Stato connessione"
       },
+      "realtime_updates": {
+        "name": "Aggiornamenti in tempo reale"
+      },
       "forced_dhw_active": {
         "name": "ACS forzata attiva"
+      },
+      "frost_protection": {
+        "name": "Protezione antigelo"
+      },
+      "overheat_protection": {
+        "name": "Protezione surriscaldamento"
+      },
+      "holiday_mode": {
+        "name": "Modalità vacanza"
       }
     }
   },

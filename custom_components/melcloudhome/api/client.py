@@ -27,7 +27,11 @@ from .const_shared import (
     API_USER_CONTEXT,
     BASE_URL,
     MOCK_BASE_URL,
+    MOCK_WS_HASH_URL,
+    MOCK_WS_HOST,
     USER_AGENT,
+    WS_HASH_URL,
+    WS_HOST,
 )
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
@@ -52,6 +56,8 @@ class MELCloudHomeClient:
         """
         self._debug_mode = debug_mode
         self._base_url = MOCK_BASE_URL if debug_mode else BASE_URL
+        self._ws_hash_url = MOCK_WS_HASH_URL if debug_mode else WS_HASH_URL
+        self._ws_host = MOCK_WS_HOST if debug_mode else WS_HOST
         self._user_context: UserContext | None = None
         self._on_tokens_refreshed: Callable[[], None] | None = None
         self._refresh_lock = asyncio.Lock()
@@ -127,6 +133,54 @@ class MELCloudHomeClient:
     async def refresh_access_token(self) -> bool:
         """Refresh the access token using stored refresh token."""
         return await self._auth.refresh_access_token()
+
+    @property
+    def ws_host(self) -> str:
+        """WebSocket host for this client's mode (mock in debug mode)."""
+        return self._ws_host
+
+    async def async_ws_session(self) -> Any:
+        """Return the authenticated aiohttp session (for the WebSocket).
+
+        Shares the same session (and User-Agent) as REST requests.
+        """
+        return await self._auth.get_session()
+
+    async def async_get_ws_hash(self) -> str:
+        """Fetch a real-time WebSocket credential ("hash") for this account.
+
+        Exchanges the mobile-BFF bearer for a ``{"hash", "userId"}`` document
+        at the Lambda token endpoint, mirroring what the official app does.
+        Refreshes the access token first if it is expired, so callers don't
+        need to. Returns the ``hash`` used to open ``ws_host/?hash=<hash>``.
+
+        Raises:
+            AuthenticationError: if the endpoint rejects the bearer (401/403).
+            ApiError: for any other non-200 response.
+        """
+        # Proactive refresh — same pattern as _api_request.
+        if self._auth.is_token_expired and self._auth.refresh_token:
+            async with self._refresh_lock:
+                if self._auth.is_token_expired:
+                    await self._auth.refresh_access_token()
+                    if self._on_tokens_refreshed:
+                        self._on_tokens_refreshed()
+
+        session = await self._auth.get_session()
+        headers = {"Authorization": f"Bearer {self._auth.access_token}"}
+        async with session.get(self._ws_hash_url, headers=headers) as resp:
+            if resp.status in (401, 403):
+                raise AuthenticationError(
+                    f"WebSocket token endpoint rejected credentials ({resp.status})"
+                )
+            if resp.status != 200:
+                raise ApiError(f"WebSocket token endpoint returned {resp.status}")
+            data = await resp.json()
+
+        ws_hash = data.get("hash")
+        if not ws_hash:
+            raise ApiError("WebSocket token response missing 'hash'")
+        return str(ws_hash)
 
     async def _api_request(
         self,
@@ -290,8 +344,10 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> float | None:
-        """Extract outdoor temperature from trendsummary response.
+    def _parse_outdoor_temp(
+        self, response: dict[str, Any] | list
+    ) -> tuple[float | None, datetime | None]:
+        """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
         [
@@ -305,11 +361,28 @@ class MELCloudHomeClient:
           }
         ]
 
+        The response mixes genuine unit readings with synthetic chart points
+        the server appends: bucket-aligned repeats of the last value (e.g.
+        08:00:00, 09:00:00) and a final point stamped with the query's own
+        "to" parameter echoed back verbatim. Genuine readings carry the unit's
+        actual upload time with arbitrary seconds (e.g. 07:15:24), so points
+        with seconds == 0 are treated as synthetic and skipped — the caller
+        sends a seconds-aligned "to" precisely so the echo point is caught by
+        the same rule. A genuine reading landing exactly on :00 seconds is
+        rare and costs at most falling back to the previous reading.
+
         Args:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Outdoor temperature in Celsius, or None if not available
+            Tuple of (temperature in Celsius, UTC-aware datetime of the
+            reading), or (None, None) if the response holds no genuine
+            reading. The timestamp lets consumers detect stale data: units
+            stop uploading outdoor temperature while idle, so the latest
+            reading can be hours old (issues #152, #171). The "x" timestamps
+            are naive but confirmed UTC: across ~1,700 genuine readings from
+            actively-uploading units, none led the UTC query time, which
+            local-time (BST, UTC+1) stamps would by up to an hour.
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -317,35 +390,53 @@ class MELCloudHomeClient:
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
-                data = dataset.get("data", [])
-                if data:
-                    # Return latest value (last datapoint)
-                    value = data[-1].get("y")
-                    return float(value) if value is not None else None
-        return None  # No outdoor temp dataset found
+                for point in reversed(dataset.get("data", [])):
+                    recorded_at = point.get("x")
+                    if recorded_at is None:
+                        continue
+                    timestamp = datetime.fromisoformat(str(recorded_at)).replace(
+                        tzinfo=UTC
+                    )
+                    if timestamp.second == 0:
+                        continue  # Synthetic chart point, not a unit reading
+                    value = point.get("y")
+                    if value is None:
+                        continue  # Reading without a value; try older points
+                    return float(value), timestamp
+                return None, None  # No genuine reading in the window
+        return None, None  # No outdoor temp dataset found
 
-    async def get_outdoor_temperature(self, unit_id: str) -> float | None:
+    async def get_outdoor_temperature(
+        self, unit_id: str
+    ) -> tuple[float | None, datetime | None]:
         """Get latest outdoor temperature for an ATA unit.
 
-        Queries trendsummary endpoint with Daily period. The API ignores the
-        from/to range for Daily and returns all available historical data, so
-        the most recent datapoint is always as fresh as the last time the unit ran.
+        Queries trendsummary with Hourly period, which is the only period
+        whose datapoints carry genuine reading timestamps — Daily returns
+        30-minute bucket aggregates whose labels are not reading times and
+        whose values can diverge from the actual latest reading (issue #152's
+        quality problems, plus a midnight-rollover artifact where the freshest
+        Daily label leads the query time by up to an hour).
 
         Args:
             unit_id: ATA unit UUID
 
         Returns:
-            Outdoor temperature in Celsius, or None if not available
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
+            or (None, None) if not available
         """
-        # Build time range: last 24 hours. Daily period covers units idle for up to
-        # 24 hours; Hourly silently drops outdoor temp for units inactive > ~1 hour.
-        now = datetime.now(UTC)
-        from_time = now - timedelta(hours=24)
+        # 7-day lookback: units stop uploading while idle, so a short window
+        # returns no genuine readings for them (the bug behind #111). The
+        # coordinator keeps the previous value when this returns None.
+        # "to" is truncated to seconds=0 so the server's to-echo point is
+        # identifiable as synthetic (see _parse_outdoor_temp).
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        from_time = now - timedelta(days=7)
 
         # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
         params = {
             "unitId": unit_id,
-            "period": "Daily",
+            "period": "Hourly",
             "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
             "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
         }
@@ -361,7 +452,7 @@ class MELCloudHomeClient:
                     params["from"],
                     params["to"],
                 )
-                return None
+                return None, None
             return self._parse_outdoor_temp(response)
         except Exception:
             # Log at debug level - outdoor temp is nice-to-have, not critical
@@ -370,7 +461,7 @@ class MELCloudHomeClient:
                 unit_id,
                 exc_info=True,
             )
-            return None
+            return None, None
 
     async def get_telemetry_actual(
         self,

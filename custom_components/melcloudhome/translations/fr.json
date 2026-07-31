@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options MELCloud Home",
+        "data": {
+          "enable_websocket": "Mises à jour en temps réel"
+        },
+        "data_description": {
+          "enable_websocket": "Les modifications effectuées avec la télécommande ou l'application MELCloud Home apparaissent en quelques secondes."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Réservé au développement – Se connecte à un serveur bouchon local au lieu de l'API MELCloud de production"
+        }
+      },
+      "reauth_confirm": {
+        "title": "L'authentification a expiré pour {name}",
+        "description": "Veuillez mettre à jour votre mot de passe pour {email}",
+        "data": {
+          "password": "Mot de passe"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré",
+      "reauth_successful": "La ré-authentification a réussi",
       "reconfigure_successful": "Identifiants mis à jour avec succès"
     }
   },
@@ -85,8 +106,20 @@
       "connection_state": {
         "name": "État connexion"
       },
+      "realtime_updates": {
+        "name": "Mises à jour en temps réel"
+      },
       "forced_dhw_active": {
         "name": "ECS forcée active"
+      },
+      "frost_protection": {
+        "name": "Protection antigel"
+      },
+      "overheat_protection": {
+        "name": "Protection contre la surchauffe"
+      },
+      "holiday_mode": {
+        "name": "Mode vacances"
       }
     },
     "sensor": {
@@ -101,6 +134,24 @@
       },
       "outdoor_temperature": {
         "name": "Température extérieure"
+      },
+      "frost_protection_min": {
+        "name": "Minimum de protection antigel"
+      },
+      "frost_protection_max": {
+        "name": "Maximum de protection antigel"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum de protection contre la surchauffe"
+      },
+      "overheat_protection_max": {
+        "name": "Maximum de protection contre la surchauffe"
+      },
+      "holiday_mode_start_date": {
+        "name": "Début du mode vacances"
+      },
+      "holiday_mode_end_date": {
+        "name": "Fin du mode vacances"
       },
       "zone_1_temperature": {
         "name": "Température zone 1"

@@ -7,76 +7,34 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.melcloudhome.api.models import Building, UserContext
-from custom_components.melcloudhome.api.models_ata import (
-    AirToAirCapabilities,
-    AirToAirUnit,
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
 )
-from custom_components.melcloudhome.const import DOMAIN
 
-# Mock at API boundary (NOT coordinator)
-MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
+from custom_components.melcloudhome.const import DOMAIN, HOUR_VALUE_RETENTION_HOURS
+
+from .conftest import (
+    MOCK_CLIENT_PATH,
+    TEST_ATA_BUILDING_ID,
+    TEST_ATA_UNIT_ID,
+    create_mock_ata_energy_context,
+)
+
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
 
-# Test device UUID - generates entity_id: sensor.melcloudhome_0efc_9abc_energy
-TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
-TEST_BUILDING_ID = "building-test-id"
-
-
-def create_mock_unit_with_energy(
-    unit_id: str = TEST_UNIT_ID,
-    name: str = "Test Unit",
-    has_energy_meter: bool = True,
-) -> AirToAirUnit:
-    """Create a mock AirToAirUnit with energy capabilities.
-
-    Uses real model class with realistic data.
-    """
-    capabilities = AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter)
-
-    return AirToAirUnit(
-        id=unit_id,
-        name=name,
-        power=True,
-        operation_mode="Heat",
-        set_temperature=21.0,
-        room_temperature=20.0,
-        set_fan_speed="Auto",
-        vane_vertical_direction="Auto",
-        vane_horizontal_direction="Auto",
-        in_standby_mode=False,
-        is_in_error=False,
-        rssi=-50,
-        capabilities=capabilities,
-        energy_consumed=None,  # Will be populated by coordinator
-    )
-
-
-def create_mock_building_with_energy(
-    building_id: str = TEST_BUILDING_ID,
-    name: str = "Test Building",
-    units: list[AirToAirUnit] | None = None,
-) -> Building:
-    """Create a mock Building with energy-capable units."""
-    if units is None:
-        units = [create_mock_unit_with_energy()]
-    return Building(id=building_id, name=name, air_to_air_units=units)
-
-
-def create_mock_user_context_with_energy(
-    buildings: list[Building] | None = None,
-) -> UserContext:
-    """Create a mock UserContext with energy-capable devices."""
-    if buildings is None:
-        buildings = [create_mock_building_with_energy()]
-    return UserContext(buildings=buildings)
+# Aliases — used as dict keys in energy data assertions throughout this file
+TEST_UNIT_ID = TEST_ATA_UNIT_ID
+TEST_BUILDING_ID = TEST_ATA_BUILDING_ID
 
 
 def create_mock_energy_response(
@@ -104,6 +62,42 @@ def create_mock_energy_response(
     }
 
 
+@asynccontextmanager
+async def setup_energy_entry(
+    hass: HomeAssistant, storage: dict | None, energy_data: dict
+) -> AsyncGenerator[MagicMock]:
+    """Set up the integration with mocked client and store.
+
+    Yields the store mock for save-call assertions.
+    """
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(
+            return_value=create_mock_ata_energy_context()
+        )
+        mock_client.get_energy_data = AsyncMock(return_value=energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=storage)
+        mock_store.async_save = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        yield mock_store
+
+
 @pytest.mark.asyncio
 async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None:
     """Test that initial energy fetch skips historical data.
@@ -117,7 +111,7 @@ async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None
     Validates: First initialization behavior prevents inflating totals
     Tests through: hass.states (sensor entity state)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Mock energy response with 2 hours of historical data (should be skipped)
     mock_energy_data = create_mock_energy_response(
@@ -158,7 +152,7 @@ async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         assert state.state == "0.0"  # Should start at 0, not include historical data
         assert state.attributes["unit_of_measurement"] == "kWh"
@@ -180,7 +174,7 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
     Validates: Energy accumulation logic works correctly
     Tests through: hass.states (sensor shows accumulated total)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state: 1 hour already processed
     initial_storage = {
@@ -229,7 +223,7 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Expected: 0.5 (initial) + 0.6 (11:00) + 0.7 (12:00) = 1.8 kWh
@@ -251,6 +245,317 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
 
 
 @pytest.mark.asyncio
+async def test_corrupt_hourly_energy_value_rejected(hass: HomeAssistant) -> None:
+    """Test that an implausible hourly energy value from the cloud is rejected.
+
+    Reproduces GitHub issue #161: the MELCloud cloud API occasionally returns
+    a corrupt hourly value of ~6,553,600 Wh (~65536 * 100 Wh, consistent with
+    a 16-bit counter wrap) for a single hour. Without a sanity check, this
+    delta is added straight into the cumulative total, permanently inflating
+    it by ~6553.6 kWh.
+
+    Validates: GitHub issue #161 - corrupt energy value accepted without check
+    Tests through: hass.states (sensor total excludes the corrupt spike)
+    """
+    # Initial state: 12:00 hour already fully processed (3100 Wh = 3.1 kWh),
+    # matching the issue's reported baseline before the corrupt spike.
+    initial_storage = {
+        "cumulative": {TEST_UNIT_ID: 3.1},
+        "hour_values": {TEST_UNIT_ID: {"2026-06-30T12:00:00Z": 3.1}},
+    }
+
+    # New energy data includes the corrupt spike reported in the issue
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 3100.0),  # Already processed - skip
+            ("2026-06-30T13:00:00Z", 6553300.0),  # CORRUPT - must be rejected
+            ("2026-06-30T14:00:00Z", 800.0),  # NEW - add 0.8 kWh (legitimate)
+        ]
+    )
+
+    async with setup_energy_entry(
+        hass, initial_storage, mock_energy_data
+    ) as mock_store:
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+
+        # Expected: 3.1 (initial, 12:00 already seen) + 0.8 (14:00, legitimate)
+        # = 3.9 kWh. The corrupt 13:00 spike (~6553.3 kWh) must NOT be added.
+        assert float(state.state) == pytest.approx(3.9, rel=0.01)
+
+        saved_data = mock_store.async_save.call_args_list[0][0][0]
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            3.9, rel=0.01
+        )
+        # Corrupt hour must not be persisted as a seen value either, so a
+        # later corrected reading for that hour can still be accepted.
+        assert (
+            "2026-06-30T13:00:00Z"
+            not in saved_data["hour_values"][TEST_UNIT_ID]["consumed"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_corrupt_reading_rejection_warns_only_once(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that a re-sent corrupt reading is only warned about once.
+
+    The cloud re-sends the same corrupt hour on every poll (observed for
+    days after the event), which produced an identical WARNING every 30
+    minutes. The first rejection must warn; repeats of the same
+    (unit, measure, hour) must stay silent.
+
+    Validates: GitHub issue #161 follow-up - rejection log spam
+    Tests through: caplog (log output is the observable behavior here)
+    """
+    initial_storage = {
+        "cumulative": {TEST_UNIT_ID: 3.1},
+        "hour_values": {TEST_UNIT_ID: {"2026-06-30T12:00:00Z": 3.1}},
+    }
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 3100.0),  # Already processed - skip
+            ("2026-06-30T13:00:00Z", 6553300.0),  # CORRUPT - rejected every poll
+        ]
+    )
+
+    async with setup_energy_entry(hass, initial_storage, mock_energy_data):
+        assert caplog.text.count("exceeds sanity ceiling") == 1
+
+        # Advance past the energy update interval - the mock re-sends the
+        # same corrupt hour, mirroring observed cloud behavior.
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+        await hass.async_block_till_done()
+
+        assert caplog.text.count("exceeds sanity ceiling") == 1
+
+
+@pytest.mark.asyncio
+async def test_all_corrupt_first_init_completes_and_does_not_loop(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that first init with only implausible readings completes.
+
+    If every reading in the lookback window is corrupt, nothing was stored,
+    so the tracker re-ran first initialization on every poll - re-warning
+    for every hour, forever, and never starting delta tracking. Init must
+    complete by keeping a 0.0 placeholder (mirroring the all-corrupt
+    self-heal strategy), so the next poll takes the throttled rejection
+    path instead of re-initializing.
+
+    Validates: GitHub issue #161 follow-up - all-corrupt first init loop
+    Tests through: hass.states + caplog (init must not repeat)
+    """
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 6553300.0),  # CORRUPT
+            ("2026-06-30T13:00:00Z", 6553400.0),  # CORRUPT
+        ]
+    )
+
+    async with setup_energy_entry(hass, None, mock_energy_data):
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        assert float(state.state) == 0.0
+        assert caplog.text.count("Initializing consumed tracking") == 1
+
+        # Second poll re-sends the same all-corrupt window.
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+        await hass.async_block_till_done()
+
+        # Init must not run again, and the re-sent corrupt hours must go
+        # through the warn-once rejection path, not the init path.
+        assert caplog.text.count("Initializing consumed tracking") == 1
+        assert caplog.text.count("- skipping") == 2  # once per hour, init only
+
+
+@pytest.mark.asyncio
+async def test_corrupt_historical_value_self_heals_on_load(
+    hass: HomeAssistant,
+) -> None:
+    """Test that a previously-persisted corrupt value is purged on load.
+
+    Reproduces the "already polluted" half of GitHub issue #161: installs
+    that hit the corrupt cloud reading before the sanity check existed have
+    it permanently baked into their stored cumulative total. On upgrade,
+    the tracker should detect the implausible historical hour_value entry,
+    drop it, and reset the cumulative total to 0.0. Resetting (rather than
+    subtracting back to the true total) matters because HA's
+    total_increasing reset handling records the post-revision state as new
+    consumption - landing on 0.0 records nothing, while landing on the true
+    total would record a phantom consumption of that entire amount.
+
+    Note: this only heals the integration's own persisted counter. Home
+    Assistant's Long-Term Statistics (Energy Dashboard history) are
+    recorded separately and are not touched by this - the user still needs
+    HA's built-in "Adjust statistics" tool for the affected day.
+
+    Validates: GitHub issue #161 - fixing already-polluted stored totals
+    Tests through: hass.states (sensor total is corrected after setup)
+    """
+    # Simulates a pre-fix install: the corrupt 13:00 spike was already
+    # added in full to the cumulative total and recorded in hour_values.
+    polluted_storage = {
+        "cumulative": {
+            TEST_UNIT_ID: {"consumed": 6556.4}
+        },  # 3.1 + 6553.3 legit+corrupt
+        "hour_values": {
+            TEST_UNIT_ID: {
+                "consumed": {
+                    "2026-06-30T12:00:00Z": 3.1,
+                    "2026-06-30T13:00:00Z": 6553.3,  # corrupt - must be purged
+                }
+            }
+        },
+    }
+
+    # No new data this poll - just verifying the load-time self-heal
+    mock_energy_data = create_mock_energy_response(
+        [
+            ("2026-06-30T12:00:00Z", 3100.0),
+            ("2026-06-30T13:00:00Z", 6553300.0),
+        ]
+    )
+
+    async with setup_energy_entry(
+        hass, polluted_storage, mock_energy_data
+    ) as mock_store:
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+
+        # Expected: cumulative reset to 0.0 after the purge. The 12:00 and
+        # 13:00 hours were already seen (same values in this poll), so no
+        # new delta is added.
+        assert float(state.state) == pytest.approx(0.0, abs=1e-9)
+
+        # The purge should have persisted immediately during async_setup,
+        # before any new energy poll ran - check the earliest ATA save.
+        saved_data = mock_store.async_save.call_args_list[0][0][0]
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            0.0, abs=1e-9
+        )
+        assert (
+            "2026-06-30T13:00:00Z"
+            not in saved_data["hour_values"][TEST_UNIT_ID]["consumed"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_all_corrupt_hour_values_self_heal_keeps_delta_tracking(
+    hass: HomeAssistant,
+) -> None:
+    """Test self-heal when EVERY persisted hour_values entry is corrupt.
+
+    Edge case of GitHub issue #161's self-heal: if a unit's entire persisted
+    hour_values consists of implausible entries (e.g. a device whose very
+    first tracked hour was the corrupt reading), purging them all would
+    empty the dict. _is_first_initialization() would then treat the device
+    as brand-new on the next poll, silently absorbing that poll's real
+    energy as "historical" instead of counting it.
+
+    The purge must instead keep the most recent corrupt entry's timestamp
+    as a 0.0 placeholder: the cumulative total is still fully healed, and
+    the next poll's legitimate values are counted as normal deltas.
+
+    Validates: GitHub issue #161 - self-heal must never empty hour_values
+    Tests through: hass.states (next poll's real energy is counted)
+    """
+    now = datetime.now(UTC)
+    corrupt_ts = (now - timedelta(hours=3)).isoformat()
+    new_hour_1 = (now - timedelta(hours=2)).isoformat()
+    new_hour_2 = (now - timedelta(hours=1)).isoformat()
+
+    # Pre-fix install where the ONLY entry ever recorded is the corrupt one.
+    polluted_storage = {
+        "cumulative": {TEST_UNIT_ID: {"consumed": 6553.3}},
+        "hour_values": {TEST_UNIT_ID: {"consumed": {corrupt_ts: 6553.3}}},
+    }
+
+    # Next poll: API re-sends the corrupt hour (rejected by the ceiling)
+    # plus two legitimate new hours that MUST be counted.
+    mock_energy_data = create_mock_energy_response(
+        [
+            (corrupt_ts, 6553300.0),  # corrupt - rejected
+            (new_hour_1, 500.0),  # NEW - add 0.5 kWh
+            (new_hour_2, 800.0),  # NEW - add 0.8 kWh
+        ]
+    )
+
+    async with setup_energy_entry(
+        hass, polluted_storage, mock_energy_data
+    ) as mock_store:
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+
+        # Cumulative healed to 0.0, then the poll's two legitimate hours
+        # counted as normal deltas: 0.5 + 0.8 = 1.3 kWh. If hour_values had
+        # been emptied, the poll would be absorbed as first-init and the
+        # sensor would wrongly read 0.0.
+        assert float(state.state) == pytest.approx(1.3, rel=0.01)
+
+        # The self-heal save (earliest): cumulative healed, and the corrupt
+        # hour kept as a 0.0 placeholder rather than the dict going empty.
+        saved_data = mock_store.async_save.call_args_list[0][0][0]
+        assert saved_data["cumulative"][TEST_UNIT_ID]["consumed"] == pytest.approx(
+            0.0, abs=1e-9
+        )
+        assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"] == {corrupt_ts: 0.0}
+
+
+@pytest.mark.asyncio
+async def test_stale_hour_values_pruned_on_load(hass: HomeAssistant) -> None:
+    """Test that hour_values entries older than the retention window are pruned.
+
+    hour_values only needs to cover the API's polling lookback window
+    (DATA_LOOKBACK_HOURS_ENERGY) - once an hour falls outside
+    HOUR_VALUE_RETENTION_HOURS, the API will never return that timestamp
+    again, so the entry can never be looked up again. Without pruning,
+    this dict grows unbounded for the lifetime of the install.
+
+    Validates: bounded hour_values retention (companion to GitHub issue #161)
+    Tests through: hass.states + persisted storage (stale entry removed,
+    cumulative total and recent entry left untouched by pruning alone)
+    """
+    now = datetime.now(UTC)
+    stale_timestamp = (
+        now - timedelta(hours=HOUR_VALUE_RETENTION_HOURS + 24)
+    ).isoformat()
+    recent_timestamp = (now - timedelta(hours=1)).isoformat()
+
+    initial_storage = {
+        "cumulative": {TEST_UNIT_ID: {"consumed": 5.0}},
+        "hour_values": {
+            TEST_UNIT_ID: {
+                "consumed": {
+                    stale_timestamp: 1.0,  # outside retention window - pruned
+                    recent_timestamp: 0.5,  # inside retention window - kept
+                }
+            }
+        },
+    }
+
+    # Same recent hour, same value - already seen, no new delta
+    mock_energy_data = create_mock_energy_response([(recent_timestamp, 500.0)])
+
+    async with setup_energy_entry(
+        hass, initial_storage, mock_energy_data
+    ) as mock_store:
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        # Pruning stale entries alone must not touch the cumulative total -
+        # only implausible-value purging does that.
+        assert float(state.state) == pytest.approx(5.0, rel=0.01)
+
+        # The pruning save happens during async_setup, before the energy
+        # poll runs - check the earliest ATA save.
+        saved_data = mock_store.async_save.call_args_list[0][0][0]
+        hour_values = saved_data["hour_values"][TEST_UNIT_ID]["consumed"]
+        assert stale_timestamp not in hour_values
+        assert recent_timestamp in hour_values
+
+
+@pytest.mark.asyncio
 async def test_double_hour_prevention(hass: HomeAssistant) -> None:
     """Test that same hour is never counted twice.
 
@@ -262,15 +567,22 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
     Validates: Double-counting prevention works correctly
     Tests through: hass.states (total doesn't increase on duplicate)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
+
+    # Timestamps must be recent (within HOUR_VALUE_RETENTION_HOURS) - the
+    # real API only ever reports hours within its lookback window, so a
+    # "duplicate old hour" scenario using stale timestamps isn't realistic
+    # and would be pruned by _clean_hour_values before this test's poll runs.
+    hour_10 = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+    hour_11 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
     # Initial state: 2 hours already processed
     initial_storage = {
         "cumulative": {TEST_UNIT_ID: 1.1},  # 1.1 kWh already
         "hour_values": {
             TEST_UNIT_ID: {
-                "2025-01-15T10:00:00Z": 0.5,  # Already processed
-                "2025-01-15T11:00:00Z": 0.6,  # Already processed
+                hour_10: 0.5,  # Already processed
+                hour_11: 0.6,  # Already processed
             }
         },
     }
@@ -278,8 +590,8 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
     # Energy response has SAME hours again with SAME values (should skip all)
     mock_energy_data_duplicate = create_mock_energy_response(
         [
-            ("2025-01-15T10:00:00Z", 500.0),  # Same value - skip
-            ("2025-01-15T11:00:00Z", 600.0),  # Same value - skip
+            (hour_10, 500.0),  # Same value - skip
+            (hour_11, 600.0),  # Same value - skip
         ]
     )
 
@@ -311,7 +623,7 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Should still be 1.1 kWh (no new hours added)
@@ -322,7 +634,7 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
             0
         ]  # First call (ATA tracker)
         assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
-            "2025-01-15T11:00:00Z"
+            hour_11
         ] == pytest.approx(0.6, rel=0.01)
 
 
@@ -355,7 +667,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
     Validates: GitHub issue #23 - Wrong amount of consumed energy
     Tests through: hass.states (sensor shows correct accumulated total)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state: 10.0 kWh already accumulated, no hour tracking yet
     initial_storage = {
@@ -397,7 +709,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should be 10.0 + 0.1 = 10.1 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         assert float(state.state) == pytest.approx(10.1, rel=0.01)
 
@@ -414,7 +726,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should add delta: 0.3 - 0.1 = 0.2 kWh → 10.1 + 0.2 = 10.3 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert float(state.state) == pytest.approx(10.3, rel=0.01)
         # ❌ WILL FAIL with current code: stays at 10.1 (skips "old" hour)
 
@@ -434,7 +746,7 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
 
         # ✅ Should add: delta 09:00 (0.1) + new 10:00 (0.1) = 0.2 kWh
         # 10.3 + 0.2 = 10.5 kWh
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert float(state.state) == pytest.approx(10.5, rel=0.01)
         # ❌ WILL FAIL with current code: would be 10.2 (skips 09:00 delta, adds 10:00)
 
@@ -467,7 +779,7 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
     Validates: Storage persistence works correctly
     Tests through: hass.states (sensor shows persisted value)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Simulated persisted data from previous session
     persisted_storage = {
@@ -515,7 +827,7 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Expected: 25.7 (persisted) + 0.9 (new hour) = 26.6 kWh
@@ -552,7 +864,15 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
     Validates: Backward compatibility migration works correctly
     Tests through: Storage format conversion and functionality
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
+
+    # Timestamps must be recent (within HOUR_VALUE_RETENTION_HOURS) - the
+    # real API only ever reports hours within its lookback window, so a
+    # "duplicate old hour" scenario using stale timestamps isn't realistic
+    # and would be pruned by _clean_hour_values before this test's poll runs.
+    hour_10 = (datetime.now(UTC) - timedelta(hours=3)).isoformat()
+    hour_11 = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+    hour_12 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
     # v1.3.4 storage format (single-measure)
     v1_3_4_storage = {
@@ -561,8 +881,8 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
         },
         "hour_values": {
             TEST_UNIT_ID: {
-                "2025-01-15T10:00:00Z": 0.5,  # Direct timestamp mapping (v1.3.4)
-                "2025-01-15T11:00:00Z": 0.6,
+                hour_10: 0.5,  # Direct timestamp mapping (v1.3.4)
+                hour_11: 0.6,
             }
         },
     }
@@ -570,9 +890,9 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
     # New energy data after migration (1 new hour to verify accumulation still works)
     mock_energy_data = create_mock_energy_response(
         [
-            ("2025-01-15T10:00:00Z", 500.0),  # Already tracked - skip
-            ("2025-01-15T11:00:00Z", 600.0),  # Already tracked - skip
-            ("2025-01-15T12:00:00Z", 700.0),  # NEW - add 0.7 kWh
+            (hour_10, 500.0),  # Already tracked - skip
+            (hour_11, 600.0),  # Already tracked - skip
+            (hour_12, 700.0),  # NEW - add 0.7 kWh
         ]
     )
 
@@ -604,7 +924,7 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows migrated value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         # Expected: 15.3 (migrated from v1.3.4) + 0.7 (new hour) = 16.0 kWh
         assert float(state.state) == pytest.approx(16.0, rel=0.01)
@@ -624,10 +944,10 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
         assert isinstance(saved_data["hour_values"][TEST_UNIT_ID], dict)
         assert "consumed" in saved_data["hour_values"][TEST_UNIT_ID]
         assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
-            "2025-01-15T10:00:00Z"
+            hour_10
         ] == pytest.approx(0.5, rel=0.01)
         assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
-            "2025-01-15T12:00:00Z"
+            hour_12
         ] == pytest.approx(0.7, rel=0.01)
 
 
@@ -643,7 +963,15 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
     Validates: v2.0 → v2.0 upgrade path works correctly
     Tests through: Storage format detection and loading
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
+
+    # Timestamps must be recent (within HOUR_VALUE_RETENTION_HOURS) - the
+    # real API only ever reports hours within its lookback window, so a
+    # "duplicate old hour" scenario using stale timestamps isn't realistic
+    # and would be pruned by _clean_hour_values before this test's poll runs.
+    hour_10 = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+    hour_11 = (datetime.now(UTC) - timedelta(hours=1, minutes=30)).isoformat()
+    hour_12 = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
 
     # v2.0 storage format (multi-measure)
     v2_0_storage = {
@@ -656,12 +984,12 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
         "hour_values": {
             TEST_UNIT_ID: {
                 "consumed": {
-                    "2025-01-15T10:00:00Z": 0.5,
-                    "2025-01-15T11:00:00Z": 0.6,
+                    hour_10: 0.5,
+                    hour_11: 0.6,
                 },
                 "produced": {
-                    "2025-01-15T10:00:00Z": 0.2,
-                    "2025-01-15T11:00:00Z": 0.3,
+                    hour_10: 0.2,
+                    hour_11: 0.3,
                 },
             }
         },
@@ -670,8 +998,8 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
     # New energy data (1 new hour)
     mock_energy_data = create_mock_energy_response(
         [
-            ("2025-01-15T11:00:00Z", 600.0),  # Already tracked - skip
-            ("2025-01-15T12:00:00Z", 700.0),  # NEW - add 0.7 kWh
+            (hour_11, 600.0),  # Already tracked - skip
+            (hour_12, 700.0),  # NEW - add 0.7 kWh
         ]
     )
 
@@ -703,7 +1031,7 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows restored value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
         # Expected: 20.5 (restored from v2.0) + 0.7 (new hour) = 21.2 kWh
         assert float(state.state) == pytest.approx(21.2, rel=0.01)
@@ -721,7 +1049,7 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
         # Check hour_values structure preserved
         assert isinstance(saved_data["hour_values"][TEST_UNIT_ID]["consumed"], dict)
         assert saved_data["hour_values"][TEST_UNIT_ID]["consumed"][
-            "2025-01-15T12:00:00Z"
+            hour_12
         ] == pytest.approx(0.7, rel=0.01)
 
 
@@ -732,16 +1060,16 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
     When energy API call fails during initial setup:
     1. Coordinator logs error but doesn't crash
     2. Integration continues to function normally
-    3. Sensor is created but shows as unavailable (no data fetched yet)
+    3. Sensor is created but reads unknown (no data fetched yet)
     4. Stored cumulative totals are preserved in coordinator state
 
-    Note: Current behavior shows sensor as unavailable when initial fetch fails.
-    This is because unit.energy_consumed is only set after successful API fetch.
+    Note: unit.energy_consumed is only set after a successful API fetch, so the
+    sensor reads unknown until one succeeds.
 
     Validates: Error handling prevents integration crash
-    Tests through: hass.states (sensor exists but unavailable)
+    Tests through: hass.states (sensor exists but reads unknown)
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Initial state with some accumulated energy (simulating previous session)
     initial_storage = {
@@ -778,15 +1106,15 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
-        # Current behavior: sensor shows unavailable when initial fetch fails
-        # This is because unit.energy_consumed is None (not populated from storage)
-        assert state.state == "unavailable"
+        # Sensor reads unknown when the initial fetch fails - energy_consumed
+        # is None (not populated from storage)
+        assert state.state == "unknown"
 
         # Verify integration didn't crash - other sensors still work
-        climate_state = hass.states.get("climate.melcloudhome_0efc_9abc_climate")
+        climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
         assert climate_state is not None
         assert climate_state.state == "heat"  # Climate entity still functional
 
@@ -804,7 +1132,7 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
     Validates: Clean shutdown prevents resource leaks
     Tests through: Integration setup/teardown
     """
-    mock_context = create_mock_user_context_with_energy()
+    mock_context = create_mock_ata_energy_context()
 
     # Mock energy data (will only be called during initial setup)
     mock_energy_data = create_mock_energy_response([("2025-01-15T10:00:00Z", 500.0)])
@@ -837,7 +1165,7 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
         await hass.async_block_till_done()
 
         # Verify sensor exists
-        state = hass.states.get("sensor.melcloudhome_0efc_9abc_energy")
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert state is not None
 
         # Reset call count after setup

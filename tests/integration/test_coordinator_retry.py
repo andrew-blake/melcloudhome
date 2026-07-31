@@ -1,4 +1,12 @@
-"""Tests for coordinator retry logic on session expiry."""
+"""Tests for coordinator retry logic on session expiry.
+
+Deliberately white-box (documented exemption from the "test through
+hass.states/hass.services only" rule): retry/backoff behavior — the
+``retry_after`` values passed to ``UpdateFailed`` and the re-auth sequencing
+inside ``_execute_with_retry`` — is not observable through the public entity
+surface, and a black-box equivalent would mean flaky time-travel assertions.
+Do not cite this file as precedent for entity or coordinator-state tests.
+"""
 
 import asyncio
 import contextlib
@@ -202,6 +210,10 @@ async def test_outage_backoff_escalates(coordinator, hass):
     """Test retry_after escalates on consecutive outages."""
     from homeassistant.helpers.update_coordinator import UpdateFailed
 
+    from custom_components.melcloudhome.coordinator import (
+        _UPDATE_FAILED_HAS_RETRY_AFTER,
+    )
+
     # Ensure client looks unauthenticated so login is attempted
     coordinator.client._auth._authenticated = False
     coordinator.client._auth._access_token = None
@@ -214,9 +226,14 @@ async def test_outage_backoff_escalates(coordinator, hass):
         try:
             await coordinator._async_update_data()
         except UpdateFailed as err:
-            retry_values.append(err.retry_after)
+            retry_values.append(getattr(err, "retry_after", None))
 
-    assert retry_values == [120, 240, 480, 900, 900]
+    if _UPDATE_FAILED_HAS_RETRY_AFTER:
+        assert retry_values == [120, 240, 480, 900, 900]
+    else:
+        # HA < 2025.12: outages still raise UpdateFailed (no TypeError),
+        # just without the escalating retry hint.
+        assert retry_values == [None] * 5
 
 
 @pytest.mark.asyncio
@@ -333,6 +350,7 @@ async def test_deduplication_skips_same_value(coordinator):
         vane_horizontal_direction="Centre",
         in_standby_mode=False,
         is_in_error=False,
+        error_code=None,
         rssi=-50,
         capabilities=AirToAirCapabilities(),
     )
@@ -367,6 +385,7 @@ async def test_deduplication_sends_different_value(coordinator):
         vane_horizontal_direction="Centre",
         in_standby_mode=False,
         is_in_error=False,
+        error_code=None,
         rssi=-50,
         capabilities=AirToAirCapabilities(),
     )

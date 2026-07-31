@@ -7,160 +7,92 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_OFF, STATE_ON
+from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.melcloudhome.api.models import Building, UserContext
-from custom_components.melcloudhome.api.models_ata import (
-    AirToAirCapabilities,
-    AirToAirUnit,
+from custom_components.melcloudhome.api.models_ata import ProtectionModeState
+
+from .conftest import (
+    create_mock_ata_building,
+    create_mock_ata_unit,
+    create_mock_ata_user_context,
+    setup_ata_integration_custom,
 )
-from custom_components.melcloudhome.const import DOMAIN
-
-# Mock at API boundary (NOT coordinator or sensor classes)
-MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
-
-# Test device identifiers
-TEST_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
-TEST_BUILDING_ID = "building-test-id"
-
-
-def create_mock_unit(
-    unit_id: str = TEST_UNIT_ID,
-    name: str = "Test Unit",
-    is_in_error: bool = False,
-) -> AirToAirUnit:
-    """Create a mock AirToAirUnit for binary sensor testing."""
-    capabilities = AirToAirCapabilities(has_energy_consumed_meter=False)
-
-    return AirToAirUnit(
-        id=unit_id,
-        name=name,
-        power=True,
-        operation_mode="Heat",
-        set_temperature=21.0,
-        room_temperature=20.0,
-        set_fan_speed="Auto",
-        vane_vertical_direction="Auto",
-        vane_horizontal_direction="Auto",
-        in_standby_mode=False,
-        is_in_error=is_in_error,
-        rssi=-50,
-        capabilities=capabilities,
-        energy_consumed=None,
-    )
-
-
-def create_mock_building(
-    building_id: str = TEST_BUILDING_ID,
-    name: str = "Test Building",
-    units: list[AirToAirUnit] | None = None,
-) -> Building:
-    """Create a mock Building for binary sensor testing."""
-    if units is None:
-        units = [create_mock_unit()]
-    return Building(id=building_id, name=name, air_to_air_units=units)
-
-
-def create_mock_user_context(buildings: list[Building] | None = None) -> UserContext:
-    """Create a mock UserContext for binary sensor testing."""
-    if buildings is None:
-        buildings = [create_mock_building()]
-    return UserContext(buildings=buildings)
 
 
 @pytest.mark.asyncio
 async def test_binary_sensor_entity_creation(hass: HomeAssistant) -> None:
     """Test that binary sensor entities are created for each unit."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
+    await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    connection_state = hass.states.get(
+        "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+    )
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    assert error_state is not None
+    assert error_state.attributes["device_class"] == "problem"
 
-        # Verify binary sensors created (entity ID from UUID: 0efc1234-...9abc)
-        error_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_error_state"
-        connection_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
-
-        # Check error state sensor exists
-        error_state = hass.states.get(error_sensor_id)
-        assert error_state is not None
-        assert error_state.attributes["device_class"] == "problem"
-
-        # Check connection state sensor exists
-        connection_state = hass.states.get(connection_sensor_id)
-        assert connection_state is not None
-        assert connection_state.attributes["device_class"] == "connectivity"
+    assert connection_state is not None
+    assert connection_state.attributes["device_class"] == "connectivity"
 
 
 @pytest.mark.asyncio
 async def test_error_state_sensor_reflects_unit_status(hass: HomeAssistant) -> None:
     """Test that error state sensor reflects unit error status."""
-    # Create unit with error
-    unit_with_error = create_mock_unit(is_in_error=True)
-    building = create_mock_building(units=[unit_with_error])
-    mock_context = create_mock_user_context(buildings=[building])
+    unit_with_error = create_mock_ata_unit(is_in_error=True)
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_error])]
+    )
+    _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
+    assert hass.states.get(error_sensor_id).state == STATE_ON  # ON = problem exists
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    # Update to no-error state and refresh
+    unit_no_error = create_mock_ata_unit(is_in_error=False)
+    mock_context_updated = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_no_error])]
+    )
+    mock_client.get_user_context = AsyncMock(return_value=mock_context_updated)
 
-        # Check error state sensor shows error (ON = problem)
-        error_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_error_state"
-        error_state = hass.states.get(error_sensor_id)
-        assert error_state is not None
-        assert error_state.state == STATE_ON  # ON = problem exists
+    from custom_components.melcloudhome.const import DOMAIN
 
-        # Now create unit without error and update
-        unit_no_error = create_mock_unit(is_in_error=False)
-        building_updated = create_mock_building(units=[unit_no_error])
-        mock_context_updated = create_mock_user_context(buildings=[building_updated])
-        mock_client.get_user_context = AsyncMock(return_value=mock_context_updated)
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
 
-        # Trigger coordinator refresh
-        await hass.services.async_call(
-            DOMAIN,
-            "force_refresh",
-            {},
-            blocking=True,
-        )
-        await hass.async_block_till_done()
+    assert hass.states.get(error_sensor_id).state == STATE_OFF
 
-        # Check error state sensor now shows no error (OFF = no problem)
-        error_state = hass.states.get(error_sensor_id)
-        assert error_state.state == STATE_OFF  # OFF = no problem
+
+@pytest.mark.asyncio
+async def test_error_state_sensor_exposes_error_code(hass: HomeAssistant) -> None:
+    """Test that error state sensor exposes the device error code as attribute."""
+    unit_with_error = create_mock_ata_unit(is_in_error=True, error_code="E6")
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_error])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    assert error_state.state == STATE_ON
+    assert error_state.attributes["error_code"] == "E6"
+
+
+@pytest.mark.asyncio
+async def test_error_state_sensor_error_code_none_when_no_error(
+    hass: HomeAssistant,
+) -> None:
+    """Test that error code attribute is None when device has no error."""
+    mock_context = create_mock_ata_user_context()
+    await setup_ata_integration_custom(hass, mock_context)
+
+    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    assert error_state.state == STATE_OFF
+    assert error_state.attributes["error_code"] is None
 
 
 @pytest.mark.asyncio
@@ -168,51 +100,20 @@ async def test_connection_state_sensor_reflects_coordinator_status(
     hass: HomeAssistant,
 ) -> None:
     """Test that connection state sensor reflects coordinator update success."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+    assert hass.states.get(connection_sensor_id).state == STATE_ON  # Connected
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    from custom_components.melcloudhome.api.exceptions import ApiError
+    from custom_components.melcloudhome.const import DOMAIN
 
-        # Check connection state sensor shows connected (ON = connected)
-        connection_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
-        connection_state = hass.states.get(connection_sensor_id)
-        assert connection_state is not None
-        assert connection_state.state == STATE_ON  # ON = connected
+    mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
 
-        # Simulate coordinator update failure
-        from custom_components.melcloudhome.api.exceptions import ApiError
-
-        mock_client.get_user_context = AsyncMock(
-            side_effect=ApiError("Connection failed")
-        )
-
-        # Trigger coordinator refresh (will fail)
-        await hass.services.async_call(
-            DOMAIN,
-            "force_refresh",
-            {},
-            blocking=True,
-        )
-        await hass.async_block_till_done()
-
-        # Check connection state sensor now shows disconnected (OFF = disconnected)
-        connection_state = hass.states.get(connection_sensor_id)
-        assert connection_state.state == STATE_OFF  # OFF = disconnected
+    assert hass.states.get(connection_sensor_id).state == STATE_OFF
 
 
 @pytest.mark.asyncio
@@ -220,96 +121,161 @@ async def test_error_sensor_unavailable_when_coordinator_fails(
     hass: HomeAssistant,
 ) -> None:
     """Test that error state sensor becomes unavailable when coordinator fails."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client - initially working
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
+    assert hass.states.get(error_sensor_id).state != "unavailable"
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    from custom_components.melcloudhome.api.exceptions import ApiError
+    from custom_components.melcloudhome.const import DOMAIN
 
-        # Error sensor should be available initially
-        error_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_error_state"
-        error_state = hass.states.get(error_sensor_id)
-        assert error_state is not None
-        assert error_state.state != "unavailable"
+    mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
 
-        # Simulate coordinator failure
-        from custom_components.melcloudhome.api.exceptions import ApiError
-
-        mock_client.get_user_context = AsyncMock(
-            side_effect=ApiError("Connection failed")
-        )
-
-        # Trigger coordinator refresh (will fail)
-        await hass.services.async_call(
-            DOMAIN,
-            "force_refresh",
-            {},
-            blocking=True,
-        )
-        await hass.async_block_till_done()
-
-        # Error sensor should become unavailable
-        error_state = hass.states.get(error_sensor_id)
-        assert error_state.state == "unavailable"
+    assert hass.states.get(error_sensor_id).state == "unavailable"
 
 
 @pytest.mark.asyncio
 async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
     """Test that connection state sensor is always available, even when coordinator fails."""
-    mock_context = create_mock_user_context()
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    with patch(MOCK_CLIENT_PATH) as mock_client_class:
-        # Setup mock client that will fail
-        mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock()
-        mock_client.close = AsyncMock()
-        mock_client.get_user_context = AsyncMock(return_value=mock_context)
-        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+    from custom_components.melcloudhome.api.exceptions import ApiError
+    from custom_components.melcloudhome.const import DOMAIN
 
-        # Create and setup config entry
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
 
-        # Simulate coordinator failure
-        from custom_components.melcloudhome.api.exceptions import ApiError
+    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+    connection_state = hass.states.get(connection_sensor_id)
+    assert connection_state is not None
+    assert connection_state.state == STATE_OFF  # Shows disconnection, not unavailable
 
-        mock_client.get_user_context = AsyncMock(
-            side_effect=ApiError("Connection failed")
-        )
 
-        # Trigger coordinator refresh (will fail)
-        await hass.services.async_call(
-            DOMAIN,
-            "force_refresh",
-            {},
-            blocking=True,
-        )
-        await hass.async_block_till_done()
+@pytest.mark.asyncio
+async def test_frost_protection_created_when_api_reports_object(
+    hass: HomeAssistant,
+) -> None:
+    """Test frost protection sensor is created only when the API reports the object.
 
-        # Connection sensor should still be available (not "unavailable")
-        # It should be OFF (indicating connection failure), but not unavailable
-        connection_sensor_id = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
-        connection_state = hass.states.get(connection_sensor_id)
-        assert connection_state is not None
-        assert connection_state.state == STATE_OFF  # Shows disconnection
-        # Not checking != "unavailable" because that's implicit in state == STATE_OFF
+    Every real ATA unit carries a frostProtection object as a server-side default,
+    so in practice this sensor is created for all of them - it is not gated on the
+    owner having ever configured the mode. Overheat protection and holiday mode are
+    the ones the API leaves null until first configured.
+    """
+    unit_with_frost = create_mock_ata_unit(
+        unit_id="aaaa1234-5678-9abc-def0-123456789999",
+        name="Unit With Frost",
+        frost_protection=ProtectionModeState(
+            enabled=True, active=False, min=10, max=12
+        ),
+    )
+    unit_without_frost = create_mock_ata_unit(
+        unit_id="bbbb1234-5678-9abc-def0-123456788888",
+        name="Unit Without Frost",
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit_with_frost, unit_without_frost])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    with_frost_state = hass.states.get(
+        "binary_sensor.melcloudhome_aaaa_9999_frost_protection"
+    )
+    without_frost_state = hass.states.get(
+        "binary_sensor.melcloudhome_bbbb_8888_frost_protection"
+    )
+
+    assert with_frost_state is not None
+    assert without_frost_state is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("enabled", "active", "expected_state"),
+    [
+        pytest.param(True, False, STATE_ON, id="enabled_and_inactive_is_on"),
+        # Real accounts observed so far always have enabled=False (the mode
+        # has never been armed) - this guards the state-vs-active design
+        # decision holds even in the (currently synthetic) case where a unit
+        # reports active=True while enabled=False.
+        pytest.param(False, True, STATE_OFF, id="disabled_but_active_is_off"),
+    ],
+)
+async def test_protection_mode_state_reflects_enabled_flag(
+    hass: HomeAssistant, enabled: bool, active: bool, expected_state: str
+) -> None:
+    """Test protection mode sensors report on/off based on 'enabled', not 'active'.
+
+    'enabled' (armed/configured) is what a user checks after toggling the mode
+    in the MELCloud app - 'active' (currently engaging, e.g. room actually
+    crossed the threshold) is a rarer condition, exposed as an attribute instead.
+    """
+    unit = create_mock_ata_unit(
+        overheat_protection=ProtectionModeState(
+            enabled=enabled, active=active, min=35, max=37
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_overheat_protection")
+    assert state is not None
+    assert state.state == expected_state
+
+
+@pytest.mark.asyncio
+async def test_protection_mode_active_attribute_exposed(hass: HomeAssistant) -> None:
+    """Test the 'active' attribute is exposed on the protection mode sensor.
+
+    min/max are separate sensor entities (see test_sensor_ata.py), not
+    attributes here, so this only covers 'active'.
+    """
+    unit = create_mock_ata_unit(
+        frost_protection=ProtectionModeState(
+            enabled=True, active=False, min=10, max=12
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_frost_protection")
+    assert state is not None
+    assert state.state == STATE_ON
+    assert state.attributes["active"] is False
+    assert "min" not in state.attributes
+    assert "max" not in state.attributes
+
+
+@pytest.mark.asyncio
+async def test_holiday_mode_active_attribute_exposed(hass: HomeAssistant) -> None:
+    """Test the 'active' attribute is exposed on the holiday mode sensor.
+
+    start_date/end_date are separate sensor entities (see test_sensor_ata.py).
+    """
+    unit = create_mock_ata_unit(
+        holiday_mode=ProtectionModeState(
+            enabled=True,
+            active=True,
+            start_date="2026-07-20T18:30:53.79",
+            end_date="2026-07-22T12:00:00",
+        ),
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_holiday_mode")
+    assert state is not None
+    assert state.attributes["active"] is True
+    assert "start_date" not in state.attributes
+    assert "end_date" not in state.attributes

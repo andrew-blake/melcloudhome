@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home -asetukset",
+        "data": {
+          "enable_websocket": "Reaaliaikaiset päivitykset"
+        },
+        "data_description": {
+          "enable_websocket": "Kaukosäätimellä tai MELCloud Home -sovelluksella tehdyt muutokset näkyvät muutamassa sekunnissa."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "Vain kehityskäyttöön - yhteys paikalliseen testipalvelimeen virallisen MELCloud API:n sijaan"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Todennus vanhentui kohteella {name}",
+        "description": "Päivitä salasanasi tilille {email}",
+        "data": {
+          "password": "Salasana"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "Tämä tili on jo konfiguroitu",
+      "reauth_successful": "Uudelleentodennus onnistui",
       "reconfigure_successful": "Kirjautumistiedot päivitetty onnistuneesti"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Ulkolämpötila"
       },
+      "frost_protection_min": {
+        "name": "Jäätymissuojan minimi"
+      },
+      "frost_protection_max": {
+        "name": "Jäätymissuojan maksimi"
+      },
+      "overheat_protection_min": {
+        "name": "Ylikuumenemissuojan minimi"
+      },
+      "overheat_protection_max": {
+        "name": "Ylikuumenemissuojan maksimi"
+      },
+      "holiday_mode_start_date": {
+        "name": "Lomatilan alku"
+      },
+      "holiday_mode_end_date": {
+        "name": "Lomatilan loppu"
+      },
       "zone_1_temperature": {
         "name": "Vyöhyke 1 lämpötila"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Yhteystila"
       },
+      "realtime_updates": {
+        "name": "Reaaliaikaiset päivitykset"
+      },
       "forced_dhw_active": {
         "name": "Pakotettu käyttövesitila aktiivinen"
+      },
+      "frost_protection": {
+        "name": "Jäätymissuoja"
+      },
+      "overheat_protection": {
+        "name": "Ylikuumenemissuoja"
+      },
+      "holiday_mode": {
+        "name": "Lomatila"
       }
     }
   },

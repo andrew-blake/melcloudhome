@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home options",
+        "data": {
+          "enable_websocket": "Real-time updates"
+        },
+        "data_description": {
+          "enable_websocket": "Changes made with the remote control or the MELCloud Home app appear within seconds."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "For development only - connects to local mock server instead of production MELCloud API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Authentication expired for {name}",
+        "description": "Please update your password for {email}",
+        "data": {
+          "password": "Password"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "This account is already configured",
+      "reauth_successful": "Re-authentication was successful",
       "reconfigure_successful": "Credentials updated successfully"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "Outdoor temperature"
       },
+      "frost_protection_min": {
+        "name": "Frost protection minimum"
+      },
+      "frost_protection_max": {
+        "name": "Frost protection maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Overheat protection minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Overheat protection maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Holiday mode start"
+      },
+      "holiday_mode_end_date": {
+        "name": "Holiday mode end"
+      },
       "zone_1_temperature": {
         "name": "Zone 1 temperature"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "Connection state"
       },
+      "realtime_updates": {
+        "name": "Real-time updates"
+      },
       "forced_dhw_active": {
         "name": "Forced DHW active"
+      },
+      "frost_protection": {
+        "name": "Frost protection"
+      },
+      "overheat_protection": {
+        "name": "Overheat protection"
+      },
+      "holiday_mode": {
+        "name": "Holiday mode"
       }
     }
   },

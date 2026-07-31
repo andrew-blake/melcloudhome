@@ -6,7 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.3.4] - 2026-06-13
+## [2.4.0] - 2026-07-20
+
+### Added
+
+- **Real-time updates**: changes made with the remote control, the MELCloud Home app, or a schedule now appear in Home Assistant within seconds instead of up to a minute. On by default with nothing to set up; if the connection drops, the integration falls back to regular polling automatically. Contributed by @mrdjtoto. (#176, #185)
+- "Real-time updates" sensor showing whether the live connection is active. (#187)
+- **Frost protection, overheat protection and holiday mode for air conditioning units**: each unit now shows whether these modes are set up, the temperature limits they use, and the start and end dates of holiday mode. A mode reads "on" when it is set up, not only while it is actively running. For viewing only — you still switch these modes on and off in the MELCloud Home app or on the remote control. Contributed by @mrdjtoto. (#205)
+- Outdoor temperature sensors now include a "last reading" timestamp showing when the reading was actually taken. MELCloud's outdoor temperature can be several hours old, especially overnight, so this tells you how current the value really is. Contributed by @mrdjtoto (#173); reading accuracy corrected in #224.
+- Error state sensors now include the error code reported by the unit, which is useful when reporting a fault to an installer. Contributed by @mrdjtoto. (#172)
+
+### Changed
+
+- Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
+- **New entities appear after upgrading.** MELCloud reports a frost protection setting for every air conditioning unit, so each one gains a "Frost protection" sensor with minimum and maximum temperatures — even if you have never used the feature. "Overheat protection" and "Holiday mode" appear only on units where you have set them up (these modes are managed by the account owner in the MELCloud Home app); a mode set up for the first time appears after Home Assistant next restarts. (#205)
+- **Sensors show "unknown" instead of "unavailable" when a reading is missing.** "Unavailable" now means only that the device cannot be reached - MELCloud down, the unit offline, or its sharing removed. A sensor whose unit is reachable but has not supplied that particular value - outdoor temperature while a unit is idle, for example - reads "unknown". If an automation of yours checks these sensors for "unavailable", update it; templates using `has_value()` behave exactly as before. (#222)
+
+### Fixed
+
+- WiFi signal sensor on heat pumps showed a stale signal strength instead of the current one. (#204)
+- Room temperature and WiFi signal sensors could go missing entirely. If Home Assistant restarted while an air conditioning unit was offline or not reporting, those sensors were never created, and only came back after reloading the integration. They are now always created and simply show as "unknown" until a reading arrives. (#219)
+- The "sign in again" prompt was missing its wording. When MELCloud needed you to re-enter your password, the dialog appeared with no title or explanation, and showed placeholder text instead of your language. It now reads properly in all 13 supported languages. (#209)
+- Heat pump flow and return temperature sensors could be missing after a restart. They were only created if a reading had already arrived, so a brief connection problem while Home Assistant was starting made them disappear until you reloaded the integration. They are now always created, and show as "unknown" if your heat pump does not report that particular reading - if several of them stay "unknown" permanently, please let us know in a GitHub issue. (#220)
+- Outdoor temperature sensors could go missing after a restart. The sensor was only created if its first reading happened to arrive during startup, so a brief connection problem could drop it for the whole session until you reloaded - and on air conditioning units that share one outdoor unit, one could disappear while the other kept working. They are now always created and show as "unknown" until a reading arrives. (#226)
+
+
+## [2.3.5] - 2026-07-06
+
+### Added
+
+- Diagnostic tool `tools/find_corrupt_energy_readings.py` that scans your Home Assistant statistics for energy spikes caused by corrupt cloud readings and tells you exactly which entity and timestamp to fix. See `tools/README.md` for setup and step-by-step fix instructions. (#161)
+
+### Fixed
+
+- Corrupt hourly energy readings from the MELCloud cloud (~6,553 kWh for a single hour) are now rejected instead of being added to the energy sensor, which could permanently inflate totals and corrupt the Energy Dashboard. A warning is logged once per rejected reading. (#161)
+- Installs that already accumulated a corrupt reading have the affected energy sensor reset to 0 automatically on upgrade, and it counts normally from there. Note this does not repair Energy Dashboard history: spikes already recorded there need a one-time manual fix (see `tools/README.md`). (#161)
+
+
+## [2.3.4] - 2026-06-18
+
+### Added
+
+- Outdoor temperature sensor for ATW heat pump devices (Ecodan, Hydrobox). The sensor reads directly from the regular polling response — no additional API calls needed. (#143)
 
 ### Fixed
 

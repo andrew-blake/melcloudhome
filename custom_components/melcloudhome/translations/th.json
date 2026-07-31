@@ -1,4 +1,17 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "ตัวเลือก MELCloud Home",
+        "data": {
+          "enable_websocket": "การอัปเดตแบบเรียลไทม์"
+        },
+        "data_description": {
+          "enable_websocket": "การเปลี่ยนแปลงที่ทำผ่านรีโมตหรือแอป MELCloud Home จะแสดงภายในไม่กี่วินาที"
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,6 +24,13 @@
         },
         "data_description": {
           "debug_mode": "สำหรับการพัฒนาเท่านั้น - จะเชื่อมต่อกับเซิร์ฟเวอร์ mock บนเครื่องแทนที่จะเป็น API MELCloud ในการผลิต"
+        }
+      },
+      "reauth_confirm": {
+        "title": "ตรวจสอบสิทธิ์การบูรณาการอีกครั้ง",
+        "description": "โปรดอัปเดตรหัสผ่านของคุณสำหรับ {email}",
+        "data": {
+          "password": "รหัสผ่าน"
         }
       },
       "reconfigure": {
@@ -29,6 +49,7 @@
     },
     "abort": {
       "already_configured": "บัญชีนี้ถูกกำหนดค่าแล้ว",
+      "reauth_successful": "การตรวจสอบสิทธิ์อีกครั้งสำเร็จ",
       "reconfigure_successful": "อัปเดตข้อมูลรับรองเรียบร้อยแล้ว"
     }
   },
@@ -91,6 +112,24 @@
       "outdoor_temperature": {
         "name": "อุณหภูมิภายนอก"
       },
+      "frost_protection_min": {
+        "name": "ค่าต่ำสุดการป้องกันน้ำแข็ง"
+      },
+      "frost_protection_max": {
+        "name": "ค่าสูงสุดการป้องกันน้ำแข็ง"
+      },
+      "overheat_protection_min": {
+        "name": "ค่าต่ำสุดการป้องกันความร้อนสูงเกินไป"
+      },
+      "overheat_protection_max": {
+        "name": "ค่าสูงสุดการป้องกันความร้อนสูงเกินไป"
+      },
+      "holiday_mode_start_date": {
+        "name": "เริ่มโหมดวันหยุด"
+      },
+      "holiday_mode_end_date": {
+        "name": "สิ้นสุดโหมดวันหยุด"
+      },
       "zone_1_temperature": {
         "name": "อุณหภูมิโซน 1"
       },
@@ -144,8 +183,20 @@
       "connection_state": {
         "name": "สถานะการเชื่อมต่อ"
       },
+      "realtime_updates": {
+        "name": "การอัปเดตแบบเรียลไทม์"
+      },
       "forced_dhw_active": {
         "name": "การบังคับน้ำร้อนกำลังทำงาน"
+      },
+      "frost_protection": {
+        "name": "การป้องกันน้ำแข็ง"
+      },
+      "overheat_protection": {
+        "name": "การป้องกันความร้อนสูงเกินไป"
+      },
+      "holiday_mode": {
+        "name": "โหมดวันหยุด"
       }
     }
   },
