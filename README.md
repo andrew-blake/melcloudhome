@@ -16,6 +16,8 @@ Home Assistant custom integration for **MELCloud Home**.
 
 **Requires Home Assistant 2025.8.0 or newer.** If you're on an older version, HACS will not offer this update.
 
+**Now available in the HACS default repository** - search "MELCloud Home" in HACS to install directly, no need to add it as a custom repository. Already using the custom repository? No action needed - your install keeps working as-is.
+
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
