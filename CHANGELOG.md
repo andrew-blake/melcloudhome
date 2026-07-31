@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires Home Assistant 2025.8.0 or newer. On older versions, HACS will not offer this update — upgrade Home Assistant first. (#185)
 - **New entities appear after upgrading.** MELCloud reports a frost protection setting for every air conditioning unit, so each one gains a "Frost protection" sensor with minimum and maximum temperatures — even if you have never used the feature. "Overheat protection" and "Holiday mode" appear only on units where you have set them up (these modes are managed by the account owner in the MELCloud Home app); a mode set up for the first time appears after Home Assistant next restarts. (#205)
 - **Sensors show "unknown" instead of "unavailable" when a reading is missing.** "Unavailable" now means only that the device cannot be reached - MELCloud down, the unit offline, or its sharing removed. A sensor whose unit is reachable but has not supplied that particular value - outdoor temperature while a unit is idle, for example - reads "unknown". If an automation of yours checks these sensors for "unavailable", update it; templates using `has_value()` behave exactly as before. (#222)
+- Now available directly in the HACS default repository — search "MELCloud Home" in HACS to install, no need to add it as a custom repository. Existing installs via the custom repository keep working as-is; removing the custom repository entry is optional cleanup, not required. (#83)
 
 ### Fixed
 

@@ -1,6 +1,6 @@
 # MELCloud Home
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/andrew-blake/melcloudhome.svg)](https://github.com/andrew-blake/melcloudhome/releases)
 ![License](https://img.shields.io/github/license/andrew-blake/melcloudhome.svg)
 [![Test](https://github.com/andrew-blake/melcloudhome/workflows/Test/badge.svg)](https://github.com/andrew-blake/melcloudhome/actions/workflows/test.yml)
@@ -21,6 +21,8 @@ Home Assistant custom integration for **MELCloud Home**.
 Also in this release: outdoor temperature sensors now show when the reading was actually taken, error state sensors include the unit's error code, several sensors that could go missing after a restart now stay put, and sensors show "unknown" rather than "unavailable" when the unit is reachable but a reading is missing.
 
 **Requires Home Assistant 2025.8.0 or newer.** If you're on an older version, HACS will not offer this update.
+
+**Now available in the HACS default repository** - search "MELCloud Home" in HACS to install directly, no need to add it as a custom repository. Already using the custom repository? No action needed - your install keeps working as-is.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
