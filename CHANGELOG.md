@@ -6,14 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.4.0] - 2026-07-20
+## [2.4.0] - 2026-08-01
 
 ### Added
 
 - **Real-time updates**: changes made with the remote control, the MELCloud Home app, or a schedule now appear in Home Assistant within seconds instead of up to a minute. On by default with nothing to set up; if the connection drops, the integration falls back to regular polling automatically. Contributed by @mrdjtoto. (#176, #185)
 - "Real-time updates" sensor showing whether the live connection is active. (#187)
 - **Frost protection, overheat protection and holiday mode for air conditioning units**: each unit now shows whether these modes are set up, the temperature limits they use, and the start and end dates of holiday mode. A mode reads "on" when it is set up, not only while it is actively running. For viewing only — you still switch these modes on and off in the MELCloud Home app or on the remote control. Contributed by @mrdjtoto. (#205)
-- Outdoor temperature sensors now include a "last reading" timestamp showing when the reading was actually taken. MELCloud's outdoor temperature can be several hours old, especially overnight, so this tells you how current the value really is. Contributed by @mrdjtoto (#173); reading accuracy corrected in #224.
+- Outdoor temperature sensors now include a "last reading" timestamp showing when the reading was actually taken. MELCloud's outdoor temperature can be several hours old, especially overnight, so this tells you how current the value really is. Contributed by @mrdjtoto. (#173, #224)
 - Error state sensors now include the error code reported by the unit, which is useful when reporting a fault to an installer. Contributed by @mrdjtoto. (#172)
 
 ### Changed
