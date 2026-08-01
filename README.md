@@ -218,10 +218,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 This is an unofficial integration and is not affiliated with, endorsed by, or connected to Mitsubishi Electric or MELCloud. Use at your own risk.
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/chart?repos=andrew-blake/melcloudhome&type=date&legend=top-left&sealed_token=IAuAe8mdYc94qeHiZD79IobZ9omvLsbIxKrgaa_Sp0bMwhd3sqbSuK_Ki8JpoCMHwKLtc9ez_yXHig6m6fxdvXpPhZJ_a6DrUP0W1EMsUkfdk5w24LZQdrnrxS8jaEVk4NZEOtT53xek28PfTPgZeKiplyoGGlZeSYMGfJVnxx3NWJXZLQLKCcfsqmCG)](https://www.star-history.com/?repos=andrew-blake%2Fmelcloudhome&type=date&legend=top-left)
-
 ## Credits
 
 Developed by Andrew Blake ([@andrew-blake](https://github.com/andrew-blake))
