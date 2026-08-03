@@ -7,7 +7,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "aiohttp>=3.13.2",
+    "aiohttp>=3.14.3",
     "aiohttp-cors>=0.8.1",
     "playwright>=1.56.0",
 ]
