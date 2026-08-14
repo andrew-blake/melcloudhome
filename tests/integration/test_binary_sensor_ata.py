@@ -40,6 +40,11 @@ async def test_binary_sensor_entity_creation(hass: HomeAssistant) -> None:
     assert connection_state is not None
     assert connection_state.attributes["device_class"] == "connectivity"
 
+    # translation_key must drive the name, not a title-cased fallback of the
+    # entity key (regression test for #240)
+    assert error_state.attributes["friendly_name"].endswith("Error state")
+    assert connection_state.attributes["friendly_name"].endswith("Connection state")
+
 
 @pytest.mark.asyncio
 async def test_error_state_sensor_reflects_unit_status(hass: HomeAssistant) -> None:

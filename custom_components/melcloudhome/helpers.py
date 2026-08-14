@@ -62,36 +62,6 @@ def with_debounced_refresh(
     return decorator
 
 
-def fix_entity_name_acronyms(name: str) -> str:
-    """Fix acronym capitalization in entity names.
-
-    Replaces incorrectly title-cased acronyms with proper all-caps versions.
-    Used when converting entity keys like "dhw_temperature" to display names.
-
-    Args:
-        name: Entity name with potential incorrect acronyms (e.g., "Dhw Temperature")
-
-    Returns:
-        Name with correctly capitalized acronyms (e.g., "DHW Temperature")
-
-    Examples:
-        >>> fix_entity_name_acronyms("Dhw Temperature")
-        "DHW Temperature"
-        >>> fix_entity_name_acronyms("Wifi Signal Strength")
-        "WiFi Signal Strength"
-        >>> fix_entity_name_acronyms("Ftc5 Model")
-        "FTC5 Model"
-    """
-    acronym_fixes = {
-        "Dhw": "DHW",  # Domestic Hot Water
-        "Wifi": "WiFi",  # WiFi signal
-        "Ftc": "FTC",  # FTC model numbers
-    }
-    for incorrect, correct in acronym_fixes.items():
-        name = name.replace(incorrect, correct)
-    return name
-
-
 def create_entity_name(unit: DeviceUnit, suffix: str = "") -> str | None:
     """Generate short entity name for has_entity_name=True.
 
@@ -171,8 +141,13 @@ def initialize_entity_base(
     - _building_id: Building ID for coordinator lookups
     - _entry: Config entry reference
     - _attr_unique_id: Stable unique identifier (unit_id + description key)
-    - _attr_name: Friendly display name with correct acronym capitalization
     - _attr_device_info: Device information for grouping in HA UI
+
+    Does NOT set _attr_name: every description passed here declares a
+    translation_key, and an explicit _attr_name would take precedence over
+    it, silently defeating translation (#240). Callers without a
+    translation_key would fall back to HA's raw entity-key display -
+    add one instead of reintroducing a generated name here.
 
     Args:
         entity: Entity instance to initialize (ATASensor, ATWSensor, etc.)
@@ -199,10 +174,6 @@ def initialize_entity_base(
     # Generate unique_id: unit_id + sensor key
     # CRITICAL: Do not change this format - it would break existing entity IDs
     entity._attr_unique_id = f"{unit.id}_{description.key}"
-
-    # Convert description key to friendly name with proper acronym capitalization
-    short_name = description.key.replace("_", " ").title()
-    entity._attr_name = fix_entity_name_acronyms(short_name)
 
     # Device info using shared helper
     entity._attr_device_info = create_device_info(unit, building)

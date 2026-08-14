@@ -70,6 +70,11 @@ async def test_sensor_entity_creation(hass: HomeAssistant) -> None:
         assert wifi_state.attributes["unit_of_measurement"] == "dBm"
         assert wifi_state.attributes["device_class"] == "signal_strength"
 
+        # translation_key must drive the name, not a title-cased fallback of
+        # the entity key (regression test for #240)
+        assert temp_state.attributes["friendly_name"].endswith("Room temperature")
+        assert wifi_state.attributes["friendly_name"].endswith("WiFi signal")
+
         energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
         assert energy_state is not None
         assert float(energy_state.state) == 0.0  # First init starts at 0
@@ -213,15 +218,25 @@ async def test_frost_protection_setpoint_sensors_only_when_configured(
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    min_state = hass.states.get("sensor.melcloudhome_aaaa_9999_frost_protection_min")
-    max_state = hass.states.get("sensor.melcloudhome_aaaa_9999_frost_protection_max")
+    min_state = hass.states.get(
+        "sensor.melcloudhome_aaaa_9999_frost_protection_minimum"
+    )
+    max_state = hass.states.get(
+        "sensor.melcloudhome_aaaa_9999_frost_protection_maximum"
+    )
     assert min_state is not None
     assert float(min_state.state) == 10
     assert max_state is not None
     assert float(max_state.state) == 12
 
-    assert hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_min") is None
-    assert hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_max") is None
+    assert (
+        hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_minimum")
+        is None
+    )
+    assert (
+        hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_maximum")
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -237,8 +252,12 @@ async def test_overheat_protection_setpoint_sensors(hass: HomeAssistant) -> None
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    min_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_overheat_protection_min")
-    max_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_overheat_protection_max")
+    min_state = hass.states.get(
+        "sensor.melcloudhome_a1b2_9abc_overheat_protection_minimum"
+    )
+    max_state = hass.states.get(
+        "sensor.melcloudhome_a1b2_9abc_overheat_protection_maximum"
+    )
     assert min_state is not None
     assert float(min_state.state) == 35
     assert max_state is not None
@@ -261,10 +280,8 @@ async def test_holiday_mode_date_sensors(hass: HomeAssistant) -> None:
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    start_state = hass.states.get(
-        "sensor.melcloudhome_a1b2_9abc_holiday_mode_start_date"
-    )
-    end_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_end_date")
+    start_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_start")
+    end_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_end")
     assert start_state is not None
     assert start_state.state == "2026-07-20T18:30:53.79"
     assert end_state is not None
