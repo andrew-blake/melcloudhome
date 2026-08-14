@@ -33,6 +33,19 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     yield
 
 
+@pytest.fixture(autouse=True)
+def pin_test_language(hass):
+    """Pin HA's language so translation-derived entity_ids are deterministic.
+
+    entity_id generation now falls through to the resolved/translated name
+    (see initialize_entity_base() fix for #240) - without this pin, these
+    tests would silently depend on pytest-homeassistant-custom-component's
+    undeclared default language rather than an explicit one.
+    """
+    hass.config.language = "en"
+    yield
+
+
 # Mock path for MELCloudHomeClient in config_flow
 MOCK_CLIENT_CONFIG_FLOW = (
     "custom_components.melcloudhome.config_flow.MELCloudHomeClient"
@@ -77,7 +90,7 @@ TEST_SENSOR_ZONE1_TEMP = "sensor.melcloudhome_0efc_9abc_zone_1_temperature"
 TEST_SENSOR_TANK_TEMP = "sensor.melcloudhome_0efc_9abc_tank_temperature"
 TEST_SENSOR_ENERGY_CONSUMED = "sensor.melcloudhome_0efc_9abc_energy_consumed"
 TEST_SENSOR_ENERGY_PRODUCED = "sensor.melcloudhome_0efc_9abc_energy_produced"
-TEST_SENSOR_COP = "sensor.melcloudhome_0efc_9abc_cop"
+TEST_SENSOR_COP = "sensor.melcloudhome_0efc_9abc_coefficient_of_performance"
 TEST_BINARY_SENSOR_ERROR = "binary_sensor.melcloudhome_0efc_9abc_error_state"
 TEST_BINARY_SENSOR_CONNECTION = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
 TEST_CLIMATE_ZONE2_ENTITY_ID = "climate.melcloudhome_0efc_9abc_zone_2"

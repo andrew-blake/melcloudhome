@@ -10,19 +10,11 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.4.0
+## What's New in v2.4.1
 
-**Real-time updates** - changes made with the remote control or the MELCloud Home app now appear in Home Assistant within seconds, instead of up to a minute. Enabled by default with automatic fallback to regular polling, so there's nothing to set up - see [Real-Time Updates](#real-time-updates) for details. Contributed by [@mrdjtoto](https://github.com/mrdjtoto).
+**Entity names now follow your Home Assistant language.** Sensor and binary sensor names (WiFi signal, Room temperature, Frost protection, Holiday mode, and others) previously always displayed in English regardless of your Home Assistant language setting - they're now translated correctly. Identified and diagnosed by [@Jan-Arild-Blekken](https://github.com/Jan-Arild-Blekken).
 
-**Frost protection, overheat protection and holiday mode** are now visible for each air conditioning unit, along with the temperature limits they use and holiday mode's start and end dates. These are for viewing only - you still switch the modes on and off in the MELCloud Home app or on the remote control. Contributed by [@mrdjtoto](https://github.com/mrdjtoto).
-
-**You will see new entities after upgrading.** MELCloud reports a frost protection setting for every air conditioning unit, so each one gains a "Frost protection" sensor with its minimum and maximum temperatures - even if you have never used the feature. "Overheat protection" and "Holiday mode" only appear on units where you have set them up.
-
-Also in this release: outdoor temperature sensors now show when the reading was actually taken, error state sensors include the unit's error code, several sensors that could go missing after a restart now stay put, and sensors show "unknown" rather than "unavailable" when the unit is reachable but a reading is missing.
-
-**Requires Home Assistant 2025.8.0 or newer.** If you're on an older version, HACS will not offer this update.
-
-**Now available in the HACS default repository** - search "MELCloud Home" in HACS to install directly, no need to add it as a custom repository. Already using the custom repository? No action needed - your install keeps working as-is.
+**New devices going forward will get entity IDs that match their translated name** for a few diagnostic sensors, including the COP sensor and the minimum/maximum frost and overheat protection sensors. This doesn't affect any of your existing entities.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 

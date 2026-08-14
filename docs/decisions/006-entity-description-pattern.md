@@ -1,6 +1,6 @@
 # ADR-006: Adopt Entity Description Pattern for Sensors
 
-**Status:** Accepted — `available_fn` since removed by [ADR-020](020-unknown-for-missing-readings.md)
+**Status:** Accepted — `available_fn` since removed by [ADR-020](020-unknown-for-missing-readings.md); entity-naming example corrected 2026-08-14 (see note below) — issue #240
 **Date:** 2025-11-17
 **Context:** Session 9 - Pre-v1.2 research and planning
 
@@ -13,6 +13,15 @@ As part of v1.2 development, we're adding a sensor platform to expose:
 - Other device metrics
 
 During Session 9 research, we analyzed modern Home Assistant sensor implementations and identified the entity description pattern as the current best practice.
+
+> **Correction (2026-08-14):** the example code below originally set both
+> `translation_key` *and* a hand-built `_attr_name` on the same entity. In
+> Home Assistant, an explicit `_attr_name` always takes precedence over
+> `translation_key` — the two are meant to be mutually exclusive, not
+> layered. That conflict meant `translation_key` was silently ignored for
+> every sensor/binary_sensor since this pattern was introduced (issue
+> #240). The example has been corrected to rely on `translation_key` alone;
+> see `initialize_entity_base()` in `helpers.py`.
 
 ## Decision
 
@@ -136,10 +145,8 @@ class MELCloudHomeSensor(CoordinatorEntity[MELCloudHomeCoordinator], SensorEntit
         # Unique ID: unit_id + sensor key
         self._attr_unique_id = f"{unit.id}_{description.key}"
 
-        # Entity naming
-        unit_id_clean = unit.id.replace("-", "")
-        key_title = description.key.replace("_", " ").title()
-        self._attr_name = f"MELCloud {unit_id_clean[:4]} {unit_id_clean[-4:]} {key_title}"
+        # Entity naming resolved via translation_key on the description -
+        # do not also set _attr_name here, it would take precedence.
 
         # Link to device (climate entity's device)
         self._attr_device_info = {

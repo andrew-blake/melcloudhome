@@ -156,7 +156,7 @@ async def get_energy_produced(...) -> dict | None:
 **Sensors created (if capabilities present):**
 1. `sensor.melcloudhome_*_energy_consumed` - kWh consumed (statistics, energy)
 2. `sensor.melcloudhome_*_energy_produced` - kWh produced (statistics, energy)
-3. `sensor.melcloudhome_*_cop` - Coefficient of performance (ratio)
+3. `sensor.melcloudhome_*_coefficient_of_performance` - Coefficient of performance (ratio)
 
 **Capability checks (sensors created independently):**
 ```python

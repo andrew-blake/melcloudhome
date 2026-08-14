@@ -371,11 +371,14 @@ async def test_telemetry_sensors_created_without_telemetry_data(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
+    # entity_id's object-id segment comes from the translated name (see
+    # initialize_entity_base() fix for #240), so "zone1" (key) reads as
+    # "zone 1" (translated name) -> "zone_1" (slugified) in the entity_id.
     for measure in (
         "flow_temperature",
         "return_temperature",
-        "flow_temperature_zone1",
-        "return_temperature_zone1",
+        "flow_temperature_zone_1",
+        "return_temperature_zone_1",
         "flow_temperature_boiler",
         "return_temperature_boiler",
     ):
