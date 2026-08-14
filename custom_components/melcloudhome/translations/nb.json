@@ -125,10 +125,10 @@
         "name": "Maksimum overopphetingsbeskyttelse"
       },
       "holiday_mode_start_date": {
-        "name": "Start feriemodus"
+        "name": "Feriemodus start"
       },
       "holiday_mode_end_date": {
-        "name": "Slutt feriemodus"
+        "name": "Feriemodus slutt"
       },
       "zone_1_temperature": {
         "name": "Temperatur sone 1"
