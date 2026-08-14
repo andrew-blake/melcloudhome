@@ -18,6 +18,8 @@ The `short_id` is derived from the MELCloud device UUID by taking the first 4 an
 
 **Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
 
+**Note:** `entity_id` is set once, at first registration, and never recomputed. Entities registered before the #240 translation fix keep their original `entity_id` permanently; only entities registered for the first time after that fix get the corrected IDs shown below.
+
 ---
 
 ## Air-to-Air (ATA) Systems
@@ -36,9 +38,9 @@ For each air conditioning unit, the following entities are created:
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
-- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_min` / `_max` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
-- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_min` / `_max` (°C, diagnostic; only created once ever configured)
-- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start_date` / `_end_date` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
+- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_minimum` / `_maximum` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
+- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_minimum` / `_maximum` (°C, diagnostic; only created once ever configured)
+- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start` / `_end` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
@@ -155,10 +157,10 @@ For each heat pump system, the following entities are created:
 
 - **Flow Temperature**: `sensor.melcloudhome_{short_id}_flow_temperature`
 - **Return Temperature**: `sensor.melcloudhome_{short_id}_return_temperature`
-- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone1`
-- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone1`
-- **Flow Temperature Zone 2**: `sensor.melcloudhome_{short_id}_flow_temperature_zone2` (if device supports Zone 2)
-- **Return Temperature Zone 2**: `sensor.melcloudhome_{short_id}_return_temperature_zone2` (if device supports Zone 2)
+- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_1`
+- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone_1`
+- **Flow Temperature Zone 2**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_2` (if device supports Zone 2)
+- **Return Temperature Zone 2**: `sensor.melcloudhome_{short_id}_return_temperature_zone_2` (if device supports Zone 2)
 - **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
 
@@ -189,7 +191,7 @@ All of these except the Zone 2 pair are created for every heat pump. Not every c
   - Compatible with Home Assistant Energy Dashboard
 - **Energy Produced**: `sensor.melcloudhome_{short_id}_energy_produced`
   - Thermal energy produced by heat pump (kWh)
-- **COP (Coefficient of Performance)**: `sensor.melcloudhome_{short_id}_cop`
+- **COP (Coefficient of Performance)**: `sensor.melcloudhome_{short_id}_coefficient_of_performance`
   - Heat pump efficiency ratio (produced/consumed)
   - Typical values: 2.5-4.0 (higher is more efficient)
   - Update frequency: Every 30 minutes
