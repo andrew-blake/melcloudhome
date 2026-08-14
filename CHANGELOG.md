@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Fixed
+
+- Sensor and binary sensor names (WiFi signal, Room temperature, Frost protection, Holiday mode, and others) always displayed in English regardless of your Home Assistant language setting. Identified and diagnosed by @Jan-Arild-Blekken. (#240)
+
+### Changed
+
+- New devices (and fresh installs) may show slightly different names for a few diagnostic sensor entity IDs — including the COP sensor and the minimum/maximum frost and overheat protection sensors — now that they're generated correctly from the translated name rather than the raw internal key. Existing entities are unaffected. (#240)
+
+
 ## [2.4.0] - 2026-08-01
 
 ### Added
