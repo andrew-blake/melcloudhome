@@ -1,6 +1,6 @@
 """Helper functions for MELCloud Home integration.
 
-This module contains utility functions for entity initialization, naming,
+This module contains utility functions for entity initialization
 and device info creation. Previously these were in const.py but are now
 organized separately for better code organization.
 """
