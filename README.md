@@ -16,7 +16,9 @@ Home Assistant custom integration for **MELCloud Home**.
 
 **New devices going forward will get entity IDs that match their translated name** for a few diagnostic sensors, including the COP sensor and the minimum/maximum frost and overheat protection sensors. This doesn't affect any of your existing entities.
 
-Norwegian (nb) translations added (thanks @Jan-Arild-Blekken). See [CHANGELOG.md](CHANGELOG.md) for full history.
+Norwegian (nb) translations added (thanks @Jan-Arild-Blekken).
+
+See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
 
