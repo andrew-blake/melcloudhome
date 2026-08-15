@@ -1,0 +1,209 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje MELCloud Home",
+        "data": {
+          "enable_websocket": "Aktualizacje w czasie rzeczywistym"
+        },
+        "data_description": {
+          "enable_websocket": "Zmiany wprowadzone pilotem lub aplikacją MELCloud Home pojawiają się w ciągu kilku sekund."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z MELCloud Home",
+        "description": "Wprowadź dane logowania do MELCloud Home",
+        "data": {
+          "email": "E-mail",
+          "password": "Hasło",
+          "debug_mode": "Połącz z serwerem testowym"
+        },
+        "data_description": {
+          "debug_mode": "Tylko do celów deweloperskich — łączy z lokalnym serwerem testowym zamiast produkcyjnego API MELCloud"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Uwierzytelnianie wygasło dla {name}",
+        "description": "Zaktualizuj hasło dla {email}",
+        "data": {
+          "password": "Hasło"
+        }
+      },
+      "reconfigure": {
+        "title": "Rekonfiguruj",
+        "description": "Zaktualizuj dane logowania dla {email}",
+        "data": {
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy e-mail lub hasło",
+      "cannot_connect": "Nie można połączyć się z MELCloud Home. Sprawdź połączenie internetowe i spróbuj ponownie.",
+      "service_unavailable": "Usługa MELCloud jest obecnie niedostępna. To problem po stronie serwera — spróbuj ponownie później.",
+      "unknown": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie."
+    },
+    "abort": {
+      "already_configured": "To konto jest już skonfigurowane",
+      "reauth_successful": "Ponowne uwierzytelnienie powiodło się",
+      "reconfigure_successful": "Dane logowania zaktualizowane pomyślnie"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Pokój",
+              "flow": "Przepływ",
+              "curve": "Krzywa"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Wentylator 1",
+              "two": "Wentylator 2",
+              "three": "Wentylator 3",
+              "four": "Wentylator 4",
+              "five": "Wentylator 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Wachlowanie",
+              "one": "Wachlowanie 1",
+              "two": "Wachlowanie 2",
+              "three": "Wachlowanie 3",
+              "four": "Wachlowanie 4",
+              "five": "Wachlowanie 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Wachlowanie",
+              "left": "Lewo",
+              "leftcentre": "Lewo-środek",
+              "centre": "Środek",
+              "rightcentre": "Prawo-środek",
+              "right": "Prawo"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Temperatura w pomieszczeniu"
+      },
+      "wifi_signal": {
+        "name": "Sygnał WiFi"
+      },
+      "energy": {
+        "name": "Energia"
+      },
+      "outdoor_temperature": {
+        "name": "Temperatura zewnętrzna"
+      },
+      "frost_protection_min": {
+        "name": "Minimum ochrony przed zamarzaniem"
+      },
+      "frost_protection_max": {
+        "name": "Maksimum ochrony przed zamarzaniem"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum ochrony przed przegrzaniem"
+      },
+      "overheat_protection_max": {
+        "name": "Maksimum ochrony przed przegrzaniem"
+      },
+      "holiday_mode_start_date": {
+        "name": "Początek trybu wakacyjnego"
+      },
+      "holiday_mode_end_date": {
+        "name": "Koniec trybu wakacyjnego"
+      },
+      "zone_1_temperature": {
+        "name": "Temperatura strefy 1"
+      },
+      "zone_2_temperature": {
+        "name": "Temperatura strefy 2"
+      },
+      "tank_temperature": {
+        "name": "Temperatura zbiornika"
+      },
+      "operation_status": {
+        "name": "Stan pracy"
+      },
+      "flow_temperature": {
+        "name": "Temperatura zasilania"
+      },
+      "return_temperature": {
+        "name": "Temperatura powrotu"
+      },
+      "flow_temperature_zone1": {
+        "name": "Temperatura zasilania strefa 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Temperatura powrotu strefa 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Temperatura zasilania strefa 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Temperatura powrotu strefa 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Temperatura zasilania bojlera"
+      },
+      "return_temperature_boiler": {
+        "name": "Temperatura powrotu bojlera"
+      },
+      "energy_consumed": {
+        "name": "Zużyta energia"
+      },
+      "energy_produced": {
+        "name": "Wyprodukowana energia"
+      },
+      "cop": {
+        "name": "Współczynnik wydajności"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Stan błędu"
+      },
+      "connection_state": {
+        "name": "Stan połączenia"
+      },
+      "realtime_updates": {
+        "name": "Aktualizacje w czasie rzeczywistym"
+      },
+      "forced_dhw_active": {
+        "name": "Wymuszone CWU aktywne"
+      },
+      "frost_protection": {
+        "name": "Ochrona przed zamarzaniem"
+      },
+      "overheat_protection": {
+        "name": "Ochrona przed przegrzaniem"
+      },
+      "holiday_mode": {
+        "name": "Tryb wakacyjny"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Wymuś odświeżenie",
+      "description": "Natychmiast odśwież dane urządzenia z serwerów MELCloud (do testów/rozwoju)"
+    }
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home beállítások",
+        "data": {
+          "enable_websocket": "Valós idejű frissítések"
+        },
+        "data_description": {
+          "enable_websocket": "A távirányítóval vagy a MELCloud Home alkalmazással végzett módosítások másodperceken belül megjelennek."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Csatlakozás a MELCloud Home-hoz",
+        "description": "Add meg a MELCloud Home hitelesítő adataidat",
+        "data": {
+          "email": "E-mail",
+          "password": "Jelszó",
+          "debug_mode": "Csatlakozás tesztszerverhez"
+        },
+        "data_description": {
+          "debug_mode": "Csak fejlesztéshez – helyi tesztszerverhez csatlakozik a produkciós MELCloud API helyett"
+        }
+      },
+      "reauth_confirm": {
+        "title": "A hitelesítés lejárt ehhez: {name}",
+        "description": "Kérjük, frissítsd a jelszavad ehhez: {email}",
+        "data": {
+          "password": "Jelszó"
+        }
+      },
+      "reconfigure": {
+        "title": "Újrakonfigurálás",
+        "description": "Hitelesítő adatok frissítése ehhez: {email}",
+        "data": {
+          "password": "Jelszó"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Érvénytelen e-mail vagy jelszó",
+      "cannot_connect": "Nem sikerült csatlakozni a MELCloud Home-hoz. Ellenőrizd az internetkapcsolatot és próbáld újra.",
+      "service_unavailable": "A MELCloud szolgáltatás jelenleg nem elérhető. Ez szerveroldali hiba – próbáld újra később.",
+      "unknown": "Váratlan hiba történt. Kérjük, próbáld újra."
+    },
+    "abort": {
+      "already_configured": "Ez a fiók már konfigurálva van",
+      "reauth_successful": "Az újrahitelesítés sikeres volt",
+      "reconfigure_successful": "A hitelesítő adatok sikeresen frissítve"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Szoba",
+              "flow": "Áramlás",
+              "curve": "Görbe"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Ventilátor 1",
+              "two": "Ventilátor 2",
+              "three": "Ventilátor 3",
+              "four": "Ventilátor 4",
+              "five": "Ventilátor 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Lengés",
+              "one": "Lengés 1",
+              "two": "Lengés 2",
+              "three": "Lengés 3",
+              "four": "Lengés 4",
+              "five": "Lengés 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Lengés",
+              "left": "Bal",
+              "leftcentre": "Bal-közép",
+              "centre": "Közép",
+              "rightcentre": "Jobb-közép",
+              "right": "Jobb"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Szobahőmérséklet"
+      },
+      "wifi_signal": {
+        "name": "WiFi jel"
+      },
+      "energy": {
+        "name": "Energia"
+      },
+      "outdoor_temperature": {
+        "name": "Külső hőmérséklet"
+      },
+      "frost_protection_min": {
+        "name": "Fagyvédelem minimum"
+      },
+      "frost_protection_max": {
+        "name": "Fagyvédelem maximum"
+      },
+      "overheat_protection_min": {
+        "name": "Túlmelegedés védelem minimum"
+      },
+      "overheat_protection_max": {
+        "name": "Túlmelegedés védelem maximum"
+      },
+      "holiday_mode_start_date": {
+        "name": "Szabadság mód kezdete"
+      },
+      "holiday_mode_end_date": {
+        "name": "Szabadság mód vége"
+      },
+      "zone_1_temperature": {
+        "name": "1. zóna hőmérséklet"
+      },
+      "zone_2_temperature": {
+        "name": "2. zóna hőmérséklet"
+      },
+      "tank_temperature": {
+        "name": "Tartály hőmérséklet"
+      },
+      "operation_status": {
+        "name": "Működési állapot"
+      },
+      "flow_temperature": {
+        "name": "Előremenő hőmérséklet"
+      },
+      "return_temperature": {
+        "name": "Visszatérő hőmérséklet"
+      },
+      "flow_temperature_zone1": {
+        "name": "Előremenő hőmérséklet 1. zóna"
+      },
+      "return_temperature_zone1": {
+        "name": "Visszatérő hőmérséklet 1. zóna"
+      },
+      "flow_temperature_zone2": {
+        "name": "Előremenő hőmérséklet 2. zóna"
+      },
+      "return_temperature_zone2": {
+        "name": "Visszatérő hőmérséklet 2. zóna"
+      },
+      "flow_temperature_boiler": {
+        "name": "Előremenő hőmérséklet kazán"
+      },
+      "return_temperature_boiler": {
+        "name": "Visszatérő hőmérséklet kazán"
+      },
+      "energy_consumed": {
+        "name": "Fogyasztott energia"
+      },
+      "energy_produced": {
+        "name": "Termelt energia"
+      },
+      "cop": {
+        "name": "Teljesítménytényező"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Hibaállapot"
+      },
+      "connection_state": {
+        "name": "Kapcsolat állapota"
+      },
+      "realtime_updates": {
+        "name": "Valós idejű frissítések"
+      },
+      "forced_dhw_active": {
+        "name": "Kényszerített HMV aktív"
+      },
+      "frost_protection": {
+        "name": "Fagyvédelem"
+      },
+      "overheat_protection": {
+        "name": "Túlmelegedés védelem"
+      },
+      "holiday_mode": {
+        "name": "Szabadság mód"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Frissítés kényszerítése",
+      "description": "Az eszközadatok azonnali frissítése a MELCloud szerverekről (teszteléshez/fejlesztéshez)"
+    }
+  }
+}

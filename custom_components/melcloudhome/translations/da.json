@@ -1,0 +1,209 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home-indstillinger",
+        "data": {
+          "enable_websocket": "Realtidsopdateringer"
+        },
+        "data_description": {
+          "enable_websocket": "Ændringer foretaget med fjernbetjeningen eller MELCloud Home-appen vises inden for få sekunder."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Opret forbindelse til MELCloud Home",
+        "description": "Indtast dine MELCloud Home-legitimationsoplysninger",
+        "data": {
+          "email": "E-mail",
+          "password": "Adgangskode",
+          "debug_mode": "Opret forbindelse til testserver"
+        },
+        "data_description": {
+          "debug_mode": "Kun til udvikling – opretter forbindelse til lokal testserver i stedet for produktions-MELCloud API"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Godkendelse udløbet for {name}",
+        "description": "Opdater venligst din adgangskode for {email}",
+        "data": {
+          "password": "Adgangskode"
+        }
+      },
+      "reconfigure": {
+        "title": "Rekonfigurer",
+        "description": "Opdater legitimationsoplysninger for {email}",
+        "data": {
+          "password": "Adgangskode"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ugyldig e-mail eller adgangskode",
+      "cannot_connect": "Kunne ikke oprette forbindelse til MELCloud Home. Tjek din internetforbindelse og prøv igen.",
+      "service_unavailable": "MELCloud-tjenesten er i øjeblikket utilgængelig. Dette er et serverproblem – prøv igen senere.",
+      "unknown": "Der opstod en uventet fejl. Prøv igen."
+    },
+    "abort": {
+      "already_configured": "Denne konto er allerede konfigureret",
+      "reauth_successful": "Godkendelse lykkedes",
+      "reconfigure_successful": "Legitimationsoplysninger opdateret"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Rum",
+              "flow": "Flow",
+              "curve": "Kurve"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Ventilator 1",
+              "two": "Ventilator 2",
+              "three": "Ventilator 3",
+              "four": "Ventilator 4",
+              "five": "Ventilator 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Sving",
+              "one": "Sving 1",
+              "two": "Sving 2",
+              "three": "Sving 3",
+              "four": "Sving 4",
+              "five": "Sving 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Sving",
+              "left": "Venstre",
+              "leftcentre": "Venstre-center",
+              "centre": "Center",
+              "rightcentre": "Højre-center",
+              "right": "Højre"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Rumtemperatur"
+      },
+      "wifi_signal": {
+        "name": "WiFi-signal"
+      },
+      "energy": {
+        "name": "Energi"
+      },
+      "outdoor_temperature": {
+        "name": "Udendørstemperatur"
+      },
+      "frost_protection_min": {
+        "name": "Minimum frostbeskyttelse"
+      },
+      "frost_protection_max": {
+        "name": "Maksimum frostbeskyttelse"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum overophedningsbeskyttelse"
+      },
+      "overheat_protection_max": {
+        "name": "Maksimum overophedningsbeskyttelse"
+      },
+      "holiday_mode_start_date": {
+        "name": "Start ferietilstand"
+      },
+      "holiday_mode_end_date": {
+        "name": "Slut ferietilstand"
+      },
+      "zone_1_temperature": {
+        "name": "Zone 1 temperatur"
+      },
+      "zone_2_temperature": {
+        "name": "Zone 2 temperatur"
+      },
+      "tank_temperature": {
+        "name": "Beholdertemperatur"
+      },
+      "operation_status": {
+        "name": "Driftsstatus"
+      },
+      "flow_temperature": {
+        "name": "Fremløbstemperatur"
+      },
+      "return_temperature": {
+        "name": "Returtemperatur"
+      },
+      "flow_temperature_zone1": {
+        "name": "Fremløbstemperatur zone 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Returtemperatur zone 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Fremløbstemperatur zone 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Returtemperatur zone 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Fremløbstemperatur kedel"
+      },
+      "return_temperature_boiler": {
+        "name": "Returtemperatur kedel"
+      },
+      "energy_consumed": {
+        "name": "Forbrugt energi"
+      },
+      "energy_produced": {
+        "name": "Produceret energi"
+      },
+      "cop": {
+        "name": "COP-værdi"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Fejltilstand"
+      },
+      "connection_state": {
+        "name": "Forbindelsesstatus"
+      },
+      "realtime_updates": {
+        "name": "Realtidsopdateringer"
+      },
+      "forced_dhw_active": {
+        "name": "Tvungen varmt vand aktiv"
+      },
+      "frost_protection": {
+        "name": "Frostbeskyttelse"
+      },
+      "overheat_protection": {
+        "name": "Overophedningsbeskyttelse"
+      },
+      "holiday_mode": {
+        "name": "Ferietilstand"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Tving opdatering",
+      "description": "Opdater straks enhedsdata fra MELCloud-servere (til test/udvikling)"
+    }
+  }
+}

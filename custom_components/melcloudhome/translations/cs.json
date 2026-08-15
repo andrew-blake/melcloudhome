@@ -1,0 +1,209 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "Možnosti MELCloud Home",
+        "data": {
+          "enable_websocket": "Aktualizace v reálném čase"
+        },
+        "data_description": {
+          "enable_websocket": "Změny provedené dálkovým ovladačem nebo aplikací MELCloud Home se objeví během několika sekund."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Připojit k MELCloud Home",
+        "description": "Zadejte přihlašovací údaje k MELCloud Home",
+        "data": {
+          "email": "E-mail",
+          "password": "Heslo",
+          "debug_mode": "Připojit k testovacímu serveru"
+        },
+        "data_description": {
+          "debug_mode": "Pouze pro vývoj – připojí se k místnímu testovacímu serveru místo produkčního API MELCloud"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Platnost ověření vypršela pro {name}",
+        "description": "Aktualizujte heslo pro {email}",
+        "data": {
+          "password": "Heslo"
+        }
+      },
+      "reconfigure": {
+        "title": "Překonfigurovat",
+        "description": "Aktualizujte přihlašovací údaje pro {email}",
+        "data": {
+          "password": "Heslo"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Neplatný e-mail nebo heslo",
+      "cannot_connect": "Nelze se připojit k MELCloud Home. Zkontrolujte připojení k internetu a zkuste to znovu.",
+      "service_unavailable": "Služba MELCloud je momentálně nedostupná. Jedná se o problém na straně serveru – zkuste to prosím později.",
+      "unknown": "Došlo k neočekávané chybě. Zkuste to prosím znovu."
+    },
+    "abort": {
+      "already_configured": "Tento účet je již nakonfigurován",
+      "reauth_successful": "Opětovné ověření bylo úspěšné",
+      "reconfigure_successful": "Přihlašovací údaje byly úspěšně aktualizovány"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Místnost",
+              "flow": "Průtok",
+              "curve": "Křivka"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "one": "Ventilátor 1",
+              "two": "Ventilátor 2",
+              "three": "Ventilátor 3",
+              "four": "Ventilátor 4",
+              "five": "Ventilátor 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Natáčení",
+              "one": "Natáčení 1",
+              "two": "Natáčení 2",
+              "three": "Natáčení 3",
+              "four": "Natáčení 4",
+              "five": "Natáčení 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "Auto",
+              "swing": "Natáčení",
+              "left": "Vlevo",
+              "leftcentre": "Vlevo-střed",
+              "centre": "Střed",
+              "rightcentre": "Vpravo-střed",
+              "right": "Vpravo"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "Teplota v místnosti"
+      },
+      "wifi_signal": {
+        "name": "Signál WiFi"
+      },
+      "energy": {
+        "name": "Energie"
+      },
+      "outdoor_temperature": {
+        "name": "Venkovní teplota"
+      },
+      "frost_protection_min": {
+        "name": "Minimum ochrany proti mrazu"
+      },
+      "frost_protection_max": {
+        "name": "Maximum ochrany proti mrazu"
+      },
+      "overheat_protection_min": {
+        "name": "Minimum ochrany proti přehřátí"
+      },
+      "overheat_protection_max": {
+        "name": "Maximum ochrany proti přehřátí"
+      },
+      "holiday_mode_start_date": {
+        "name": "Začátek prázdninového režimu"
+      },
+      "holiday_mode_end_date": {
+        "name": "Konec prázdninového režimu"
+      },
+      "zone_1_temperature": {
+        "name": "Teplota zóny 1"
+      },
+      "zone_2_temperature": {
+        "name": "Teplota zóny 2"
+      },
+      "tank_temperature": {
+        "name": "Teplota zásobníku"
+      },
+      "operation_status": {
+        "name": "Provozní stav"
+      },
+      "flow_temperature": {
+        "name": "Teplota na výstupu"
+      },
+      "return_temperature": {
+        "name": "Teplota na vstupu"
+      },
+      "flow_temperature_zone1": {
+        "name": "Teplota na výstupu zóna 1"
+      },
+      "return_temperature_zone1": {
+        "name": "Teplota na vstupu zóna 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "Teplota na výstupu zóna 2"
+      },
+      "return_temperature_zone2": {
+        "name": "Teplota na vstupu zóna 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "Teplota na výstupu bojler"
+      },
+      "return_temperature_boiler": {
+        "name": "Teplota na vstupu bojler"
+      },
+      "energy_consumed": {
+        "name": "Spotřebovaná energie"
+      },
+      "energy_produced": {
+        "name": "Vyrobená energie"
+      },
+      "cop": {
+        "name": "Topný faktor"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "Stav chyby"
+      },
+      "connection_state": {
+        "name": "Stav připojení"
+      },
+      "realtime_updates": {
+        "name": "Aktualizace v reálném čase"
+      },
+      "forced_dhw_active": {
+        "name": "Vynucený ohřev TUV aktivní"
+      },
+      "frost_protection": {
+        "name": "Ochrana proti mrazu"
+      },
+      "overheat_protection": {
+        "name": "Ochrana proti přehřátí"
+      },
+      "holiday_mode": {
+        "name": "Prázdninový režim"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "Vynutit obnovení",
+      "description": "Okamžitě obnovit data zařízení ze serverů MELCloud (pro testování/vývoj)"
+    }
+  }
+}

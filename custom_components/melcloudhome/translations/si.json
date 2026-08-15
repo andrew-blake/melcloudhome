@@ -1,0 +1,209 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "MELCloud Home විකල්ප",
+        "data": {
+          "enable_websocket": "තත්‍ය කාලීන යාවත්කාලීන"
+        },
+        "data_description": {
+          "enable_websocket": "දුරස්ථ පාලකය හෝ MELCloud Home යෙදුම සමඟ කරන ලද වෙනස්කම් තත්පර කිහිපයකින් දිස්වේ."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "MELCloud Home වෙත සම්බන්ධ වන්න",
+        "description": "ඔබගේ MELCloud Home අක්තපත්‍ර ඇතුළත් කරන්න",
+        "data": {
+          "email": "ඊමේල්",
+          "password": "මුරපදය",
+          "debug_mode": "අනුකරණ සේවාදායකයට සම්බන්ධ වන්න"
+        },
+        "data_description": {
+          "debug_mode": "සංවර්ධනය සඳහා පමණයි - නිෂ්පාදන MELCloud API වෙනුවට දේශීය අනුකරණ සේවාදායකයට සම්බන්ධ වේ"
+        }
+      },
+      "reauth_confirm": {
+        "title": "{name} සඳහා සත්‍යාපනය කල් ඉකුත් වී ඇත",
+        "description": "කරුණාකර {email} සඳහා ඔබගේ මුරපදය යාවත්කාලීන කරන්න",
+        "data": {
+          "password": "මුරපදය"
+        }
+      },
+      "reconfigure": {
+        "title": "නැවත වින්‍යාස කරන්න",
+        "description": "{email} සඳහා අක්තපත්‍ර යාවත්කාලීන කරන්න",
+        "data": {
+          "password": "මුරපදය"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "වලංගු නොවන ඊමේල් හෝ මුරපදය",
+      "cannot_connect": "MELCloud Home වෙත සම්බන්ධ වීමට නොහැක. කරුණාකර ඔබගේ අන්තර්ජාල සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න.",
+      "service_unavailable": "MELCloud සේවාව දැනට ලබා ගත නොහැක. මෙය සේවාදායක පැත්තේ ගැටලුවකි — කරුණාකර පසුව නැවත උත්සාහ කරන්න.",
+      "unknown": "අනපේක්ෂිත දෝෂයක් සිදු විය. කරුණාකර නැවත උත්සාහ කරන්න."
+    },
+    "abort": {
+      "already_configured": "මෙම ගිණුම දැනටමත් වින්‍යාස කර ඇත",
+      "reauth_successful": "නැවත සත්‍යාපනය සාර්ථක විය",
+      "reconfigure_successful": "අක්තපත්‍ර සාර්ථකව යාවත්කාලීන කරන ලදී"
+    }
+  },
+  "entity": {
+    "climate": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "කාමරය",
+              "flow": "ප්‍රවාහය",
+              "curve": "වක්‍රය"
+            }
+          },
+          "fan_mode": {
+            "state": {
+              "auto": "ස්වයංක්‍රීය",
+              "one": "විදුලි පංකා 1",
+              "two": "විදුලි පංකා 2",
+              "three": "විදුලි පංකා 3",
+              "four": "විදුලි පංකා 4",
+              "five": "විදුලි පංකා 5"
+            }
+          },
+          "swing_mode": {
+            "state": {
+              "auto": "ස්වයංක්‍රීය",
+              "swing": "පැද්දීම",
+              "one": "පැද්දීම 1",
+              "two": "පැද්දීම 2",
+              "three": "පැද්දීම 3",
+              "four": "පැද්දීම 4",
+              "five": "පැද්දීම 5"
+            }
+          },
+          "swing_horizontal_mode": {
+            "state": {
+              "auto": "ස්වයංක්‍රීය",
+              "swing": "පැද්දීම",
+              "left": "වම",
+              "leftcentre": "වම් මැද",
+              "centre": "මැද",
+              "rightcentre": "දකුණු මැද",
+              "right": "දකුණ"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "room_temperature": {
+        "name": "කාමර උෂ්ණත්වය"
+      },
+      "wifi_signal": {
+        "name": "WiFi සංඥාව"
+      },
+      "energy": {
+        "name": "ශක්තිය"
+      },
+      "outdoor_temperature": {
+        "name": "බාහිර උෂ්ණත්වය"
+      },
+      "frost_protection_min": {
+        "name": "හිම ආරක්ෂණ අවම"
+      },
+      "frost_protection_max": {
+        "name": "හිම ආරක්ෂණ උපරිම"
+      },
+      "overheat_protection_min": {
+        "name": "අධික තාප ආරක්ෂණ අවම"
+      },
+      "overheat_protection_max": {
+        "name": "අධික තාප ආරක්ෂණ උපරිම"
+      },
+      "holiday_mode_start_date": {
+        "name": "නිවාඩු ප්‍රකාරය ආරම්භය"
+      },
+      "holiday_mode_end_date": {
+        "name": "නිවාඩු ප්‍රකාරය අවසානය"
+      },
+      "zone_1_temperature": {
+        "name": "කලාප 1 උෂ්ණත්වය"
+      },
+      "zone_2_temperature": {
+        "name": "කලාප 2 උෂ්ණත්වය"
+      },
+      "tank_temperature": {
+        "name": "ටැංකි උෂ්ණත්වය"
+      },
+      "operation_status": {
+        "name": "මෙහෙයුම් තත්ත්වය"
+      },
+      "flow_temperature": {
+        "name": "ප්‍රවාහ උෂ්ණත්වය"
+      },
+      "return_temperature": {
+        "name": "ආපසු උෂ්ණත්වය"
+      },
+      "flow_temperature_zone1": {
+        "name": "ප්‍රවාහ උෂ්ණත්වය කලාප 1"
+      },
+      "return_temperature_zone1": {
+        "name": "ආපසු උෂ්ණත්වය කලාප 1"
+      },
+      "flow_temperature_zone2": {
+        "name": "ප්‍රවාහ උෂ්ණත්වය කලාප 2"
+      },
+      "return_temperature_zone2": {
+        "name": "ආපසු උෂ්ණත්වය කලාප 2"
+      },
+      "flow_temperature_boiler": {
+        "name": "ප්‍රවාහ උෂ්ණත්වය බොයිලේරු"
+      },
+      "return_temperature_boiler": {
+        "name": "ආපසු උෂ්ණත්වය බොයිලේරු"
+      },
+      "energy_consumed": {
+        "name": "පරිභෝජනය කළ ශක්තිය"
+      },
+      "energy_produced": {
+        "name": "නිෂ්පාදිත ශක්තිය"
+      },
+      "cop": {
+        "name": "කාර්ය සාධන සංගුණකය"
+      }
+    },
+    "binary_sensor": {
+      "error_state": {
+        "name": "දෝෂ තත්ත්වය"
+      },
+      "connection_state": {
+        "name": "සම්බන්ධතා තත්ත්වය"
+      },
+      "realtime_updates": {
+        "name": "තත්‍ය කාලීන යාවත්කාලීන"
+      },
+      "forced_dhw_active": {
+        "name": "බලහත්කාර DHW සක්‍රීයයි"
+      },
+      "frost_protection": {
+        "name": "හිම ආරක්ෂණය"
+      },
+      "overheat_protection": {
+        "name": "අධික තාප ආරක්ෂණය"
+      },
+      "holiday_mode": {
+        "name": "නිවාඩු ප්‍රකාරය"
+      }
+    }
+  },
+  "services": {
+    "force_refresh": {
+      "name": "බලහත්කාරයෙන් නැවුම් කරන්න",
+      "description": "MELCloud සේවාදායකයන්ගෙන් උපාංග දත්ත වහාම නැවුම් කරන්න (පරීක්ෂා/සංවර්ධන සඳහා)"
+    }
+  }
+}
