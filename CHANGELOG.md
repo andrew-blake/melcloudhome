@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.1] - 2026-08-14
 
+### Added
+
+- Norwegian (nb) translations (thanks @Jan-Arild-Blekken)
+
 ### Fixed
 
 - Sensor and binary sensor names (WiFi signal, Room temperature, Frost protection, Holiday mode, and others) always displayed in English regardless of your Home Assistant language setting. Identified and diagnosed by @Jan-Arild-Blekken. (#240)
