@@ -21,6 +21,7 @@ from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_REPORT_COMFORT_GRAPH,
     API_REPORT_TRENDSUMMARY,
     API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
@@ -458,6 +459,61 @@ class MELCloudHomeClient:
             # Log at debug level - outdoor temp is nice-to-have, not critical
             _LOGGER.debug(
                 "Failed to fetch outdoor temperature for unit %s",
+                unit_id,
+                exc_info=True,
+            )
+            return None, None
+
+    async def get_atw_outdoor_temperature(
+        self, unit_id: str
+    ) -> tuple[float | None, datetime | None]:
+        """Get latest outdoor temperature for an ATW unit.
+
+        ATW's live /context OutdoorTemperature can be present but silently
+        wrong (issue #251) or absent entirely, with no way to tell which from
+        the value alone, so this always queries the comfort-graph report
+        instead of ever trusting the live value.
+
+        Uses period=Hourly with a 24h window: comfort-graph's Hourly period
+        hard-fails (500) for windows starting more than ~4 days back
+        regardless of width, so unlike ATA's 7-day trendsummary lookback this
+        can't reach further back. 24h comfortably covers the largest observed
+        reporting gap (3.5h) between genuine readings, with margin.
+
+        Args:
+            unit_id: ATW unit UUID
+
+        Returns:
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
+            or (None, None) if not available
+        """
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        from_time = now - timedelta(hours=24)
+
+        params = {
+            "unitId": unit_id,
+            "period": "Hourly",
+            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+        }
+
+        try:
+            response = await self._api_request(
+                "GET", API_REPORT_COMFORT_GRAPH, params=params
+            )
+            if response is None:
+                _LOGGER.debug(
+                    "Comfort-graph returned None for unit %s (from=%s, to=%s)",
+                    unit_id,
+                    params["from"],
+                    params["to"],
+                )
+                return None, None
+            return self._parse_outdoor_temp(response)
+        except Exception:
+            # Log at debug level - outdoor temp is nice-to-have, not critical
+            _LOGGER.debug(
+                "Failed to fetch ATW outdoor temperature for unit %s",
                 unit_id,
                 exc_info=True,
             )

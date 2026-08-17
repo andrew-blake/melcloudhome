@@ -267,6 +267,65 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                             exc_info=True,
                         )
 
+        # Update outdoor temperature for ATW devices via comfort-graph.
+        # Live /context OutdoorTemperature can be silently wrong (issue #251)
+        # or absent, with no way to tell which from the value alone, so this
+        # never trusts it - comfort-graph is the sole source, same as ATA's
+        # trendsummary-only value above.
+        for building in context.buildings:
+            for atw_unit in building.air_to_water_units:
+                atw_unit_id = atw_unit.id  # Capture for closures
+
+                # Preserve outdoor temp state from previous update
+                if atw_unit_id in self._atw_units:
+                    old_atw_unit = self._atw_units[atw_unit_id]
+                    atw_unit.has_outdoor_temp_sensor = (
+                        old_atw_unit.has_outdoor_temp_sensor
+                    )
+                    atw_unit.outdoor_temperature = old_atw_unit.outdoor_temperature
+                    atw_unit.outdoor_temp_recorded_at = (
+                        old_atw_unit.outdoor_temp_recorded_at
+                    )
+
+                async def get_atw_outdoor_temp(
+                    uid: str = atw_unit_id,
+                ) -> tuple[float | None, datetime | None]:
+                    return await self.client.get_atw_outdoor_temperature(uid)
+
+                # Poll outdoor temp if: never polled, or interval elapsed.
+                # Shares _last_outdoor_temp_poll/_should_poll_outdoor_temp
+                # with ATA above - unit IDs are unique across device types.
+                if self._should_poll_outdoor_temp(atw_unit_id):
+                    try:
+                        temp, recorded_at = await self._execute_with_retry(
+                            get_atw_outdoor_temp,
+                            "ATW outdoor temperature",
+                        )
+                        self._record_outdoor_temp_poll(atw_unit_id)
+
+                        if temp is not None:
+                            atw_unit.has_outdoor_temp_sensor = True
+                            atw_unit.outdoor_temperature = temp
+                            atw_unit.outdoor_temp_recorded_at = recorded_at
+                            _LOGGER.debug(
+                                "ATW outdoor temp for %s: %.1f°C (recorded %s)",
+                                atw_unit.name,
+                                temp,
+                                recorded_at,
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "No ATW outdoor temp data for %s",
+                                atw_unit.name,
+                            )
+                    except Exception:
+                        self._record_outdoor_temp_poll(atw_unit_id)
+                        _LOGGER.debug(
+                            "Failed to fetch ATW outdoor temp for %s",
+                            atw_unit.name,
+                            exc_info=True,
+                        )
+
         # Update caches for O(1) lookups
         self._rebuild_caches(context)
         return context

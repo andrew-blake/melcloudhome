@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from .const_atw import ATW_MODE_HEAT_ROOM_TEMP, ATW_STATUS_STOP
@@ -177,8 +178,13 @@ class AirToWaterUnit:
     set_temperature_zone2: float | None = None
     room_temperature_zone2: float | None = None
 
-    # Outdoor temperature (from settings response)
+    # Outdoor temperature. Live /context OutdoorTemperature can be silently
+    # wrong (issue #251) or absent, with no way to tell which from the value
+    # alone, so this is never parsed from settings - only ever set by the
+    # coordinator's comfort-graph poll, same as ATA's trendsummary-only value.
     outdoor_temperature: float | None = None  # °C
+    has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
+    outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
 
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False
@@ -283,8 +289,6 @@ class AirToWaterUnit:
             ftc_model=int(settings.get("FTCModel", "3")),
             # Capabilities
             capabilities=capabilities,
-            # Outdoor temperature (included in settings response)
-            outdoor_temperature=_parse_float(settings.get("OutdoorTemperature")),
             # Holiday Mode & Frost Protection
             holiday_mode_enabled=holiday_enabled,
             frost_protection_enabled=frost_enabled,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -57,6 +58,9 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     value_fn: Callable[[AirToWaterUnit], float | str | None]
     """Function to extract sensor value from unit data."""
 
+    attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
+    """Optional function to extract extra state attributes from unit data."""
+
     should_create_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
     """Whether to create the sensor at all.
 
@@ -95,7 +99,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.tank_water_temperature,
     ),
-    # Outdoor temperature. Always created; "unknown" until a reading arrives.
+    # Outdoor temperature - sourced from the comfort-graph report, never the
+    # live /context value (issue #251). Always created; "unknown" until a
+    # reading arrives.
     ATWSensorEntityDescription(
         key="outdoor_temperature",
         translation_key="outdoor_temperature",
@@ -103,6 +109,12 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.outdoor_temperature,
+        # last_reading surfaces staleness: units may not upload every poll.
+        attributes_fn=lambda unit: {
+            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
+            if unit.outdoor_temp_recorded_at
+            else None
+        },
     ),
     # Operation status (3-way valve position - raw API values)
     ATWSensorEntityDescription(
@@ -305,6 +317,17 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
             return None
 
         return self.entity_description.value_fn(device)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra state attributes."""
+        if self.entity_description.attributes_fn is None:
+            return None
+
+        device = self.coordinator.get_atw_device(self._unit_id)
+        if device is None:
+            return None
+        return self.entity_description.attributes_fn(device)
 
     @property
     def available(self) -> bool:
