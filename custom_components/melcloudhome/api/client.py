@@ -407,6 +407,51 @@ class MELCloudHomeClient:
                 return None, None  # No genuine reading in the window
         return None, None  # No outdoor temp dataset found
 
+    async def _get_report_outdoor_temperature(
+        self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
+    ) -> tuple[float | None, datetime | None]:
+        """Shared implementation for get_outdoor_temperature/get_atw_outdoor_temperature.
+
+        Both query a /report/v1/ endpoint with period=Hourly and parse the
+        same response shape via _parse_outdoor_temp - they differ only in
+        endpoint, lookback window, and log wording.
+
+        "to" is truncated to seconds=0 so the server's to-echo point is
+        identifiable as synthetic (see _parse_outdoor_temp).
+        """
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        from_time = now - lookback
+
+        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
+        params = {
+            "unitId": unit_id,
+            "period": "Hourly",
+            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+        }
+
+        try:
+            response = await self._api_request("GET", endpoint, params=params)
+            if response is None:
+                _LOGGER.debug(
+                    "%s returned None for unit %s (from=%s, to=%s)",
+                    log_label,
+                    unit_id,
+                    params["from"],
+                    params["to"],
+                )
+                return None, None
+            return self._parse_outdoor_temp(response)
+        except Exception:
+            # Log at debug level - outdoor temp is nice-to-have, not critical
+            _LOGGER.debug(
+                "Failed to fetch %s for unit %s",
+                log_label,
+                unit_id,
+                exc_info=True,
+            )
+            return None, None
+
     async def get_outdoor_temperature(
         self, unit_id: str
     ) -> tuple[float | None, datetime | None]:
@@ -419,6 +464,10 @@ class MELCloudHomeClient:
         quality problems, plus a midnight-rollover artifact where the freshest
         Daily label leads the query time by up to an hour).
 
+        7-day lookback: units stop uploading while idle, so a short window
+        returns no genuine readings for them (the bug behind #111). The
+        coordinator keeps the previous value when this returns None.
+
         Args:
             unit_id: ATA unit UUID
 
@@ -426,43 +475,9 @@ class MELCloudHomeClient:
             Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available
         """
-        # 7-day lookback: units stop uploading while idle, so a short window
-        # returns no genuine readings for them (the bug behind #111). The
-        # coordinator keeps the previous value when this returns None.
-        # "to" is truncated to seconds=0 so the server's to-echo point is
-        # identifiable as synthetic (see _parse_outdoor_temp).
-        now = datetime.now(UTC).replace(second=0, microsecond=0)
-        from_time = now - timedelta(days=7)
-
-        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
-        params = {
-            "unitId": unit_id,
-            "period": "Hourly",
-            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-        }
-
-        try:
-            response = await self._api_request(
-                "GET", API_REPORT_TRENDSUMMARY, params=params
-            )
-            if response is None:
-                _LOGGER.debug(
-                    "Trendsummary returned None for unit %s (from=%s, to=%s)",
-                    unit_id,
-                    params["from"],
-                    params["to"],
-                )
-                return None, None
-            return self._parse_outdoor_temp(response)
-        except Exception:
-            # Log at debug level - outdoor temp is nice-to-have, not critical
-            _LOGGER.debug(
-                "Failed to fetch outdoor temperature for unit %s",
-                unit_id,
-                exc_info=True,
-            )
-            return None, None
+        return await self._get_report_outdoor_temperature(
+            API_REPORT_TRENDSUMMARY, unit_id, timedelta(days=7), "trendsummary"
+        )
 
     async def get_atw_outdoor_temperature(
         self, unit_id: str
@@ -480,6 +495,13 @@ class MELCloudHomeClient:
         can't reach further back. 24h comfortably covers the largest observed
         reporting gap (3.5h) between genuine readings, with margin.
 
+        Reuses _parse_outdoor_temp's UTC-timestamp assumption, which was
+        empirically justified for ATA's trendsummary endpoint - verified
+        separately for comfort-graph (2026-08-17): across 108 genuine
+        readings over a 24h window for a real ATW unit, none led the UTC
+        query time, which local-time (CEST, UTC+2 in August) stamps would by
+        up to two hours.
+
         Args:
             unit_id: ATW unit UUID
 
@@ -487,37 +509,9 @@ class MELCloudHomeClient:
             Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available
         """
-        now = datetime.now(UTC).replace(second=0, microsecond=0)
-        from_time = now - timedelta(hours=24)
-
-        params = {
-            "unitId": unit_id,
-            "period": "Hourly",
-            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-        }
-
-        try:
-            response = await self._api_request(
-                "GET", API_REPORT_COMFORT_GRAPH, params=params
-            )
-            if response is None:
-                _LOGGER.debug(
-                    "Comfort-graph returned None for unit %s (from=%s, to=%s)",
-                    unit_id,
-                    params["from"],
-                    params["to"],
-                )
-                return None, None
-            return self._parse_outdoor_temp(response)
-        except Exception:
-            # Log at debug level - outdoor temp is nice-to-have, not critical
-            _LOGGER.debug(
-                "Failed to fetch ATW outdoor temperature for unit %s",
-                unit_id,
-                exc_info=True,
-            )
-            return None, None
+        return await self._get_report_outdoor_temperature(
+            API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"
+        )
 
     async def get_telemetry_actual(
         self,

@@ -46,6 +46,8 @@ async def test_atw_outdoor_temperature_sensor_shows_polled_value(
     assert state is not None
     assert state.state == "16.0"
     assert state.attributes["last_reading"] == "2026-08-17T08:57:11+00:00"
+    assert state.attributes["unit_of_measurement"] == "°C"
+    assert state.attributes["device_class"] == "temperature"
 
 
 async def test_atw_outdoor_temperature_unknown_when_poll_returns_none(
@@ -91,10 +93,8 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
     mock_client.get_atw_outdoor_temperature = AsyncMock(
         return_value=(14.0, datetime(2026, 8, 17, 9, 27, 11, tzinfo=UTC))
     )
-    # _last_outdoor_temp_poll has no public reset interface; direct access is
-    # the only way to simulate the polling interval elapsing in tests.
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    coordinator._last_outdoor_temp_poll.clear()
+    coordinator.reset_outdoor_temp_polling()
 
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()

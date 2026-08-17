@@ -59,7 +59,7 @@ graph LR
         UserContextAPI["GET /context<br/>(SHARED)"]
         ATAAPI["PUT /monitor/ataunit/{id}<br/>(ATA Control)"]
         ATWAPI["PUT /monitor/atwunit/{id}<br/>(ATW Control)"]
-        TelemetryAPI["GET /telemetry/...<br/>/report/v1/trendsummary<br/>(Energy/Telemetry)"]
+        TelemetryAPI["GET /telemetry/...<br/>/report/v1/trendsummary<br/>/report/v1/comfort-graph<br/>(Energy/Telemetry)"]
     end
     subgraph "MELCloud WebSocket<br/>ws.melcloudhome.com"
         WSHash["WS hash endpoint<br/>(Bearer → short-lived hash)"]
@@ -106,7 +106,7 @@ graph LR
 - **Single API client** provides unified interface to the MELCloud mobile API, plus proactive token refresh (60s pre-expiry buffer)
 - **Shared auth** — one OAuth session (access + refresh tokens) for all endpoints
 - **UserContext** (`/context`) returns both device types in one response
-- **Telemetry** is separate from state polling — `/telemetry/...` (30m energy, 60m flow/return) and `/report/v1/trendsummary` (30m ATA outdoor temp) each run on independent timers
+- **Telemetry** is separate from state polling — `/telemetry/...` (30m energy, 60m flow/return), `/report/v1/trendsummary` (30m ATA outdoor temp), and `/report/v1/comfort-graph` (30m ATW outdoor temp) each run on independent timers
 - **WebSocket listener** (default on) receives `unitStateChanged` deltas and triggers the debounced `/context` refresh — it never writes state and never sends commands; see [Real-Time WebSocket Updates](#real-time-websocket-updates-default-on)
 
 ---
@@ -330,6 +330,10 @@ sequenceDiagram
         APIClient->>Server: GET /report/v1/trendsummary
         Server-->>APIClient: outdoor temperature
     end
+    loop Every 30 min — ATW outdoor temp
+        APIClient->>Server: GET /report/v1/comfort-graph
+        Server-->>APIClient: outdoor temperature
+    end
     loop Every 60 min — ATW flow / return telemetry
         APIClient->>Server: GET /telemetry/telemetry/actual/{id}
         Server-->>APIClient: flow + return temperatures
@@ -352,7 +356,7 @@ sequenceDiagram
 **Coordinator Responsibilities (`MELCloudHomeCoordinator`):**
 
 - **State polling**: Drives the 60-second `/context` refresh loop; dispatches updates to all platforms.
-- **Independent telemetry timers**: Separate 30-minute energy timer, 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), and 60-minute ATW flow/return telemetry timer.
+- **Independent telemetry timers**: Separate 30-minute energy timer, 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), 30-minute ATW outdoor-temperature timer (via `/report/v1/comfort-graph` — the live `/context` value is never trusted, see issue #251), and 60-minute ATW flow/return telemetry timer.
 - **Re-auth ladder** (`_run_with_reauth`, guarded by `_reauth_lock`): retry-once → refresh_token → full login → `ConfigEntryAuthFailed` (triggers HA repair UI) if all fail. This is the single place in the integration that runs re-login on auth failure.
 - **WebSocket lifecycle**: `_async_setup_websocket` launches `MELCloudHomeWebSocket` as an entry-scoped background task when enabled (default on, `enable_websocket` option); `_on_ws_delta` feeds each delta into the same debounced refresh the control clients use. HA cancels the task on entry unload/reload.
 

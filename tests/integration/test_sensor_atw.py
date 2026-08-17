@@ -306,37 +306,13 @@ async def test_atw_energy_sensors_have_correct_device_class(
         assert cop.attributes.get("unit_of_measurement") is None
 
 
-@pytest.mark.asyncio
-async def test_atw_outdoor_temperature_sensor_created(hass: HomeAssistant) -> None:
-    """Test ATW outdoor temperature sensor is created from settings response."""
-    mock_unit = create_mock_atw_unit(outdoor_temperature=12.5)
-    mock_context = create_mock_atw_user_context(
-        [create_mock_atw_building(units=[mock_unit])]
-    )
-    await setup_atw_integration_custom(hass, mock_context)
-
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_outdoor_temperature")
-    assert state is not None
-    assert float(state.state) == 12.5
-    assert state.attributes["unit_of_measurement"] == "°C"
-    assert state.attributes["device_class"] == "temperature"
-
-
-@pytest.mark.asyncio
-async def test_atw_outdoor_temperature_created_but_unknown_when_none(
-    hass: HomeAssistant,
-) -> None:
-    """ATW outdoor temp sensor is always created; a unit not reporting it shows
-    'unknown', not dropped."""
-    mock_unit = create_mock_atw_unit(outdoor_temperature=None)
-    mock_context = create_mock_atw_user_context(
-        [create_mock_atw_building(units=[mock_unit])]
-    )
-    await setup_atw_integration_custom(hass, mock_context)
-
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_outdoor_temperature")
-    assert state is not None
-    assert state.state == "unknown"
+# Outdoor temperature sensor creation/unknown-state coverage lives in
+# tests/integration/test_atw_outdoor_temperature_sensor.py, which mocks the
+# actual comfort-graph poll (client.get_atw_outdoor_temperature) - the sole
+# source of this value since issue #251. The tests formerly here predated
+# that fix and passed only because their unmocked poll silently failed,
+# leaving create_mock_atw_unit's directly-set value untouched; they never
+# exercised real behaviour.
 
 
 @pytest.mark.asyncio
