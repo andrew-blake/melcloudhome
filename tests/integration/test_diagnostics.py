@@ -8,6 +8,7 @@ Run with: make test-integration
 """
 
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -25,7 +26,11 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    create_mock_atw_building,
+    create_mock_atw_unit,
+    create_mock_atw_user_context,
     setup_ata_integration_custom,
+    setup_atw_integration_custom,
     wire_connected_ws,
     ws_text_frame,
 )
@@ -232,3 +237,46 @@ async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
         assert "mock-access-token-abc123" not in blob
         assert "mock-refresh-token-xyz789" not in blob
         assert "9999999999.0" not in blob
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
+    hass: HomeAssistant,
+) -> None:
+    """Diagnostics must distinguish "comfort-graph never worked for this
+    unit" from "no reading yet" from "polled fine, no error" - otherwise a
+    user's diagnostics dump can't tell those apart (see #251 follow-up:
+    there's no static way to know upfront whether a device supports the
+    comfort-graph endpoint, so this is the reactive signal)."""
+    # Pre-set fields represent the last known-good reading; the mocked poll
+    # below then fails, so the coordinator sets outdoor_temp_last_error for
+    # real without touching the other three (same behaviour as a real device
+    # that last reported fine and is now erroring).
+    unit = create_mock_atw_unit(
+        outdoor_temperature=16.0,
+        has_outdoor_temp_sensor=True,
+        outdoor_temp_recorded_at=datetime(2026, 8, 17, 8, 57, 11),
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[unit])]
+    )
+
+    def configure(client):
+        client.get_atw_outdoor_temperature = AsyncMock(
+            side_effect=ValueError("MELCloud service unavailable (HTTP 500)")
+        )
+
+    entry, _ = await setup_atw_integration_custom(
+        hass, mock_context, configure_client=configure
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    atw_unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+
+    assert atw_unit["outdoor_temperature"] == 16.0
+    assert atw_unit["has_outdoor_temp_sensor"] is True
+    assert atw_unit["outdoor_temp_recorded_at"] == "2026-08-17T08:57:11"
+    assert (
+        atw_unit["outdoor_temp_last_error"]
+        == "ValueError: MELCloud service unavailable (HTTP 500)"
+    )

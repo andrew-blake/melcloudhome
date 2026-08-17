@@ -6,6 +6,7 @@ These fixtures require pytest-homeassistant-custom-component.
 import asyncio
 import json
 from collections.abc import Callable
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -123,6 +124,9 @@ def create_mock_atw_unit(
     energy_produced: float | None = None,
     cop: float | None = None,
     outdoor_temperature: float | None = None,
+    has_outdoor_temp_sensor: bool = False,
+    outdoor_temp_recorded_at: datetime | None = None,
+    outdoor_temp_last_error: str | None = None,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
 
@@ -166,6 +170,9 @@ def create_mock_atw_unit(
         energy_produced=energy_produced,
         cop=cop,
         outdoor_temperature=outdoor_temperature,
+        has_outdoor_temp_sensor=has_outdoor_temp_sensor,
+        outdoor_temp_recorded_at=outdoor_temp_recorded_at,
+        outdoor_temp_last_error=outdoor_temp_last_error,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
             has_heat_zone2=has_zone2,

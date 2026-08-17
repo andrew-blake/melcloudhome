@@ -35,4 +35,11 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         "forced_hot_water_mode": unit.forced_hot_water_mode,
         "has_zone2": unit.has_zone2,
         "outdoor_temperature": unit.outdoor_temperature,
+        "has_outdoor_temp_sensor": unit.has_outdoor_temp_sensor,
+        "outdoor_temp_recorded_at": (
+            unit.outdoor_temp_recorded_at.isoformat()
+            if unit.outdoor_temp_recorded_at
+            else None
+        ),
+        "outdoor_temp_last_error": unit.outdoor_temp_last_error,
     }

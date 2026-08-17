@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from custom_components.melcloudhome.const import DOMAIN
 
 from .conftest import (
+    TEST_ATW_UNIT_ID,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
@@ -102,3 +103,67 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
     state = hass.states.get(ENTITY_ID)
     assert state.state == "14.0"
     assert state.attributes["last_reading"] == "2026-08-17T09:27:11+00:00"
+
+
+async def test_atw_outdoor_temp_last_error_recorded_on_poll_failure(
+    hass: HomeAssistant,
+) -> None:
+    """A real error (e.g. comfort-graph 500) is distinguishable from "no
+    genuine reading yet" - both must not look identical, or there's no way
+    to diagnose "does this device support comfort-graph at all" (see #251
+    follow-up discussion)."""
+    mock_unit = create_mock_atw_unit()
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    def configure(client: Any) -> None:
+        client.get_atw_outdoor_temperature = AsyncMock(
+            side_effect=ValueError("MELCloud service unavailable (HTTP 500)")
+        )
+
+    entry, _ = await setup_atw_integration_custom(
+        hass, mock_context, configure_client=configure
+    )
+
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    unit = coordinator.get_atw_device(TEST_ATW_UNIT_ID)
+    assert unit is not None
+    assert unit.outdoor_temp_last_error is not None
+    assert "500" in unit.outdoor_temp_last_error
+    # Sensor still shows unknown, not an error state - failures never surface
+    # as anything other than "no value yet" to the end user.
+    assert hass.states.get(ENTITY_ID).state == "unknown"
+
+
+async def test_atw_outdoor_temp_last_error_cleared_on_next_success(
+    hass: HomeAssistant,
+) -> None:
+    """A recorded error clears once the poll succeeds again."""
+    mock_unit = create_mock_atw_unit()
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    def configure(client: Any) -> None:
+        client.get_atw_outdoor_temperature = AsyncMock(
+            side_effect=ValueError("MELCloud service unavailable (HTTP 500)")
+        )
+
+    entry, mock_client = await setup_atw_integration_custom(
+        hass, mock_context, configure_client=configure
+    )
+
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    assert (
+        coordinator.get_atw_device(TEST_ATW_UNIT_ID).outdoor_temp_last_error is not None
+    )
+
+    mock_client.get_atw_outdoor_temperature = AsyncMock(
+        return_value=(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
+    )
+    coordinator.reset_outdoor_temp_polling()
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
+
+    assert coordinator.get_atw_device(TEST_ATW_UNIT_ID).outdoor_temp_last_error is None

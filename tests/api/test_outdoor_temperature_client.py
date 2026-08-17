@@ -234,14 +234,70 @@ async def test_get_outdoor_temperature_api_returns_none(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_outdoor_temperature_exception_handling(mocker):
-    """Test exception handling returns None and logs debug."""
+async def test_get_outdoor_temperature_propagates_exceptions(mocker):
+    """Errors propagate to the caller rather than being swallowed to (None,
+    None) - the coordinator needs to see them to distinguish "endpoint
+    failing" from "no genuine reading yet" (both would otherwise look
+    identical, undermining any diagnostic signal for issue #251-style bugs).
+    The coordinator's own per-unit exception isolation (_poll_outdoor_temperature)
+    is what keeps this from destabilizing the overall update.
+    """
     client = MELCloudHomeClient()
 
-    # Mock _api_request to raise an exception
-    mocker.patch.object(client, "_api_request", side_effect=Exception("API error"))
+    mocker.patch.object(client, "_api_request", side_effect=ValueError("API error"))
 
-    result = await client.get_outdoor_temperature("test-unit-id")
+    with pytest.raises(ValueError, match="API error"):
+        await client.get_outdoor_temperature("test-unit-id")
 
-    # Should return (None, None) on exception, not raise
-    assert result == (None, None)
+
+@freeze_time("2026-08-17 09:30:00", real_asyncio=True)
+@pytest.mark.asyncio
+async def test_get_atw_outdoor_temperature_calls_api_correctly(mocker):
+    """Test that get_atw_outdoor_temperature queries Hourly with a 24h window."""
+    client = MELCloudHomeClient()
+
+    mock_request = mocker.patch.object(
+        client,
+        "_api_request",
+        return_value={
+            "datasets": [
+                {
+                    "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+                    "data": [{"x": "2026-08-17T09:00:23", "y": 16.0}],
+                }
+            ]
+        },
+    )
+
+    result = await client.get_atw_outdoor_temperature("test-atw-unit-id")
+
+    mock_request.assert_called_once()
+    call_args = mock_request.call_args
+    assert call_args[0][0] == "GET"
+    assert call_args[0][1] == "/report/v1/comfort-graph"
+
+    params = call_args[1]["params"]
+    assert params["unitId"] == "test-atw-unit-id"
+    assert params["period"] == "Hourly"
+    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+        tzinfo=UTC
+    )
+    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+        tzinfo=UTC
+    )
+    assert to_dt == datetime(2026, 8, 17, 9, 30, 0, tzinfo=UTC)
+    # 24h window: comfort-graph's Hourly period hard-fails past ~4 days back
+    assert to_dt - from_dt == timedelta(hours=24)
+
+    assert result == (16.0, datetime(2026, 8, 17, 9, 0, 23, tzinfo=UTC))
+
+
+@pytest.mark.asyncio
+async def test_get_atw_outdoor_temperature_propagates_exceptions(mocker):
+    """Same propagation contract as get_outdoor_temperature - see that test."""
+    client = MELCloudHomeClient()
+
+    mocker.patch.object(client, "_api_request", side_effect=ValueError("API error"))
+
+    with pytest.raises(ValueError, match="API error"):
+        await client.get_atw_outdoor_temperature("test-atw-unit-id")

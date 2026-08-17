@@ -418,6 +418,12 @@ class MELCloudHomeClient:
 
         "to" is truncated to seconds=0 so the server's to-echo point is
         identifiable as synthetic (see _parse_outdoor_temp).
+
+        Raises whatever _api_request/_parse_outdoor_temp raise - callers
+        must handle failures. This is deliberate: a real error (e.g. a 500)
+        must be distinguishable from a successful poll finding no genuine
+        reading, so the coordinator can record it for diagnostics (issue
+        #251) instead of both cases looking identically like "no data yet".
         """
         now = datetime.now(UTC).replace(second=0, microsecond=0)
         from_time = now - lookback
@@ -430,27 +436,17 @@ class MELCloudHomeClient:
             "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
         }
 
-        try:
-            response = await self._api_request("GET", endpoint, params=params)
-            if response is None:
-                _LOGGER.debug(
-                    "%s returned None for unit %s (from=%s, to=%s)",
-                    log_label,
-                    unit_id,
-                    params["from"],
-                    params["to"],
-                )
-                return None, None
-            return self._parse_outdoor_temp(response)
-        except Exception:
-            # Log at debug level - outdoor temp is nice-to-have, not critical
+        response = await self._api_request("GET", endpoint, params=params)
+        if response is None:
             _LOGGER.debug(
-                "Failed to fetch %s for unit %s",
+                "%s returned None for unit %s (from=%s, to=%s)",
                 log_label,
                 unit_id,
-                exc_info=True,
+                params["from"],
+                params["to"],
             )
             return None, None
+        return self._parse_outdoor_temp(response)
 
     async def get_outdoor_temperature(
         self, unit_id: str

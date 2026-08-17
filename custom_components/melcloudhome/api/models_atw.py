@@ -185,6 +185,11 @@ class AirToWaterUnit:
     outdoor_temperature: float | None = None  # °C
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
     outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
+    # Set by the coordinator when the outdoor-temp poll itself raised (e.g. a
+    # real HTTP error), distinct from a successful poll finding no genuine
+    # reading. Cleared on the next successful poll. Diagnostic-only signal
+    # for telling "endpoint failing for this unit" apart from "no data yet".
+    outdoor_temp_last_error: str | None = None
 
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False
