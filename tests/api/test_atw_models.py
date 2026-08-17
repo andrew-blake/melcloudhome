@@ -455,6 +455,11 @@ class TestEdgeCases:
         unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
         assert unit.outdoor_temp_recorded_at is None
 
+    def test_outdoor_temp_last_error_at_defaults_none(self) -> None:
+        """outdoor_temp_last_error_at is set by the coordinator, not from_dict."""
+        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
+        assert unit.outdoor_temp_last_error_at is None
+
     def test_empty_string_converts_to_none(self) -> None:
         """Test that empty strings are converted to None."""
         # ErrorCode is empty string in IDLE fixture

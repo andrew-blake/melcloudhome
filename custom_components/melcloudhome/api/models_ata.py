@@ -140,6 +140,7 @@ class AirToAirUnit:
     # reading. Cleared on the next successful poll. Diagnostic-only signal
     # for telling "endpoint failing for this unit" apart from "no data yet".
     outdoor_temp_last_error: str | None = None
+    outdoor_temp_last_error_at: datetime | None = None  # UTC-aware
     # Protection modes (from GET /context; null until ever configured on this unit)
     frost_protection: ProtectionModeState | None = None
     overheat_protection: ProtectionModeState | None = None

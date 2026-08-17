@@ -280,3 +280,4 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
         atw_unit["outdoor_temp_last_error"]
         == "ValueError: MELCloud service unavailable (HTTP 500)"
     )
+    assert atw_unit["outdoor_temp_last_error_at"] is not None

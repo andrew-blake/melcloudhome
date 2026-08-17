@@ -42,4 +42,9 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
             else None
         ),
         "outdoor_temp_last_error": unit.outdoor_temp_last_error,
+        "outdoor_temp_last_error_at": (
+            unit.outdoor_temp_last_error_at.isoformat()
+            if unit.outdoor_temp_last_error_at
+            else None
+        ),
     }

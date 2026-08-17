@@ -636,6 +636,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 unit.outdoor_temperature = old_unit.outdoor_temperature
                 unit.outdoor_temp_recorded_at = old_unit.outdoor_temp_recorded_at
                 unit.outdoor_temp_last_error = old_unit.outdoor_temp_last_error
+                unit.outdoor_temp_last_error_at = old_unit.outdoor_temp_last_error_at
 
             if not self._should_poll_outdoor_temp(unit_id):
                 continue
@@ -646,6 +647,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 )
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = None
+                unit.outdoor_temp_last_error_at = None
 
                 if temp is not None:
                     unit.has_outdoor_temp_sensor = True
@@ -663,6 +665,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             except Exception as err:
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = f"{type(err).__name__}: {err}"
+                unit.outdoor_temp_last_error_at = datetime.now(UTC)
                 _LOGGER.debug(
                     "Failed to fetch %s for %s",
                     log_label,

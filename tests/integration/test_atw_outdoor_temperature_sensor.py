@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock
 
+from freezegun import freeze_time
 from homeassistant.core import HomeAssistant
 
 from custom_components.melcloudhome.const import DOMAIN
@@ -105,6 +106,7 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
     assert state.attributes["last_reading"] == "2026-08-17T09:27:11+00:00"
 
 
+@freeze_time("2026-08-17 09:30:00", real_asyncio=True)
 async def test_atw_outdoor_temp_last_error_recorded_on_poll_failure(
     hass: HomeAssistant,
 ) -> None:
@@ -131,6 +133,7 @@ async def test_atw_outdoor_temp_last_error_recorded_on_poll_failure(
     assert unit is not None
     assert unit.outdoor_temp_last_error is not None
     assert "500" in unit.outdoor_temp_last_error
+    assert unit.outdoor_temp_last_error_at == datetime(2026, 8, 17, 9, 30, tzinfo=UTC)
     # Sensor still shows unknown, not an error state - failures never surface
     # as anything other than "no value yet" to the end user.
     assert hass.states.get(ENTITY_ID).state == "unknown"
@@ -155,9 +158,9 @@ async def test_atw_outdoor_temp_last_error_cleared_on_next_success(
     )
 
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    assert (
-        coordinator.get_atw_device(TEST_ATW_UNIT_ID).outdoor_temp_last_error is not None
-    )
+    unit = coordinator.get_atw_device(TEST_ATW_UNIT_ID)
+    assert unit.outdoor_temp_last_error is not None
+    assert unit.outdoor_temp_last_error_at is not None
 
     mock_client.get_atw_outdoor_temperature = AsyncMock(
         return_value=(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
@@ -166,4 +169,6 @@ async def test_atw_outdoor_temp_last_error_cleared_on_next_success(
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
-    assert coordinator.get_atw_device(TEST_ATW_UNIT_ID).outdoor_temp_last_error is None
+    unit = coordinator.get_atw_device(TEST_ATW_UNIT_ID)
+    assert unit.outdoor_temp_last_error is None
+    assert unit.outdoor_temp_last_error_at is None
