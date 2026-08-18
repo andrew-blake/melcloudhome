@@ -1312,10 +1312,12 @@ class MockMELCloudServer:
 
         if not unit_id:
             return web.json_response({"error": "unitId required"}, status=400)
+        if unit_id not in self.atw_states:
+            return web.json_response({"error": "unit not found"}, status=404)
 
         from_time, to_time = self._parse_report_window(request)
 
-        outdoor_temp = self.atw_states.get(unit_id, {}).get("outdoor_temperature", 10.0)
+        outdoor_temp = self.atw_states[unit_id].get("outdoor_temperature", 10.0)
 
         datapoints = []
         current = from_time.replace(second=26)
