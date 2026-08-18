@@ -10,13 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.4.1
+## What's New in v2.4.2
 
-**Entity names now follow your Home Assistant language.** Sensor and binary sensor names (WiFi signal, Room temperature, Frost protection, Holiday mode, and others) previously always displayed in English regardless of your Home Assistant language setting - they're now translated correctly. Identified and diagnosed by [@Jan-Arild-Blekken](https://github.com/Jan-Arild-Blekken).
-
-**New devices going forward will get entity IDs that match their translated name** for a few diagnostic sensors, including the COP sensor and the minimum/maximum frost and overheat protection sensors. This doesn't affect any of your existing entities.
-
-Norwegian (nb) translations added (thanks @Jan-Arild-Blekken).
+**More reliable outdoor temperature readings.** Heat pump (ATW) outdoor temperature could get stuck at an incorrect value with no way to tell it was wrong - it's now read from the same source as the MELCloud Home app's Reports → Comfort graph. Air conditioning (ATA) outdoor temperature could occasionally fail to update because of an error from the MELCloud API; it's now more reliable, at the cost of showing "unknown" a bit sooner for units left idle for more than 2 days.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
