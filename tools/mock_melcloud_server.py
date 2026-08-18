@@ -1195,16 +1195,12 @@ class MockMELCloudServer:
             charset="utf-8",
         )
 
-    async def get_trend_summary(self, request: web.Request) -> web.Response:
-        """GET /report/v1/trendsummary - Temperature trend data."""
-        unit_id = request.query.get("unitId")
+    @staticmethod
+    def _parse_report_window(request: web.Request) -> tuple[datetime, datetime]:
+        """Parse the "from"/"to" query params shared by trendsummary and comfort-graph."""
         to_param = request.query.get("to", "")
         from_param = request.query.get("from", "")
 
-        if not unit_id:
-            return web.json_response({"error": "unitId required"}, status=400)
-
-        # Parse timestamps
         if to_param:
             to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
         else:
@@ -1214,6 +1210,17 @@ class MockMELCloudServer:
             from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
         else:
             from_time = to_time - timedelta(hours=1)
+
+        return from_time, to_time
+
+    async def get_trend_summary(self, request: web.Request) -> web.Response:
+        """GET /report/v1/trendsummary - Temperature trend data."""
+        unit_id = request.query.get("unitId")
+
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+
+        from_time, to_time = self._parse_report_window(request)
 
         # Generate datapoints (every 10 minutes). Like the real API, genuine
         # readings carry arbitrary seconds (here :26) while synthetic points
@@ -1302,21 +1309,11 @@ class MockMELCloudServer:
         get_atw_outdoor_temperature only reads OUTDOOR_TEMPERATURE.
         """
         unit_id = request.query.get("unitId")
-        to_param = request.query.get("to", "")
-        from_param = request.query.get("from", "")
 
         if not unit_id:
             return web.json_response({"error": "unitId required"}, status=400)
 
-        if to_param:
-            to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
-        else:
-            to_time = datetime.now()
-
-        if from_param:
-            from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
-        else:
-            from_time = to_time - timedelta(hours=1)
+        from_time, to_time = self._parse_report_window(request)
 
         outdoor_temp = self.atw_states.get(unit_id, {}).get("outdoor_temperature", 10.0)
 
