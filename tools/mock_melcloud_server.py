@@ -416,6 +416,9 @@ class MockMELCloudServer:
         trendsummary_route = app.router.add_get(
             "/report/v1/trendsummary", self.get_trend_summary
         )
+        comfort_graph_route = app.router.add_get(
+            "/report/v1/comfort-graph", self.get_comfort_graph
+        )
 
         # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
         app.router.add_get("/ws/token", self.handle_ws_token)
@@ -440,6 +443,7 @@ class MockMELCloudServer:
             telemetry_route,
             energy_route,
             trendsummary_route,
+            comfort_graph_route,
         ]:
             cors.add(route)
 
@@ -1191,16 +1195,12 @@ class MockMELCloudServer:
             charset="utf-8",
         )
 
-    async def get_trend_summary(self, request: web.Request) -> web.Response:
-        """GET /report/v1/trendsummary - Temperature trend data."""
-        unit_id = request.query.get("unitId")
+    @staticmethod
+    def _parse_report_window(request: web.Request) -> tuple[datetime, datetime]:
+        """Parse the "from"/"to" query params shared by trendsummary and comfort-graph."""
         to_param = request.query.get("to", "")
         from_param = request.query.get("from", "")
 
-        if not unit_id:
-            return web.json_response({"error": "unitId required"}, status=400)
-
-        # Parse timestamps
         if to_param:
             to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
         else:
@@ -1210,6 +1210,17 @@ class MockMELCloudServer:
             from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
         else:
             from_time = to_time - timedelta(hours=1)
+
+        return from_time, to_time
+
+    async def get_trend_summary(self, request: web.Request) -> web.Response:
+        """GET /report/v1/trendsummary - Temperature trend data."""
+        unit_id = request.query.get("unitId")
+
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+
+        from_time, to_time = self._parse_report_window(request)
 
         # Generate datapoints (every 10 minutes). Like the real API, genuine
         # readings carry arbitrary seconds (here :26) while synthetic points
@@ -1283,6 +1294,44 @@ class MockMELCloudServer:
                     "isNonInteractive": False,
                 }
             )
+
+        return web.Response(
+            text=json.dumps({"datasets": datasets, "annotations": []}),
+            content_type="text/plain",
+            charset="utf-8",
+        )
+
+    async def get_comfort_graph(self, request: web.Request) -> web.Response:
+        """GET /report/v1/comfort-graph - ATW outdoor temperature data.
+
+        Only models the OUTDOOR_TEMPERATURE dataset — the real endpoint also
+        returns zone/tank temperature datasets and annotations, but
+        get_atw_outdoor_temperature only reads OUTDOOR_TEMPERATURE.
+        """
+        unit_id = request.query.get("unitId")
+
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+        if unit_id not in self.atw_states:
+            return web.json_response({"error": "unit not found"}, status=404)
+
+        from_time, to_time = self._parse_report_window(request)
+
+        outdoor_temp = self.atw_states[unit_id].get("outdoor_temperature", 10.0)
+
+        datapoints = []
+        current = from_time.replace(second=26)
+        while current <= to_time:
+            datapoints.append({"x": current.isoformat(), "y": outdoor_temp})
+            current += timedelta(minutes=10)
+        datapoints.append({"x": to_time.isoformat(), "y": outdoor_temp})  # to-echo
+
+        datasets = [
+            {
+                "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
+                "data": datapoints,
+            }
+        ]
 
         return web.Response(
             text=json.dumps({"datasets": datasets, "annotations": []}),
