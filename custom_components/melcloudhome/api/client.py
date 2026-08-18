@@ -460,9 +460,12 @@ class MELCloudHomeClient:
         quality problems, plus a midnight-rollover artifact where the freshest
         Daily label leads the query time by up to an hour).
 
-        7-day lookback: units stop uploading while idle, so a short window
-        returns no genuine readings for them (the bug behind #111). The
-        coordinator keeps the previous value when this returns None.
+        48h lookback: units stop uploading while idle, so a short window
+        returns no genuine readings for them (the bug behind #111). Live
+        response-time spikes (500 errors seen at 168h/7 days) show the
+        server slows sharply past ~72h, so 48h trades some idle-unit
+        tolerance for reliability and being a better-behaved API client.
+        The coordinator keeps the previous value when this returns None.
 
         Args:
             unit_id: ATA unit UUID
@@ -472,7 +475,7 @@ class MELCloudHomeClient:
             or (None, None) if not available
         """
         return await self._get_report_outdoor_temperature(
-            API_REPORT_TRENDSUMMARY, unit_id, timedelta(days=7), "trendsummary"
+            API_REPORT_TRENDSUMMARY, unit_id, timedelta(hours=48), "trendsummary"
         )
 
     async def get_atw_outdoor_temperature(
@@ -487,7 +490,7 @@ class MELCloudHomeClient:
 
         Uses period=Hourly with a 24h window: comfort-graph's Hourly period
         hard-fails (500) for windows starting more than ~4 days back
-        regardless of width, so unlike ATA's 7-day trendsummary lookback this
+        regardless of width, so unlike ATA's 48h trendsummary lookback this
         can't reach further back. 24h comfortably covers the largest observed
         reporting gap (3.5h) between genuine readings, with margin.
 
