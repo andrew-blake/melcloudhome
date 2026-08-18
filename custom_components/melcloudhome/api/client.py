@@ -21,6 +21,7 @@ from .const_shared import (
     API_FIELD_MEASURE_DATA,
     API_FIELD_VALUE,
     API_FIELD_VALUES,
+    API_REPORT_COMFORT_GRAPH,
     API_REPORT_TRENDSUMMARY,
     API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
@@ -406,6 +407,47 @@ class MELCloudHomeClient:
                 return None, None  # No genuine reading in the window
         return None, None  # No outdoor temp dataset found
 
+    async def _get_report_outdoor_temperature(
+        self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
+    ) -> tuple[float | None, datetime | None]:
+        """Shared implementation for get_outdoor_temperature/get_atw_outdoor_temperature.
+
+        Both query a /report/v1/ endpoint with period=Hourly and parse the
+        same response shape via _parse_outdoor_temp - they differ only in
+        endpoint, lookback window, and log wording.
+
+        "to" is truncated to seconds=0 so the server's to-echo point is
+        identifiable as synthetic (see _parse_outdoor_temp).
+
+        Raises whatever _api_request/_parse_outdoor_temp raise - callers
+        must handle failures. This is deliberate: a real error (e.g. a 500)
+        must be distinguishable from a successful poll finding no genuine
+        reading, so the coordinator can record it for diagnostics (issue
+        #251) instead of both cases looking identically like "no data yet".
+        """
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        from_time = now - lookback
+
+        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
+        params = {
+            "unitId": unit_id,
+            "period": "Hourly",
+            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+        }
+
+        response = await self._api_request("GET", endpoint, params=params)
+        if response is None:
+            _LOGGER.debug(
+                "%s returned None for unit %s (from=%s, to=%s)",
+                log_label,
+                unit_id,
+                params["from"],
+                params["to"],
+            )
+            return None, None
+        return self._parse_outdoor_temp(response)
+
     async def get_outdoor_temperature(
         self, unit_id: str
     ) -> tuple[float | None, datetime | None]:
@@ -418,6 +460,10 @@ class MELCloudHomeClient:
         quality problems, plus a midnight-rollover artifact where the freshest
         Daily label leads the query time by up to an hour).
 
+        7-day lookback: units stop uploading while idle, so a short window
+        returns no genuine readings for them (the bug behind #111). The
+        coordinator keeps the previous value when this returns None.
+
         Args:
             unit_id: ATA unit UUID
 
@@ -425,43 +471,43 @@ class MELCloudHomeClient:
             Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
             or (None, None) if not available
         """
-        # 7-day lookback: units stop uploading while idle, so a short window
-        # returns no genuine readings for them (the bug behind #111). The
-        # coordinator keeps the previous value when this returns None.
-        # "to" is truncated to seconds=0 so the server's to-echo point is
-        # identifiable as synthetic (see _parse_outdoor_temp).
-        now = datetime.now(UTC).replace(second=0, microsecond=0)
-        from_time = now - timedelta(days=7)
+        return await self._get_report_outdoor_temperature(
+            API_REPORT_TRENDSUMMARY, unit_id, timedelta(days=7), "trendsummary"
+        )
 
-        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
-        params = {
-            "unitId": unit_id,
-            "period": "Hourly",
-            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-        }
+    async def get_atw_outdoor_temperature(
+        self, unit_id: str
+    ) -> tuple[float | None, datetime | None]:
+        """Get latest outdoor temperature for an ATW unit.
 
-        try:
-            response = await self._api_request(
-                "GET", API_REPORT_TRENDSUMMARY, params=params
-            )
-            if response is None:
-                _LOGGER.debug(
-                    "Trendsummary returned None for unit %s (from=%s, to=%s)",
-                    unit_id,
-                    params["from"],
-                    params["to"],
-                )
-                return None, None
-            return self._parse_outdoor_temp(response)
-        except Exception:
-            # Log at debug level - outdoor temp is nice-to-have, not critical
-            _LOGGER.debug(
-                "Failed to fetch outdoor temperature for unit %s",
-                unit_id,
-                exc_info=True,
-            )
-            return None, None
+        ATW's live /context OutdoorTemperature can be present but silently
+        wrong (issue #251) or absent entirely, with no way to tell which from
+        the value alone, so this always queries the comfort-graph report
+        instead of ever trusting the live value.
+
+        Uses period=Hourly with a 24h window: comfort-graph's Hourly period
+        hard-fails (500) for windows starting more than ~4 days back
+        regardless of width, so unlike ATA's 7-day trendsummary lookback this
+        can't reach further back. 24h comfortably covers the largest observed
+        reporting gap (3.5h) between genuine readings, with margin.
+
+        Reuses _parse_outdoor_temp's UTC-timestamp assumption, which was
+        empirically justified for ATA's trendsummary endpoint - verified
+        separately for comfort-graph (2026-08-17): across 108 genuine
+        readings over a 24h window for a real ATW unit, none led the UTC
+        query time, which local-time (CEST, UTC+2 in August) stamps would by
+        up to two hours.
+
+        Args:
+            unit_id: ATW unit UUID
+
+        Returns:
+            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
+            or (None, None) if not available
+        """
+        return await self._get_report_outdoor_temperature(
+            API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"
+        )
 
     async def get_telemetry_actual(
         self,

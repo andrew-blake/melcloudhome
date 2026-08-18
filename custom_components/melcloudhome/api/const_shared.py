@@ -19,6 +19,7 @@ API_USER_CONTEXT = "/context"
 API_TELEMETRY_ENERGY = "/telemetry/telemetry/energy/{unit_id}"
 API_TELEMETRY_ACTUAL = "/telemetry/telemetry/actual/{unit_id}"
 API_REPORT_TRENDSUMMARY = "/report/v1/trendsummary"
+API_REPORT_COMFORT_GRAPH = "/report/v1/comfort-graph"
 
 # API Response Field Names (used in parsing responses - shared across device types)
 API_FIELD_MEASURE_DATA = "measureData"
@@ -56,6 +57,7 @@ __all__ = [
     "API_FIELD_MEASURE_DATA",
     "API_FIELD_VALUE",
     "API_FIELD_VALUES",
+    "API_REPORT_COMFORT_GRAPH",
     "API_REPORT_TRENDSUMMARY",
     "API_TELEMETRY_ACTUAL",
     "API_TELEMETRY_ENERGY",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .api.models_atw import AirToWaterUnit
+from .diagnostics_shared import serialize_outdoor_temp_fields
 
 
 def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
@@ -35,4 +36,5 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         "forced_hot_water_mode": unit.forced_hot_water_mode,
         "has_zone2": unit.has_zone2,
         "outdoor_temperature": unit.outdoor_temperature,
+        **serialize_outdoor_temp_fields(unit),
     }

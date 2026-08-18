@@ -135,6 +135,12 @@ class AirToAirUnit:
     # When the value was actually recorded by the unit. Idle units stop
     # uploading outdoor temperature, so this can lag hours behind (issue #171)
     outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
+    # Set by the coordinator when the outdoor-temp poll itself raised (e.g. a
+    # real HTTP error), distinct from a successful poll finding no genuine
+    # reading. Cleared on the next successful poll. Diagnostic-only signal
+    # for telling "endpoint failing for this unit" apart from "no data yet".
+    outdoor_temp_last_error: str | None = None
+    outdoor_temp_last_error_at: datetime | None = None  # UTC-aware
     # Protection modes (from GET /context; null until ever configured on this unit)
     frost_protection: ProtectionModeState | None = None
     overheat_protection: ProtectionModeState | None = None

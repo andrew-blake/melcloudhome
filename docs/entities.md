@@ -146,7 +146,12 @@ For each heat pump system, the following entities are created:
 - **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
   - Ambient temperature from the outdoor unit
-  - Available on all connected ATW devices; read from the regular polling response
+  - Created for every ATW unit; shows `unknown` until a reading arrives. Sourced
+    exclusively from the comfort-graph report, never the live polling response —
+    that value can be silently wrong or absent with no way to tell from the
+    value alone (issue #251)
+  - Attribute `last_reading`: timestamp of when the unit actually recorded the
+    value, for detecting stale data in automations (same pattern as ATA above)
 
 **Operation Status:**
 

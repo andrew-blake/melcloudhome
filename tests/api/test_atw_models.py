@@ -424,10 +424,14 @@ class TestEdgeCases:
         assert unit.power is False  # Default
         assert unit.operation_status == "Stop"  # Default
 
-    def test_outdoor_temperature_parsed_from_settings(self) -> None:
-        """Test outdoor temperature is parsed from settings array."""
+    def test_outdoor_temperature_never_parsed_from_live_settings(self) -> None:
+        """Live OutdoorTemperature can be silently wrong with no way to tell
+        from the value alone (issue #251), so from_dict never trusts it -
+        outdoor_temperature is populated only by the coordinator's
+        comfort-graph poll, same as ATA's trendsummary-only outdoor temp.
+        """
         unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
-        assert unit.outdoor_temperature == 18.0
+        assert unit.outdoor_temperature is None
 
     def test_outdoor_temperature_none_when_missing(self) -> None:
         """Test outdoor temperature defaults to None when not in settings."""
@@ -439,6 +443,22 @@ class TestEdgeCases:
         }
         unit = AirToWaterUnit.from_dict(unit_data)
         assert unit.outdoor_temperature is None
+
+    def test_has_outdoor_temp_sensor_defaults_false(self) -> None:
+        """has_outdoor_temp_sensor is a runtime discovery flag set by the
+        coordinator after a successful comfort-graph poll, not by from_dict."""
+        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
+        assert unit.has_outdoor_temp_sensor is False
+
+    def test_outdoor_temp_recorded_at_defaults_none(self) -> None:
+        """outdoor_temp_recorded_at is set by the coordinator, not from_dict."""
+        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
+        assert unit.outdoor_temp_recorded_at is None
+
+    def test_outdoor_temp_last_error_at_defaults_none(self) -> None:
+        """outdoor_temp_last_error_at is set by the coordinator, not from_dict."""
+        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
+        assert unit.outdoor_temp_last_error_at is None
 
     def test_empty_string_converts_to_none(self) -> None:
         """Test that empty strings are converted to None."""
