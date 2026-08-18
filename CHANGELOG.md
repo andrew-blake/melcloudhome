@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.4.2] - 2026-08-18
+
+### Fixed
+
+- Heat pump (ATW) outdoor temperature could get stuck at an incorrect value (e.g. a value of 0) with no way to tell it was wrong. It's now read from the same source as the MELCloud Home app's Reports → Comfort graph, which doesn't have this problem. (#251)
+- Air conditioning (ATA) outdoor temperature could occasionally fail to update because the underlying request looked back over a week of history, which could trigger an error from the MELCloud API. It now looks back 48 hours instead, which is more reliable - the trade-off is that a unit idle for more than 48 hours (rather than 7 days) will show outdoor temperature as "unknown" until it's used again.
+
+
 ## [2.4.1] - 2026-08-14
 
 ### Added
