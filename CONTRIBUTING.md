@@ -18,9 +18,9 @@ Report bugs by [opening a new issue](https://github.com/andrew-blake/melcloudhom
 - Diagnostics export from Home Assistant if relevant
 - Notes on what you've tried
 
-### Proposing Features
+### Proposing Features and Non-Trivial Fixes
 
-Open an issue to discuss new features before starting work. This helps ensure the feature aligns with the project's goals and avoids duplicate effort.
+Open an issue first for anything beyond a typo or one-line fix — feature or bug fix, AI-assisted or not. This helps ensure the change aligns with the project's goals and avoids duplicate effort.
 
 ### Submitting Code
 
@@ -35,6 +35,24 @@ Open an issue to discuss new features before starting work. This helps ensure th
 - `feat/description` - New features
 - `fix/description` - Bug fixes
 - `docs/description` - Documentation
+
+### AI and Agent-Assisted Contributions
+
+AI-assisted PRs are welcome — just make sure a human (you) has read and run the diff
+before submitting. As with any PR: it should be worth more to the project than the
+time it takes to review, which usually isn't true if an AI wrote most of it and nobody
+checked.
+
+- Note AI/agent involvement in the PR description.
+- Cite real evidence for API/device claims (cassette, HAR, hardware tested) — same as
+  any other contribution.
+- Keep to one open AI-assisted PR at a time so review stays manageable.
+- `good first issue` / `help wanted` are for people learning the codebase — please
+  tackle those yourself rather than via an agent.
+
+PRs that look unsupervised (no test evidence, identical text posted across multiple
+issues, stray agent-tooling files in the diff) get closed without a long back-and-forth
+— happy to take another look once that's addressed.
 
 ## Development Setup
 
@@ -110,8 +128,9 @@ make type-check    # Type checking
 
 1. Ensure all tests pass locally (`make all`)
 2. Update documentation if you've changed functionality
-3. CHANGELOG.md updates are not required (maintainer handles releases)
-4. PRs must pass all CI checks:
+3. Note AI/agent involvement in the PR description
+4. CHANGELOG.md updates are not required (maintainer handles releases)
+5. PRs must pass all CI checks:
    - Ruff formatting and linting
    - mypy type checking
    - API tests
