@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .api.models_ata import AirToAirUnit
+from .diagnostics_shared import serialize_outdoor_temp_fields
 
 
 def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
@@ -30,16 +31,5 @@ def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
             unit.capabilities.has_energy_consumed_meter if unit.capabilities else None
         ),
         "outdoor_temperature": unit.outdoor_temperature,
-        "has_outdoor_temp_sensor": unit.has_outdoor_temp_sensor,
-        "outdoor_temp_recorded_at": (
-            unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
-        ),
-        "outdoor_temp_last_error": unit.outdoor_temp_last_error,
-        "outdoor_temp_last_error_at": (
-            unit.outdoor_temp_last_error_at.isoformat()
-            if unit.outdoor_temp_last_error_at
-            else None
-        ),
+        **serialize_outdoor_temp_fields(unit),
     }
