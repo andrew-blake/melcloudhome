@@ -716,10 +716,11 @@ GET /report/v1/trendsummary?unitId=aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825&period=D
 **Integration Usage:**
 
 - Polled every 30 minutes (initial probe on startup, then periodic updates)
-- Uses `period=Hourly` with a 7-day window, `to` truncated to seconds=0 so the `to`-echo point is recognisable as synthetic
+- Uses `period=Hourly` with a 48h window, `to` truncated to seconds=0 so the `to`-echo point is recognisable as synthetic
 - Extracts the latest genuine reading (last datapoint with seconds ≠ 0) from the OUTDOOR_TEMPERATURE dataset — value and `last_reading` timestamp both come from that reading
 - The sensor entity is always created; it reads `unknown` until a genuine reading arrives (permanently for units that never report outdoor temperature)
-- Units idle for the whole 7-day window return no genuine readings, and the coordinator keeps the previous value
+- Units idle for the whole 48h window return no genuine readings, and the coordinator keeps the previous value
+- 48h was chosen over the original 7-day window after live response-time measurements showed the wider window enters a slow zone past ~72h-96h and can hit a genuine `500` at 168h; 48h stays in the fast/flat zone (0.4s-2.4s) at the cost of some idle-unit tolerance
 
 **Notes:**
 
