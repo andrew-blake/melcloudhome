@@ -170,7 +170,7 @@ class TestParseOutdoorTemp:
 @freeze_time("2026-02-03 12:30:45", real_asyncio=True)
 @pytest.mark.asyncio
 async def test_get_outdoor_temperature_calls_api_correctly(mocker):
-    """Test that get_outdoor_temperature queries Hourly with a 7-day window.
+    """Test that get_outdoor_temperature queries Hourly with a 48h window.
 
     The "to" timestamp must be truncated to whole seconds=0 so the server's
     to-echo point is recognisable as synthetic by the parser.
@@ -213,8 +213,8 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
         tzinfo=UTC
     )
     assert to_dt == datetime(2026, 2, 3, 12, 30, 0, tzinfo=UTC)
-    # 7-day window so units idle for days still return their last readings
-    assert to_dt - from_dt == timedelta(days=7)
+    # 48h window so units idle for a day or two still return their last readings
+    assert to_dt - from_dt == timedelta(hours=48)
 
     # Verify result
     assert result == (12.0, datetime(2026, 2, 3, 12, 0, 23, tzinfo=UTC))
