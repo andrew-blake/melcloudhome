@@ -14,7 +14,11 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
@@ -244,15 +248,7 @@ async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
 async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
     hass: HomeAssistant,
 ) -> None:
-    """Diagnostics must distinguish "comfort-graph never worked for this
-    unit" from "no reading yet" from "polled fine, no error" - otherwise a
-    user's diagnostics dump can't tell those apart (see #251 follow-up:
-    there's no static way to know upfront whether a device supports the
-    comfort-graph endpoint, so this is the reactive signal)."""
-    # Pre-set fields represent the last known-good reading; the mocked poll
-    # below then fails, so the coordinator sets outdoor_temp_last_error for
-    # real without touching the other three (same behaviour as a real device
-    # that last reported fine and is now erroring).
+    """Diagnostics distinguishes a last-good reading from a fresh poll error."""
     unit = create_mock_atw_unit(
         outdoor_temperature=16.0,
         has_outdoor_temp_sensor=True,
@@ -288,20 +284,7 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
 async def test_diagnostics_redacts_device_name_from_entity_id_key(
     hass: HomeAssistant,
 ) -> None:
-    """Regression: a device-name-derived entity_id segment must never leak
-    the real device name into a diagnostics dump's entity dict *keys*.
-
-    Structured fields (building name, unit name) are already redacted, but
-    the entity_id itself is also derived from the device name for
-    has_entity_name entities (HA prepends `device.name_by_user or device.name`
-    - see entity_registry._async_get_full_entity_name). Under normal setup
-    this integration clears name_by_user before entities are created
-    (`_clear_friendly_device_names`) specifically to keep it out of entity_id,
-    but a legacy/manually-recreated entity_id (see ADR-013's "Entity ID
-    recreation risk") can still end up with the friendly name baked in
-    permanently, since entity_id is never recomputed once registered. This
-    simulates that leaked entity directly against the entity registry.
-    """
+    """A legacy/recreated entity_id with the real device name baked in gets redacted."""
     unit_id = "11112222-3333-4444-5555-666677778888"
     unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
     mock_context = create_mock_ata_user_context(
@@ -316,8 +299,6 @@ async def test_diagnostics_redacts_device_name_from_entity_id_key(
     device_reg = dr.async_get(hass)
     device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
     assert device is not None
-    # Sanity check: the real friendly-name mechanism set this, matching the
-    # slug baked into the leaked entity_id below.
     assert device.name_by_user == "Test Cottage Bathroom"
 
     entity_reg = er.async_get(hass)
@@ -345,12 +326,64 @@ async def test_diagnostics_redacts_device_name_from_entity_id_key(
 
 
 @pytest.mark.asyncio
+async def test_diagnostics_redacts_area_name_from_entity_id_key(
+    hass: HomeAssistant,
+) -> None:
+    """A leaked entity_id matching only the (shorter) area slug, not the
+    longer name_by_user slug, still gets redacted - this integration always
+    sets name_by_user to "{building} {unit}", so a leaked entity_id using
+    just the area/building name alone (the real-world case found live
+    2026-08-19) would slip past a name_by_user-only check."""
+    unit_id = "aaaa1111-2222-3333-4444-555566667777"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-2", name="Test Building", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    assert device.name_by_user == "Test Building Bathroom"
+
+    area_reg = ar.async_get(hass)
+    area = area_reg.async_get_or_create("Test Building")
+    device_reg.async_update_device(device.id, area_id=area.id)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None and device.area_id == area.id
+
+    entity_reg = er.async_get(hass)
+    leaked = entity_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{unit_id}_leaked_sensor",
+        suggested_object_id="test_building_leaked_sensor",
+        device_id=device.id,
+        config_entry=entry,
+    )
+    hass.states.async_set(leaked.entity_id, "42")
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    entities = diagnostics["entities"]
+
+    assert leaked.entity_id not in entities
+    blob = json.dumps(entities)
+    assert "test_building" not in blob
+
+    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
+    assert len(redacted_keys) == 1
+    assert redacted_keys[0].startswith("sensor.redacted_device_")
+
+
+@pytest.mark.asyncio
 async def test_diagnostics_single_device_type_entity_ids_unaffected(
     hass: HomeAssistant,
 ) -> None:
-    """Regression: single-device accounts have no device-name prefix in their
-    entity_ids at all (see docs/entities.md) - the redaction pass must be a
-    no-op here, not accidentally mangle the stable short-id entity IDs."""
+    """Single-device accounts have no name prefix to redact - must be a no-op."""
     mock_context = create_mock_ata_user_context()
     entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
