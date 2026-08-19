@@ -25,23 +25,10 @@ _ENTITY_ID_PREFIX = re.compile(r"^(.+)_(?=melcloudhome_)")
 def _redact_entity_id(
     entity_id: str, device_id: str | None, area_id: str | None
 ) -> str:
-    """Redact any real-name prefix baked into an entity_id, whatever put it there.
-
-    Every entity_id this integration generates is exactly
-    `{domain}.[prefix_]melcloudhome_{shortid}_{suffix}` - "melcloudhome_" is a
-    hardcoded, never-real-name-derived marker, so any non-empty prefix before
-    it is some real name by construction. Deliberately doesn't enumerate
-    *why* (device `name_by_user`, an assigned area, a legacy/manually-
-    recreated entity_id - see ADR-013 - or any future mechanism): two
-    independent real ones were already found reactively via live testing, so
-    a structural check catches whatever comes next too, not just those two.
-
-    Hashes the area id when available (shared by every device in that area,
-    so sibling devices redact to the same placeholder), the device id
-    otherwise - never the leaked name itself, which is exactly what we're
-    trying to keep unguessable (a real building/room name is low-entropy
-    enough to dictionary-attack a hash of the name itself, unlike a UUID).
-    """
+    """Redact any real-name prefix before the never-name-derived "melcloudhome_"
+    marker, regardless of what put it there. Hashes area_id over device_id when
+    available so sibling devices share a placeholder; hashes an id rather than
+    the name itself since a real name is guessable via dictionary attack."""
     domain, _, object_id = entity_id.partition(".")
     match = _ENTITY_ID_PREFIX.match(object_id)
     if not match or device_id is None:
