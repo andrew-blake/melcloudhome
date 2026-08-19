@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .coordinator import MELCloudHomeCoordinator
@@ -16,6 +18,42 @@ from .diagnostics_ata import serialize_ata_unit
 from .diagnostics_atw import serialize_atw_unit
 
 TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "access_token", "refresh_token", "token_expiry"}
+
+
+def _redact_entity_id(entity_id: str, device: dr.DeviceEntry | None) -> str:
+    """Strip a device-name-derived slug out of an entity_id, if present.
+
+    Real running installs never actually hit this: `_clear_friendly_device_names`
+    (see __init__.py) clears `name_by_user` before entities are created, so
+    entity_id is always generated from the stable UUID-based `device.name`, not
+    the real building/room name. But entity_id is set once and never
+    recomputed, so a legacy or manually-recreated entity (HA's "Recreate
+    entity IDs" action regenerates from whatever `name_by_user` is set to at
+    the time - see ADR-013's "Entity ID recreation risk") can still have the
+    friendly name baked into its entity_id permanently. Diagnostics must not
+    forward that.
+
+    Only `name_by_user` is checked, not `device.name` - the latter is always
+    the harmless `melcloudhome_xxxx_yyyy` short id and matches every normal
+    entity_id by design (see docs/entities.md), so matching against it too
+    would strip that useful short id from every entity, not just leaked ones.
+    """
+    if device is None or not device.name_by_user:
+        return entity_id
+    slug = slugify(device.name_by_user)
+    if not slug:
+        return entity_id
+    domain, _, object_id = entity_id.partition(".")
+    # Hash the device registry ID, not the name - the name is exactly what
+    # we're trying to keep unguessable.
+    placeholder = (
+        f"redacted_device_{hashlib.sha256(device.id.encode()).hexdigest()[:8]}"
+    )
+    if object_id == slug:
+        return f"{domain}.{placeholder}"
+    if object_id.startswith(f"{slug}_"):
+        return f"{domain}.{placeholder}{object_id[len(slug) :]}"
+    return entity_id
 
 
 async def async_get_config_entry_diagnostics(
@@ -28,15 +66,20 @@ async def async_get_config_entry_diagnostics(
 
     # Get all entities for this config entry
     entity_reg = er.async_get(hass)
+    device_reg = dr.async_get(hass)
     entities = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
 
-    # Collect entity states
+    # Collect entity states, redacting any device-name-derived segment out of
+    # the entity_id key itself (see _redact_entity_id).
     entity_data = {}
     for entity in entities:
         if state := hass.states.get(entity.entity_id):
             attrs = dict(state.attributes)
             attrs.pop("friendly_name", None)
-            entity_data[entity.entity_id] = {
+            device = (
+                device_reg.async_get(entity.device_id) if entity.device_id else None
+            )
+            entity_data[_redact_entity_id(entity.entity_id, device)] = {
                 "state": state.state,
                 "attributes": attrs,
             }

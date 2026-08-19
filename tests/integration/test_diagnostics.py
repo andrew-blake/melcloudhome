@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
@@ -281,3 +282,81 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
         == "ValueError: MELCloud service unavailable (HTTP 500)"
     )
     assert atw_unit["outdoor_temp_last_error_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_device_name_from_entity_id_key(
+    hass: HomeAssistant,
+) -> None:
+    """Regression: a device-name-derived entity_id segment must never leak
+    the real device name into a diagnostics dump's entity dict *keys*.
+
+    Structured fields (building name, unit name) are already redacted, but
+    the entity_id itself is also derived from the device name for
+    has_entity_name entities (HA prepends `device.name_by_user or device.name`
+    - see entity_registry._async_get_full_entity_name). Under normal setup
+    this integration clears name_by_user before entities are created
+    (`_clear_friendly_device_names`) specifically to keep it out of entity_id,
+    but a legacy/manually-recreated entity_id (see ADR-013's "Entity ID
+    recreation risk") can still end up with the friendly name baked in
+    permanently, since entity_id is never recomputed once registered. This
+    simulates that leaked entity directly against the entity registry.
+    """
+    unit_id = "11112222-3333-4444-5555-666677778888"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-1", name="Test Cottage", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    # Sanity check: the real friendly-name mechanism set this, matching the
+    # slug baked into the leaked entity_id below.
+    assert device.name_by_user == "Test Cottage Bathroom"
+
+    entity_reg = er.async_get(hass)
+    leaked = entity_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{unit_id}_leaked_sensor",
+        suggested_object_id="test_cottage_bathroom_leaked_sensor",
+        device_id=device.id,
+        config_entry=entry,
+    )
+    hass.states.async_set(leaked.entity_id, "42")
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    entities = diagnostics["entities"]
+
+    assert leaked.entity_id not in entities
+    blob = json.dumps(entities)
+    assert "test_cottage" not in blob
+    assert "bathroom" not in blob
+
+    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
+    assert len(redacted_keys) == 1
+    assert redacted_keys[0].startswith("sensor.redacted_device_")
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_single_device_type_entity_ids_unaffected(
+    hass: HomeAssistant,
+) -> None:
+    """Regression: single-device accounts have no device-name prefix in their
+    entity_ids at all (see docs/entities.md) - the redaction pass must be a
+    no-op here, not accidentally mangle the stable short-id entity IDs."""
+    mock_context = create_mock_ata_user_context()
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    entities = diagnostics["entities"]
+
+    assert "climate.melcloudhome_a1b2_9abc_climate" in entities
+    assert "sensor.melcloudhome_a1b2_9abc_room_temperature" in entities
+    assert not any("redacted_device_" in key for key in entities)
