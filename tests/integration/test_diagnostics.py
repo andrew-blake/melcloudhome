@@ -14,6 +14,11 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
@@ -243,15 +248,7 @@ async def test_diagnostics_redacts_tokens(hass: HomeAssistant) -> None:
 async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
     hass: HomeAssistant,
 ) -> None:
-    """Diagnostics must distinguish "comfort-graph never worked for this
-    unit" from "no reading yet" from "polled fine, no error" - otherwise a
-    user's diagnostics dump can't tell those apart (see #251 follow-up:
-    there's no static way to know upfront whether a device supports the
-    comfort-graph endpoint, so this is the reactive signal)."""
-    # Pre-set fields represent the last known-good reading; the mocked poll
-    # below then fails, so the coordinator sets outdoor_temp_last_error for
-    # real without touching the other three (same behaviour as a real device
-    # that last reported fine and is now erroring).
+    """Diagnostics distinguishes a last-good reading from a fresh poll error."""
     unit = create_mock_atw_unit(
         outdoor_temperature=16.0,
         has_outdoor_temp_sensor=True,
@@ -281,3 +278,158 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
         == "ValueError: MELCloud service unavailable (HTTP 500)"
     )
     assert atw_unit["outdoor_temp_last_error_at"] is not None
+
+
+def _assert_leak_redacted(
+    entities: dict, leaked_entity_id: str, raw_substring: str
+) -> None:
+    """Shared assertion for the leak-redaction tests below."""
+    assert leaked_entity_id not in entities
+    assert raw_substring not in json.dumps(entities)
+
+    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
+    assert len(redacted_keys) == 1
+    assert redacted_keys[0].startswith("sensor.redacted_device_")
+
+
+async def _register_leaked_entity(
+    hass: HomeAssistant, entry, unit_id: str, device_id: str, prefix: str
+):
+    """Register an entity whose object_id has `prefix` baked in before the
+    real `melcloudhome_{shortid}_...` object_id this integration always
+    generates - matching the actual shape of every real leak observed live
+    (e.g. `mollebacksgatan_10_melcloudhome_ec56_6442_outdoor_temperature`),
+    not an arbitrary made-up suffix."""
+    short_id = f"{unit_id[:4]}_{unit_id[-4:]}"
+    entity_reg = er.async_get(hass)
+    leaked = entity_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{unit_id}_leaked_sensor",
+        suggested_object_id=f"{prefix}_melcloudhome_{short_id}_leaked_sensor",
+        device_id=device_id,
+        config_entry=entry,
+    )
+    hass.states.async_set(leaked.entity_id, "42")
+    return leaked
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_device_name_from_entity_id_key(
+    hass: HomeAssistant,
+) -> None:
+    """A legacy/recreated entity_id with the real device name baked in gets redacted."""
+    unit_id = "11112222-3333-4444-5555-666677778888"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-1", name="Test Cottage", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    assert device.name_by_user == "Test Cottage Bathroom"
+
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "test_cottage_bathroom"
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_cottage")
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_area_name_from_entity_id_key(
+    hass: HomeAssistant,
+) -> None:
+    """A leaked entity_id matching only the (shorter) area slug, not the
+    longer name_by_user slug, still gets redacted - this integration always
+    sets name_by_user to "{building} {unit}", so a leaked entity_id using
+    just the area/building name alone (the real-world case found live
+    2026-08-19) would slip past a name_by_user-only check."""
+    unit_id = "aaaa1111-2222-3333-4444-555566667777"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-2", name="Test Building", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    assert device.name_by_user == "Test Building Bathroom"
+
+    area_reg = ar.async_get(hass)
+    area = area_reg.async_get_or_create("Test Building")
+    device_reg.async_update_device(device.id, area_id=area.id)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None and device.area_id == area.id
+
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "test_building"
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_building")
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_unknown_mechanism_leak(hass: HomeAssistant) -> None:
+    """The whole point of the structural (regex) redaction: it doesn't need
+    to know *why* a name leaked. A device with no `name_by_user` and no area
+    assigned still gets an arbitrary leaked prefix redacted - simulating a
+    mechanism neither of the two tests above cover (e.g. a future HA
+    behavior, or a naming scheme from a much older integration version)."""
+    unit_id = "cccc9999-8888-7777-6666-555544443333"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Landing")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-3", name="No Area Building", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    # Clear name_by_user and any auto-suggested area - neither known
+    # mechanism is in play here, only the arbitrary leaked prefix below.
+    device_reg.async_update_device(device.id, name_by_user=None, area_id=None)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None and not device.name_by_user and not device.area_id
+
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "some_ancient_naming_scheme"
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    _assert_leak_redacted(
+        diagnostics["entities"], leaked.entity_id, "some_ancient_naming_scheme"
+    )
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_single_device_type_entity_ids_unaffected(
+    hass: HomeAssistant,
+) -> None:
+    """Single-device accounts have no name prefix to redact - must be a no-op."""
+    mock_context = create_mock_ata_user_context()
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    entities = diagnostics["entities"]
+
+    assert "climate.melcloudhome_a1b2_9abc_climate" in entities
+    assert "sensor.melcloudhome_a1b2_9abc_room_temperature" in entities
+    assert not any("redacted_device_" in key for key in entities)
