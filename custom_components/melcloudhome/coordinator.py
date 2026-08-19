@@ -372,12 +372,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
-        # The first energy/telemetry fetch is ~22 sequential paced requests
-        # (ADR-021). Run it in the background so entity creation isn't
-        # blocked on it; the periodic timers above are already registered,
-        # so a failure here self-heals at the next tick.
-        self._startup_fetch_task = self.hass.async_create_background_task(
-            self._run_startup_fetch(), name=f"{DOMAIN}-startup-fetch"
+        # Deferred off the setup path — see _run_startup_fetch (ADR-021).
+        self._startup_fetch_task = self._config_entry.async_create_background_task(
+            self.hass, self._run_startup_fetch(), name=f"{DOMAIN}-startup-fetch"
         )
 
         # Start the real-time WebSocket listener unless opted out
@@ -508,10 +505,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         if self._startup_fetch_task is not None and not self._startup_fetch_task.done():
             self._startup_fetch_task.cancel()
             # Awaited, not just cancelled: HA's own background-task cleanup
-            # runs in _async_process_on_unload, AFTER async_unload_entry has
-            # already called this method and closed the client. Without this
-            # await, an in-flight request would have the session closed
-            # underneath it.
+            # runs after async_unload_entry has closed the client (ADR-021).
             with contextlib.suppress(asyncio.CancelledError):
                 await self._startup_fetch_task
         await self.client.close()

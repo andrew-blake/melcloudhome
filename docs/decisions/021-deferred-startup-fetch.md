@@ -53,13 +53,18 @@ move is a robustness downgrade in its own right — see Decision.
 
 **The first energy and telemetry fetch runs in a background task**
 (`MELCloudHomeCoordinator._run_startup_fetch`), created with
-`hass.async_create_background_task`. `async_setup` no longer awaits it.
+`ConfigEntry.async_create_background_task` — the same call the WebSocket
+listener already uses. `async_setup` no longer awaits it.
 
-`hass.async_create_task` is deliberately *not* used:
-`async_block_till_done()` awaits `hass._tasks` and reaches
-`hass._background_tasks` only with `wait_background_tasks=True`
-(`core.py:962-977`), so a tracked task would still block HA bootstrap and
-every test that blocks till done.
+`async_create_task` is deliberately *not* used: `async_block_till_done()`
+awaits only the foreground task set, reaching background tasks solely with
+`wait_background_tasks=True`, so a tracked task would still block HA
+bootstrap and every test that blocks till done.
+
+Entry-scoped rather than `hass`-scoped so the task is tied to the entry
+lifecycle: if setup raises after the task is created, HA never calls
+`async_shutdown` for a failed entry, and a `hass`-scoped task would go on
+fetching with nothing left to cancel it.
 
 **The periodic 30/60-minute timer registrations stay eager in
 `async_setup`.** `_update_single_energy_tracker` (`coordinator.py:282`) is a
@@ -68,12 +73,13 @@ fetch, so registering the timers up front means a cancelled or failed
 startup fetch still recovers at the next tick. Moving registration into the
 background task would trade that self-healing away.
 
-**The task is cancelled and awaited in `async_shutdown`**, before
-`client.close()`. Awaiting matters: HA's own background-task cleanup runs in
-`_async_process_on_unload`, which fires *after* `async_unload_entry` has
-already called `async_shutdown` and closed the client
-(`config_entries.py:1002-1004, 1185`). Cancelling without awaiting would let
-an in-flight request have its session closed underneath it.
+**The task is also cancelled and awaited explicitly in `async_shutdown`**,
+before `client.close()`. HA's own entry-scoped cleanup is not enough on its
+own: it runs in `_async_process_on_unload`, which fires *after*
+`async_unload_entry` has already called `async_shutdown` and closed the
+client, so an in-flight request would have its session closed underneath it.
+Cancelling here, and awaiting rather than only cancelling, lets it unwind
+first.
 
 `/context` is unaffected and stays synchronous in
 `async_config_entry_first_refresh` — core climate and power-state entities
@@ -89,26 +95,16 @@ need it to exist at all.
   that a missing reading reads `unknown`, not `unavailable`; this only
   changes when that already-correct state is observable.
 - **A transient `unknown` does not corrupt long-term statistics.** Verified
-  against HA's statistics compiler:
-  - `unknown` never becomes a sample — `_entity_history_to_float_and_state`
-    (`components/sensor/recorder.py:218-233`) parses with `float()` inside
-    `try/except (ValueError, TypeError)`, so the state is dropped before
-    reaching any reset logic.
-  - The comparison baseline survives the restart in the database, not in
-    memory: `new_state = old_state = last_stat.get("state")` (`:692-698`),
-    read via `get_latest_short_term_statistics_with_session` (`:591`).
-  - `reset_detected` (`:452-470`) is purely value-based —
-    `fstate < 0.9 * previous_fstate`. It has no time term, so a gap of any
-    length is invisible to it.
-  - A compile window containing only `unknown` is skipped wholesale
-    (`:582-583`), leaving no row rather than a zero.
-  - First-ever setup is equally safe: with no prior statistics the zero
-    point is set from the first *valid float* (`:734-739`), which is still
-    the first real value.
-- The same code path shows that a `total_increasing` value moving
-  *backwards* by more than 10% **does** start a new cycle (`:740-757`) —
-  the phantom-spike mechanism. Nothing in this decision can cause that, but
-  the energy-tracker lost-update recorded in the backlog can; that item is a
-  real hazard rather than a theoretical one.
+  against HA's statistics compiler (`components/sensor/recorder.py`):
+  `unknown` never becomes a sample, because
+  `_entity_history_to_float_and_state` parses with `float()` inside
+  `try/except` and drops the state before any reset logic sees it; and
+  `reset_detected` is purely value-based (`fstate < 0.9 * previous_fstate`)
+  with no time term, so a gap of any length is invisible to it. The
+  comparison baseline is read from the database rather than memory, so it
+  survives the restart, and a compile window containing only `unknown` is
+  skipped rather than written as a zero. A reset is therefore triggered only
+  by a value moving *backwards* — which nothing here can cause, though the
+  energy-tracker lost-update in the backlog can.
 - Restart traffic is unchanged in volume: this decision moves 22 of the 31
   requests off the blocking path, it does not remove any.
