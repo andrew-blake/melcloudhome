@@ -280,6 +280,40 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
     assert atw_unit["outdoor_temp_last_error_at"] is not None
 
 
+def _assert_leak_redacted(
+    entities: dict, leaked_entity_id: str, raw_substring: str
+) -> None:
+    """Shared assertion for the leak-redaction tests below."""
+    assert leaked_entity_id not in entities
+    assert raw_substring not in json.dumps(entities)
+
+    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
+    assert len(redacted_keys) == 1
+    assert redacted_keys[0].startswith("sensor.redacted_device_")
+
+
+async def _register_leaked_entity(
+    hass: HomeAssistant, entry, unit_id: str, device_id: str, prefix: str
+):
+    """Register an entity whose object_id has `prefix` baked in before the
+    real `melcloudhome_{shortid}_...` object_id this integration always
+    generates - matching the actual shape of every real leak observed live
+    (e.g. `mollebacksgatan_10_melcloudhome_ec56_6442_outdoor_temperature`),
+    not an arbitrary made-up suffix."""
+    short_id = f"{unit_id[:4]}_{unit_id[-4:]}"
+    entity_reg = er.async_get(hass)
+    leaked = entity_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{unit_id}_leaked_sensor",
+        suggested_object_id=f"{prefix}_melcloudhome_{short_id}_leaked_sensor",
+        device_id=device_id,
+        config_entry=entry,
+    )
+    hass.states.async_set(leaked.entity_id, "42")
+    return leaked
+
+
 @pytest.mark.asyncio
 async def test_diagnostics_redacts_device_name_from_entity_id_key(
     hass: HomeAssistant,
@@ -301,28 +335,12 @@ async def test_diagnostics_redacts_device_name_from_entity_id_key(
     assert device is not None
     assert device.name_by_user == "Test Cottage Bathroom"
 
-    entity_reg = er.async_get(hass)
-    leaked = entity_reg.async_get_or_create(
-        "sensor",
-        DOMAIN,
-        f"{unit_id}_leaked_sensor",
-        suggested_object_id="test_cottage_bathroom_leaked_sensor",
-        device_id=device.id,
-        config_entry=entry,
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "test_cottage_bathroom"
     )
-    hass.states.async_set(leaked.entity_id, "42")
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    entities = diagnostics["entities"]
-
-    assert leaked.entity_id not in entities
-    blob = json.dumps(entities)
-    assert "test_cottage" not in blob
-    assert "bathroom" not in blob
-
-    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
-    assert len(redacted_keys) == 1
-    assert redacted_keys[0].startswith("sensor.redacted_device_")
+    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_cottage")
 
 
 @pytest.mark.asyncio
@@ -356,27 +374,49 @@ async def test_diagnostics_redacts_area_name_from_entity_id_key(
     device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
     assert device is not None and device.area_id == area.id
 
-    entity_reg = er.async_get(hass)
-    leaked = entity_reg.async_get_or_create(
-        "sensor",
-        DOMAIN,
-        f"{unit_id}_leaked_sensor",
-        suggested_object_id="test_building_leaked_sensor",
-        device_id=device.id,
-        config_entry=entry,
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "test_building"
     )
-    hass.states.async_set(leaked.entity_id, "42")
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    entities = diagnostics["entities"]
+    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_building")
 
-    assert leaked.entity_id not in entities
-    blob = json.dumps(entities)
-    assert "test_building" not in blob
 
-    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
-    assert len(redacted_keys) == 1
-    assert redacted_keys[0].startswith("sensor.redacted_device_")
+@pytest.mark.asyncio
+async def test_diagnostics_redacts_unknown_mechanism_leak(hass: HomeAssistant) -> None:
+    """The whole point of the structural (regex) redaction: it doesn't need
+    to know *why* a name leaked. A device with no `name_by_user` and no area
+    assigned still gets an arbitrary leaked prefix redacted - simulating a
+    mechanism neither of the two tests above cover (e.g. a future HA
+    behavior, or a naming scheme from a much older integration version)."""
+    unit_id = "cccc9999-8888-7777-6666-555544443333"
+    unit = create_mock_ata_unit(unit_id=unit_id, name="Landing")
+    mock_context = create_mock_ata_user_context(
+        [
+            create_mock_ata_building(
+                building_id="building-3", name="No Area Building", units=[unit]
+            )
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, mock_context)
+
+    device_reg = dr.async_get(hass)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None
+    # Clear name_by_user and any auto-suggested area - neither known
+    # mechanism is in play here, only the arbitrary leaked prefix below.
+    device_reg.async_update_device(device.id, name_by_user=None, area_id=None)
+    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
+    assert device is not None and not device.name_by_user and not device.area_id
+
+    leaked = await _register_leaked_entity(
+        hass, entry, unit_id, device.id, "some_ancient_naming_scheme"
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    _assert_leak_redacted(
+        diagnostics["entities"], leaked.entity_id, "some_ancient_naming_scheme"
+    )
 
 
 @pytest.mark.asyncio
