@@ -154,9 +154,6 @@ class AirToWaterUnit:
     set_temperature_zone1: float | None  # Target room temperature (10-30°C)
     room_temperature_zone1: float | None  # Current room temperature
 
-    # Zone 2 (usually not present)
-    has_zone2: bool
-
     # DHW (Domestic Hot Water)
     set_tank_water_temperature: float | None  # Target DHW temp (40-60°C)
     tank_water_temperature: float | None  # Current DHW temp
@@ -224,12 +221,9 @@ class AirToWaterUnit:
         # Parse settings array into dict for easy access
         settings = {item["name"]: item["value"] for item in settings_list}
 
-        # Extract Zone 2 flag (can be string "0"/"1" or int)
-        has_zone2_value = settings.get("HasZone2", "0")
-        if isinstance(has_zone2_value, str):
-            has_zone2 = has_zone2_value != "0" and has_zone2_value.lower() != "false"
-        else:
-            has_zone2 = bool(has_zone2_value)
+        # `HasZone2` in settings is free text ("None" on single-zone devices), so
+        # zone-2 presence comes from capabilities, which is a real bool.
+        has_zone2 = capabilities.has_zone2
 
         # Extract cooling mode flag from settings (some devices report it here)
         # Check settings first, then fall back to capabilities
@@ -273,7 +267,6 @@ class AirToWaterUnit:
             set_temperature_zone1=_parse_float(settings.get("SetTemperatureZone1")),
             room_temperature_zone1=_parse_float(settings.get("RoomTemperatureZone1")),
             # Zone 2 (if present)
-            has_zone2=has_zone2,
             operation_mode_zone2=operation_mode_zone2,
             set_temperature_zone2=_parse_float(settings.get("SetTemperatureZone2"))
             if has_zone2

@@ -161,7 +161,6 @@ def create_mock_atw_unit(
         set_temperature_zone2=set_temperature_zone2,
         room_temperature_zone2=room_temperature_zone2,
         operation_status=operation_status,
-        has_zone2=has_zone2,
         is_in_error=is_in_error,
         error_code=error_code,
         rssi=rssi,

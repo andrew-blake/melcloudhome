@@ -88,7 +88,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature_zone2,
-        should_create_fn=lambda unit: unit.has_zone2,
+        should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     # Tank water temperature
     ATWSensorEntityDescription(
@@ -167,7 +167,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
-        should_create_fn=lambda unit: unit.has_zone2,
+        should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone2",
@@ -176,7 +176,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
-        should_create_fn=lambda unit: unit.has_zone2,
+        should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
         key="flow_temperature_boiler",

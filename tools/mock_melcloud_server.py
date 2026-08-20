@@ -1488,7 +1488,8 @@ class MockMELCloudServer:
                 "name": "ForcedHotWaterMode",
                 "value": str(state["forced_hot_water_mode"]),
             },
-            {"name": "HasZone2", "value": str(int(state["has_zone2"]))},
+            # Real single-zone devices report "None" here, not "0"
+            {"name": "HasZone2", "value": "1" if state["has_zone2"] else "None"},
             {"name": "InStandbyMode", "value": str(state["in_standby_mode"])},
             {"name": "IsInError", "value": str(state["is_in_error"])},
             {"name": "ErrorCode", "value": state.get("error_code", "")},

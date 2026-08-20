@@ -258,7 +258,7 @@ def _create_mock_atw_unit(unit_id: str, name: str) -> MagicMock:
     unit.operation_mode_zone1 = "HeatThermostat"
     unit.set_temperature_zone1 = 22.0
     unit.room_temperature_zone1 = 21.0
-    unit.has_zone2 = False
+    unit.capabilities.has_zone2 = False
     unit.operation_mode_zone2 = None
     unit.set_temperature_zone2 = None
     unit.room_temperature_zone2 = None
