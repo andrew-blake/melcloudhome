@@ -81,7 +81,7 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 | `TankWaterTemperature` | number | Current DHW temp |
 | `SetTankWaterTemperature` | number | DHW target |
 | `ForcedHotWaterMode` | boolean | DHW priority enabled |
-| `HasZone2` | number | Zone 2 support (0=no, 2=yes) |
+| `HasZone2` | string | **Ignored** - free-text (`"None"` or `"0"` on every captured device). Use `capabilities.hasZone2`. |
 | `HasCoolingMode` | boolean | Cooling available (usually false) |
 | `IsInError` | boolean | Error state |
 | `ErrorCode` | string | Error code if any |
@@ -278,7 +278,7 @@ Settings are returned as name-value pairs:
   {"name": "TankWaterTemperature", "value": "45"},
   {"name": "SetTankWaterTemperature", "value": "50"},
   {"name": "ForcedHotWaterMode", "value": "False"},
-  {"name": "HasZone2", "value": "0"},  // "0" = no Zone 2, "2" = has Zone 2
+  {"name": "HasZone2", "value": "0"},  // ignored; newer captures send "None" here
   {"name": "HasCoolingMode", "value": "False"},
   {"name": "IsInError", "value": "False"},
   {"name": "ErrorCode", "value": ""},

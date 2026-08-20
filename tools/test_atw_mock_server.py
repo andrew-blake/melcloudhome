@@ -174,8 +174,8 @@ async def test_mock_server(port: int = 8888) -> bool:
 
             # Test 12: Zone 2 handling
             print("\n✅ Test 12: Zone 2 Handling")
-            print(f"   has_zone2: {unit.has_zone2}")
-            if unit.has_zone2:
+            print(f"   has_zone2: {unit.capabilities.has_zone2}")
+            if unit.capabilities.has_zone2:
                 print("   Zone 2 fields present (multi-zone device)")
             else:
                 print("   No Zone 2 (single-zone device)")

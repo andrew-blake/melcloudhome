@@ -5,6 +5,7 @@ These tests validate that models correctly parse real API responses.
 """
 
 import logging
+from copy import deepcopy
 from typing import Any, cast
 
 import pytest
@@ -200,19 +201,19 @@ class TestAirToWaterUnit:
         assert unit.set_temperature_zone1 is None
 
     def test_unit_from_dict_parses_zone2_when_present(self):
-        """Test that Zone 2 fields are parsed when HasZone2=1."""
+        """Test that Zone 2 fields are parsed when capabilities report zone 2."""
         unit = AirToWaterUnit.from_dict(ATW_UNIT_WITH_ZONE2)
 
-        assert unit.has_zone2 is True
+        assert unit.capabilities.has_zone2 is True
         assert unit.operation_mode_zone2 == "HeatRoomTemperature"
         assert unit.room_temperature_zone2 == 19.0
         assert unit.set_temperature_zone2 == 20.0
 
     def test_unit_from_dict_parses_zone2_when_absent(self):
-        """Test that Zone 2 fields are None when HasZone2=0."""
+        """Test that Zone 2 fields are None when capabilities report no zone 2."""
         unit = AirToWaterUnit.from_dict(ATW_UNIT_HEATING_DHW)
 
-        assert unit.has_zone2 is False
+        assert unit.capabilities.has_zone2 is False
         assert unit.operation_mode_zone2 is None
         assert unit.room_temperature_zone2 is None
         assert unit.set_temperature_zone2 is None
@@ -466,19 +467,26 @@ class TestEdgeCases:
         unit_idle = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
         assert unit_idle.error_code is None
 
-    def test_string_zero_converts_to_false_for_haszone2(self):
-        """Test that string "0" for HasZone2 converts to False."""
-        unit = AirToWaterUnit.from_dict(ATW_UNIT_HEATING_DHW)
+    @pytest.mark.parametrize("settings_value", ["None", "1"])
+    def test_zone2_settings_string_cannot_conjure_zone2(
+        self, settings_value: str
+    ) -> None:
+        """A single-zone device's `HasZone2` string is ignored, whatever it says.
 
-        # HasZone2 is "0" (string)
-        assert unit.has_zone2 is False
+        Real single-zone devices report "None"; parsing that as truthy gave them
+        zone-2 data and entities that could never hold a value.
+        """
+        data = deepcopy(ATW_UNIT_HEATING_DHW)  # capabilities.hasZone2 is False
+        settings = cast(list[dict[str, Any]], data["settings"])
+        for setting in settings:
+            if setting["name"] == "HasZone2":
+                setting["value"] = settings_value
+        settings.append({"name": "RoomTemperatureZone2", "value": "19"})
 
-    def test_string_one_converts_to_true_for_haszone2(self):
-        """Test that string "1" for HasZone2 converts to True."""
-        unit = AirToWaterUnit.from_dict(ATW_UNIT_WITH_ZONE2)
+        unit = AirToWaterUnit.from_dict(data)
 
-        # HasZone2 is "1" (string)
-        assert unit.has_zone2 is True
+        assert unit.capabilities.has_zone2 is False
+        assert unit.room_temperature_zone2 is None
 
     def test_half_degree_temperatures(self) -> None:
         """Test that half-degree temperatures are parsed correctly."""

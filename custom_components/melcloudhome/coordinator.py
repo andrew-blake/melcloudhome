@@ -201,7 +201,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                     atw_unit.set_temperature_zone1,
                 ]
 
-                if atw_unit.has_zone2:
+                if atw_unit.capabilities.has_zone2:
                     base_msg += " | Z2: %s°C→%s°C"
                     base_args.extend(
                         [

@@ -26,15 +26,19 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         "operation_mode_zone1": unit.operation_mode_zone1,
         "set_temperature_zone1": unit.set_temperature_zone1,
         "room_temperature_zone1": unit.room_temperature_zone1,
-        "operation_mode_zone2": unit.operation_mode_zone2 if unit.has_zone2 else None,
-        "set_temperature_zone2": unit.set_temperature_zone2 if unit.has_zone2 else None,
+        "operation_mode_zone2": unit.operation_mode_zone2
+        if unit.capabilities.has_zone2
+        else None,
+        "set_temperature_zone2": unit.set_temperature_zone2
+        if unit.capabilities.has_zone2
+        else None,
         "room_temperature_zone2": (
-            unit.room_temperature_zone2 if unit.has_zone2 else None
+            unit.room_temperature_zone2 if unit.capabilities.has_zone2 else None
         ),
         "tank_water_temperature": unit.tank_water_temperature,
         "set_tank_water_temperature": unit.set_tank_water_temperature,
         "forced_hot_water_mode": unit.forced_hot_water_mode,
-        "has_zone2": unit.has_zone2,
+        "has_zone2": unit.capabilities.has_zone2,
         "outdoor_temperature": unit.outdoor_temperature,
         **serialize_outdoor_temp_fields(unit),
     }
