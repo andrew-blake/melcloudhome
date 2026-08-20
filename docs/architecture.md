@@ -406,6 +406,29 @@ graph TD
 
 ---
 
+## Setup Lifecycle: Fresh Install vs Restart
+
+Both paths run the same `async_setup_entry`, but they diverge in what already exists on disk, and that divergence is where most setup-related behaviour differences come from.
+
+**Shared sequence** (`__init__.py`): build client → `restore_tokens` → `coordinator.async_config_entry_first_refresh()` (`/context`, plus outdoor-temp polling) → `coordinator.async_setup()` (tracker `Store` loads, periodic timer registration, deferred fetch task) → seed `known_device_ids` → `_clear_friendly_device_names` → `async_forward_entry_setups` → `_restore_device_names`.
+
+Entities are created at `async_forward_entry_setups`. Only `/context` blocks that; energy and telemetry are fetched afterwards in a background task (ADR-021).
+
+| | Fresh install | Restart |
+|---|---|---|
+| States before setup runs | none | HA's entity registry writes `unavailable` + `restored: True` for every known entity, so the full list appears greyed out before our code runs |
+| Entity IDs | allocated now from the UUID scheme | read from the registry, hence stable |
+| Tracker `Store`s | empty, no file | cumulative totals and hour values restored, then the retention/corrupt-value cleanup pass runs |
+| Energy baseline | `_is_first_initialization` is true, so `_initialize_unit_tracking` marks returned hours *seen* without adding them to the cumulative — historical data must not inflate the meter. Cumulative starts at 0.0 and the first real increment lands on the *next* poll | false — normal delta accounting resumes from the restored cumulative |
+| Statistics zero point | set from the first valid float | read from the recorder database |
+| Device names | UUID-based | user's saved names restored |
+| Auth | full login | tokens restored from `entry.data` |
+| Outdoor temp | polls every unit (nothing to gate on) | polls every unit *again* — `_last_outdoor_temp_poll` is in-memory only, so the 30-minute gate is defeated by every restart |
+
+**The transient `unknown` is not symmetric between the two.** On a fresh install it replaces *no entities at all* for the duration of the first fetch, which is strictly better. On a restart it inserts an extra state: `unavailable (restored)` → `unknown` → value, where previously the entity went straight from `restored` to a real value because the fetch had completed before platform setup. Restart is therefore the only path that pays a cost, and `RestoreEntity` support — showing the last-known value rather than `unknown` — is what would remove it. See [ADR-021](decisions/021-deferred-startup-fetch.md) and [ADR-020](decisions/020-unknown-for-missing-readings.md).
+
+---
+
 ## Multi-Device Architecture
 
 Showing the facade pattern and model relationships. Facade pattern provides device-type-specific control via `client.ata` and `client.atw`.
