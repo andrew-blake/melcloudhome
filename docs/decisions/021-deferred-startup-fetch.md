@@ -90,6 +90,13 @@ client, so an in-flight request would have its session closed underneath it.
 Cancelling here, and awaiting rather than only cancelling, lets it unwind
 first.
 
+Note this path runs on entry **unload or reload only** — HA does not unload
+config entries when it shuts down, so `async_shutdown` is not involved in a
+restart. Nothing leaks on shutdown regardless: HA's `async_stop` cancels
+entry background tasks directly. The distinction matters when testing —
+restarting the container exercises the setup path, not this one; reloading
+the config entry is what exercises this one.
+
 `/context` is unaffected and stays synchronous in
 `async_config_entry_first_refresh` — core climate and power-state entities
 need it to exist at all.

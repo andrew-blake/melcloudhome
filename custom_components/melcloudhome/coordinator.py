@@ -504,6 +504,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._ws_task = None
         if self._startup_fetch_task is not None and not self._startup_fetch_task.done():
             self._startup_fetch_task.cancel()
+            # Logged because suppressing CancelledError below is otherwise
+            # silent: without this, a reload mid-fetch leaves a truncated
+            # "Initial ... fetch completed" sequence with no stated reason.
+            _LOGGER.debug("Startup fetch cancelled before completion (entry unload)")
             # Awaited, not just cancelled: HA's own background-task cleanup
             # runs after async_unload_entry has closed the client (ADR-021).
             with contextlib.suppress(asyncio.CancelledError):
