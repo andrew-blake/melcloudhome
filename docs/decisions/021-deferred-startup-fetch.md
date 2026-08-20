@@ -11,14 +11,13 @@ sequential HTTP requests before any entity existed — 1× `/context`, 6×
 `trendsummary`, 2× `comfort-graph`, 10× telemetry-energy, 12×
 telemetry-actual, on a 6 ATA + 2 ATW fixture. It scales linearly with device
 count, and `RequestPacer` enforces a 0.5s minimum gap between requests
-(`api/pacing.py:11`), so the wall-clock floor is structural rather than mock
-latency — roughly 66 seconds in that trace.
+(`DEFAULT_MIN_REQUEST_INTERVAL`), so the wall-clock floor is structural
+rather than mock latency — roughly 66 seconds in that trace.
 
 None of it was optional, because `async_setup_entry` awaited
-`coordinator.async_config_entry_first_refresh()` (`__init__.py:294`) and
-`coordinator.async_setup()` (`:306`) in full before
-`async_forward_entry_setups` (`:352`). No entity of any kind existed until
-all 31 requests had completed.
+`coordinator.async_config_entry_first_refresh()` and
+`coordinator.async_setup()` in full before `async_forward_entry_setups`.
+No entity of any kind existed until all 31 requests had completed.
 
 ### The rejected alternative: jitter for fleet desynchronization
 
@@ -67,11 +66,21 @@ lifecycle: if setup raises after the task is created, HA never calls
 fetching with nothing left to cancel it.
 
 **The periodic 30/60-minute timer registrations stay eager in
-`async_setup`.** `_update_single_energy_tracker` (`coordinator.py:282`) is a
-complete independent fetch-and-apply with no dependency on the initial
-fetch, so registering the timers up front means a cancelled or failed
-startup fetch still recovers at the next tick. Moving registration into the
-background task would trade that self-healing away.
+`async_setup`.** `_update_single_energy_tracker` is a complete independent
+fetch-and-apply with no dependency on the initial fetch, so registering the
+timers up front means a cancelled or failed startup fetch still recovers at
+the next tick. Moving registration into the background task would trade that
+self-healing away.
+
+A consequence of registering first: the timers are now live *before* the
+deferred fetch starts, so a pathologically slow startup fetch (30+ minutes)
+could overlap a periodic tick and invoke the same tracker twice
+concurrently. Benign — each unit's cumulative-total and hour-values
+mutations happen in one synchronous burst with no `await` between read and
+write, so a concurrent call re-reads whatever the first already wrote. That
+is the same idempotency that already makes normal re-polling safe. Noted
+because the previous ordering made the overlap impossible, so it is a new
+property rather than an inherited one.
 
 **The task is also cancelled and awaited explicitly in `async_shutdown`**,
 before `client.close()`. HA's own entry-scoped cleanup is not enough on its
