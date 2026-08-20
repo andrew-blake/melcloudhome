@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import inspect
 import logging
@@ -79,6 +80,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
+        # First energy/telemetry fetch runs off the setup path (ADR-021)
+        self._startup_fetch_task: asyncio.Task[None] | None = None
         # Real-time WebSocket listener (default-on accelerator — issue #174)
         self._websocket: MELCloudHomeWebSocket | None = None
         self._ws_task: asyncio.Task[None] | None = None
@@ -330,27 +333,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         await self.energy_tracker.async_setup()
         await self.energy_tracker_atw.async_setup()
 
-        # Perform initial energy fetch for both ATA and ATW units in parallel
-        # Use return_exceptions=True to ensure one failure doesn't block the other
-        await asyncio.gather(
-            self._fetch_and_update_tracker(
-                "ATA energy",
-                self.energy_tracker.async_update_energy_data,
-                self.energy_tracker.update_unit_energy_data,
-                self._units,
-            ),
-            self._fetch_and_update_tracker(
-                "ATW energy",
-                self.energy_tracker_atw.async_update_energy_data,
-                self.energy_tracker_atw.update_unit_energy_data,
-                self._atw_units,
-            ),
-            return_exceptions=True,
-        )
-
-        # Notify listeners once after both energy fetches complete
-        self.async_update_listeners()
-
         # Schedule periodic energy updates (30 minutes)
         async def _update_energy_with_listeners(now):
             """Update energy and notify listeners."""
@@ -376,17 +358,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Setup telemetry tracker
         await self.telemetry_tracker.async_setup()
 
-        # Perform initial telemetry fetch
-        await self._fetch_and_update_tracker(
-            "telemetry",
-            self.telemetry_tracker.async_update_telemetry_data,
-            self.telemetry_tracker.update_unit_telemetry_data,
-            self._atw_units,
-        )
-
-        # Notify listeners after telemetry fetch
-        self.async_update_listeners()
-
         # Schedule periodic telemetry updates (60 minutes)
         async def _update_telemetry_with_listeners(now):
             """Update telemetry and notify listeners."""
@@ -401,8 +372,46 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
+        # Deferred off the setup path — see _run_startup_fetch (ADR-021).
+        self._startup_fetch_task = self._config_entry.async_create_background_task(
+            self.hass, self._run_startup_fetch(), name=f"{DOMAIN}-startup-fetch"
+        )
+
         # Start the real-time WebSocket listener unless opted out
         self._async_setup_websocket()
+
+    async def _run_startup_fetch(self) -> None:
+        """Run the first energy + telemetry fetch off the setup path.
+
+        Deferred out of async_setup (ADR-021) so ~22 sequential paced
+        requests don't block entity creation on every restart. The periodic
+        timers are registered eagerly in async_setup, so if this is
+        cancelled or fails, polling still recovers at the next tick.
+        """
+        await asyncio.gather(
+            self._fetch_and_update_tracker(
+                "ATA energy",
+                self.energy_tracker.async_update_energy_data,
+                self.energy_tracker.update_unit_energy_data,
+                self._units,
+            ),
+            self._fetch_and_update_tracker(
+                "ATW energy",
+                self.energy_tracker_atw.async_update_energy_data,
+                self.energy_tracker_atw.update_unit_energy_data,
+                self._atw_units,
+            ),
+            return_exceptions=True,
+        )
+        await self._fetch_and_update_tracker(
+            "telemetry",
+            self.telemetry_tracker.async_update_telemetry_data,
+            self.telemetry_tracker.update_unit_telemetry_data,
+            self._atw_units,
+        )
+        # One notification once everything has settled, rather than two
+        # progressive refreshes the user can't act on differently.
+        self.async_update_listeners()
 
     def _websocket_enabled(self) -> bool:
         """Whether the WebSocket accelerator should run (default on)."""
@@ -493,6 +502,16 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             # socket errors out first (e.g. when the client closes below).
             self._websocket.stop()
             self._ws_task = None
+        if self._startup_fetch_task is not None and not self._startup_fetch_task.done():
+            self._startup_fetch_task.cancel()
+            # Logged because suppressing CancelledError below is otherwise
+            # silent: without this, a reload mid-fetch leaves a truncated
+            # "Initial ... fetch completed" sequence with no stated reason.
+            _LOGGER.debug("Startup fetch cancelled before completion (entry unload)")
+            # Awaited, not just cancelled: HA's own background-task cleanup
+            # runs after async_unload_entry has closed the client (ADR-021).
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._startup_fetch_task
         await self.client.close()
 
     def get_ata_device(self, unit_id: str) -> AirToAirUnit | None:

@@ -95,7 +95,7 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 1. Go to **Settings** → **Dashboards** → **Energy**
 2. Add your devices under "Individual devices"
 3. Select the energy sensor for each unit
-4. Energy data accumulates over time and persists across restarts
+4. Energy data accumulates over time and persists across restarts (see [Setup Lifecycle](architecture.md#setup-lifecycle-fresh-install-vs-restart) for how a fresh install differs — the first poll seeds a baseline rather than counting as consumption)
 
 **Outdoor Temperature Sensor (ATA):**
 
