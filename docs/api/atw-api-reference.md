@@ -524,8 +524,12 @@ POST /api/protection/frost
 ### Real-Time Telemetry (Actual Values)
 
 ```
-GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:00&measure=flow_temperature
+GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18 16:00&to=2026-01-18 20:00&measure=flow_temperature
 ```
+
+Note the space between date and time, not a `T` — that is what the client sends
+(`client.py`, `get_telemetry_actual`). The report endpoints use
+`YYYY-MM-DDTHH:MM:SS.0000000` instead.
 
 **Supported Measures:**
 - `flow_temperature` - System flow temperature (°C)
@@ -573,7 +577,7 @@ GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:
 
 Returns **every water temperature in one request**, instead of one request per measure. This
 is what the MELCloud Home web app's water-temperatures chart uses. **Not currently used by
-this integration** (see below for why it isn't a drop-in swap).
+this integration.**
 
 ```
 GET /report/v1/internaltemperatures?unitId={unitId}&period=Hourly&from=2026-08-21T00:00:00.0000000&to=2026-08-21T08:00:00.0000000
@@ -645,16 +649,13 @@ including the 7-decimal timestamp format.
   endpoint**. Both units observed here were single-zone and neither response contained zone-2
   series, so it is unknown whether the server selects datasets per device or the report is
   always these 8. (The two-zone evidence above comes from per-measure telemetry on a device
-  that is no longer reachable, not from this endpoint.)
+  that is no longer reachable, not from this endpoint.) **This would have to be answered before
+  anything relied on this endpoint for zone-2 data**, since zone-2 water temps currently come
+  from per-measure calls and do work for the users who have them.
 
-**Trade-off versus per-measure telemetry:** the saving depends on the device. Since the
-zone1/boiler measures are now gated on capabilities, a single-zone unit without a boiler makes
-only **2** per-measure calls, so this endpoint would replace 2 requests with 1 — not 6 with 1.
-A two-zone unit with a boiler still makes 8. And a single failure here costs every measure for
-that cycle rather than one, so with equal failure rates the expected data loss is unchanged.
-The swap is worth making only if this endpoint proves measurably more reliable than
-`/telemetry/telemetry/actual`, and the gain is smallest on exactly the configuration most
-users have.
+**Relationship to the per-measure endpoint:** this returns the same water temperatures that
+`/telemetry/telemetry/actual` serves one measure at a time (Section 8). Note that a single
+failure here costs every measure for that cycle rather than one.
 
 *(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
 
