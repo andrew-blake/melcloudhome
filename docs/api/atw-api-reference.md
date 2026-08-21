@@ -569,6 +569,83 @@ GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18T16:00&to=2026-01-18T20:
 - **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
 - Use 4-hour lookback window for recent data
 
+### Batched Alternative: Internal Temperatures Report
+
+Returns **every water temperature in one request**, instead of one request per measure. This
+is what the MELCloud Home web app's water-temperatures chart uses. **Not currently used by
+this integration** (see below for why it isn't a drop-in swap).
+
+```
+GET /report/v1/internaltemperatures?unitId={unitId}&period=Hourly&from=2026-08-21T00:00:00.0000000&to=2026-08-21T08:00:00.0000000
+```
+
+Same parameter shape as `report/v1/trendsummary` and `report/v1/comfort-graph` (Section 9),
+including the 7-decimal timestamp format.
+
+**Datasets returned** (8 for a single-zone unit):
+
+- `set_tank_water_temperature`, `tank_water_temperature`
+- `flow_temperature`, `return_temperature`
+- `flow_temperature_zone1`, `return_temperature_zone1`
+- `flow_temperature_boiler`, `return_temperature_boiler`
+
+**Response Format:**
+```json
+[
+  {
+    "reportPeriod": 1,
+    "timeUnit": "hour",
+    "stepSize": 1,
+    "from": "2026-08-21T00:00:00",
+    "to": "2026-08-21T08:00:00",
+    "datasets": [
+      {
+        "id": "flow_temperature",
+        "label": "REPORT.INTEMP_REPORT.DATASET.LABELS.FLOW_TEMPERATURE",
+        "data": [{ "x": "2026-08-21T06:00:16", "y": 55.5 }],
+        "borderColor": "#D32A2A",
+        "hidden": false
+      }
+    ],
+    "annotations": [],
+    "previousTriggers": []
+  }
+]
+```
+
+`label` is a localisation key, not display text — the vendor's client resolves it client-side.
+
+**Data Characteristics:**
+
+- **Use `period=Hourly`.** It yields genuine per-reading timestamps (irregular seconds, e.g.
+  `06:00:16`). `period=Daily` returns 30-minute bucket labels that are not reading times —
+  the same data-quality problem documented for `trendsummary` in issue #152.
+- **Window limit: 8 hours.** 4h, 6h and 8h succeed; 12h and 16h return HTTP 500. Comparable
+  to `comfort-graph`'s own window ceiling, different magnitude.
+- **The final datapoint is synthetic.** Every dataset ends with a point stamped with the query
+  `to` and the previous value repeated (the "to-echo" artifact, issue #224). Strip it before
+  reading a latest value or freshness is reported as zero.
+- `hidden` is a **presentation** default, not a capability signal. It is a hardcoded constant
+  keyed on dataset id — identical for every device, with no per-unit input — and it is `true`
+  for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
+  **not** "this hardware is absent"; in `comfort-graph` it is also `true` for
+  `room_temperature_zone1`, which is certainly real on a single-zone unit. Do not gate on it.
+- **Absent hardware returns a constant `25`, not an empty series or an error.** On two
+  single-zone units (both `hasBoiler: false`) the four zone1/boiler series were flat at 25 for
+  a full day while `flow_temperature` and `return_temperature` varied normally. The vendor's
+  own client charts that flat line when the series is enabled, so this is server-side
+  behaviour rather than a client convention.
+- **Unverified:** whether zone-2 datasets appear for a unit that has zone 2. Both units
+  observed were single-zone and neither response contained zone-2 series, so it is unknown
+  whether the server selects datasets per device or the report is always these 8.
+
+**Trade-off versus per-measure telemetry:** one request replaces six, but a single failure then
+costs all measures for that cycle rather than one. With equal failure rates the expected data
+loss is unchanged, so the swap is a reliability win only if this endpoint proves more reliable
+than `/telemetry/telemetry/actual`.
+
+*(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
+
 ---
 
 ## 9. Energy Reporting
