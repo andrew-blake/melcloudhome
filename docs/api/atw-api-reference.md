@@ -639,12 +639,20 @@ including the 7-decimal timestamp format.
   a full day while `flow_temperature` and `return_temperature` varied normally. The vendor's
   own client charts that flat line when the series is enabled, so this is server-side
   behaviour rather than a client convention.
-- **The zone-1 suffix is only populated on multi-zone systems.** A real two-zone device
-  reported 22.5 for `flow_temperature_zone1` / `return_temperature_zone1` while its boiler pair
-  sat at 25.0 — real zone-1 values and a placeholder boiler pair, in the same payload. On a
-  single-zone system the unsuffixed `flow_temperature` / `return_temperature` *are* the zone-1
-  flow and return. The integration gates these measures accordingly (Section 8, and
-  `telemetry_tracker.py`).
+- **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
+  single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`
+  for a full day while the unsuffixed pair varied normally. The working assumption is that
+  the unsuffixed `flow_temperature` / `return_temperature` *are* the zone-1 flow and return on
+  such a system, and the integration gates the suffixed pair on Zone 2 support accordingly
+  (Section 8, and `telemetry_tracker.py`).
+
+  **What the one two-zone capture does and does not show.** The only capture from a real
+  two-zone device (v2.1.0, Feb 2026) has the zone-1 pair at 22.5/22.5 and the boiler pair at
+  25.0/25.0, so the zone-1 pair differs from the boiler placeholder. But that unit's `power`
+  was `false`, and on a non-circulating system flow equalling return exactly is what a real
+  idle loop looks like as much as a placeholder. It is a single snapshot, so it does **not**
+  establish that the zone-1 pair carries real readings when zone 2 is present. Settling that
+  needs a time series from a two-zone system while it is actively heating.
 - **Unverified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
   endpoint**. Both units observed here were single-zone and neither response contained zone-2
   series, so it is unknown whether the server selects datasets per device or the report is

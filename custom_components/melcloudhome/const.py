@@ -61,11 +61,13 @@ ATW_TELEMETRY_MEASURES = [
 ]
 
 # Zone-1-suffixed measures, only requested when the device has a second zone.
-# On a single-zone system the unsuffixed pair above IS the zone 1 flow/return, and
-# these return a constant 25 placeholder instead of a reading. Confirmed by a real
-# two-zone device reporting 22.5 here while its boiler pair sat at 25.0, against two
-# single-zone devices reporting 25.0 for both pairs.
-# See docs/api/atw-api-reference.md.
+# On a single-zone system these return a constant 25 placeholder instead of a
+# reading — measured on two devices over a full day, while the unsuffixed pair
+# varied normally — so the unsuffixed pair appears to BE the zone 1 flow/return
+# there. The positive case is not established: the one two-zone capture was of an
+# idle system, where flow == return proves nothing either way. Gating on has_zone2
+# cannot regress a two-zone device, since it only ever suppresses when zone 2 is
+# absent. See docs/api/atw-api-reference.md.
 ATW_TELEMETRY_MEASURES_ZONE1 = [
     "flow_temperature_zone1",
     "return_temperature_zone1",

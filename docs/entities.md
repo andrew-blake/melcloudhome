@@ -174,10 +174,10 @@ capabilities, because MELCloud returns a constant 25 °C for measures the hardwa
 have rather than no data at all — so creating them unconditionally produced sensors that
 looked like readings and never were.
 
-The zone-1 pair is gated on Zone 2 support, which reads oddly but is correct: on a
-single-zone system the *unsuffixed* Flow and Return **are** the zone 1 flow and return, and
-the suffixed pair is only populated when there is more than one zone. The boiler pair is
-gated on the device reporting a boiler.
+The Zone 1 pair requires the device to have a **second** zone. On a single-zone system those
+two measures return the placeholder rather than a reading, and the plain Flow Temperature and
+Return Temperature are the zone 1 flow and return. The boiler pair requires the device to
+report a boiler.
 
 A gated sensor that does exist can still sit at `unknown` when a telemetry fetch returns no
 datapoints for it. That is expected and separate from the gating above.
