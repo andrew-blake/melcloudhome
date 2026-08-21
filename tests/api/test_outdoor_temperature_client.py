@@ -105,7 +105,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_missing_dataset(self):
         """Test when outdoor temperature dataset is missing."""
@@ -121,7 +121,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_empty_data(self):
         """Test when outdoor temperature dataset exists but data array empty."""
@@ -137,7 +137,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_list_wrapped(self):
         """Test parsing when mobile BFF wraps response in a list."""
@@ -164,7 +164,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
 
 @freeze_time("2026-02-03 12:30:45", real_asyncio=True)
@@ -230,7 +230,7 @@ async def test_get_outdoor_temperature_api_returns_none(mocker):
 
     result = await client.get_outdoor_temperature("test-unit-id")
 
-    assert result == (None, None)
+    assert result is None
 
 
 @pytest.mark.asyncio

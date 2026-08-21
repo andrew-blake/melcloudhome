@@ -12,6 +12,7 @@ from .const_ata import (
     VANE_NUMERIC_TO_WORD,
 )
 from .parsing import (
+    Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
 )
@@ -129,12 +130,10 @@ class AirToAirUnit:
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
     energy_consumed: float | None = None  # kWh
-    # Outdoor temperature monitoring (set by coordinator via trendsummary API)
-    outdoor_temperature: float | None = None  # °C
+    # Outdoor temperature monitoring (set by coordinator via trendsummary API).
+    # Idle units stop uploading, so recorded_at can lag hours behind (issue #171)
+    outdoor_temp_reading: Reading | None = None
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
-    # When the value was actually recorded by the unit. Idle units stop
-    # uploading outdoor temperature, so this can lag hours behind (issue #171)
-    outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
     # Set by the coordinator when the outdoor-temp poll itself raised (e.g. a
     # real HTTP error), distinct from a successful poll finding no genuine
     # reading. Cleared on the next successful poll. Diagnostic-only signal

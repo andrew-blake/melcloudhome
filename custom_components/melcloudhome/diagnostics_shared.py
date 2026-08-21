@@ -12,12 +12,11 @@ def serialize_outdoor_temp_fields(
     unit: AirToAirUnit | AirToWaterUnit,
 ) -> dict[str, Any]:
     """Serialize the outdoor-temp diagnostic fields shared by ATA and ATW units."""
+    reading = unit.outdoor_temp_reading
     return {
         "has_outdoor_temp_sensor": unit.has_outdoor_temp_sensor,
         "outdoor_temp_recorded_at": (
-            unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
+            reading.recorded_at.isoformat() if reading and reading.recorded_at else None
         ),
         "outdoor_temp_last_error": unit.outdoor_temp_last_error,
         "outdoor_temp_last_error_at": (

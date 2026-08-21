@@ -6,12 +6,13 @@ These fixtures require pytest-homeassistant-custom-component.
 import asyncio
 import json
 from collections.abc import Callable
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import aiohttp
 import pytest
+
+from custom_components.melcloudhome.api.parsing import Reading
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -124,9 +125,8 @@ def create_mock_atw_unit(
     energy_consumed: float | None = None,
     energy_produced: float | None = None,
     cop: float | None = None,
-    outdoor_temperature: float | None = None,
+    outdoor_temp_reading: Reading | None = None,
     has_outdoor_temp_sensor: bool = False,
-    outdoor_temp_recorded_at: datetime | None = None,
     outdoor_temp_last_error: str | None = None,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
@@ -169,9 +169,8 @@ def create_mock_atw_unit(
         energy_consumed=energy_consumed,
         energy_produced=energy_produced,
         cop=cop,
-        outdoor_temperature=outdoor_temperature,
+        outdoor_temp_reading=outdoor_temp_reading,
         has_outdoor_temp_sensor=has_outdoor_temp_sensor,
-        outdoor_temp_recorded_at=outdoor_temp_recorded_at,
         outdoor_temp_last_error=outdoor_temp_last_error,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
@@ -351,7 +350,7 @@ def create_mock_ata_unit(
     has_energy_meter: bool = False,
     energy_consumed: float | None = None,
     has_outdoor_sensor: bool = False,
-    outdoor_temperature: float | None = None,
+    outdoor_temp_reading: Reading | None = None,
     frost_protection: "ProtectionModeState | None" = None,
     overheat_protection: "ProtectionModeState | None" = None,
     holiday_mode: "ProtectionModeState | None" = None,
@@ -379,7 +378,7 @@ def create_mock_ata_unit(
         capabilities=AirToAirCapabilities(has_energy_consumed_meter=has_energy_meter),
         energy_consumed=energy_consumed,
         has_outdoor_temp_sensor=has_outdoor_sensor,
-        outdoor_temperature=outdoor_temperature,
+        outdoor_temp_reading=outdoor_temp_reading,
         frost_protection=frost_protection,
         overheat_protection=overheat_protection,
         holiday_mode=holiday_mode,

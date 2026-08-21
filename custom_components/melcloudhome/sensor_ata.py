@@ -106,14 +106,9 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.outdoor_temperature,
         # Always created; "unknown" until a reading arrives.
         # last_reading surfaces staleness: idle units stop uploading (#152/#171).
-        attributes_fn=lambda unit: {
-            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
-        },
+        reading_fn=lambda unit: unit.outdoor_temp_reading,
     ),
     # Protection mode setpoints - separate sensors so the thresholds are visible
     # as first-class entities in the frontend, not just tucked away as attributes

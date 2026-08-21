@@ -21,6 +21,7 @@ from homeassistant.helpers import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import DOMAIN
 from custom_components.melcloudhome.diagnostics import (
     async_get_config_entry_diagnostics,
@@ -250,9 +251,8 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
 ) -> None:
     """Diagnostics distinguishes a last-good reading from a fresh poll error."""
     unit = create_mock_atw_unit(
-        outdoor_temperature=16.0,
+        outdoor_temp_reading=Reading(16.0, datetime(2026, 8, 17, 8, 57, 11)),
         has_outdoor_temp_sensor=True,
-        outdoor_temp_recorded_at=datetime(2026, 8, 17, 8, 57, 11),
     )
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[unit])]
