@@ -154,3 +154,38 @@ def initialize_entity_base(
 
     # Device info using shared helper
     entity._attr_device_info = create_device_info(unit, building)
+
+
+# =================================================================
+# Sensor Value / Attribute Accessors
+# =================================================================
+
+
+def sensor_native_value(description: Any, device: Any) -> float | str | None:
+    """Read a sensor's state from whichever accessor its description defines."""
+    if description.reading_fn is not None:
+        reading = description.reading_fn(device)
+        return reading.value if reading else None
+    return description.value_fn(device) if description.value_fn else None
+
+
+def sensor_state_attributes(description: Any, device: Any) -> dict[str, Any] | None:
+    """Build a sensor's attributes, adding last_reading when it has provenance.
+
+    last_reading distinguishes a value frozen by a failed poll from a value
+    that is genuinely constant - which for these sensors is the difference
+    between an outage and a vendor placeholder (issue #200). Deliberately
+    absent from context-sourced sensors, which are refetched every 60s.
+
+    Present-but-null when a reading-backed sensor has no reading yet, so
+    templates can rely on the key existing.
+    """
+    attributes: dict[str, Any] = {}
+    if description.attributes_fn is not None:
+        attributes.update(description.attributes_fn(device) or {})
+    if description.reading_fn is not None:
+        reading = description.reading_fn(device)
+        attributes["last_reading"] = (
+            reading.recorded_at.isoformat() if reading and reading.recorded_at else None
+        )
+    return attributes or None

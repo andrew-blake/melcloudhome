@@ -182,6 +182,24 @@ report a boiler.
 A gated sensor that does exist can still sit at `unknown` when a telemetry fetch returns no
 datapoints for it. That is expected and separate from the gating above.
 
+**Attribute `last_reading`** (all eight): the time the unit itself recorded the value. `null`
+means no reading has arrived yet — the attribute is always present, so automations can rely on
+the key existing. This endpoint fails often, and a failed poll leaves the sensor showing its
+previous value, so `last_reading` is how you tell a fresh reading from an hours-old one.
+
+Reading it together with the value tells you which of three things is happening:
+
+| `last_reading` | value | meaning |
+|---|---|---|
+| advancing | unchanging | the reading itself is steady — a settled circuit, or MELCloud's constant 25 °C where the hardware is absent |
+| stale | unchanging | the fetch is failing; the value you see is old |
+| advancing | moving | healthy |
+
+Because the attribute changes on every poll that brings a newer reading, these sensors now
+register a state change each time — even when the value is identical. Automations that trigger
+on state changes of these entities will fire on those polls; trigger on the value with a
+`to`/`from` or a template condition if that matters.
+
 **Purpose:** Monitor heating system efficiency and performance
 
 - Flow vs return delta indicates heat transfer efficiency

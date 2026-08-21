@@ -7,6 +7,7 @@ from typing import Any
 
 from .const_atw import ATW_MODE_HEAT_ROOM_TEMP, ATW_STATUS_STOP
 from .parsing import (
+    Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
 )
@@ -211,8 +212,8 @@ class AirToWaterUnit:
 
     # Telemetry data (flow/return temperatures from telemetry API)
     # Populated by TelemetryTracker, read by sensors
-    # Structure: {measure_name: temperature_celsius}
-    telemetry: dict[str, float | None] = field(default_factory=dict)
+    # Structure: {measure_name: Reading}
+    telemetry: dict[str, Reading | None] = field(default_factory=dict)
 
     # Energy data (populated by EnergyTrackerATW)
     energy_consumed: float | None = None  # kWh (cumulative)
