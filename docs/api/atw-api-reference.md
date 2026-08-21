@@ -635,14 +635,26 @@ including the 7-decimal timestamp format.
   a full day while `flow_temperature` and `return_temperature` varied normally. The vendor's
   own client charts that flat line when the series is enabled, so this is server-side
   behaviour rather than a client convention.
-- **Unverified:** whether zone-2 datasets appear for a unit that has zone 2. Both units
-  observed were single-zone and neither response contained zone-2 series, so it is unknown
-  whether the server selects datasets per device or the report is always these 8.
+- **The zone-1 suffix is only populated on multi-zone systems.** A real two-zone device
+  reported 22.5 for `flow_temperature_zone1` / `return_temperature_zone1` while its boiler pair
+  sat at 25.0 — real zone-1 values and a placeholder boiler pair, in the same payload. On a
+  single-zone system the unsuffixed `flow_temperature` / `return_temperature` *are* the zone-1
+  flow and return. The integration gates these measures accordingly (Section 8, and
+  `telemetry_tracker.py`).
+- **Unverified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
+  endpoint**. Both units observed here were single-zone and neither response contained zone-2
+  series, so it is unknown whether the server selects datasets per device or the report is
+  always these 8. (The two-zone evidence above comes from per-measure telemetry on a device
+  that is no longer reachable, not from this endpoint.)
 
-**Trade-off versus per-measure telemetry:** one request replaces six, but a single failure then
-costs all measures for that cycle rather than one. With equal failure rates the expected data
-loss is unchanged, so the swap is a reliability win only if this endpoint proves more reliable
-than `/telemetry/telemetry/actual`.
+**Trade-off versus per-measure telemetry:** the saving depends on the device. Since the
+zone1/boiler measures are now gated on capabilities, a single-zone unit without a boiler makes
+only **2** per-measure calls, so this endpoint would replace 2 requests with 1 — not 6 with 1.
+A two-zone unit with a boiler still makes 8. And a single failure here costs every measure for
+that cycle rather than one, so with equal failure rates the expected data loss is unchanged.
+The swap is worth making only if this endpoint proves measurably more reliable than
+`/telemetry/telemetry/actual`, and the gain is smallest on exactly the configuration most
+users have.
 
 *(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
 
