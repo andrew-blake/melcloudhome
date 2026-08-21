@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
+from .api.parsing import Reading
 from .const import (
     ATW_TELEMETRY_MEASURES,
     ATW_TELEMETRY_MEASURES_BOILER,
@@ -37,6 +38,38 @@ TELEMETRY_INTER_DEVICE_JITTER_MIN = 0.1
 TELEMETRY_INTER_DEVICE_JITTER_MAX = 1.0
 TELEMETRY_INTER_MEASURE_JITTER_MIN = 0.1
 TELEMETRY_INTER_MEASURE_JITTER_MAX = 0.5
+
+
+def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
+    """Pick the newest datapoint by its own timestamp, not by position.
+
+    Every observed response is in ascending order, but once last_reading is
+    user-visible an out-of-order response would make a timestamp go backwards,
+    so trust the stamps over the ordering. Timestamps are naive and consistent
+    with UTC (see ADR-022); the 9-digit fractional seconds parse as-is.
+    """
+    stamped: list[tuple[datetime, float]] = []
+    unstamped: float | None = None
+
+    for point in values:
+        raw_value = point.get("value")
+        if raw_value is None:
+            continue
+        raw_time = point.get("time")
+        if raw_time is None:
+            unstamped = float(raw_value)  # keep the last one seen
+            continue
+        stamped.append(
+            (
+                datetime.fromisoformat(str(raw_time)).replace(tzinfo=UTC),
+                float(raw_value),
+            )
+        )
+
+    if stamped:
+        recorded_at, value = max(stamped)  # tuples sort by timestamp first
+        return Reading(value, recorded_at)
+    return Reading(unstamped, None) if unstamped is not None else None
 
 
 class TelemetryTracker:
@@ -70,9 +103,9 @@ class TelemetryTracker:
         self._execute_with_retry = execute_with_retry
         self._get_coordinator_data = get_coordinator_data
 
-        # Telemetry data cache (latest values for sensor state)
-        # Structure: {unit_id: {measure_name: temperature_celsius}}
-        self._telemetry_data: dict[str, dict[str, float | None]] = {}
+        # Telemetry data cache (latest readings for sensor state)
+        # Structure: {unit_id: {measure_name: Reading}}
+        self._telemetry_data: dict[str, dict[str, Reading | None]] = {}
 
     async def async_setup(self) -> None:
         """Set up telemetry tracker."""
@@ -194,30 +227,20 @@ class TelemetryTracker:
             _LOGGER.debug("Empty telemetry values for %s - %s", unit.name, measure)
             return
 
-        # Update sensor state with LATEST value
-        # HA recorder will auto-create statistics from state updates
-        latest_value = float(values[-1]["value"])
-        self._telemetry_data[unit.id][measure] = latest_value
+        reading = _newest_reading(values)
+        if reading is None:
+            _LOGGER.debug("No usable datapoint for %s - %s", unit.name, measure)
+            return
+        self._telemetry_data[unit.id][measure] = reading
 
         _LOGGER.debug(
-            "Telemetry: %s - %s = %.1f°C (latest of %d datapoints)",
+            "Telemetry: %s - %s = %.1f°C (recorded %s, of %d datapoints)",
             unit.name,
             measure,
-            latest_value,
+            reading.value,
+            reading.recorded_at,
             len(values),
         )
-
-    def get_telemetry_value(self, unit_id: str, measure: str) -> float | None:
-        """Get cached telemetry value for sensor state.
-
-        Args:
-            unit_id: Unit ID
-            measure: Measure name
-
-        Returns:
-            Temperature in °C, or None if not available
-        """
-        return self._telemetry_data.get(unit_id, {}).get(measure)
 
     def update_unit_telemetry_data(self, units: dict[str, AirToWaterUnit]) -> None:
         """Update telemetry data on ATW unit objects from cache.

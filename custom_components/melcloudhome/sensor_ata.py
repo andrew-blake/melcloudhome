@@ -22,7 +22,12 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToAirUnit, Building
-from .helpers import initialize_entity_base
+from .api.parsing import Reading
+from .helpers import (
+    initialize_entity_base,
+    sensor_native_value,
+    sensor_state_attributes,
+)
 from .protocols import CoordinatorProtocol
 
 
@@ -34,8 +39,16 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     (aiohttp version conflict). Mypy sees SensorEntityDescription as 'Any'.
     """
 
-    value_fn: Callable[[AirToAirUnit], float | str | None]
-    """Function to extract sensor value from unit data."""
+    value_fn: Callable[[AirToAirUnit], float | str | None] | None = None
+    """Extract the sensor value. Mutually exclusive with reading_fn."""
+
+    reading_fn: Callable[[AirToAirUnit], Reading | None] | None = None
+    """Extract a value that carries its own recording time.
+
+    Setting this instead of value_fn marks the sensor as fed by a slow-cadence
+    poll: the state comes from the reading's value and a `last_reading`
+    attribute is added automatically (issue #200).
+    """
 
     should_create_fn: Callable[[AirToAirUnit], bool] = lambda x: True
     """Whether to create the sensor at all.
@@ -204,18 +217,21 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return None
-        return self.entity_description.value_fn(device)
+        return sensor_native_value(self.entity_description, device)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if self.entity_description.attributes_fn is None:
+        if (
+            self.entity_description.attributes_fn is None
+            and self.entity_description.reading_fn is None
+        ):
             return None
 
         device = self.coordinator.get_ata_device(self._unit_id)
         if device is None:
             return None
-        return self.entity_description.attributes_fn(device)
+        return sensor_state_attributes(self.entity_description, device)
 
     @property
     def available(self) -> bool:
