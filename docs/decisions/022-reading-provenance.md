@@ -31,7 +31,7 @@ The concept was already shipped once, for ATA outdoor temperature (#173):
 a `outdoor_temp_recorded_at` field beside the value, and a hand-rolled
 `attributes_fn` lambda on each of the two sensor platforms exposing it as a
 `last_reading` attribute. That single instance was smeared across six files,
-and the twelve other slow-cadence sensors had nothing.
+and the other slow-cadence sensors had nothing.
 
 ## Decision
 
@@ -41,7 +41,7 @@ fields.**
 ```python
 class Reading(NamedTuple):
     value: float
-    recorded_at: datetime | None
+    recorded_at: datetime
 ```
 
 It lives in `api/parsing.py` — the zero-dependency leaf both device model
@@ -61,14 +61,17 @@ present-but-null when there is no reading yet. Twelve companion
 roughly doubling the ATW sensor count for a diagnostic. If staleness ever
 becomes a user-facing feature, the better shape is one
 `EntityCategory.DIAGNOSTIC` "oldest reading age" sensor per device — one entity
-rather than twelve. This ADR produces the data that would make that small; it
+rather than ten. This ADR produces the data that would make that small; it
 does not build it.
 
-**`recorded_at` is optional.** A payload can carry a value with no usable time.
-Dropping such a datapoint would silently keep an older value in preference to a
-newer one, so it is taken with no provenance and `last_reading` reads null. A
-`Reading` of `None` means no value at all; the two states are deliberately
-distinguishable.
+**Energy sensors are out of scope.** Their upstream timestamps are hour-bucket
+keys that only advance when consumption does, so a `last_reading` derived from
+them reports an idle unit as a failing poll. Provenance for energy would have to
+be stamped from the fetch instead (see PR #270, closed).
+
+**A datapoint that cannot be parsed is skipped.** Its stamp or value is
+unusable, so it contributes nothing; if no datapoint in the window parses, the
+sensor keeps its previous reading, the same outcome as a failed poll.
 
 **The newest datapoint is chosen by its own timestamp, not by position.** Every
 observed response is in ascending order, but once the stamp is user-visible an

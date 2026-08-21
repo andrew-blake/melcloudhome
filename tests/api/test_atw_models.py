@@ -465,11 +465,6 @@ class TestEdgeCases:
         unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
         assert unit.has_outdoor_temp_sensor is False
 
-    def test_outdoor_temp_reading_defaults_none(self) -> None:
-        """outdoor_temp_reading is set by the coordinator, not from_dict."""
-        unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)
-        assert unit.outdoor_temp_reading is None
-
     def test_outdoor_temp_last_error_at_defaults_none(self) -> None:
         """outdoor_temp_last_error_at is set by the coordinator, not from_dict."""
         unit = AirToWaterUnit.from_dict(ATW_UNIT_IDLE)

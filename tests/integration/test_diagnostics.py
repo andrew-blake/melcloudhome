@@ -8,7 +8,7 @@ Run with: make test-integration
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -251,7 +251,9 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
 ) -> None:
     """Diagnostics distinguishes a last-good reading from a fresh poll error."""
     unit = create_mock_atw_unit(
-        outdoor_temp_reading=Reading(16.0, datetime(2026, 8, 17, 8, 57, 11)),
+        outdoor_temp_reading=Reading(
+            16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC)
+        ),
         has_outdoor_temp_sensor=True,
     )
     mock_context = create_mock_atw_user_context(
@@ -272,7 +274,7 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
 
     assert atw_unit["outdoor_temperature"] == 16.0
     assert atw_unit["has_outdoor_temp_sensor"] is True
-    assert atw_unit["outdoor_temp_recorded_at"] == "2026-08-17T08:57:11"
+    assert atw_unit["outdoor_temp_recorded_at"] == "2026-08-17T08:57:11+00:00"
     assert (
         atw_unit["outdoor_temp_last_error"]
         == "ValueError: MELCloud service unavailable (HTTP 500)"

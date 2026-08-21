@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
-from .api.parsing import Reading, parse_api_timestamp
+from .api.parsing import Reading, parse_api_timestamp, parse_float
 from .const import (
     ATW_TELEMETRY_MEASURES,
     ATW_TELEMETRY_MEASURES_BOILER,
@@ -55,13 +55,21 @@ def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
     stamped: list[tuple[datetime, float]] = []
 
     for point in values:
-        raw_value = point.get("value")
-        raw_time = point.get("time")
-        if raw_value is None or raw_time is None:
-            continue
         try:
-            stamped.append((parse_api_timestamp(str(raw_time)), float(raw_value)))
-        except ValueError:
+            value = parse_float(point.get("value"))
+            raw_time = point.get("time")
+            if value is None or raw_time is None:
+                continue
+            stamped.append((parse_api_timestamp(str(raw_time)), value))
+        except (AttributeError, ValueError, OverflowError):
+            # AttributeError: the entry is not a dict. ValueError: unparsable
+            # stamp. OverflowError: astimezone on an extreme date. parse_float
+            # absorbs a value that arrives as an object or array.
+            #
+            # Logging the whole point rather than the offending string is
+            # deliberate: repr escapes control characters, so a hostile value
+            # cannot forge a log line (api/websocket.py's _sanitize covers the
+            # same concern for values that are logged bare).
             _LOGGER.debug("Skipping unparsable datapoint: %s", point)
 
     if not stamped:
