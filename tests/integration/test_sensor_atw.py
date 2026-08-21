@@ -340,7 +340,11 @@ async def test_telemetry_sensors_created_without_telemetry_data(
     Regression test: creation used to be gated on the measure already being present,
     so a failed telemetry poll at setup dropped the sensor until the next reload.
     """
-    unit = create_mock_atw_unit()
+    # has_zone2/has_boiler so all six measures apply to this device — the zone-1 and
+    # boiler pairs are capability-gated (they return a 25 placeholder on hardware that
+    # lacks them, see test_sensor_atw_placeholder_gating.py), and this test is about
+    # creation not being gated on a *value*.
+    unit = create_mock_atw_unit(has_zone2=True, has_boiler=True)
     assert not unit.telemetry, "expected a mock ATW unit to start with no telemetry"
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[unit])]

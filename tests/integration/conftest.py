@@ -114,6 +114,7 @@ def create_mock_atw_unit(
     ftc_model: int = 6,
     rssi: int | None = -50,
     has_zone2: bool = False,
+    has_boiler: bool = False,
     in_standby_mode: bool = False,
     has_energy_meter: bool = False,
     has_cooling_mode: bool = False,
@@ -174,6 +175,7 @@ def create_mock_atw_unit(
         outdoor_temp_last_error=outdoor_temp_last_error,
         capabilities=AirToWaterCapabilities(
             has_zone2=has_zone2,
+            has_boiler=has_boiler,
             has_heat_zone2=has_zone2,
             has_thermostat_zone2=has_zone2,
             has_estimated_energy_consumption=has_energy_meter,

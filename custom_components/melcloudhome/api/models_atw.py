@@ -40,6 +40,11 @@ class AirToWaterCapabilities:
     # Zone 2 Support (usually false)
     has_zone2: bool = False
 
+    # Boiler circuit. Devices without one still return the boiler flow/return
+    # telemetry measures, filled with a constant 25 placeholder, so this gates
+    # whether those measures are requested and surfaced at all.
+    has_boiler: bool = False
+
     # Thermostat Support
     has_thermostat_zone1: bool = True
     has_thermostat_zone2: bool = True  # Capability flag (not actual support)
@@ -103,6 +108,7 @@ class AirToWaterCapabilities:
             max_set_temperature=30.0,
             has_half_degrees=data.get("hasHalfDegrees", False),
             has_zone2=data.get("hasZone2", False),
+            has_boiler=data.get("hasBoiler", False),
             has_thermostat_zone1=data.get("hasThermostatZone1", True),
             has_thermostat_zone2=data.get("hasThermostatZone2", True),
             has_heat_zone1=data.get("hasHeatZone1", True),

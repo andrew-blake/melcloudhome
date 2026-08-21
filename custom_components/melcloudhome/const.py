@@ -58,10 +58,17 @@ UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=30)
 ATW_TELEMETRY_MEASURES = [
     "flow_temperature",
     "return_temperature",
+]
+
+# Zone-1-suffixed measures, only requested when the device has a second zone.
+# On a single-zone system the unsuffixed pair above IS the zone 1 flow/return, and
+# these return a constant 25 placeholder instead of a reading. Confirmed by a real
+# two-zone device reporting 22.5 here while its boiler pair sat at 25.0, against two
+# single-zone devices reporting 25.0 for both pairs.
+# See docs/api/atw-api-reference.md.
+ATW_TELEMETRY_MEASURES_ZONE1 = [
     "flow_temperature_zone1",
     "return_temperature_zone1",
-    "flow_temperature_boiler",
-    "return_temperature_boiler",
 ]
 
 # ATW telemetry measures for Zone 2 devices only
@@ -70,11 +77,20 @@ ATW_TELEMETRY_MEASURES_ZONE2 = [
     "return_temperature_zone2",
 ]
 
+# Boiler-circuit measures, only requested when capabilities report a boiler.
+# Same 25 placeholder on devices without one.
+ATW_TELEMETRY_MEASURES_BOILER = [
+    "flow_temperature_boiler",
+    "return_temperature_boiler",
+]
+
 # Type alias for any device unit (ATA or ATW)
 DeviceUnit = Union["AirToAirUnit", "AirToWaterUnit"]
 
 __all__ = [
     "ATW_TELEMETRY_MEASURES",
+    "ATW_TELEMETRY_MEASURES_BOILER",
+    "ATW_TELEMETRY_MEASURES_ZONE1",
     "ATW_TELEMETRY_MEASURES_ZONE2",
     "CONF_DEBUG_MODE",
     "CONF_ENABLE_WEBSOCKET",
