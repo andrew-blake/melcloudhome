@@ -80,11 +80,8 @@ An unchanging value has two causes the entity state cannot currently separate:
 the reading really is constant, or the poll stopped succeeding and the old value
 is being re-presented. `last_reading` separates them.
 
-| `last_reading` | value | meaning |
-|---|---|---|
-| advancing | unchanging | the reading itself is constant — a steady circuit, or the vendor's placeholder where the hardware is absent |
-| stale | unchanging | the poll is failing; the displayed value is old |
-| advancing | moving | healthy |
+See the table in [docs/entities.md](../entities.md) for how to read the attribute
+alongside the value.
 
 Identifying a placeholder takes the value as well. The vendor serves its constant
 `25` for absent hardware with fresh, advancing datapoints, which by timestamp

@@ -71,9 +71,6 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     attribute is added automatically (issue #200).
     """
 
-    attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
-    """Optional function to extract extra state attributes from unit data."""
-
     should_create_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
     """Whether to create the sensor at all.
 
@@ -333,10 +330,7 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if (
-            self.entity_description.attributes_fn is None
-            and self.entity_description.reading_fn is None
-        ):
+        if self.entity_description.reading_fn is None:
             return None
 
         device = self.coordinator.get_atw_device(self._unit_id)

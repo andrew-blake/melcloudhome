@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
-from .api.parsing import Reading
+from .api.parsing import Reading, parse_api_timestamp
 from .const import (
     ATW_TELEMETRY_MEASURES,
     ATW_TELEMETRY_MEASURES_BOILER,
@@ -47,29 +47,27 @@ def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
     user-visible an out-of-order response would make a timestamp go backwards,
     so trust the stamps over the ordering. Timestamps are naive and consistent
     with UTC (see ADR-022); the 9-digit fractional seconds parse as-is.
+
+    A datapoint that cannot be parsed costs that datapoint only. Parsing the
+    whole window means one bad point could otherwise abort the measure, and it
+    would keep doing so for as long as it stayed in the lookback window.
     """
     stamped: list[tuple[datetime, float]] = []
-    unstamped: float | None = None
 
     for point in values:
         raw_value = point.get("value")
-        if raw_value is None:
-            continue
         raw_time = point.get("time")
-        if raw_time is None:
-            unstamped = float(raw_value)  # keep the last one seen
+        if raw_value is None or raw_time is None:
             continue
-        stamped.append(
-            (
-                datetime.fromisoformat(str(raw_time)).replace(tzinfo=UTC),
-                float(raw_value),
-            )
-        )
+        try:
+            stamped.append((parse_api_timestamp(str(raw_time)), float(raw_value)))
+        except ValueError:
+            _LOGGER.debug("Skipping unparsable datapoint: %s", point)
 
-    if stamped:
-        recorded_at, value = max(stamped)  # tuples sort by timestamp first
-        return Reading(value, recorded_at)
-    return Reading(unstamped, None) if unstamped is not None else None
+    if not stamped:
+        return None
+    recorded_at, value = max(stamped)  # tuples sort by timestamp first
+    return Reading(value, recorded_at)
 
 
 class TelemetryTracker:

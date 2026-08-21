@@ -14,9 +14,10 @@ def serialize_outdoor_temp_fields(
     """Serialize the outdoor-temp diagnostic fields shared by ATA and ATW units."""
     reading = unit.outdoor_temp_reading
     return {
+        "outdoor_temperature": reading.value if reading else None,
         "has_outdoor_temp_sensor": unit.has_outdoor_temp_sensor,
         "outdoor_temp_recorded_at": (
-            reading.recorded_at.isoformat() if reading and reading.recorded_at else None
+            reading.recorded_at.isoformat() if reading else None
         ),
         "outdoor_temp_last_error": unit.outdoor_temp_last_error,
         "outdoor_temp_last_error_at": (

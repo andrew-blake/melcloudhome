@@ -37,7 +37,7 @@ from .const_shared import (
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
 from .pacing import RequestPacer
-from .parsing import Reading
+from .parsing import Reading, parse_api_timestamp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -394,9 +394,7 @@ class MELCloudHomeClient:
                     recorded_at = point.get("x")
                     if recorded_at is None:
                         continue
-                    timestamp = datetime.fromisoformat(str(recorded_at)).replace(
-                        tzinfo=UTC
-                    )
+                    timestamp = parse_api_timestamp(str(recorded_at))
                     if timestamp.second == 0:
                         continue  # Synthetic chart point, not a unit reading
                     value = point.get("y")

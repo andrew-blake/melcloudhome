@@ -23,6 +23,7 @@ from .conftest import (
 LIVING_ROOM_ID = "0efc1234-5678-9abc-def0-1234567887db"  # Has outdoor sensor
 BEDROOM_ID = "5b3e4321-8765-cba9-fed0-abcdef987a9b"  # No outdoor sensor
 STUDY_ID = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"  # Has outdoor sensor (2nd unit)
+RECORDED_AT = datetime(2026, 8, 21, 9, 15, 22, tzinfo=UTC)
 TEST_BUILDING_ID = "building-test-id"
 
 
@@ -33,7 +34,7 @@ async def setup_integration_with_outdoor_temp(hass: HomeAssistant) -> MockConfig
         unit_id=LIVING_ROOM_ID,
         name="Living Room AC",
         has_outdoor_sensor=True,
-        outdoor_temp_reading=Reading(12.0, None),
+        outdoor_temp_reading=Reading(12.0, RECORDED_AT),
     )
     bedroom = create_mock_ata_unit(
         unit_id=BEDROOM_ID,
@@ -159,13 +160,13 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         unit_id=LIVING_ROOM_ID,
         name="Living Room AC",
         has_outdoor_sensor=True,
-        outdoor_temp_reading=Reading(8.0, None),
+        outdoor_temp_reading=Reading(8.0, RECORDED_AT),
     )
     study = create_mock_ata_unit(
         unit_id=STUDY_ID,
         name="Study AC",
         has_outdoor_sensor=True,
-        outdoor_temp_reading=Reading(3.0, None),
+        outdoor_temp_reading=Reading(3.0, RECORDED_AT),
     )
     mock_context = create_mock_ata_user_context(
         [create_mock_ata_building(units=[living_room, study])]
