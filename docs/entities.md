@@ -162,26 +162,38 @@ For each heat pump system, the following entities are created:
 
 - **Flow Temperature**: `sensor.melcloudhome_{short_id}_flow_temperature`
 - **Return Temperature**: `sensor.melcloudhome_{short_id}_return_temperature`
-- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_1`
-- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone_1`
+- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_1` (if device supports Zone 2)
+- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone_1` (if device supports Zone 2)
 - **Flow Temperature Zone 2**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_2` (if device supports Zone 2)
 - **Return Temperature Zone 2**: `sensor.melcloudhome_{short_id}_return_temperature_zone_2` (if device supports Zone 2)
-- **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler`
-- **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler`
+- **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler` (if device reports a boiler)
+- **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler` (if device reports a boiler)
 
-All of these except the Zone 2 pair are created for every heat pump. Not every controller model reports every measure — the telemetry API simply returns no data for a sensor the hardware doesn't have — so any of them may sit permanently `unknown`. That is expected.
+The unsuffixed Flow and Return pair is created for every heat pump. The rest are gated on
+capabilities, because MELCloud returns a constant 25 °C for measures the hardware doesn't
+have rather than no data at all — so creating them unconditionally produced sensors that
+looked like readings and never were.
+
+The zone-1 pair is gated on Zone 2 support, which reads oddly but is correct: on a
+single-zone system the *unsuffixed* Flow and Return **are** the zone 1 flow and return, and
+the suffixed pair is only populated when there is more than one zone. The boiler pair is
+gated on the device reporting a boiler.
+
+A gated sensor that does exist can still sit at `unknown` when a telemetry fetch returns no
+datapoints for it. That is expected and separate from the gating above.
 
 **Purpose:** Monitor heating system efficiency and performance
 
 - Flow vs return delta indicates heat transfer efficiency
-- Zone-specific temps show heating loop performance
-- Boiler temps available if external boiler present
+- Zone-specific temps show per-loop performance on multi-zone systems
+- Boiler temps present only when the device reports a boiler
 
 **Update frequency:** Every 60 minutes (sensor state updated with latest API value)
 **Data density:** 10-15 datapoints per hour during active heating (sparse when idle)
 **Statistics:** HA auto-creates statistics and history graphs automatically
 
-**Note:** Boiler temps may show "unknown" if no external boiler present (normal behavior)
+**Note:** Boiler temps are not created at all unless the device reports a boiler. They used
+to be created for every heat pump, where they read a constant 25 °C on devices without one.
 
 **WiFi Signal Sensor:**
 

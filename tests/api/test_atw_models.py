@@ -48,6 +48,20 @@ class TestAirToWaterCapabilities:
         assert caps.has_zone2 is False
         assert caps.has_demand_side_control is True
 
+    @pytest.mark.parametrize(
+        ("payload", "expected"),
+        [
+            ({"hasBoiler": True}, True),
+            ({"hasBoiler": False}, False),
+            ({}, False),  # absent -> assume no boiler, matching hasZone2's default
+        ],
+    )
+    def test_has_boiler_parsed_from_capabilities(
+        self, payload: dict[str, Any], expected: bool
+    ) -> None:
+        """hasBoiler gates the boiler telemetry measures, so it must be parsed."""
+        assert AirToWaterCapabilities.from_dict(payload).has_boiler is expected
+
     def test_capabilities_from_dict_with_missing_fields_uses_defaults(self) -> None:
         """Test that missing fields use default values."""
         caps_data: dict[str, Any] = {}

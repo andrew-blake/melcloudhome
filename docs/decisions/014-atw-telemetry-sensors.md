@@ -1,7 +1,10 @@
 # ADR-014: ATW Telemetry Sensors (Flow/Return Temperatures)
 
 **Date:** 2026-01-14
-**Status:** Accepted
+**Status:** Accepted, amended 2026-08-21 — the six measures described here are no longer all
+requested unconditionally. MELCloud returns a constant 25 °C for measures the hardware lacks,
+so the zone-1 pair is now gated on Zone 2 support and the boiler pair on the device reporting
+a boiler. See `docs/api/atw-api-reference.md` (Section 8) and `telemetry_tracker.py`.
 **Decision Makers:** @andrew-blake
 
 ---

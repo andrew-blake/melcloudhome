@@ -20,6 +20,8 @@ from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
 from .const import (
     ATW_TELEMETRY_MEASURES,
+    ATW_TELEMETRY_MEASURES_BOILER,
+    ATW_TELEMETRY_MEASURES_ZONE1,
     ATW_TELEMETRY_MEASURES_ZONE2,
     DATA_LOOKBACK_HOURS_TELEMETRY,
 )
@@ -128,10 +130,15 @@ class TelemetryTracker:
         if unit.id not in self._telemetry_data:
             self._telemetry_data[unit.id] = {}
 
-        # Build measure list — Zone 2 measures only for devices with Zone 2
+        # Build measure list from capabilities. The suffixed measures return a
+        # constant 25 placeholder on devices that lack the hardware, so requesting
+        # them costs a round trip per measure and yields a fake reading.
         measures = list(ATW_TELEMETRY_MEASURES)
         if unit.capabilities and unit.capabilities.has_zone2:
+            measures.extend(ATW_TELEMETRY_MEASURES_ZONE1)
             measures.extend(ATW_TELEMETRY_MEASURES_ZONE2)
+        if unit.capabilities and unit.capabilities.has_boiler:
+            measures.extend(ATW_TELEMETRY_MEASURES_BOILER)
 
         # Fetch each measure with jitter
         for i, measure in enumerate(measures):

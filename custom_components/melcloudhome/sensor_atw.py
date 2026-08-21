@@ -150,6 +150,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
+        should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
         key="return_temperature_zone1",
@@ -158,6 +159,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
+        should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     # Zone 2 telemetry (flow/return temperatures)
     ATWSensorEntityDescription(
@@ -185,6 +187,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
+        should_create_fn=lambda unit: unit.capabilities.has_boiler,
     ),
     ATWSensorEntityDescription(
         key="return_temperature_boiler",
@@ -193,6 +196,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
+        should_create_fn=lambda unit: unit.capabilities.has_boiler,
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm
