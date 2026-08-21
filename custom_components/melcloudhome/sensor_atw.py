@@ -227,7 +227,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        value_fn=lambda unit: unit.energy_consumed,
+        reading_fn=lambda unit: unit.energy_consumed,
         should_create_fn=_has_energy_consumption_capability,
     ),
     ATWSensorEntityDescription(
@@ -236,7 +236,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        value_fn=lambda unit: unit.energy_produced,
+        reading_fn=lambda unit: unit.energy_produced,
         should_create_fn=_has_energy_production_capability,
     ),
     ATWSensorEntityDescription(
@@ -245,7 +245,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=None,  # COP is dimensionless
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=None,
-        value_fn=lambda unit: unit.cop,
+        reading_fn=lambda unit: unit.cop,
         should_create_fn=_has_energy_consumption_capability,  # COP requires consumption data
     ),
 )

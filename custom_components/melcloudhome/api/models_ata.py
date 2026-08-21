@@ -129,7 +129,7 @@ class AirToAirUnit:
     rssi: int | None
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
-    energy_consumed: float | None = None  # kWh
+    energy_consumed: Reading | None = None  # kWh
     # Outdoor temperature monitoring (set by coordinator via trendsummary API).
     # Idle units stop uploading, so recorded_at can lag hours behind (issue #171)
     outdoor_temp_reading: Reading | None = None

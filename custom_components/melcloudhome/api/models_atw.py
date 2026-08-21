@@ -215,9 +215,9 @@ class AirToWaterUnit:
     telemetry: dict[str, Reading | None] = field(default_factory=dict)
 
     # Energy data (populated by EnergyTrackerATW)
-    energy_consumed: float | None = None  # kWh (cumulative)
-    energy_produced: float | None = None  # kWh (cumulative)
-    cop: float | None = None  # Coefficient of Performance (produced/consumed)
+    energy_consumed: Reading | None = None  # kWh (cumulative)
+    energy_produced: Reading | None = None  # kWh (cumulative)
+    cop: Reading | None = None  # Coefficient of Performance (produced/consumed)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AirToWaterUnit":

@@ -94,7 +94,7 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        value_fn=lambda unit: unit.energy_consumed,
+        reading_fn=lambda unit: unit.energy_consumed,
         should_create_fn=lambda unit: unit.capabilities.has_energy_consumed_meter,
     ),
     # Outdoor temperature - ambient temperature from outdoor unit sensor

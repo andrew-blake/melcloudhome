@@ -843,6 +843,100 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
+async def test_energy_last_reading_pinned_to_stale_bucket(
+    hass: HomeAssistant,
+) -> None:
+    """Test last_reading stays pinned to a bucket that stops advancing.
+
+    Two consecutive polls report the exact same newest hour, so the
+    cumulative total is unaffected either way and nothing in the entity's
+    state alone would show whether the second poll fetched anything new.
+    last_reading is the only way to tell a stalled upload (the prod
+    symptom - 70-100% endpoint failure) apart from one that is just
+    genuinely quiet (issue #200): it stays pinned to the bucket's own
+    timestamp rather than jumping to whenever the second poll happened to
+    run.
+
+    Validates: Task 8 - the timestamp comes from the bucket, never
+    datetime.now()
+    Tests through: hass.states (last_reading unchanged across the second poll)
+    """
+    mock_context = create_mock_ata_energy_context()
+    hour = "2025-01-15T10:00:00Z"
+    mock_energy_data = create_mock_energy_response([(hour, 500.0)])
+
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=None)
+        mock_store.async_save = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        expected = datetime.fromisoformat(hour).isoformat()
+        assert state.attributes["last_reading"] == expected
+
+        # Second poll, same hour reported again - nothing new arrives
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        await coordinator.energy_tracker.async_update_energy_data()
+        coordinator.energy_tracker.update_unit_energy_data(coordinator._units)
+        coordinator.async_update_listeners()
+        await hass.async_block_till_done()
+
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state.attributes["last_reading"] == expected
+
+
+@pytest.mark.asyncio
+async def test_energy_last_reading_survives_restart(hass: HomeAssistant) -> None:
+    """Test last_reading is rebuilt from the Store alone on restart.
+
+    hour_values keys are already the upstream's own recording time (issue
+    #200), so loading them from Store during async_setup - before any poll
+    this session contributes a fresher hour - is already enough state to
+    answer last_reading. No new persisted field, no migration.
+
+    Validates: Task 8 merge criteria - the Store payload is read, never
+    widened
+    Tests through: hass.states (last_reading attribute after a restart)
+    """
+    restored_hour = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    persisted_storage = {
+        "cumulative": {TEST_UNIT_ID: {"consumed": 1.1}},
+        "hour_values": {TEST_UNIT_ID: {"consumed": {restored_hour: 0.5}}},
+    }
+    # Poll after restart reports the same hour, same value - nothing new
+    mock_energy_data = create_mock_energy_response([(restored_hour, 500.0)])
+
+    async with setup_energy_entry(hass, persisted_storage, mock_energy_data):
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        assert float(state.state) == pytest.approx(1.1, rel=0.01)
+        assert (
+            state.attributes["last_reading"]
+            == datetime.fromisoformat(restored_hour).isoformat()
+        )
+
+
+@pytest.mark.asyncio
 async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> None:
     """Test migration from v1.3.4 single-measure to v2.0 multi-measure format.
 

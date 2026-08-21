@@ -173,6 +173,26 @@ class EnergyTrackerBase(ABC):
             return None
         return hour_dt if hour_dt.tzinfo else hour_dt.replace(tzinfo=UTC)
 
+    def _newest_recorded_at(self, unit_id: str, measure: str) -> datetime | None:
+        """Timestamp of the newest hour bucket persisted for unit + measure.
+
+        The provenance is already on disk: every hour_values key is the
+        upstream's own recording time (issue #200), so this is a max() over
+        keys already written by _initialize_unit_tracking /
+        _update_cumulative_values - no new state, no migration.
+        """
+        # Plain "in" checks, not .get(default) - the values are defaultdicts,
+        # and indexing a missing key would auto-vivify an empty entry.
+        if unit_id not in self._energy_hour_values:
+            return None
+        if measure not in self._energy_hour_values[unit_id]:
+            return None
+        hours = self._energy_hour_values[unit_id][measure]
+        stamps = [
+            dt for ts in hours if (dt := self._parse_hour_timestamp(ts)) is not None
+        ]
+        return max(stamps) if stamps else None
+
     def _clean_hour_values(self, now: datetime) -> bool:
         """Purge implausible and stale entries from persisted hour_values.
 

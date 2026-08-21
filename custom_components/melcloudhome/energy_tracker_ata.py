@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToAirUnit, UserContext
+from .api.parsing import Reading
 from .const import DATA_LOOKBACK_HOURS_ENERGY
 from .energy_tracker_base import EnergyTrackerBase
 
@@ -169,4 +170,9 @@ class ATAEnergyTracker(EnergyTrackerBase):
             units: Dictionary of unit_id -> AirToAirUnit to update
         """
         for unit_id, unit in units.items():
-            unit.energy_consumed = self._energy_data.get(unit_id)
+            value = self._energy_data.get(unit_id)
+            unit.energy_consumed = (
+                Reading(value, self._newest_recorded_at(unit_id, "consumed"))
+                if value is not None
+                else None
+            )

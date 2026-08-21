@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from .api.client_atw import ATWControlClient
 from .api.models import UserContext
 from .api.models_atw import AirToWaterUnit
+from .api.parsing import Reading
 from .const import DATA_LOOKBACK_HOURS_ENERGY
 from .energy_tracker_base import EnergyTrackerBase
 
@@ -251,6 +252,25 @@ class ATWEnergyTracker(EnergyTrackerBase):
             units: Dictionary of unit_id -> AirToWaterUnit to update
         """
         for unit_id, unit in units.items():
-            unit.energy_consumed = self._energy_consumed.get(unit_id)
-            unit.energy_produced = self._energy_produced.get(unit_id)
-            unit.cop = self._cop.get(unit_id)
+            consumed = self._energy_consumed.get(unit_id)
+            produced = self._energy_produced.get(unit_id)
+            cop = self._cop.get(unit_id)
+
+            consumed_at = self._newest_recorded_at(unit_id, "consumed")
+            produced_at = self._newest_recorded_at(unit_id, "produced")
+
+            unit.energy_consumed = (
+                Reading(consumed, consumed_at) if consumed is not None else None
+            )
+            unit.energy_produced = (
+                Reading(produced, produced_at) if produced is not None else None
+            )
+
+            # A ratio is only as fresh as its staler input, so cop's
+            # last_reading is the OLDER of the two measures' newest buckets
+            # (issue #200 plan, Task 8 Step 2). If either is missing, cop's
+            # provenance is unknown rather than guessed.
+            cop_at = None
+            if consumed_at is not None and produced_at is not None:
+                cop_at = min(consumed_at, produced_at)
+            unit.cop = Reading(cop, cop_at) if cop is not None else None

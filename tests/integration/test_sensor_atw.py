@@ -7,6 +7,7 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
+from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -14,6 +15,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from .conftest import (
+    TEST_ATW_UNIT_ID,
     TEST_SENSOR_COP,
     TEST_SENSOR_ENERGY_CONSUMED,
     TEST_SENSOR_ENERGY_PRODUCED,
@@ -304,6 +306,75 @@ async def test_atw_energy_sensors_have_correct_device_class(
         assert consumed.attributes.get("unit_of_measurement") == "kWh"
         assert produced.attributes.get("unit_of_measurement") == "kWh"
         assert cop.attributes.get("unit_of_measurement") is None
+
+
+@pytest.mark.asyncio
+async def test_atw_cop_last_reading_uses_older_measure(hass: HomeAssistant) -> None:
+    """Test cop's last_reading is the OLDER of consumed/produced's newest buckets.
+
+    cop is a ratio of the two measures, so it can only be as fresh as its
+    staler input (issue #200 plan, Task 8 Step 2): here consumed's newest
+    bucket is older than produced's, and last_reading must show the older
+    (consumed's) stamp, not produced's fresher one.
+
+    Validates: Task 8 Step 2 - the deliberate choice of the older timestamp
+    Tests through: hass.states (cop sensor's last_reading attribute)
+    """
+    mock_unit = create_mock_atw_unit(has_energy_meter=True)
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+
+    persisted_storage = {
+        "cumulative": {
+            TEST_ATW_UNIT_ID: {"consumed": 10.0, "produced": 40.0},
+        },
+        "hour_values": {
+            TEST_ATW_UNIT_ID: {
+                "consumed": {"2026-01-18T08:00:00Z": 5.0},
+                "produced": {"2026-01-18T08:00:00Z": 20.0},
+            }
+        },
+    }
+    mock_consumed = {
+        "measureData": [
+            {
+                "type": "intervalEnergyConsumed",
+                "values": [{"time": "2026-01-18T09:00:00Z", "value": 15.0}],
+            }
+        ]
+    }
+    mock_produced = {
+        "measureData": [
+            {
+                "type": "intervalEnergyProduced",
+                "values": [{"time": "2026-01-18T11:00:00Z", "value": 20.0}],
+            }
+        ]
+    }
+
+    def configure(client: Any) -> None:
+        client.atw = AsyncMock()
+        client.atw.get_energy_consumed = AsyncMock(return_value=mock_consumed)
+        client.atw.get_energy_produced = AsyncMock(return_value=mock_produced)
+
+    with patch(MOCK_STORE_PATH) as mock_store_class:
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=persisted_storage)
+        mock_store.async_save = AsyncMock()
+
+        await setup_atw_integration_custom(
+            hass, mock_context, configure_client=configure
+        )
+
+        # consumed: 10.0 + (15.0 - 0.0) = 25.0; produced: 40.0 + (20.0 - 0.0) = 60.0
+        cop = hass.states.get(TEST_SENSOR_COP)
+        assert cop is not None
+        assert float(cop.state) == pytest.approx(2.4, rel=0.01)
+        assert (
+            cop.attributes["last_reading"]
+            == datetime.fromisoformat("2026-01-18T09:00:00Z").isoformat()
+        )
 
 
 # Outdoor temperature sensor creation/unknown-state coverage lives in
