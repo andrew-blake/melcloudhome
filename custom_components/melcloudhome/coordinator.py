@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api.client import MELCloudHomeClient
 from .api.exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .api.models import AirToAirUnit, AirToWaterUnit, Building, UserContext
+from .api.parsing import Reading
 from .api.websocket import MELCloudHomeWebSocket
 from .const import (
     CONF_ENABLE_WEBSOCKET,
@@ -636,7 +637,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self,
         units: Iterable[AirToAirUnit | AirToWaterUnit],
         cache: Mapping[str, AirToAirUnit | AirToWaterUnit],
-        get_temp: Callable[[str], Awaitable[tuple[float | None, datetime | None]]],
+        get_temp: Callable[[str], Awaitable[Reading | None]],
         log_label: str,
     ) -> None:
         """Poll outdoor temperature for a set of units, shared by ATA and ATW.
@@ -652,8 +653,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             if unit_id in cache:
                 old_unit = cache[unit_id]
                 unit.has_outdoor_temp_sensor = old_unit.has_outdoor_temp_sensor
-                unit.outdoor_temperature = old_unit.outdoor_temperature
-                unit.outdoor_temp_recorded_at = old_unit.outdoor_temp_recorded_at
+                unit.outdoor_temp_reading = old_unit.outdoor_temp_reading
                 unit.outdoor_temp_last_error = old_unit.outdoor_temp_last_error
                 unit.outdoor_temp_last_error_at = old_unit.outdoor_temp_last_error_at
 
@@ -661,23 +661,22 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 continue
 
             try:
-                temp, recorded_at = await self._execute_with_retry(
+                reading = await self._execute_with_retry(
                     functools.partial(get_temp, unit_id), log_label
                 )
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = None
                 unit.outdoor_temp_last_error_at = None
 
-                if temp is not None:
+                if reading is not None:
                     unit.has_outdoor_temp_sensor = True
-                    unit.outdoor_temperature = temp
-                    unit.outdoor_temp_recorded_at = recorded_at
+                    unit.outdoor_temp_reading = reading
                     _LOGGER.debug(
                         "%s for %s: %.1f°C (recorded %s)",
                         log_label,
                         unit.name,
-                        temp,
-                        recorded_at,
+                        reading.value,
+                        reading.recorded_at,
                     )
                 else:
                     _LOGGER.debug("No %s data for %s", log_label, unit.name)

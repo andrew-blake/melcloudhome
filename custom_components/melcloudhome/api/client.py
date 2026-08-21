@@ -37,6 +37,7 @@ from .const_shared import (
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
 from .pacing import RequestPacer
+from .parsing import Reading
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -345,9 +346,7 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _parse_outdoor_temp(
-        self, response: dict[str, Any] | list
-    ) -> tuple[float | None, datetime | None]:
+    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> Reading | None:
         """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
@@ -376,12 +375,12 @@ class MELCloudHomeClient:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the
-            reading), or (None, None) if the response holds no genuine
-            reading. The timestamp lets consumers detect stale data: units
-            stop uploading outdoor temperature while idle, so the latest
-            reading can be hours old (issues #152, #171). The "x" timestamps
-            are naive but confirmed UTC: across ~1,700 genuine readings from
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if the response holds no genuine reading. The
+            timestamp lets consumers detect stale data: units stop uploading
+            outdoor temperature while idle, so the latest reading can be
+            hours old (issues #152, #171). The "x" timestamps are naive but
+            confirmed UTC: across ~1,700 genuine readings from
             actively-uploading units, none led the UTC query time, which
             local-time (BST, UTC+1) stamps would by up to an hour.
         """
@@ -403,13 +402,13 @@ class MELCloudHomeClient:
                     value = point.get("y")
                     if value is None:
                         continue  # Reading without a value; try older points
-                    return float(value), timestamp
-                return None, None  # No genuine reading in the window
-        return None, None  # No outdoor temp dataset found
+                    return Reading(float(value), timestamp)
+                return None  # No genuine reading in the window
+        return None  # No outdoor temp dataset found
 
     async def _get_report_outdoor_temperature(
         self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
-    ) -> tuple[float | None, datetime | None]:
+    ) -> Reading | None:
         """Shared implementation for get_outdoor_temperature/get_atw_outdoor_temperature.
 
         Both query a /report/v1/ endpoint with period=Hourly and parse the
@@ -445,12 +444,10 @@ class MELCloudHomeClient:
                 params["from"],
                 params["to"],
             )
-            return None, None
+            return None
         return self._parse_outdoor_temp(response)
 
-    async def get_outdoor_temperature(
-        self, unit_id: str
-    ) -> tuple[float | None, datetime | None]:
+    async def get_outdoor_temperature(self, unit_id: str) -> Reading | None:
         """Get latest outdoor temperature for an ATA unit.
 
         Queries trendsummary with Hourly period, which is the only period
@@ -471,16 +468,14 @@ class MELCloudHomeClient:
             unit_id: ATA unit UUID
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
-            or (None, None) if not available
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
             API_REPORT_TRENDSUMMARY, unit_id, timedelta(hours=48), "trendsummary"
         )
 
-    async def get_atw_outdoor_temperature(
-        self, unit_id: str
-    ) -> tuple[float | None, datetime | None]:
+    async def get_atw_outdoor_temperature(self, unit_id: str) -> Reading | None:
         """Get latest outdoor temperature for an ATW unit.
 
         ATW's live /context OutdoorTemperature can be present but silently
@@ -505,8 +500,8 @@ class MELCloudHomeClient:
             unit_id: ATW unit UUID
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
-            or (None, None) if not available
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
             API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"

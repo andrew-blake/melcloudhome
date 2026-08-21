@@ -45,11 +45,11 @@ async def test_get_atw_outdoor_temperature(
         pytest.skip("No ATW units found")
 
     assert unit is not None  # Type narrowing
-    temp, recorded_at = await authenticated_client.get_atw_outdoor_temperature(unit.id)
+    reading = await authenticated_client.get_atw_outdoor_temperature(unit.id)
 
-    # Verify response - either float or None (both valid)
-    if temp is not None:
-        assert isinstance(temp, float)
-        assert -50.0 <= temp <= 50.0  # Reasonable temperature range
-        assert recorded_at is None or isinstance(recorded_at, datetime)
+    # Verify response - either a Reading or None (both valid)
+    if reading is not None:
+        assert isinstance(reading.value, float)
+        assert -50.0 <= reading.value <= 50.0  # Reasonable temperature range
+        assert reading.recorded_at is None or isinstance(reading.recorded_at, datetime)
     # else: None is valid (no genuine reading in the lookback window)

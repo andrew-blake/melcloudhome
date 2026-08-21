@@ -196,9 +196,8 @@ class AirToWaterUnit:
     # wrong (issue #251) or absent, with no way to tell which from the value
     # alone, so this is never parsed from settings - only ever set by the
     # coordinator's comfort-graph poll, same as ATA's trendsummary-only value.
-    outdoor_temperature: float | None = None  # °C
+    outdoor_temp_reading: Reading | None = None
     has_outdoor_temp_sensor: bool = False  # Runtime discovery flag
-    outdoor_temp_recorded_at: datetime | None = None  # UTC-aware
     # Set by the coordinator when the outdoor-temp poll itself raised (e.g. a
     # real HTTP error), distinct from a successful poll finding no genuine
     # reading. Cleared on the next successful poll. Diagnostic-only signal

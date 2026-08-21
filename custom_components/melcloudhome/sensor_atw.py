@@ -121,13 +121,8 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.outdoor_temperature,
         # last_reading surfaces staleness: units may not upload every poll.
-        attributes_fn=lambda unit: {
-            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
-        },
+        reading_fn=lambda unit: unit.outdoor_temp_reading,
     ),
     # Operation status (3-way valve position - raw API values)
     ATWSensorEntityDescription(

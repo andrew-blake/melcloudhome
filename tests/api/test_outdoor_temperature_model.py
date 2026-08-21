@@ -4,7 +4,7 @@ from custom_components.melcloudhome.api.models_ata import AirToAirUnit
 
 
 def test_air_to_air_unit_has_outdoor_temperature_field():
-    """Test that AirToAirUnit has outdoor_temperature field with default None."""
+    """Test that AirToAirUnit has outdoor_temp_reading field with default None."""
     # Minimal data for AirToAirUnit.from_dict
     data = {
         "id": "test-unit-id",
@@ -15,8 +15,8 @@ def test_air_to_air_unit_has_outdoor_temperature_field():
 
     unit = AirToAirUnit.from_dict(data)
 
-    assert hasattr(unit, "outdoor_temperature")
-    assert unit.outdoor_temperature is None
+    assert hasattr(unit, "outdoor_temp_reading")
+    assert unit.outdoor_temp_reading is None
 
 
 def test_air_to_air_unit_has_outdoor_temp_sensor_field():
