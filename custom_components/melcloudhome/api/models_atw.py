@@ -92,6 +92,16 @@ class AirToWaterCapabilities:
                 api_max_tank,
             )
 
+        # hasBoiler is a newer field than the rest: captures from late 2025 have a
+        # populated capabilities object with no hasBoiler key at all. Absence defaults to
+        # False, which suppresses the boiler telemetry measures and their sensors, so log
+        # it — otherwise "my boiler sensors vanished" has nothing to grep for.
+        if "hasBoiler" not in data:
+            _LOGGER.debug(
+                "Capabilities omit hasBoiler; assuming no boiler circuit. "
+                "Boiler flow/return sensors will not be created."
+            )
+
         if api_min_zone != 10 or api_max_zone != 30:
             _LOGGER.debug(
                 "API reported Zone range %s-%s°C, using safe default 10-30°C",
