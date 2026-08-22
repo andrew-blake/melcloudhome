@@ -71,9 +71,6 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     attribute is added automatically (issue #200).
     """
 
-    attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
-    """Optional function to extract extra state attributes from unit data."""
-
     should_create_fn: Callable[[AirToWaterUnit], bool] = lambda x: True
     """Whether to create the sensor at all.
 
@@ -121,13 +118,8 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.outdoor_temperature,
         # last_reading surfaces staleness: units may not upload every poll.
-        attributes_fn=lambda unit: {
-            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
-        },
+        reading_fn=lambda unit: unit.outdoor_temp_reading,
     ),
     # Operation status (3-way valve position - raw API values)
     ATWSensorEntityDescription(
@@ -139,7 +131,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         ),  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
     ),
     # Telemetry sensors (flow/return temperatures from telemetry API)
-    # HA auto-creates statistics for MEASUREMENT sensors (validated via spike)
     ATWSensorEntityDescription(
         key="flow_temperature",
         translation_key="flow_temperature",
@@ -338,10 +329,7 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if (
-            self.entity_description.attributes_fn is None
-            and self.entity_description.reading_fn is None
-        ):
+        if self.entity_description.reading_fn is None:
             return None
 
         device = self.coordinator.get_atw_device(self._unit_id)

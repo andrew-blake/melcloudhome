@@ -37,6 +37,7 @@ from .const_shared import (
 from .exceptions import ApiError, AuthenticationError, ServiceUnavailableError
 from .models import UserContext
 from .pacing import RequestPacer
+from .parsing import Reading, parse_api_timestamp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -345,9 +346,7 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _parse_outdoor_temp(
-        self, response: dict[str, Any] | list
-    ) -> tuple[float | None, datetime | None]:
+    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> Reading | None:
         """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
@@ -362,28 +361,22 @@ class MELCloudHomeClient:
           }
         ]
 
-        The response mixes genuine unit readings with synthetic chart points
-        the server appends: bucket-aligned repeats of the last value (e.g.
-        08:00:00, 09:00:00) and a final point stamped with the query's own
-        "to" parameter echoed back verbatim. Genuine readings carry the unit's
-        actual upload time with arbitrary seconds (e.g. 07:15:24), so points
-        with seconds == 0 are treated as synthetic and skipped — the caller
-        sends a seconds-aligned "to" precisely so the echo point is caught by
-        the same rule. A genuine reading landing exactly on :00 seconds is
-        rare and costs at most falling back to the previous reading.
+        The server appends synthetic chart points: bucket-aligned repeats and
+        an echo of the query's own "to". Genuine readings carry the unit's
+        upload time with arbitrary seconds, so points with seconds == 0 are
+        skipped — the caller sends a seconds-aligned "to" so the echo is
+        caught by the same rule (issue #224).
 
         Args:
             response: Trendsummary API response (list or dict)
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the
-            reading), or (None, None) if the response holds no genuine
-            reading. The timestamp lets consumers detect stale data: units
-            stop uploading outdoor temperature while idle, so the latest
-            reading can be hours old (issues #152, #171). The "x" timestamps
-            are naive but confirmed UTC: across ~1,700 genuine readings from
-            actively-uploading units, none led the UTC query time, which
-            local-time (BST, UTC+1) stamps would by up to an hour.
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if the response holds no genuine reading. The
+            timestamp lets consumers detect stale data: units stop uploading
+            outdoor temperature while idle, so the latest reading can be
+            hours old (issues #152, #171). The "x" timestamps are naive but
+            confirmed UTC (ADR-022).
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -395,21 +388,19 @@ class MELCloudHomeClient:
                     recorded_at = point.get("x")
                     if recorded_at is None:
                         continue
-                    timestamp = datetime.fromisoformat(str(recorded_at)).replace(
-                        tzinfo=UTC
-                    )
+                    timestamp = parse_api_timestamp(str(recorded_at))
                     if timestamp.second == 0:
                         continue  # Synthetic chart point, not a unit reading
                     value = point.get("y")
                     if value is None:
                         continue  # Reading without a value; try older points
-                    return float(value), timestamp
-                return None, None  # No genuine reading in the window
-        return None, None  # No outdoor temp dataset found
+                    return Reading(float(value), timestamp)
+                return None  # No genuine reading in the window
+        return None  # No outdoor temp dataset found
 
     async def _get_report_outdoor_temperature(
         self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
-    ) -> tuple[float | None, datetime | None]:
+    ) -> Reading | None:
         """Shared implementation for get_outdoor_temperature/get_atw_outdoor_temperature.
 
         Both query a /report/v1/ endpoint with period=Hourly and parse the
@@ -445,12 +436,10 @@ class MELCloudHomeClient:
                 params["from"],
                 params["to"],
             )
-            return None, None
+            return None
         return self._parse_outdoor_temp(response)
 
-    async def get_outdoor_temperature(
-        self, unit_id: str
-    ) -> tuple[float | None, datetime | None]:
+    async def get_outdoor_temperature(self, unit_id: str) -> Reading | None:
         """Get latest outdoor temperature for an ATA unit.
 
         Queries trendsummary with Hourly period, which is the only period
@@ -460,27 +449,23 @@ class MELCloudHomeClient:
         quality problems, plus a midnight-rollover artifact where the freshest
         Daily label leads the query time by up to an hour).
 
-        48h lookback: units stop uploading while idle, so a short window
-        returns no genuine readings for them (the bug behind #111). Live
-        response-time spikes (500 errors seen at 168h/7 days) show the
-        server slows sharply past ~72h, so 48h trades some idle-unit
-        tolerance for reliability and being a better-behaved API client.
-        The coordinator keeps the previous value when this returns None.
+        48h lookback: idle units stop uploading, so a short window returns
+        nothing for them (#111), while the server slows sharply past ~72h and
+        500s at 7 days (#258). The coordinator keeps the previous value when
+        this returns None.
 
         Args:
             unit_id: ATA unit UUID
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
-            or (None, None) if not available
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
             API_REPORT_TRENDSUMMARY, unit_id, timedelta(hours=48), "trendsummary"
         )
 
-    async def get_atw_outdoor_temperature(
-        self, unit_id: str
-    ) -> tuple[float | None, datetime | None]:
+    async def get_atw_outdoor_temperature(self, unit_id: str) -> Reading | None:
         """Get latest outdoor temperature for an ATW unit.
 
         ATW's live /context OutdoorTemperature can be present but silently
@@ -488,25 +473,19 @@ class MELCloudHomeClient:
         the value alone, so this always queries the comfort-graph report
         instead of ever trusting the live value.
 
-        Uses period=Hourly with a 24h window: comfort-graph's Hourly period
-        hard-fails (500) for windows starting more than ~4 days back
-        regardless of width, so unlike ATA's 48h trendsummary lookback this
-        can't reach further back. 24h comfortably covers the largest observed
-        reporting gap (3.5h) between genuine readings, with margin.
+        Uses period=Hourly with a 24h window: comfort-graph 500s for windows
+        starting more than ~4 days back, so this cannot reach as far as ATA's
+        48h. 24h clears the largest observed reporting gap with margin.
 
-        Reuses _parse_outdoor_temp's UTC-timestamp assumption, which was
-        empirically justified for ATA's trendsummary endpoint - verified
-        separately for comfort-graph (2026-08-17): across 108 genuine
-        readings over a 24h window for a real ATW unit, none led the UTC
-        query time, which local-time (CEST, UTC+2 in August) stamps would by
-        up to two hours.
+        Reuses _parse_outdoor_temp's UTC-timestamp assumption, confirmed
+        separately for comfort-graph (ADR-022).
 
         Args:
             unit_id: ATW unit UUID
 
         Returns:
-            Tuple of (temperature in Celsius, UTC-aware datetime of the reading),
-            or (None, None) if not available
+            A Reading (temperature in Celsius, UTC-aware datetime of the
+            reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
             API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"

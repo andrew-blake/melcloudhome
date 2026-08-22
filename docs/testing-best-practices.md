@@ -330,6 +330,30 @@ entity = MELCloudHomeClimate(coordinator, unit, building, entry)
 state = hass.states.get("climate.entity_id")
 ```
 
+### ❌ Pitfall 5: A Green Test That Never Waited for the Data
+
+Since [ADR-021](decisions/021-deferred-startup-fetch.md) the first energy/telemetry fetch runs as a
+background task, and `hass.async_block_till_done()` **does not await background tasks**. A test that
+sets the integration up and asserts immediately sees the pre-fetch state — `unknown`, or an
+attribute reading `null` — and passes against it.
+
+```python
+# ❌ WRONG: asserts before the background fetch has run, and still goes green
+await setup_integration(hass)
+await hass.async_block_till_done()
+assert hass.states.get(SENSOR).attributes["last_reading"] is None   # meaningless
+
+# ✅ RIGHT: await the background task, and disable the websocket so it terminates
+entry = MockConfigEntry(domain=DOMAIN, data={...}, options={CONF_ENABLE_WEBSOCKET: False})
+await setup_integration(hass, entry)
+await hass.async_block_till_done(wait_background_tasks=True)
+```
+
+`wait_background_tasks=True` on its own **hangs**: the websocket listener is also a background task
+and it reconnects forever, so the entry must set `CONF_ENABLE_WEBSOCKET: False`. Both are needed
+together. `tests/integration/test_reading_provenance.py::_setup_with_telemetry` is the reference
+implementation.
+
 ### ❌ Pitfall 4: Testing Implementation, Not Behavior
 
 ```python

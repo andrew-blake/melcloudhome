@@ -5,7 +5,7 @@ The API returns many values as strings (e.g., "True", "20.5") that need
 proper type conversion.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import NamedTuple
 
 
@@ -68,20 +68,28 @@ def parse_int(value: str | int | None) -> int | None:
         return None
 
 
+def parse_api_timestamp(value: str) -> datetime:
+    """Parse an API timestamp into a UTC-aware datetime.
+
+    MELCloud sends naive stamps, confirmed UTC (ADR-022), so a missing offset
+    is filled in. An offset that IS present is converted rather than
+    overwritten, which would shift a user-visible last_reading.
+
+    Raises ValueError on an unparsable value, same as fromisoformat.
+    """
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
 class Reading(NamedTuple):
     """A measured value with the time the unit actually recorded it.
 
     Sensors fed by slow-cadence polls can hold a value for hours after their
     upstream stops updating, and HA's own timestamps cannot show it: an
-    identical rewrite advances only last_reported, which tracks our write
-    rather than the reading (issue #200).
-
-    recorded_at is optional because a payload can carry a value with no usable
-    time. Dropping such a point would silently keep an older value instead of
-    showing the fresh one, so it is stored with no provenance and last_reading
-    reads null. A Reading of None means no value at all - the two states are
-    deliberately distinguishable.
+    identical rewrite advances only last_reported (issue #200, ADR-022).
     """
 
     value: float
-    recorded_at: datetime | None
+    recorded_at: datetime

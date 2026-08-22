@@ -7,6 +7,7 @@ import pytest
 from freezegun import freeze_time
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from custom_components.melcloudhome.api.parsing import parse_api_timestamp
 
 
 class TestParseOutdoorTemp:
@@ -105,7 +106,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_missing_dataset(self):
         """Test when outdoor temperature dataset is missing."""
@@ -121,7 +122,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_empty_data(self):
         """Test when outdoor temperature dataset exists but data array empty."""
@@ -137,7 +138,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
     def test_parse_outdoor_temperature_list_wrapped(self):
         """Test parsing when mobile BFF wraps response in a list."""
@@ -164,7 +165,7 @@ class TestParseOutdoorTemp:
 
         result = client._parse_outdoor_temp(response)
 
-        assert result == (None, None)
+        assert result is None
 
 
 @freeze_time("2026-02-03 12:30:45", real_asyncio=True)
@@ -230,7 +231,7 @@ async def test_get_outdoor_temperature_api_returns_none(mocker):
 
     result = await client.get_outdoor_temperature("test-unit-id")
 
-    assert result == (None, None)
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -301,3 +302,21 @@ async def test_get_atw_outdoor_temperature_propagates_exceptions(mocker):
 
     with pytest.raises(ValueError, match="API error"):
         await client.get_atw_outdoor_temperature("test-atw-unit-id")
+
+
+def test_parse_api_timestamp_fills_in_utc_when_naive() -> None:
+    """Every stamp MELCloud has ever sent is naive and means UTC."""
+    parsed = parse_api_timestamp("2026-01-14T12:48:44")
+
+    assert parsed == datetime(2026, 1, 14, 12, 48, 44, tzinfo=UTC)
+
+
+def test_parse_api_timestamp_converts_an_existing_offset() -> None:
+    """An offset that does arrive is converted, not overwritten.
+
+    Overwriting would shift a user-visible last_reading by the offset, so the
+    two spellings of the same instant must agree.
+    """
+    assert parse_api_timestamp("2026-01-14T13:48:44+01:00") == parse_api_timestamp(
+        "2026-01-14T12:48:44"
+    )

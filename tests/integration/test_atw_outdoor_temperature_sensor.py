@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock
 from freezegun import freeze_time
 from homeassistant.core import HomeAssistant
 
+from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import DOMAIN
 
 from .conftest import (
@@ -39,7 +40,7 @@ async def test_atw_outdoor_temperature_sensor_shows_polled_value(
 
     def configure(client: Any) -> None:
         client.get_atw_outdoor_temperature = AsyncMock(
-            return_value=(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
+            return_value=Reading(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
         )
 
     await setup_atw_integration_custom(hass, mock_context, configure_client=configure)
@@ -63,7 +64,7 @@ async def test_atw_outdoor_temperature_unknown_when_poll_returns_none(
     )
 
     def configure(client: Any) -> None:
-        client.get_atw_outdoor_temperature = AsyncMock(return_value=(None, None))
+        client.get_atw_outdoor_temperature = AsyncMock(return_value=None)
 
     await setup_atw_integration_custom(hass, mock_context, configure_client=configure)
 
@@ -83,7 +84,7 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
 
     def configure(client: Any) -> None:
         client.get_atw_outdoor_temperature = AsyncMock(
-            return_value=(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
+            return_value=Reading(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
         )
 
     entry, mock_client = await setup_atw_integration_custom(
@@ -93,7 +94,7 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
     assert hass.states.get(ENTITY_ID).state == "16.0"
 
     mock_client.get_atw_outdoor_temperature = AsyncMock(
-        return_value=(14.0, datetime(2026, 8, 17, 9, 27, 11, tzinfo=UTC))
+        return_value=Reading(14.0, datetime(2026, 8, 17, 9, 27, 11, tzinfo=UTC))
     )
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     coordinator.reset_outdoor_temp_polling()
@@ -163,7 +164,7 @@ async def test_atw_outdoor_temp_last_error_cleared_on_next_success(
     assert unit.outdoor_temp_last_error_at is not None
 
     mock_client.get_atw_outdoor_temperature = AsyncMock(
-        return_value=(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
+        return_value=Reading(16.0, datetime(2026, 8, 17, 8, 57, 11, tzinfo=UTC))
     )
     coordinator.reset_outdoor_temp_polling()
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)

@@ -106,7 +106,13 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 - Attribute `last_reading`: timestamp of when the unit actually recorded the value.
   Units stop uploading outdoor temperature while idle, so the value can lag hours
   behind (MELCloud server-side behavior, see issues #152/#171) — use this attribute
-  to detect stale data in automations
+  to detect stale data in automations. A unit can hold the same reading for many
+  hours while every poll succeeds, so an unchanging value does not by itself mean
+  anything is wrong
+- Because that attribute changes whenever a fresher reading arrives, these sensors
+  register a state change on those polls even when the temperature is identical.
+  Automations triggering on state changes will fire then; trigger on the value with
+  a `to`/`from` or a template condition if that matters
 
 ---
 
@@ -195,7 +201,7 @@ Reading it together with the value tells you which of three things is happening:
 | stale | unchanging | the fetch is failing; the value you see is old |
 | advancing | moving | healthy |
 
-Because the attribute changes on every poll that brings a newer reading, these sensors now
+Because the attribute changes on every poll that brings a newer reading, these sensors
 register a state change each time — even when the value is identical. Automations that trigger
 on state changes of these entities will fire on those polls; trigger on the value with a
 `to`/`from` or a template condition if that matters.

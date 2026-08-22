@@ -58,9 +58,6 @@ class ATASensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     A transient missing value reads as state `unknown`; it never gates creation.
     """
 
-    attributes_fn: Callable[[AirToAirUnit], dict[str, Any]] | None = None
-    """Function to extract extra state attributes from unit data."""
-
 
 ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
     # Room temperature - for statistics and history
@@ -106,14 +103,9 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.outdoor_temperature,
         # Always created; "unknown" until a reading arrives.
         # last_reading surfaces staleness: idle units stop uploading (#152/#171).
-        attributes_fn=lambda unit: {
-            "last_reading": unit.outdoor_temp_recorded_at.isoformat()
-            if unit.outdoor_temp_recorded_at
-            else None
-        },
+        reading_fn=lambda unit: unit.outdoor_temp_reading,
     ),
     # Protection mode setpoints - separate sensors so the thresholds are visible
     # as first-class entities in the frontend, not just tucked away as attributes
@@ -222,10 +214,7 @@ class ATASensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if (
-            self.entity_description.attributes_fn is None
-            and self.entity_description.reading_fn is None
-        ):
+        if self.entity_description.reading_fn is None:
             return None
 
         device = self.coordinator.get_ata_device(self._unit_id)

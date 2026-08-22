@@ -1,6 +1,6 @@
 # ADR-006: Adopt Entity Description Pattern for Sensors
 
-**Status:** Accepted — `available_fn` since removed by [ADR-020](020-unknown-for-missing-readings.md); entity-naming example corrected 2026-08-14 (see note below) — issue #240
+**Status:** Accepted — `available_fn` since removed by [ADR-020](020-unknown-for-missing-readings.md); `value_fn` made optional alongside a new `reading_fn` by [ADR-022](022-reading-provenance.md); entity-naming example corrected 2026-08-14 (see note below) — issue #240
 **Date:** 2025-11-17
 **Context:** Session 9 - Pre-v1.2 research and planning
 

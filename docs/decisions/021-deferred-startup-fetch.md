@@ -1,6 +1,9 @@
 # ADR-021: Defer the First Energy/Telemetry Fetch Off the Setup Path
 
-**Status:** Accepted
+**Status:** Accepted — the request counts below (31 total, 22 deferred) were measured before the
+capability gating in #266 reduced the per-cycle telemetry requests, so treat them as illustrative
+of the serial chain rather than current figures. The decision itself is unaffected: it rests on
+entity creation being blocked by a sequential chain, at any length.
 **Date:** 2026-08-19
 **Related:** [ADR-020](020-unknown-for-missing-readings.md) (defines the `unknown` state this decision makes transiently observable after a restart, without changing its meaning)
 

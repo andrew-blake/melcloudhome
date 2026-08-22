@@ -41,10 +41,10 @@ async def async_setup_entry(
     for building in coordinator.data.buildings:
         for unit in building.air_to_air_units:
             _LOGGER.debug(
-                "Sensor setup: unit %s has_outdoor_temp_sensor=%s outdoor_temperature=%s",
+                "Sensor setup: unit %s has_outdoor_temp_sensor=%s outdoor_temp_reading=%s",
                 unit.name,
                 unit.has_outdoor_temp_sensor,
-                unit.outdoor_temperature,
+                unit.outdoor_temp_reading,
             )
             for description in ATA_SENSOR_TYPES:
                 if description.should_create_fn(unit):

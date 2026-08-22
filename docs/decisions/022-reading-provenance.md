@@ -14,24 +14,33 @@ totals from hourly buckets on a 30-minute timer.
 
 For those, a failed poll leaves the previous value in place. The tracker
 returns without writing, the sensor keeps its state, and nothing distinguishes
-that from a fresh reading of the same number. This is not hypothetical: over an
-11.5-hour window on 2026-08-19 the per-measure telemetry endpoint failed on
-70–100% of rounds for every measure on both prod ATW devices, and the sensors
-sat on readings hours old.
+that from a fresh reading of the same number. This is not hypothetical: the
+per-measure telemetry endpoint fails for the majority of polling rounds over
+multi-hour windows, leaving its sensors showing readings hours old while
+appearing healthy.
 
 Home Assistant's own state timestamps cannot express it. `State` carries
-`last_changed`, `last_updated` and `last_reported`, and in
+`last_changed`, `last_updated` and `last_reported`. In
 `StateMachine.async_set_internal` an identical rewrite takes the
 `same_state and same_attr` branch, which advances only `last_reported` and
-returns. `last_reported` therefore tracks *our write*, not the unit's reading —
-and because `CoordinatorEntity` rewrites state on every coordinator update, it
-advances every 60 seconds for a reading that is hours old.
+returns, so `last_changed` and `last_updated` sit at the last time the value or
+the attributes actually changed. For a sensor whose reading is frozen those are
+indistinguishable from a sensor whose reading is genuinely constant.
+
+`last_reported` does advance on every rewrite, but it measures the integration's
+write rather than the unit's reading, and it is **not readable from outside**:
+that branch mutates `last_reported` on the existing `State` while invalidating
+only `_cache["last_reported_timestamp"]`, and `State.json_fragment` is a
+`cached_property` it never touches, so `/api/states` serves a stale value.
+Verified against HA 2026.7.x by sampling the API twice across 95 seconds: no
+sensor reported any timestamp movement. So neither an automation nor a
+diagnostics dump can use it.
 
 The concept was already shipped once, for ATA outdoor temperature (#173):
 a `outdoor_temp_recorded_at` field beside the value, and a hand-rolled
 `attributes_fn` lambda on each of the two sensor platforms exposing it as a
 `last_reading` attribute. That single instance was smeared across six files,
-and the twelve other slow-cadence sensors had nothing.
+and the other slow-cadence sensors had nothing.
 
 ## Decision
 
@@ -41,7 +50,7 @@ fields.**
 ```python
 class Reading(NamedTuple):
     value: float
-    recorded_at: datetime | None
+    recorded_at: datetime
 ```
 
 It lives in `api/parsing.py` — the zero-dependency leaf both device model
@@ -56,19 +65,22 @@ platform down if it ever fired. Both platforms route through
 `last_reading` is implemented once.
 
 **Provenance is surfaced as a `last_reading` state attribute**, ISO-8601, and
-present-but-null when there is no reading yet. Twelve companion
+present-but-null when there is no reading yet. Companion
 `SensorDeviceClass.TIMESTAMP` entities were rejected: natively graphable, but
-roughly doubling the ATW sensor count for a diagnostic. If staleness ever
+they would roughly double the ATW sensor count for a diagnostic. If staleness ever
 becomes a user-facing feature, the better shape is one
 `EntityCategory.DIAGNOSTIC` "oldest reading age" sensor per device — one entity
-rather than twelve. This ADR produces the data that would make that small; it
-does not build it.
+per device rather than one per reading. This ADR produces the data that would
+make that small; it does not build it.
 
-**`recorded_at` is optional.** A payload can carry a value with no usable time.
-Dropping such a datapoint would silently keep an older value in preference to a
-newer one, so it is taken with no provenance and `last_reading` reads null. A
-`Reading` of `None` means no value at all; the two states are deliberately
-distinguishable.
+**Energy sensors are out of scope.** Their upstream timestamps are hour-bucket
+keys that only advance when consumption does, so a `last_reading` derived from
+them reports an idle unit as a failing poll. Provenance for energy would have to
+be stamped from the fetch instead (see PR #270, closed).
+
+**A datapoint that cannot be parsed is skipped.** Its stamp or value is
+unusable, so it contributes nothing; if no datapoint in the window parses, the
+sensor keeps its previous reading, the same outcome as a failed poll.
 
 **The newest datapoint is chosen by its own timestamp, not by position.** Every
 observed response is in ascending order, but once the stamp is user-visible an
@@ -80,11 +92,8 @@ An unchanging value has two causes the entity state cannot currently separate:
 the reading really is constant, or the poll stopped succeeding and the old value
 is being re-presented. `last_reading` separates them.
 
-| `last_reading` | value | meaning |
-|---|---|---|
-| advancing | unchanging | the reading itself is constant — a steady circuit, or the vendor's placeholder where the hardware is absent |
-| stale | unchanging | the poll is failing; the displayed value is old |
-| advancing | moving | healthy |
+See the table in [docs/entities.md](../entities.md) for how to read the attribute
+alongside the value.
 
 Identifying a placeholder takes the value as well. The vendor serves its constant
 `25` for absent hardware with fresh, advancing datapoints, which by timestamp
@@ -117,8 +126,8 @@ already applied to `trendsummary` and `comfort-graph` timestamps.
   will fire on every poll that brings a newer stamp — including the
   placeholder case, where the value never moves. A *failed* poll writes
   nothing, so the attribute holds still and the fast path is preserved.
-- The recorder stores a row per such poll per sensor. Twelve sensors at
-  hourly-ish cadence is negligible.
+- The recorder stores a row per such poll per sensor, which at a 30-to-60
+  minute cadence across a handful of sensors is negligible.
 - `last_reading` is null until the first successful slow-cadence poll — up to
   60 minutes for ATW telemetry. Since [ADR-021](021-deferred-startup-fetch.md)
   the first fetch is off the setup path, so entities appear immediately with

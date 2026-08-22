@@ -1,9 +1,7 @@
 """Telemetry tracking for MELCloud Home ATW devices.
 
-SIMPLIFIED APPROACH (validated via spike):
-- Fetch telemetry from API
-- Update sensor state with latest value
-- HA recorder auto-creates statistics (no manual import needed)
+Fetches each water-temperature measure, keeps the newest reading per measure,
+and lets the HA recorder derive statistics from the resulting state updates.
 """
 
 from __future__ import annotations
@@ -18,7 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
-from .api.parsing import Reading
+from .api.parsing import Reading, parse_api_timestamp, parse_float
 from .const import (
     ATW_TELEMETRY_MEASURES,
     ATW_TELEMETRY_MEASURES_BOILER,
@@ -43,43 +41,38 @@ TELEMETRY_INTER_MEASURE_JITTER_MAX = 0.5
 def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
     """Pick the newest datapoint by its own timestamp, not by position.
 
-    Every observed response is in ascending order, but once last_reading is
-    user-visible an out-of-order response would make a timestamp go backwards,
-    so trust the stamps over the ordering. Timestamps are naive and consistent
-    with UTC (see ADR-022); the 9-digit fractional seconds parse as-is.
+    Responses arrive in ascending order, but last_reading is user-visible and
+    an out-of-order response would send a timestamp backwards, so trust the
+    stamps over the ordering (ADR-022).
+
+    A datapoint that cannot be parsed costs that datapoint only: the whole
+    window is parsed, so one bad point would otherwise abort the measure for as
+    long as it stayed in the lookback.
     """
     stamped: list[tuple[datetime, float]] = []
-    unstamped: float | None = None
 
     for point in values:
-        raw_value = point.get("value")
-        if raw_value is None:
-            continue
-        raw_time = point.get("time")
-        if raw_time is None:
-            unstamped = float(raw_value)  # keep the last one seen
-            continue
-        stamped.append(
-            (
-                datetime.fromisoformat(str(raw_time)).replace(tzinfo=UTC),
-                float(raw_value),
-            )
-        )
+        try:
+            value = parse_float(point.get("value"))
+            raw_time = point.get("time")
+            if value is None or raw_time is None:
+                continue
+            stamped.append((parse_api_timestamp(str(raw_time)), value))
+        except (AttributeError, ValueError, OverflowError):
+            # Not a dict / unparsable stamp / extreme date. parse_float absorbs
+            # a value arriving as an object or array. Log the whole point, not
+            # the offending string: repr escapes control characters, so a
+            # hostile value cannot forge a log line (cf. websocket _sanitize).
+            _LOGGER.debug("Skipping unparsable datapoint: %s", point)
 
-    if stamped:
-        recorded_at, value = max(stamped)  # tuples sort by timestamp first
-        return Reading(value, recorded_at)
-    return Reading(unstamped, None) if unstamped is not None else None
+    if not stamped:
+        return None
+    recorded_at, value = max(stamped)  # tuples sort by timestamp first
+    return Reading(value, recorded_at)
 
 
 class TelemetryTracker:
-    """Manages telemetry data polling for ATW devices.
-
-    Simplified approach (no manual statistics import):
-    - Fetch telemetry from API (4-hour sparse data)
-    - Extract latest value for sensor state
-    - HA recorder auto-creates statistics from sensor state updates
-    """
+    """Manages telemetry data polling for ATW devices."""
 
     def __init__(
         self,

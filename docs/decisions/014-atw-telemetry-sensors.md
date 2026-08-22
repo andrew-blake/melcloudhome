@@ -5,6 +5,9 @@
 requested unconditionally. MELCloud returns a constant 25 °C for measures the hardware lacks,
 so the zone-1 pair is now gated on Zone 2 support and the boiler pair on the device reporting
 a boiler. See `docs/api/atw-api-reference.md` (Section 8) and `telemetry_tracker.py`.
+The sensor-description example below also predates [ADR-022](022-reading-provenance.md): these
+sensors now declare `reading_fn` rather than `value_fn`, and `unit.telemetry` holds a `Reading`
+rather than a bare float.
 **Decision Makers:** @andrew-blake
 
 ---

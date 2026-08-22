@@ -162,18 +162,26 @@ async def test_newest_datapoint_is_chosen_by_timestamp_not_position(
 
 
 @pytest.mark.asyncio
-async def test_datapoint_without_a_time_keeps_the_value(hass: HomeAssistant) -> None:
-    """A value with no usable time is still the freshest thing we have.
+async def test_unparsable_datapoint_costs_only_that_datapoint(
+    hass: HomeAssistant,
+) -> None:
+    """A bad point must not take the whole measure out of service.
 
-    Dropping it would silently hold an older value instead, so it is taken
-    with no provenance.
+    The window is parsed in full, so without a per-point guard one malformed
+    time would abort the measure for as long as it stayed in the lookback.
     """
-    await _setup_with_telemetry(hass, _telemetry_response({"value": 39.5}))
+    await _setup_with_telemetry(
+        hass,
+        _telemetry_response(
+            {"time": "not-a-timestamp", "value": 11.1},
+            {"time": "2026-08-21 09:15:22.000000000", "value": 39.5},
+        ),
+    )
 
     state = hass.states.get(FLOW_TEMP_ENTITY_ID)
     assert state is not None
     assert float(state.state) == 39.5
-    assert state.attributes["last_reading"] is None
+    assert state.attributes["last_reading"] == "2026-08-21T09:15:22+00:00"
 
 
 @pytest.mark.asyncio
