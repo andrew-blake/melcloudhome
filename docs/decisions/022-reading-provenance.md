@@ -14,10 +14,10 @@ totals from hourly buckets on a 30-minute timer.
 
 For those, a failed poll leaves the previous value in place. The tracker
 returns without writing, the sensor keeps its state, and nothing distinguishes
-that from a fresh reading of the same number. This is not hypothetical: over an
-11.5-hour window on 2026-08-19 the per-measure telemetry endpoint failed on
-70–100% of rounds for every measure on both prod ATW devices, and the sensors
-sat on readings hours old.
+that from a fresh reading of the same number. This is not hypothetical: the
+per-measure telemetry endpoint fails for the majority of polling rounds over
+multi-hour windows, leaving its sensors showing readings hours old while
+appearing healthy.
 
 Home Assistant's own state timestamps cannot express it. `State` carries
 `last_changed`, `last_updated` and `last_reported`. In
