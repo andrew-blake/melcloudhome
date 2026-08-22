@@ -28,6 +28,7 @@ import argparse
 import asyncio
 import json
 import logging
+import random
 import signal
 from datetime import datetime, timedelta
 from time import time
@@ -38,6 +39,25 @@ from aiohttp import web
 
 # Configure module logger
 logger = logging.getLogger(__name__)
+
+
+# Dataset id -> (base temperature, hidden). `hidden` mirrors the vendor's
+# hardcoded per-dataset-id constant (decompiled App.Shared.ReportTimeDataSet):
+# a presentation default, not a capability signal. Suffixed series the unit's
+# hardware lacks are served as a constant 25, exactly as the real server does.
+INTEMP_DATASETS = {
+    "set_tank_water_temperature": (50.0, False),
+    "tank_water_temperature": (48.5, False),
+    "flow_temperature": (45.0, False),
+    "return_temperature": (42.0, False),
+    "flow_temperature_zone1": (44.0, True),
+    "return_temperature_zone1": (41.0, True),
+    "flow_temperature_zone2": (38.0, True),
+    "return_temperature_zone2": (35.0, True),
+    "flow_temperature_boiler": (46.0, True),
+    "return_temperature_boiler": (43.0, True),
+}
+ABSENT_HARDWARE_PLACEHOLDER = 25.0
 
 
 def _safe_log(value: Any) -> str:
@@ -406,9 +426,6 @@ class MockMELCloudServer:
         )
 
         # Telemetry endpoints (mobile BFF paths)
-        telemetry_route = app.router.add_get(
-            "/telemetry/telemetry/actual/{unit_id}", self.handle_telemetry_actual
-        )
         energy_route = app.router.add_get(
             "/telemetry/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
@@ -419,6 +436,9 @@ class MockMELCloudServer:
         )
         comfort_graph_route = app.router.add_get(
             "/report/v1/comfort-graph", self.get_comfort_graph
+        )
+        internal_temps_route = app.router.add_get(
+            "/report/v1/internaltemperatures", self.get_internal_temperatures
         )
 
         # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
@@ -441,10 +461,10 @@ class MockMELCloudServer:
             schedule_post,
             schedule_enabled_get,
             schedule_enabled_put,
-            telemetry_route,
             energy_route,
             trendsummary_route,
             comfort_graph_route,
+            internal_temps_route,
         ]:
             cors.add(route)
 
@@ -1043,86 +1063,6 @@ class MockMELCloudServer:
             else:
                 state["operation_mode"] = "Stop"
 
-    async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
-        """GET /telemetry/telemetry/actual/{unit_id} - Get telemetry data (SPIKE: sparse pattern).
-
-        Returns sparse telemetry data matching real API behavior observed in HAR:
-        - 0-4 datapoints per hour
-        - Sometimes hours or days old
-        - 4-hour lookback window
-
-        Supports: flow_temperature, return_temperature, rssi, etc.
-        """
-        import random
-        from datetime import UTC, datetime, timedelta
-
-        unit_id = request.match_info.get("unit_id")
-        measure = request.rel_url.query.get("measure", "flow_temperature")
-
-        logger.info(
-            "📊 Telemetry request: unit=%s, measure=%s",
-            _safe_log(unit_id),
-            _safe_log(measure),
-        )
-
-        # Generate 4 hours of sparse data (realistic pattern)
-        values = []
-        now = datetime.now(UTC)
-
-        # 0-4 datapoints per hour (sparse like real API)
-        for hour_ago in [4, 3, 2, 1]:
-            if random.random() < 0.7:  # 70% chance of data in this hour
-                timestamp = now - timedelta(
-                    hours=hour_ago, minutes=random.randint(0, 59)
-                )
-
-                # Generate value based on measure type
-                if measure == "rssi":
-                    # WiFi signal strength: -40 to -70 dBm
-                    value = float(random.randint(-70, -40))
-                else:
-                    # Temperature measures
-                    base_temps = {
-                        "flow_temperature": 45.0,
-                        "return_temperature": 42.0,
-                        "flow_temperature_zone1": 44.0,
-                        "return_temperature_zone1": 41.0,
-                        "flow_temperature_boiler": 46.0,
-                        "return_temperature_boiler": 43.0,
-                        "flow_temperature_zone2": 38.0,
-                        "return_temperature_zone2": 35.0,
-                    }
-                    value = base_temps.get(measure, 45.0) + random.uniform(-2, 2)
-
-                values.append(
-                    {
-                        "time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f"),
-                        "value": f"{value:.1f}"
-                        if isinstance(value, float)
-                        else str(value),
-                    }
-                )
-
-        logger.info(
-            "📊 Returning %d datapoints for %s", len(values), _safe_log(measure)
-        )
-
-        return web.Response(
-            text=json.dumps(
-                {
-                    "measureData": [
-                        {
-                            "deviceId": unit_id,
-                            "type": self._snake_to_camel(measure),
-                            "values": values,
-                        }
-                    ]
-                }
-            ),
-            content_type="text/plain",
-            charset="utf-8",
-        )
-
     async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
         """GET /telemetry/telemetry/energy/{unit_id} - Get energy telemetry data.
 
@@ -1131,7 +1071,6 @@ class MockMELCloudServer:
 
         Format: ATW uses measureData array format (different from ATA)
         """
-        import random
         from datetime import UTC, datetime, timedelta
 
         unit_id = request.match_info.get("unit_id")
@@ -1336,6 +1275,71 @@ class MockMELCloudServer:
 
         return web.Response(
             text=json.dumps({"datasets": datasets, "annotations": []}),
+            content_type="text/plain",
+            charset="utf-8",
+        )
+
+    async def get_internal_temperatures(self, request: web.Request) -> web.Response:
+        """GET /report/v1/internaltemperatures - all ATW water temperatures.
+
+        Zone-2 datasets are emitted only for units with has_zone2, which models
+        the assumption the integration's switch depends on (ADR-023). The real
+        server has only ever been observed on single-zone units, which get 8
+        datasets with the zone-2 pair absent. If a real two-zone capture ever
+        shows the report omitting zone 2 for everyone, the integration switch is
+        wrong - fix the integration, not this mock.
+        """
+        unit_id = request.query.get("unitId")
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+        if unit_id not in self.atw_states:
+            return web.json_response({"error": "unit not found"}, status=404)
+
+        from_time, to_time = self._parse_report_window(request)
+        state = self.atw_states[unit_id]
+        has_zone2 = state.get("has_zone2", False)
+        has_boiler = state.get("has_boiler", False)
+
+        datasets = []
+        for dataset_id, (base, hidden) in INTEMP_DATASETS.items():
+            if dataset_id.endswith("zone2") and not has_zone2:
+                continue  # Server omits these entirely on single-zone units
+            absent = (dataset_id.endswith("boiler") and not has_boiler) or (
+                dataset_id.endswith("zone1") and not has_zone2
+            )
+
+            # Genuine readings carry arbitrary seconds (:16 here); the final
+            # point is the server's synthetic echo of the query "to".
+            data = []
+            current = from_time.replace(second=16)
+            while current <= to_time:
+                value = (
+                    ABSENT_HARDWARE_PLACEHOLDER
+                    if absent
+                    else round(base + random.uniform(-2, 2), 1)
+                )
+                data.append({"x": current.isoformat(), "y": value})
+                current += timedelta(minutes=10)
+            data.append({"x": to_time.isoformat(), "y": data[-1]["y"]})  # to-echo
+
+            datasets.append(
+                {
+                    "id": dataset_id,
+                    "label": f"REPORT.INTEMP_REPORT.DATASET.LABELS.{dataset_id.upper()}",
+                    "data": data,
+                    "hidden": hidden,
+                }
+            )
+
+        logger.info(
+            "🌡️  Internal temperatures: unit=%s, %d datasets",
+            _safe_log(unit_id),
+            len(datasets),
+        )
+
+        # Mobile API wraps the report in a list
+        return web.Response(
+            text=json.dumps([{"datasets": datasets, "annotations": []}]),
             content_type="text/plain",
             charset="utf-8",
         )

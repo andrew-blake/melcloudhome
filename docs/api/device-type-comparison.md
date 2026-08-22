@@ -30,7 +30,7 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 | **Schedule Create** | `POST /monitor/cloudschedule/{id}` | `POST /monitor/atwcloudschedule/{id}` | ❌ Different prefix |
 | **Schedule Delete** | `DELETE /monitor/cloudschedule/{id}/{scheduleId}` | `DELETE /monitor/atwcloudschedule/{id}/{scheduleId}` | ❌ Different prefix |
 | **Schedule Enable** | `PUT /monitor/cloudschedule/{id}/enabled` | `PUT /monitor/atwcloudschedule/{id}/enabled` | ❌ Different prefix |
-| **Telemetry** | `GET /telemetry/telemetry/actual`<br/>(unitId as query param) | `GET /telemetry/telemetry/actual/{id}`<br/>(unitId in path) | ⚠️ **Different structure** |
+| **Telemetry** | `GET /telemetry/telemetry/actual`<br/>(unitId as query param, **not called** — ATA live state comes from `/context`) | `GET /report/v1/internaltemperatures`<br/>(unitId as query param, all water temps in one response) | ⚠️ **Different endpoint** — ATW moved off per-measure telemetry in [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) |
 | **Energy** | `GET /telemetry/telemetry/energy/{id}` | `GET /telemetry/telemetry/energy/{id}` | ✅ **Identical** |
 | **Error Log** | `GET /monitor/ataunit/{id}/errorlog` | `GET /monitor/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
 | **Holiday Mode** | `POST /api/holidaymode` | `POST /api/holidaymode` | ✅ **Same endpoint** — confirmed for ATA 2026-07-20, corrects earlier "ATW exclusive" claim; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
@@ -261,17 +261,26 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 
 ### Query Pattern Difference
 
-**Air-to-Air:**
-```
-GET /telemetry/telemetry/actual?unitId={id}&from=...&to=...
-```
-(unitId as query parameter)
+Neither device type polls per-measure telemetry any more. Both read their time series from
+`/report/v1/` endpoints, which share a parameter shape.
 
-**Air-to-Water:**
+**Air-to-Air** — outdoor temperature only; live state comes from `/context`:
+```
+GET /report/v1/trendsummary?unitId={id}&period=Hourly&from=...&to=...
+```
+
+**Air-to-Water** — every water temperature in one response, keyed by dataset id:
+```
+GET /report/v1/internaltemperatures?unitId={id}&period=Hourly&from=...&to=...
+```
+
+The per-measure endpoint below is what ATW used before
+[ADR-023](../decisions/023-atw-water-temperatures-from-report.md), kept here because the vendor
+still serves it:
 ```
 GET /telemetry/telemetry/actual/{id}?from=...&to=...&measure=tank_water_temperature
 ```
-(unitId in path, measure specified)
+(unitId in path, one measure per request)
 
 ---
 

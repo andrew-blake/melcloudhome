@@ -1,7 +1,8 @@
 """Telemetry tracking for MELCloud Home ATW devices.
 
-Fetches each water-temperature measure, keeps the newest reading per measure,
-and lets the HA recorder derive statistics from the resulting state updates.
+Fetches every water-temperature measure for a unit in one report request, keeps
+the newest reading per measure, and lets the HA recorder derive statistics from
+the resulting state updates.
 """
 
 from __future__ import annotations
@@ -10,19 +11,18 @@ import asyncio
 import logging
 import random
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit, UserContext
-from .api.parsing import Reading, parse_api_timestamp, parse_float
+from .api.parsing import Reading
 from .const import (
     ATW_TELEMETRY_MEASURES,
     ATW_TELEMETRY_MEASURES_BOILER,
     ATW_TELEMETRY_MEASURES_ZONE1,
     ATW_TELEMETRY_MEASURES_ZONE2,
-    DATA_LOOKBACK_HOURS_TELEMETRY,
 )
 
 if TYPE_CHECKING:
@@ -34,41 +34,6 @@ _LOGGER = logging.getLogger(__name__)
 # Reduced from original values since RequestPacer handles base rate limiting
 TELEMETRY_INTER_DEVICE_JITTER_MIN = 0.1
 TELEMETRY_INTER_DEVICE_JITTER_MAX = 1.0
-TELEMETRY_INTER_MEASURE_JITTER_MIN = 0.1
-TELEMETRY_INTER_MEASURE_JITTER_MAX = 0.5
-
-
-def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
-    """Pick the newest datapoint by its own timestamp, not by position.
-
-    Responses arrive in ascending order, but last_reading is user-visible and
-    an out-of-order response would send a timestamp backwards, so trust the
-    stamps over the ordering (ADR-022).
-
-    A datapoint that cannot be parsed costs that datapoint only: the whole
-    window is parsed, so one bad point would otherwise abort the measure for as
-    long as it stayed in the lookback.
-    """
-    stamped: list[tuple[datetime, float]] = []
-
-    for point in values:
-        try:
-            value = parse_float(point.get("value"))
-            raw_time = point.get("time")
-            if value is None or raw_time is None:
-                continue
-            stamped.append((parse_api_timestamp(str(raw_time)), value))
-        except (AttributeError, ValueError, OverflowError):
-            # Not a dict / unparsable stamp / extreme date. parse_float absorbs
-            # a value arriving as an object or array. Log the whole point, not
-            # the offending string: repr escapes control characters, so a
-            # hostile value cannot forge a log line (cf. websocket _sanitize).
-            _LOGGER.debug("Skipping unparsable datapoint: %s", point)
-
-    if not stamped:
-        return None
-    recorded_at, value = max(stamped)  # tuples sort by timestamp first
-    return Reading(value, recorded_at)
 
 
 class TelemetryTracker:
@@ -99,6 +64,10 @@ class TelemetryTracker:
         # Telemetry data cache (latest readings for sensor state)
         # Structure: {unit_id: {measure_name: Reading}}
         self._telemetry_data: dict[str, dict[str, Reading | None]] = {}
+
+        # Units already warned about a zone-2-less response (see
+        # _warn_if_zone2_missing)
+        self._warned_missing_zone2: set[str] = set()
 
     async def async_setup(self) -> None:
         """Set up telemetry tracker."""
@@ -145,94 +114,80 @@ class TelemetryTracker:
             _LOGGER.error("Error updating telemetry data: %s", err)
 
     async def _update_unit_telemetry(self, unit: AirToWaterUnit) -> None:
-        """Update telemetry data for a single ATW unit.
+        """Update water temperatures for a single ATW unit.
 
         Args:
             unit: AirToWaterUnit to update telemetry for
         """
-        _LOGGER.debug("Fetching telemetry for unit %s (%s)", unit.name, unit.id)
+        _LOGGER.debug("Fetching water temperatures for %s (%s)", unit.name, unit.id)
 
-        # Initialize unit cache if needed
         if unit.id not in self._telemetry_data:
             self._telemetry_data[unit.id] = {}
 
-        # Build measure list from capabilities. The suffixed measures return a
-        # constant 25 placeholder on devices that lack the hardware, so requesting
-        # them costs a round trip per measure and yields a fake reading.
-        measures = list(ATW_TELEMETRY_MEASURES)
-        if unit.capabilities and unit.capabilities.has_zone2:
-            measures.extend(ATW_TELEMETRY_MEASURES_ZONE1)
-            measures.extend(ATW_TELEMETRY_MEASURES_ZONE2)
-        if unit.capabilities and unit.capabilities.has_boiler:
-            measures.extend(ATW_TELEMETRY_MEASURES_BOILER)
-
-        # Fetch each measure with jitter
-        for i, measure in enumerate(measures):
-            try:
-                await self._fetch_measure(unit, measure)
-
-                # Jitter between measures (except last one)
-                if i < len(measures) - 1:
-                    jitter = random.uniform(
-                        TELEMETRY_INTER_MEASURE_JITTER_MIN,
-                        TELEMETRY_INTER_MEASURE_JITTER_MAX,
-                    )
-                    _LOGGER.debug("Measure jitter: %.1fs before next measure", jitter)
-                    await asyncio.sleep(jitter)
-
-            except Exception as err:
-                _LOGGER.error(
-                    "Error fetching telemetry measure %s for %s: %s",
-                    measure,
-                    unit.name,
-                    err,
-                )
-
-    async def _fetch_measure(self, unit: AirToWaterUnit, measure: str) -> None:
-        """Fetch telemetry for a single measure.
-
-        Args:
-            unit: ATW unit
-            measure: Measure name (e.g., "flow_temperature")
-        """
-        # Setup time range (last 4 hours for sparse data)
-        to_time = datetime.now(UTC)
-        from_time = to_time - timedelta(hours=DATA_LOOKBACK_HOURS_TELEMETRY)
-
-        # Fetch telemetry data
-        data = await self._execute_with_retry(
-            partial(
-                self._client.get_telemetry_actual,
-                unit.id,
-                from_time,
-                to_time,
-                measure,
-            ),
-            f"get_telemetry({unit.name}, {measure})",
+        # Raises on a failed request, and that is the point: the caller logs it
+        # and the cache keeps its previous readings, whose age last_reading
+        # shows. A response that arrives and omits a measure is the other case,
+        # handled below.
+        readings = await self._execute_with_retry(
+            partial(self._client.get_atw_water_temperatures, unit.id),
+            f"get_water_temperatures({unit.name})",
         )
 
-        if not data or not data.get("measureData"):
-            _LOGGER.debug("No telemetry data available for %s - %s", unit.name, measure)
-            return
+        # The report returns every dataset regardless of the unit's hardware,
+        # filling absent ones with a constant 25 placeholder, so the capability
+        # filter that used to decide what to REQUEST now decides what to keep
+        # (#266). Same rules, same outcome, one request.
+        wanted = list(ATW_TELEMETRY_MEASURES)
+        if unit.capabilities and unit.capabilities.has_zone2:
+            wanted.extend(ATW_TELEMETRY_MEASURES_ZONE1)
+            wanted.extend(ATW_TELEMETRY_MEASURES_ZONE2)
+        if unit.capabilities and unit.capabilities.has_boiler:
+            wanted.extend(ATW_TELEMETRY_MEASURES_BOILER)
 
-        values = data["measureData"][0].get("values", [])
-        if not values:
-            _LOGGER.debug("Empty telemetry values for %s - %s", unit.name, measure)
-            return
+        self._warn_if_zone2_missing(unit, readings)
 
-        reading = _newest_reading(values)
-        if reading is None:
-            _LOGGER.debug("No usable datapoint for %s - %s", unit.name, measure)
-            return
-        self._telemetry_data[unit.id][measure] = reading
+        for measure in wanted:
+            reading = readings.get(measure)
+            if reading is None:
+                # The fetch succeeded and this measure was not in it, so the
+                # sensor reads unknown rather than keeping a value the endpoint
+                # is no longer reporting (ADR-020).
+                _LOGGER.debug("No %s reading for %s", measure, unit.name)
+            self._telemetry_data[unit.id][measure] = reading
 
         _LOGGER.debug(
-            "Telemetry: %s - %s = %.1f°C (recorded %s, of %d datapoints)",
+            "Water temperatures for %s: %s", unit.name, self._telemetry_data[unit.id]
+        )
+
+    def _warn_if_zone2_missing(
+        self, unit: AirToWaterUnit, readings: dict[str, Reading]
+    ) -> None:
+        """Warn once per unit if a two-zone unit gets no zone-2 datasets.
+
+        Zone-2 datasets have never been observed on this endpoint - every unit
+        reachable when the switch was made was single-zone - so including them
+        for a unit that has zone 2 is an assumption (ADR-023), not a measured
+        fact. This is how we find out if it is wrong. The sensors themselves
+        read unknown in that case; this names the cause.
+
+        WARNING, not debug: it is user-visible at prod's default log level by
+        design, and it is the outcome the assumption turns on. Do not soften it.
+        """
+        if not (unit.capabilities and unit.capabilities.has_zone2):
+            return
+        if unit.id in self._warned_missing_zone2:
+            return
+        if any(m in readings for m in ATW_TELEMETRY_MEASURES_ZONE2):
+            return
+
+        self._warned_missing_zone2.add(unit.id)
+        _LOGGER.warning(
+            "%s has a second zone but the water-temperature report returned no "
+            "zone-2 datasets (received: %s). Zone 2 flow and return "
+            "temperatures will read unknown. Please report this at "
+            "https://github.com/andrew-blake/melcloudhome/issues",
             unit.name,
-            measure,
-            reading.value,
-            reading.recorded_at,
-            len(values),
+            sorted(readings),
         )
 
     def update_unit_telemetry_data(self, units: dict[str, AirToWaterUnit]) -> None:

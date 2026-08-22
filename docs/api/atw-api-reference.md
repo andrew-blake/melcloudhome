@@ -521,15 +521,19 @@ POST /api/protection/frost
 
 ## 8. Telemetry Sensors
 
-### Real-Time Telemetry (Actual Values)
+### Real-Time Telemetry (Actual Values) — HISTORICAL
+
+> **The integration no longer calls this endpoint.** ATW water temperatures come from
+> `report/v1/internaltemperatures` (see *Internal Temperatures Report* below and
+> [ADR-023](../decisions/023-atw-water-temperatures-from-report.md)). The vendor endpoint still
+> exists, and this section is kept as a description of it.
 
 ```
 GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18 16:00&to=2026-01-18 20:00&measure=flow_temperature
 ```
 
-Note the space between date and time, not a `T` — that is what the client sends
-(`client.py`, `get_telemetry_actual`). The report endpoints use
-`YYYY-MM-DDTHH:MM:SS.0000000` instead.
+Note the space between date and time rather than a `T` — that is what the client sent while it
+called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` instead.
 
 **Supported Measures:**
 - `flow_temperature` - System flow temperature (°C)
@@ -573,11 +577,13 @@ Note the space between date and time, not a `T` — that is what the client send
 - **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
 - Use 4-hour lookback window for recent data
 
-### Batched Alternative: Internal Temperatures Report
+### Internal Temperatures Report — the endpoint the integration uses
 
 Returns **every water temperature in one request**, instead of one request per measure. This
-is what the MELCloud Home web app's water-temperatures chart uses. **Not currently used by
-this integration.**
+is what the MELCloud Home web app's water-temperatures chart uses, and since
+[ADR-023](../decisions/023-atw-water-temperatures-from-report.md) it is where the integration's
+ATW flow and return temperature sensors get their readings (`get_atw_water_temperatures`,
+`period=Hourly`, 8h lookback — 8h is the widest window the endpoint serves).
 
 ```
 GET /report/v1/internaltemperatures?unitId={unitId}&period=Hourly&from=2026-08-21T00:00:00.0000000&to=2026-08-21T08:00:00.0000000
@@ -634,11 +640,18 @@ including the 7-decimal timestamp format.
   for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
   **not** "this hardware is absent"; in `comfort-graph` it is also `true` for
   `room_temperature_zone1`, which is certainly real on a single-zone unit. Do not gate on it.
-- **Absent hardware returns a constant `25`, not an empty series or an error.** On two
-  single-zone units (both `hasBoiler: false`) the four zone1/boiler series were flat at 25 for
-  a full day while `flow_temperature` and `return_temperature` varied normally. The vendor's
-  own client charts that flat line when the series is enabled, so this is server-side
+- **Absent hardware returns a constant `25` as of 2026-08-21**, rather than an empty series or an
+  error. On two single-zone units (both `hasBoiler: false`) the four zone1/boiler series were flat
+  at 25 for a full day while `flow_temperature` and `return_temperature` varied normally. The
+  vendor's own client charts that flat line when the series is enabled, so this is server-side
   behaviour rather than a client convention.
+
+  **This behaviour appears to have changed server-side during 2026.** A cassette recorded
+  2026-01-14 (`c2de27f`, #36) against an ATW unit with `hasZone2: false` / `hasBoiler: false` — the
+  same capability profile as the two units above — has the four suffixed measures returning
+  `"values": []`, an **empty series**. By 2026-08-21 the same measures on the same profile read
+  exactly 25.0. Both behaviours are handled (a dataset with no genuine point is omitted, and the
+  capability filter drops the 25s), so treat the constant as dated rather than timeless.
 - **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
   single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`
   for a full day while the unsuffixed pair varied normally. The working assumption is that
@@ -653,17 +666,19 @@ including the 7-decimal timestamp format.
   idle loop looks like as much as a placeholder. It is a single snapshot, so it does **not**
   establish that the zone-1 pair carries real readings when zone 2 is present. Settling that
   needs a time series from a two-zone system while it is actively heating.
-- **Unverified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
+- **Assumed, not verified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
   endpoint**. Both units observed here were single-zone and neither response contained zone-2
-  series, so it is unknown whether the server selects datasets per device or the report is
-  always these 8. (The two-zone evidence above comes from per-measure telemetry on a device
-  that is no longer reachable, not from this endpoint.) **This would have to be answered before
-  anything relied on this endpoint for zone-2 data**, since zone-2 water temps currently come
-  from per-measure calls and do work for the users who have them.
+  series, so it is unknown whether the server selects datasets per device or the report is always
+  these 8. (The two-zone evidence above comes from per-measure telemetry on a device that is no
+  longer reachable, not from this endpoint.) The integration ships on the assumption that a
+  two-zone unit receives them, with a once-per-unit WARNING as detection and `unknown` sensors as
+  the visible symptom if it is wrong — the reasoning, the accepted downside and what would falsify
+  it are in [ADR-023](../decisions/023-atw-water-temperatures-from-report.md). A capture from a
+  real two-zone unit **taken while the system is actively heating** is what would settle it.
 
 **Relationship to the per-measure endpoint:** this returns the same water temperatures that
-`/telemetry/telemetry/actual` serves one measure at a time (Section 8). Note that a single
-failure here costs every measure for that cycle rather than one.
+`/telemetry/telemetry/actual` served one measure at a time (Section 8). A single failure here
+costs every measure for that cycle rather than one.
 
 *(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
 
