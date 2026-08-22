@@ -131,7 +131,6 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         ),  # Raw: "Stop", "HotWater", "HeatRoomTemperature", etc.
     ),
     # Telemetry sensors (flow/return temperatures from telemetry API)
-    # HA auto-creates statistics for MEASUREMENT sensors (validated via spike)
     ATWSensorEntityDescription(
         key="flow_temperature",
         translation_key="flow_temperature",

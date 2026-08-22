@@ -1,9 +1,7 @@
 """Telemetry tracking for MELCloud Home ATW devices.
 
-SIMPLIFIED APPROACH (validated via spike):
-- Fetch telemetry from API
-- Update sensor state with latest value
-- HA recorder auto-creates statistics (no manual import needed)
+Fetches each water-temperature measure, keeps the newest reading per measure,
+and lets the HA recorder derive statistics from the resulting state updates.
 """
 
 from __future__ import annotations
@@ -74,13 +72,7 @@ def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
 
 
 class TelemetryTracker:
-    """Manages telemetry data polling for ATW devices.
-
-    Simplified approach (no manual statistics import):
-    - Fetch telemetry from API (4-hour sparse data)
-    - Extract latest value for sensor state
-    - HA recorder auto-creates statistics from sensor state updates
-    """
+    """Manages telemetry data polling for ATW devices."""
 
     def __init__(
         self,
