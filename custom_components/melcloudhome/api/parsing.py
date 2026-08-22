@@ -5,6 +5,9 @@ The API returns many values as strings (e.g., "True", "20.5") that need
 proper type conversion.
 """
 
+from datetime import datetime
+from typing import NamedTuple
+
 
 def parse_bool(value: str | bool | None) -> bool:
     """Parse boolean from API string value.
@@ -63,3 +66,22 @@ def parse_int(value: str | int | None) -> int | None:
         return int(value)
     except (ValueError, TypeError):
         return None
+
+
+class Reading(NamedTuple):
+    """A measured value with the time the unit actually recorded it.
+
+    Sensors fed by slow-cadence polls can hold a value for hours after their
+    upstream stops updating, and HA's own timestamps cannot show it: an
+    identical rewrite advances only last_reported, which tracks our write
+    rather than the reading (issue #200).
+
+    recorded_at is optional because a payload can carry a value with no usable
+    time. Dropping such a point would silently keep an older value instead of
+    showing the fresh one, so it is stored with no provenance and last_reading
+    reads null. A Reading of None means no value at all - the two states are
+    deliberately distinguishable.
+    """
+
+    value: float
+    recorded_at: datetime | None

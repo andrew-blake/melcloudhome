@@ -25,7 +25,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import AirToWaterUnit, Building
-from .helpers import initialize_entity_base
+from .api.parsing import Reading
+from .helpers import (
+    initialize_entity_base,
+    sensor_native_value,
+    sensor_state_attributes,
+)
 from .protocols import CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,8 +60,16 @@ class ATWSensorEntityDescription(SensorEntityDescription):  # type: ignore[misc]
     (aiohttp version conflict). Mypy sees SensorEntityDescription as 'Any'.
     """
 
-    value_fn: Callable[[AirToWaterUnit], float | str | None]
-    """Function to extract sensor value from unit data."""
+    value_fn: Callable[[AirToWaterUnit], float | str | None] | None = None
+    """Extract the sensor value. Mutually exclusive with reading_fn."""
+
+    reading_fn: Callable[[AirToWaterUnit], Reading | None] | None = None
+    """Extract a value that carries its own recording time.
+
+    Setting this instead of value_fn marks the sensor as fed by a slow-cadence
+    poll: the state comes from the reading's value and a `last_reading`
+    attribute is added automatically (issue #200).
+    """
 
     attributes_fn: Callable[[AirToWaterUnit], dict[str, Any]] | None = None
     """Optional function to extract extra state attributes from unit data."""
@@ -133,7 +146,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("flow_temperature"),
+        reading_fn=lambda unit: unit.telemetry.get("flow_temperature"),
     ),
     ATWSensorEntityDescription(
         key="return_temperature",
@@ -141,7 +154,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("return_temperature"),
+        reading_fn=lambda unit: unit.telemetry.get("return_temperature"),
     ),
     ATWSensorEntityDescription(
         key="flow_temperature_zone1",
@@ -149,7 +162,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
+        reading_fn=lambda unit: unit.telemetry.get("flow_temperature_zone1"),
         should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
@@ -158,7 +171,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
+        reading_fn=lambda unit: unit.telemetry.get("return_temperature_zone1"),
         should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     # Zone 2 telemetry (flow/return temperatures)
@@ -168,7 +181,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
+        reading_fn=lambda unit: unit.telemetry.get("flow_temperature_zone2"),
         should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
@@ -177,7 +190,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
+        reading_fn=lambda unit: unit.telemetry.get("return_temperature_zone2"),
         should_create_fn=lambda unit: unit.capabilities.has_zone2,
     ),
     ATWSensorEntityDescription(
@@ -186,7 +199,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
+        reading_fn=lambda unit: unit.telemetry.get("flow_temperature_boiler"),
         should_create_fn=lambda unit: unit.capabilities.has_boiler,
     ),
     ATWSensorEntityDescription(
@@ -195,7 +208,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        value_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
+        reading_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
         should_create_fn=lambda unit: unit.capabilities.has_boiler,
     ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
@@ -320,18 +333,21 @@ class ATWSensor(CoordinatorEntity[CoordinatorProtocol], SensorEntity):  # type: 
         if device is None:
             return None
 
-        return self.entity_description.value_fn(device)
+        return sensor_native_value(self.entity_description, device)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return extra state attributes."""
-        if self.entity_description.attributes_fn is None:
+        if (
+            self.entity_description.attributes_fn is None
+            and self.entity_description.reading_fn is None
+        ):
             return None
 
         device = self.coordinator.get_atw_device(self._unit_id)
         if device is None:
             return None
-        return self.entity_description.attributes_fn(device)
+        return sensor_state_attributes(self.entity_description, device)
 
     @property
     def available(self) -> bool:
