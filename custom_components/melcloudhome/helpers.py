@@ -169,17 +169,18 @@ def sensor_native_value(description: Any, device: Any) -> float | str | None:
     return description.value_fn(device) if description.value_fn else None
 
 
-def sensor_state_attributes(description: Any, device: Any) -> dict[str, Any] | None:
-    """Build a sensor's attributes, adding last_reading when it has provenance.
+def sensor_state_attributes(description: Any, device: Any) -> dict[str, Any]:
+    """Build the last_reading attribute for a reading-backed sensor.
 
     last_reading separates a value that is genuinely steady from one frozen by
     a poll that stopped succeeding (issue #200, ADR-022). Deliberately absent
     from context-sourced sensors, which are refetched every 60s.
 
-    Present-but-null when a reading-backed sensor has no reading yet, so
-    templates can rely on the key existing.
+    The value is null when no reading has arrived yet, so templates can rely on
+    the key existing.
+
+    Callers must check `reading_fn is not None` first - they already do, to
+    avoid the coordinator device lookup for sensors that have no attributes.
     """
-    if description.reading_fn is None:
-        return None
     reading = description.reading_fn(device)
     return {"last_reading": reading.recorded_at.isoformat() if reading else None}
