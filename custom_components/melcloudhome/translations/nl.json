@@ -125,10 +125,10 @@
         "name": "Maximum oververhittingsbeveiliging"
       },
       "holiday_mode_start_date": {
-        "name": "Start vakantiemodus"
+        "name": "Vakantiemodus start"
       },
       "holiday_mode_end_date": {
-        "name": "Einde vakantiemodus"
+        "name": "Vakantiemodus einde"
       },
       "zone_1_temperature": {
         "name": "Zone 1 temperatuur"
