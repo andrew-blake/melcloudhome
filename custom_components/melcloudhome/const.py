@@ -60,14 +60,10 @@ ATW_TELEMETRY_MEASURES = [
     "return_temperature",
 ]
 
-# Zone-1-suffixed measures, only requested when the device has a second zone.
-# On a single-zone system these return a constant 25 placeholder instead of a
-# reading — measured on two devices over a full day, while the unsuffixed pair
-# varied normally — so the unsuffixed pair appears to BE the zone 1 flow/return
-# there. The positive case is not established: the one two-zone capture was of an
-# idle system, where flow == return proves nothing either way. Gating on has_zone2
-# cannot regress a two-zone device, since it only ever suppresses when zone 2 is
-# absent. See docs/api/atw-api-reference.md.
+# Zone-1-suffixed measures, only requested when the device has a second zone: on
+# a single-zone system they return a constant 25 placeholder, and the unsuffixed
+# pair is that system's zone 1. Gating on has_zone2 cannot regress a two-zone
+# device. Evidence and the untested positive case: docs/api/atw-api-reference.md.
 ATW_TELEMETRY_MEASURES_ZONE1 = [
     "flow_temperature_zone1",
     "return_temperature_zone1",

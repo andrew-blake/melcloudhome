@@ -71,10 +71,9 @@ def parse_int(value: str | int | None) -> int | None:
 def parse_api_timestamp(value: str) -> datetime:
     """Parse an API timestamp into a UTC-aware datetime.
 
-    Every stamp observed from MELCloud is naive and consistent with UTC
-    (see ADR-022), so a missing offset is filled in. An offset that IS present
-    is converted rather than overwritten - overwriting would silently shift the
-    reading by that offset, and last_reading is user-visible.
+    MELCloud sends naive stamps, confirmed UTC (ADR-022), so a missing offset
+    is filled in. An offset that IS present is converted rather than
+    overwritten, which would shift a user-visible last_reading.
 
     Raises ValueError on an unparsable value, same as fromisoformat.
     """

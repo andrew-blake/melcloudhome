@@ -43,14 +43,13 @@ TELEMETRY_INTER_MEASURE_JITTER_MAX = 0.5
 def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
     """Pick the newest datapoint by its own timestamp, not by position.
 
-    Every observed response is in ascending order, but once last_reading is
-    user-visible an out-of-order response would make a timestamp go backwards,
-    so trust the stamps over the ordering. Timestamps are naive and consistent
-    with UTC (see ADR-022); the 9-digit fractional seconds parse as-is.
+    Responses arrive in ascending order, but last_reading is user-visible and
+    an out-of-order response would send a timestamp backwards, so trust the
+    stamps over the ordering (ADR-022).
 
-    A datapoint that cannot be parsed costs that datapoint only. Parsing the
-    whole window means one bad point could otherwise abort the measure, and it
-    would keep doing so for as long as it stayed in the lookback window.
+    A datapoint that cannot be parsed costs that datapoint only: the whole
+    window is parsed, so one bad point would otherwise abort the measure for as
+    long as it stayed in the lookback.
     """
     stamped: list[tuple[datetime, float]] = []
 
@@ -62,14 +61,10 @@ def _newest_reading(values: list[dict[str, Any]]) -> Reading | None:
                 continue
             stamped.append((parse_api_timestamp(str(raw_time)), value))
         except (AttributeError, ValueError, OverflowError):
-            # AttributeError: the entry is not a dict. ValueError: unparsable
-            # stamp. OverflowError: astimezone on an extreme date. parse_float
-            # absorbs a value that arrives as an object or array.
-            #
-            # Logging the whole point rather than the offending string is
-            # deliberate: repr escapes control characters, so a hostile value
-            # cannot forge a log line (api/websocket.py's _sanitize covers the
-            # same concern for values that are logged bare).
+            # Not a dict / unparsable stamp / extreme date. parse_float absorbs
+            # a value arriving as an object or array. Log the whole point, not
+            # the offending string: repr escapes control characters, so a
+            # hostile value cannot forge a log line (cf. websocket _sanitize).
             _LOGGER.debug("Skipping unparsable datapoint: %s", point)
 
     if not stamped:
