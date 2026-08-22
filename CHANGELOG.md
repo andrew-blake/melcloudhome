@@ -6,12 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [2.4.2] - 2026-08-18
+## [2.4.2] - unreleased
+
+### Added
+
+- Heat pump (ATW) flow and return temperature sensors now include a "last reading" timestamp, showing when the unit actually recorded the value rather than when Home Assistant fetched it. MELCloud's telemetry for these can be hours old, or fail for a whole polling cycle while the sensor keeps showing its previous value, and until now there was no way to tell. Outdoor temperature sensors have had this since v2.4.0. (#200)
+
+### Changed
+
+- Because that "last reading" timestamp updates whenever a fresher reading arrives, heat pump flow and return temperature sensors — and outdoor temperature sensors — now register a state change on those updates even when the temperature itself is unchanged. An automation that triggers on any state change of these sensors will fire more often than before; trigger on the value with a `to`/`from` or a template condition if that matters to you. (#200)
+- Devices and entities now appear as soon as Home Assistant starts, instead of waiting for the first energy and temperature readings to be fetched from MELCloud. On installs with several devices that wait could be around a minute. The readings arrive shortly after startup instead, so energy, flow/return temperature and outdoor temperature sensors may briefly show "unknown" after a restart before their first value lands. (#263)
 
 ### Fixed
 
 - Heat pump (ATW) outdoor temperature could get stuck at an incorrect value (e.g. a value of 0) with no way to tell it was wrong. It's now read from the same source as the MELCloud Home app's Reports → Comfort graph, which doesn't have this problem. (#251)
 - Air conditioning (ATA) outdoor temperature could occasionally fail to update because the underlying request looked back over a week of history, which could trigger an error from the MELCloud API. It now looks back 48 hours instead, which is more reliable - the trade-off is that a unit idle for more than 48 hours (rather than 7 days) will show outdoor temperature as "unknown" until it's used again.
+- **Heat pumps (ATW) no longer get sensors for hardware they don't have.** Up to seven sensors per single-zone heat pump were being created that could never show a real reading: the three Zone 2 sensors, and Flow/Return Temperature Zone 1 and Flow/Return Temperature Boiler. MELCloud reports absent hardware inconsistently — zone 2 comes back as the text "None", and the zone-1 and boiler temperatures come back as a constant 25 °C — so both looked like real data. On a single-zone system the plain Flow Temperature and Return Temperature sensors are that system's zone 1 flow and return. The removed sensors now show as unavailable and Home Assistant offers to delete them: click the entity, then the cog, then Delete. (#264, #266)
+- Dutch and Vietnamese names for the holiday mode start and end date sensors read as instructions ("Start holiday mode") rather than labels. They now read as names, matching every other language. (#255)
+- Diagnostics downloads could still contain a real device or building name inside entity IDs, even though the named fields were already redacted. Anything before the `melcloudhome_` marker in an entity ID is now replaced with a placeholder, so a diagnostics file attached to a bug report no longer reveals them. (#262)
 
 
 ## [2.4.1] - 2026-08-14

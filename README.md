@@ -14,6 +14,12 @@ Home Assistant custom integration for **MELCloud Home**.
 
 **More reliable outdoor temperature readings.** Heat pump (ATW) outdoor temperature could get stuck at an incorrect value with no way to tell it was wrong - it's now read from the same source as the MELCloud Home app's Reports → Comfort graph. Air conditioning (ATA) outdoor temperature could occasionally fail to update because of an error from the MELCloud API; it's now more reliable, at the cost of showing "unknown" a bit sooner for units left idle for more than 2 days.
 
+**Faster startup.** Your devices and entities now appear as soon as Home Assistant starts rather than waiting for the first readings to be fetched from MELCloud, which could take around a minute on installs with several devices. Energy and temperature sensors may briefly show "unknown" after a restart until their first value arrives.
+
+**You can now see how old a temperature reading is.** Heat pump flow and return temperature sensors gained a "last reading" timestamp, showing when the unit actually recorded the value. MELCloud's readings for these can be hours old, and previously a sensor that had stopped updating looked identical to one that was current. One consequence: an automation triggering on any state change of these sensors will fire more often, because the timestamp updates even when the temperature does not.
+
+**Fewer sensors that never worked.** Heat pumps no longer get Zone 2, Zone 1 or Boiler flow and return temperature sensors unless the hardware is actually there - MELCloud reported those as real values when they were not. Up to seven sensors per single-zone heat pump will show as unavailable after upgrading and can be deleted.
+
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Features
