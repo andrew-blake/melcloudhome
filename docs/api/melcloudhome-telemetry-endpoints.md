@@ -8,6 +8,12 @@
 
 ## About This Document
 
+> **Status 2026-08-22: the integration no longer calls `/telemetry/telemetry/actual`.** ATW water
+> temperatures come from `report/v1/internaltemperatures` instead — see
+> [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) and Section 8 of
+> [atw-api-reference.md](atw-api-reference.md). The vendor endpoint still exists and this document
+> still describes it accurately; treat the "how we use it" notes below as historical.
+
 This is a **complete API reference** documenting all read-only (GET) telemetry and reporting endpoints available in the MELCloud Home API.
 
 **Implementation Status:**

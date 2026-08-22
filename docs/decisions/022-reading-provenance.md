@@ -8,16 +8,18 @@
 
 Most of this integration's data comes from the 60-second `/context` poll, which
 the vendor serves as live state. A minority does not: ATW flow/return
-temperatures come from the per-measure telemetry endpoint on a 60-minute timer,
+temperatures come from `report/v1/internaltemperatures` on a 60-minute timer,
 outdoor temperature from a report endpoint on a 30-minute timer, and energy
 totals from hourly buckets on a 30-minute timer.
 
 For those, a failed poll leaves the previous value in place. The tracker
 returns without writing, the sensor keeps its state, and nothing distinguishes
 that from a fresh reading of the same number. This is not hypothetical: the
-per-measure telemetry endpoint fails for the majority of polling rounds over
-multi-hour windows, leaving its sensors showing readings hours old while
-appearing healthy.
+telemetry endpoint these sensors were fed by failed for the majority of polling
+rounds over multi-hour windows, leaving its sensors showing readings hours old
+while appearing healthy. That endpoint is gone ([ADR-023](023-atw-water-temperatures-from-report.md)),
+and the failure mode is not: a unit that stops uploading produces the same
+frozen reading through any endpoint.
 
 Home Assistant's own state timestamps cannot express it. `State` carries
 `last_changed`, `last_updated` and `last_reported`. In
