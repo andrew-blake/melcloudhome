@@ -20,12 +20,22 @@ that from a fresh reading of the same number. This is not hypothetical: over an
 sat on readings hours old.
 
 Home Assistant's own state timestamps cannot express it. `State` carries
-`last_changed`, `last_updated` and `last_reported`, and in
+`last_changed`, `last_updated` and `last_reported`. In
 `StateMachine.async_set_internal` an identical rewrite takes the
 `same_state and same_attr` branch, which advances only `last_reported` and
-returns. `last_reported` therefore tracks *our write*, not the unit's reading —
-and because `CoordinatorEntity` rewrites state on every coordinator update, it
-advances every 60 seconds for a reading that is hours old.
+returns, so `last_changed` and `last_updated` sit at the last time the value or
+the attributes actually changed. For a sensor whose reading is frozen those are
+indistinguishable from a sensor whose reading is genuinely constant.
+
+`last_reported` does advance on every rewrite, but it measures the integration's
+write rather than the unit's reading, and it is **not readable from outside**:
+that branch mutates `last_reported` on the existing `State` while invalidating
+only `_cache["last_reported_timestamp"]`, and `State.json_fragment` is a
+`cached_property` it never touches. Measured 2026-08-22 against HA 2026.7.x on
+both prod and dev — across 95 seconds, 0 of 62 and 113 of 115 sensors reported
+no change to any timestamp through `/api/states`, because the API serves the
+stale cached fragment. So neither an automation nor a diagnostics dump can use
+it.
 
 The concept was already shipped once, for ATA outdoor temperature (#173):
 a `outdoor_temp_recorded_at` field beside the value, and a hand-rolled
