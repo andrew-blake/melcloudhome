@@ -345,8 +345,8 @@ source .env && python tools/dump_sensor_readings.py \
 ```
 
 `--insecure` is needed for prod: it answers on `homeassistant.local:8123` with a self-signed
-certificate, and its public hostname sits behind a proxy that redirects API requests, so a bearer
-token cannot reach the API there.
+certificate. Its public hostname is not an alternative — Cloudflare sits in front of that domain and
+answers `/api/...` with a 302, so an HA bearer token never reaches Home Assistant there.
 
 `--redact` drops the building-name prefix from each entity id and keeps the UUID-derived short id,
 matching the integration's own diagnostics redaction. Use it for anything published — some devices

@@ -106,7 +106,12 @@ Energy consumption sensors are compatible with Home Assistant's Energy Dashboard
 - Attribute `last_reading`: timestamp of when the unit actually recorded the value.
   Units stop uploading outdoor temperature while idle, so the value can lag hours
   behind (MELCloud server-side behavior, see issues #152/#171) — use this attribute
-  to detect stale data in automations
+  to detect stale data in automations. Measured on prod 2026-08-22: two units sat on
+  the same reading for over 16 hours while every poll succeeded
+- Because that attribute changes whenever a fresher reading arrives, these sensors
+  register a state change on those polls even when the temperature is identical.
+  Automations triggering on state changes will fire then; trigger on the value with
+  a `to`/`from` or a template condition if that matters
 
 ---
 
