@@ -328,6 +328,34 @@ python tools/dump_device_state.py --unit-id <uuid>    # Single device
 
 Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
 
+### `dump_sensor_readings.py`
+
+Tabulates every melcloudhome sensor alongside its `last_reading` attribute — the time the *unit*
+recorded the value ([ADR-022](../docs/decisions/022-reading-provenance.md)). Comparing `reading age`
+against HA's own `changed`/`updated` is how you tell a genuinely steady reading from one frozen by a
+poll that stopped succeeding. The History UI will not chart a custom attribute, so this is how you
+read it.
+
+```bash
+python tools/dump_sensor_readings.py                          # dev container, mints its own token
+python tools/dump_sensor_readings.py --redact                 # safe to paste into an issue
+python tools/dump_sensor_readings.py --all                    # include sensors with no provenance
+source .env && python tools/dump_sensor_readings.py \
+    --url "$HA_URL" --token "$HA_TOKEN" --insecure            # prod
+```
+
+`--insecure` is needed for prod: it answers on `homeassistant.local:8123` with a self-signed
+certificate, and its public hostname sits behind a proxy that redirects API requests, so a bearer
+token cannot reach the API there.
+
+`--redact` drops the building-name prefix from each entity id and keeps the UUID-derived short id,
+matching the integration's own diagnostics redaction. Use it for anything published — some devices
+are shared by other people.
+
+`last_reported` is deliberately not shown: it advances inside the state machine on every rewrite,
+but `State.json_fragment` is a cached property the fast path never invalidates, so `/api/states`
+serves a stale value for it.
+
 ### `outdoor_temp_recorder.py`
 
 Long-running recorder for outdoor-temperature integrity investigations
