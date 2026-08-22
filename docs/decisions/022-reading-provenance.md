@@ -31,11 +31,10 @@ indistinguishable from a sensor whose reading is genuinely constant.
 write rather than the unit's reading, and it is **not readable from outside**:
 that branch mutates `last_reported` on the existing `State` while invalidating
 only `_cache["last_reported_timestamp"]`, and `State.json_fragment` is a
-`cached_property` it never touches. Measured 2026-08-22 against HA 2026.7.x on
-both prod and dev — across 95 seconds, 0 of 62 and 113 of 115 sensors reported
-no change to any timestamp through `/api/states`, because the API serves the
-stale cached fragment. So neither an automation nor a diagnostics dump can use
-it.
+`cached_property` it never touches, so `/api/states` serves a stale value.
+Verified against HA 2026.7.x by sampling the API twice across 95 seconds: no
+sensor reported any timestamp movement. So neither an automation nor a
+diagnostics dump can use it.
 
 The concept was already shipped once, for ATA outdoor temperature (#173):
 a `outdoor_temp_recorded_at` field beside the value, and a hand-rolled
@@ -66,13 +65,13 @@ platform down if it ever fired. Both platforms route through
 `last_reading` is implemented once.
 
 **Provenance is surfaced as a `last_reading` state attribute**, ISO-8601, and
-present-but-null when there is no reading yet. Twelve companion
+present-but-null when there is no reading yet. Companion
 `SensorDeviceClass.TIMESTAMP` entities were rejected: natively graphable, but
-roughly doubling the ATW sensor count for a diagnostic. If staleness ever
+they would roughly double the ATW sensor count for a diagnostic. If staleness ever
 becomes a user-facing feature, the better shape is one
 `EntityCategory.DIAGNOSTIC` "oldest reading age" sensor per device — one entity
-rather than ten. This ADR produces the data that would make that small; it
-does not build it.
+per device rather than one per reading. This ADR produces the data that would
+make that small; it does not build it.
 
 **Energy sensors are out of scope.** Their upstream timestamps are hour-bucket
 keys that only advance when consumption does, so a `last_reading` derived from
@@ -127,8 +126,8 @@ already applied to `trendsummary` and `comfort-graph` timestamps.
   will fire on every poll that brings a newer stamp — including the
   placeholder case, where the value never moves. A *failed* poll writes
   nothing, so the attribute holds still and the fast path is preserved.
-- The recorder stores a row per such poll per sensor. Twelve sensors at
-  hourly-ish cadence is negligible.
+- The recorder stores a row per such poll per sensor, which at a 30-to-60
+  minute cadence across a handful of sensors is negligible.
 - `last_reading` is null until the first successful slow-cadence poll — up to
   60 minutes for ATW telemetry. Since [ADR-021](021-deferred-startup-fetch.md)
   the first fetch is off the setup path, so entities appear immediately with

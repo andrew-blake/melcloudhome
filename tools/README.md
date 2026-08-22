@@ -344,9 +344,9 @@ source .env && python tools/dump_sensor_readings.py \
     --url "$HA_URL" --token "$HA_TOKEN" --insecure            # prod
 ```
 
-`--insecure` is needed for prod: it answers on `homeassistant.local:8123` with a self-signed
-certificate. Its public hostname is not an alternative — Cloudflare sits in front of that domain and
-answers `/api/...` with a 302, so an HA bearer token never reaches Home Assistant there.
+`--insecure` skips TLS verification, for an instance answering with a self-signed certificate. If a
+public hostname for the same instance returns a redirect from `/api/...`, something in front of Home
+Assistant is intercepting API requests and an HA token cannot get past it — use the direct address.
 
 `--redact` drops the building-name prefix from each entity id and keeps the UUID-derived short id,
 matching the integration's own diagnostics redaction. Use it for anything published — some devices
