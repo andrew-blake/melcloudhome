@@ -640,18 +640,26 @@ including the 7-decimal timestamp format.
   for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
   **not** "this hardware is absent"; in `comfort-graph` it is also `true` for
   `room_temperature_zone1`, which is certainly real on a single-zone unit. Do not gate on it.
-- **Absent hardware returns a constant `25` as of 2026-08-21**, rather than an empty series or an
-  error. On two single-zone units (both `hasBoiler: false`) the four zone1/boiler series were flat
-  at 25 for a full day while `flow_temperature` and `return_temperature` varied normally. The
-  vendor's own client charts that flat line when the series is enabled, so this is server-side
-  behaviour rather than a client convention.
+- **Absent hardware has been observed two different ways, so do not treat either as the rule.**
+  The dataset is always *present*; what it contains varies:
 
-  **This behaviour appears to have changed server-side during 2026.** A cassette recorded
-  2026-01-14 (`c2de27f`, #36) against an ATW unit with `hasZone2: false` / `hasBoiler: false` — the
-  same capability profile as the two units above — has the four suffixed measures returning
-  `"values": []`, an **empty series**. By 2026-08-21 the same measures on the same profile read
-  exactly 25.0. Both behaviours are handled (a dataset with no genuine point is omitted, and the
-  capability filter drops the 25s), so treat the constant as dated rather than timeless.
+  | Date | Endpoint | Window | Absent-hardware series |
+  |---|---|---|---|
+  | 2026-01-14 (`c2de27f`, #36) | per-measure telemetry | 4h | `"values": []` — **empty** |
+  | 2026-08-21 | this report | full day | flat **`25`** for a full day, on two units |
+  | 2026-08-23 (`test_get_atw_water_temperatures` cassette) | this report | 8h | `"data": []` — **empty** |
+
+  All three units were `hasZone2: false` / `hasBoiler: false`, so capability profile does not
+  explain the difference; window length and date are the uncontrolled variables. The vendor's own
+  client charts the flat 25 line when the series is enabled, so that form is server-side rather
+  than a client convention.
+
+  **Both shapes are handled without a special case:** a dataset holding no genuine reading is
+  omitted by the parser, and a placeholder value is dropped by the capability filter. Nothing
+  should be built that depends on which one arrives.
+- **`set_tank_water_temperature` carried only synthetic points** in the 2026-08-23 recording — 31
+  points, every one seconds-aligned, so none of them is a unit reading. Another reason to take tank
+  temperature and its setpoint from `/context` (Section 2) rather than from this report.
 - **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
   single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`
   for a full day while the unsuffixed pair varied normally. The working assumption is that
