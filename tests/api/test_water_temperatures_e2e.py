@@ -1,11 +1,12 @@
 """E2E tests for get_atw_water_temperatures against the mock server.
 
-The only coverage of the mock's /report/v1/internaltemperatures handler, and
-the only place the two-zone dataset path runs at all - both prod ATW units are
-single-zone, so the dual-zone mock unit models the ADR-023 assumption rather
-than testing it.
+Covers the mock's /report/v1/internaltemperatures handler over both unit
+shapes: single-zone (eight datasets, four of them absent hardware) and
+two-zone (ten). No real two-zone unit has ever been reachable, so the
+dual-zone mock models the ADR-023 assumption rather than testing it.
 
 Requires the mock server (make dev-up, or the docker-compose test stack).
+Reference: docs/testing-best-practices.md
 Run with: make test-e2e
 """
 

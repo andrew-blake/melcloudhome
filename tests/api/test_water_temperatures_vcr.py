@@ -1,9 +1,8 @@
-"""VCR test for ATW water temperatures via the internaltemperatures report.
+"""VCR tests for ATW water temperatures via the internaltemperatures report.
 
-The only test that exercises this endpoint against the real server. It is
-recorded against a single-zone unit, so it covers the eight-dataset shape and
-the constant-25 placeholders for absent hardware; the two-zone path has never
-been observable (see ADR-023).
+Recorded against a single-zone unit, which returns all eight datasets - the four
+suffixed ones for hardware it lacks arrive empty or as a constant placeholder,
+and the assertions hold either way (docs/api/atw-api-reference.md).
 
 Recording VCR cassettes:
 1. Set credentials: export MELCLOUD_USER=email MELCLOUD_PASSWORD=password
@@ -11,10 +10,10 @@ Recording VCR cassettes:
 3. Run test: pytest tests/api/test_water_temperatures_vcr.py -v
 4. Cassette will be recorded automatically
 
-The frozen clock is load-bearing: VCR matches on the query string, and the
-request carries a from/to window derived from the clock.
+Re-recording needs the frozen clock moved to a recent time: VCR matches on the
+query string, and the request window comes from the clock.
 
-Reference: docs/testing-best-practices.md, docs/api/atw-api-reference.md
+Reference: docs/testing-best-practices.md
 """
 
 from typing import TYPE_CHECKING
