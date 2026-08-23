@@ -73,8 +73,12 @@ per unit per cycle.**
   caught by the same rule (#224). The newest reading is chosen by timestamp
   rather than position, because `last_reading` is user-visible and an
   out-of-order response would send a stamp backwards.
-- **The capability filter moved from request to response.** Datasets for hardware
-  a unit lacks are not omitted: they carry a constant 25 placeholder. The
+- **The capability filter moved from request to response.** All eight datasets
+  arrive whichever hardware a unit has; what the absent ones *contain* has been
+  observed two different ways (an empty series, and a constant 25 placeholder —
+  see the dated observations in `docs/api/atw-api-reference.md`). Both are
+  handled without a special case: a dataset with no genuine point is omitted by
+  the parser, and a placeholder value is dropped by the capability filter. The
   `ATW_TELEMETRY_MEASURES*` lists still decide what to keep, on the same rules
   as before, so #266's creation gating is untouched.
 - **A measure absent from a successful response reads `unknown`.** See below.
@@ -150,8 +154,9 @@ rather than a silent divergence.
 - **A one-off discontinuity in history.** Same entity ids, different source: the
   report returned 55.8 °C where the per-measure sensor read 56.0 °C on the same
   device at the same time.
-- **The 25 placeholders are unchanged.** They arrive identically through this
-  endpoint, and #266's capability gates are still what suppresses them.
+- **Absent-hardware placeholders are unchanged.** Whatever the vendor sends for
+  hardware a unit lacks arrives identically through this endpoint, and #266's
+  capability gates are still what suppresses the entities.
 - **Prod cannot exercise the zone-2 path.** Neither real ATW unit has a second
   zone; the dev mock's dual-zone unit models the assumption rather than testing
   it.

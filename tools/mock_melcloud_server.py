@@ -43,8 +43,15 @@ logger = logging.getLogger(__name__)
 
 # Dataset id -> (base temperature, hidden). `hidden` mirrors the vendor's
 # hardcoded per-dataset-id constant (decompiled App.Shared.ReportTimeDataSet):
-# a presentation default, not a capability signal. Suffixed series the unit's
-# hardware lacks are served as a constant 25, exactly as the real server does.
+# a presentation default, not a capability signal.
+#
+# Suffixed series the unit's hardware lacks are served as a constant 25. The
+# real server has been seen doing that (2026-08-21) and also returning an empty
+# series (2026-01-14, 2026-08-23) - see docs/api/atw-api-reference.md. 25 is the
+# deliberate choice here because it is the unkind one: an empty series is
+# discarded by the parser, while a plausible number only stays out of the
+# entities if the capability filter works. A kind mock is what hid the
+# HasZone2 bug for seven months.
 INTEMP_DATASETS = {
     "set_tank_water_temperature": (50.0, False),
     "tank_water_temperature": (48.5, False),
