@@ -164,6 +164,31 @@ This restores the dev environment to a clean snapshot with:
 You'll need to add the integration through the UI (Settings → Devices & Services).
 Much faster than creating the user account from scratch!
 
+### Regenerate the ATW testing dashboard:
+
+```bash
+python3 tools/build_dev_dashboard.py      # every ATW unit in the dev registry
+make dev-restart                          # lovelace configs are read at startup
+```
+
+`make dev-reset` restores `dev-config-template/.storage/`, so only the dashboard
+committed there survives a reset. That committed copy holds the mock server's
+units, and re-running the generator adds back any real units your account can
+reach.
+
+Refreshing the committed copy after changing the dashboard's design:
+
+```bash
+python3 tools/build_dev_dashboard.py --mock-only \
+    --out dev-config-template/.storage/lovelace.melcloudhome_testing
+```
+
+`--mock-only` is what keeps real building and device names out of the repo: entity
+IDs carry the building name as a prefix, and for a real account that is personal
+data. Keep `MOCK_BUILDINGS` in the script matching the mock server's buildings:
+an unrecognised building is treated as real and excluded, so a stale list costs a
+missing view.
+
 ### Save and restore snapshots:
 
 **Save current state:**

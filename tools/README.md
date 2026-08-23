@@ -1,5 +1,24 @@
 # Custom Component Development Tools
 
+## Dev Dashboard Generator
+
+### `build_dev_dashboard.py`
+
+Generates the dev ATW testing dashboard from the running dev instance's entity
+and device registries: one view per ATW unit, with live tiles, water-temperature
+statistics and raw-state graphs, a `last_reading` provenance table, and energy,
+COP and WiFi graphs.
+
+```bash
+python3 tools/build_dev_dashboard.py                 # all ATW units
+python3 tools/build_dev_dashboard.py --mock-only \
+    --out dev-config-template/.storage/lovelace.melcloudhome_testing
+```
+
+Then `make dev-restart`, since lovelace configs are read at startup. See
+[DEV-SETUP.md](../DEV-SETUP.md) for why the committed copy is `--mock-only`, and
+the script's own docstring for what each card is for.
+
 ## Automated Deployment & Testing
 
 ### `deploy_custom_component.py`
