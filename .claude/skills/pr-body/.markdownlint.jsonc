@@ -1,0 +1,6 @@
+{
+  // Tables and inline-code examples cannot be wrapped without breaking them,
+  // so MD013 applies to prose only. Prose is wrapped by:
+  //   npx --yes prettier@3 --prose-wrap always --print-width 80 --write *.md
+  "MD013": { "line_length": 80, "tables": false, "code_blocks": false }
+}
