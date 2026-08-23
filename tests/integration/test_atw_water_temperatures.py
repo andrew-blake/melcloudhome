@@ -1,11 +1,10 @@
 """Tests for ATW water temperatures fed by report/v1/internaltemperatures.
 
-One request per unit carries every measure as a dataset (ADR-023), so the
-capability filter that used to decide what to *request* now decides what to
-*keep*, and a wrong zone-2 assumption is a diagnosable event rather than an
-invisible one.
+One request per unit returns every measure as a dataset, so these cover what
+the tracker keeps from it: the capability filter, per-unit failure isolation,
+and the zone-2 warning (ADR-023).
 
-Reference: docs/testing-best-practices.md, ADR-023
+Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
