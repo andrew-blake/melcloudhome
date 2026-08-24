@@ -204,13 +204,13 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
     assert params["unitId"] == "test-unit-id"
     assert params["period"] == "Hourly"
     # Verify timestamp format (7 zeros for nanoseconds)
-    assert params["from"].endswith(".0000000")
-    assert params["to"].endswith(".0000000")
+    assert params["from"].endswith(".0000000Z")
+    assert params["to"].endswith(".0000000Z")
     # "to" is now (12:30:45) truncated to seconds=0
-    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000Z").replace(
         tzinfo=UTC
     )
-    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000Z").replace(
         tzinfo=UTC
     )
     assert to_dt == datetime(2026, 2, 3, 12, 30, 0, tzinfo=UTC)
@@ -280,10 +280,10 @@ async def test_get_atw_outdoor_temperature_calls_api_correctly(mocker):
     params = call_args[1]["params"]
     assert params["unitId"] == "test-atw-unit-id"
     assert params["period"] == "Hourly"
-    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000Z").replace(
         tzinfo=UTC
     )
-    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000").replace(
+    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000Z").replace(
         tzinfo=UTC
     )
     assert to_dt == datetime(2026, 8, 17, 9, 30, 0, tzinfo=UTC)
