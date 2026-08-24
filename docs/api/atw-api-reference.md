@@ -702,6 +702,42 @@ including the 7-decimal timestamp format.
   it are in [ADR-023](../decisions/023-atw-water-temperatures-from-report.md). A capture from a
   real two-zone unit **taken while the system is actively heating** is what would settle it.
 
+- **Point timestamps are in the unit's local timezone, not UTC.** `/context` gives
+  each unit an IANA `timeZone` on its own node (a sibling of `rssi`) — real values
+  seen: `Europe/Stockholm`, `Europe/Skopje`, `Europe/London`. Build `from`/`to` in
+  that zone and read the returned stamps in it.
+
+  **The `to`-shift test is the cheap way to confirm this on any unit.** Request the
+  same window twice, once with `to = now` in UTC and once with `to` pushed forward
+  by the unit's offset. If the later `to` returns newer points, the store is
+  local-stamped. Measured 2026-08-24, `internaltemperatures`, both live ATW units,
+  at 08:00 UTC (= 10:00 local):
+
+  | `to` sent | newest genuine `return_temperature` |
+  |---|---|
+  | now (08:00) | 06:28:15 / 07:59:33 |
+  | now+2h (10:00) | 09:46:15 / 09:59:33 |
+  | now+3h (11:00) | 10:00:15 / 10:00:24 |
+
+  `trendsummary` behaves the same for a `Europe/London` unit: `to = now` gave
+  `04:36:14 = 10`, `to = now+1h` gave `08:21:14 = 15`.
+
+  A device in a zone whose offset is 0 cannot show this, so verify on a
+  non-UTC unit.
+
+- **`from`/`to` with an explicit offset are converted; without one they are taken as
+  already-local.** The vendor's own client sends naive unit-local time — captured from
+  its Hour view at 09:02 UTC, asking `from=2026-08-24T11:00:00.0000000` to
+  `to=2026-08-24T12:00:00.0000000` for a `Europe/Stockholm` unit, which is 11:00-12:00
+  local. There is no timezone parameter in the URL at all, so the server infers the
+  zone from `unitId`. Sending `...Z` (or `+00:00`, or a real offset) makes the server
+  convert instead, and all three report endpoints accept it — measured 2026-08-24, 200
+  on each, with the newest returned reading advancing by exactly the unit's offset.
+  The integration sends `Z`; see ADR-022 for why.
+
+  Note that the response stamps are naive unit-local **regardless of what the request
+  sends**. Declaring UTC on the way in does not get UTC back out.
+
 **Relationship to the per-measure endpoint:** this returns the same water temperatures that
 `/telemetry/telemetry/actual` served one measure at a time (Section 8). A single failure here
 costs every measure for that cycle rather than one.
