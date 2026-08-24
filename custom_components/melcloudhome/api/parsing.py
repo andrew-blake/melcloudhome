@@ -5,7 +5,7 @@ The API returns many values as strings (e.g., "True", "20.5") that need
 proper type conversion.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from typing import NamedTuple
 
 
@@ -68,18 +68,25 @@ def parse_int(value: str | int | None) -> int | None:
         return None
 
 
-def parse_api_timestamp(value: str) -> datetime:
+def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
     """Parse an API timestamp into a UTC-aware datetime.
 
-    MELCloud sends naive stamps, confirmed UTC (ADR-022), so a missing offset
-    is filled in. An offset that IS present is converted rather than
-    overwritten, which would shift a user-visible last_reading.
+    MELCloud sends naive stamps in the *unit's own* local time, not UTC. Passing
+    the unit's timezone is therefore how a report reading gets a correct age;
+    `tz` defaults to UTC so a caller that has no timezone behaves as before
+    (measured 2026-08-24, see docs/api/atw-api-reference.md). An offset that IS
+    present is converted rather than overwritten, which would shift a
+    user-visible last_reading.
+
+    ponytail: a naive stamp inside a DST autumn fold is ambiguous and resolves
+    to fold=0, so one hour twice a year can be an hour out. Disambiguating
+    needs the neighbouring points' ordering; not worth it for a reading age.
 
     Raises ValueError on an unparsable value, same as fromisoformat.
     """
     parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
+        return parsed.replace(tzinfo=tz).astimezone(UTC)
     return parsed.astimezone(UTC)
 
 
