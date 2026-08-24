@@ -128,6 +128,7 @@ def create_mock_atw_unit(
     outdoor_temp_reading: Reading | None = None,
     has_outdoor_temp_sensor: bool = False,
     outdoor_temp_last_error: str | None = None,
+    time_zone: str | None = None,
 ) -> "AirToWaterUnit":
     """Create a mock AirToWaterUnit for testing.
 
@@ -165,7 +166,7 @@ def create_mock_atw_unit(
         is_in_error=is_in_error,
         error_code=error_code,
         rssi=rssi,
-        time_zone=None,
+        time_zone=time_zone,
         ftc_model=ftc_model,
         energy_consumed=energy_consumed,
         energy_produced=energy_produced,

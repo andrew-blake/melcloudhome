@@ -8,7 +8,7 @@ import functools
 import inspect
 import logging
 from collections.abc import Awaitable, Callable, Iterable, Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
@@ -34,6 +34,7 @@ from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
 from .energy_tracker_ata import ATAEnergyTracker
 from .energy_tracker_atw import ATWEnergyTracker
+from .helpers import resolve_unit_timezone
 from .telemetry_tracker import TelemetryTracker
 
 if TYPE_CHECKING:
@@ -637,7 +638,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self,
         units: Iterable[AirToAirUnit | AirToWaterUnit],
         cache: Mapping[str, AirToAirUnit | AirToWaterUnit],
-        get_temp: Callable[[str], Awaitable[Reading | None]],
+        get_temp: Callable[[str, tzinfo], Awaitable[Reading | None]],
         log_label: str,
     ) -> None:
         """Poll outdoor temperature for a set of units, shared by ATA and ATW.
@@ -661,8 +662,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 continue
 
             try:
+                tz = await resolve_unit_timezone(self.hass, unit.time_zone)
                 reading = await self._execute_with_retry(
-                    functools.partial(get_temp, unit_id), log_label
+                    functools.partial(get_temp, unit_id, tz), log_label
                 )
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = None
