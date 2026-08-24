@@ -61,9 +61,12 @@ per unit per cycle.**
 - **`period=Hourly`, 8h lookback.** Hourly is the only period whose points carry
   genuine reading timestamps; `Daily` returns 30-minute bucket labels whose
   values can diverge from the latest reading (#152). The server floors `from` to
-  midnight of its own date and rejects a range spanning three calendar days, so
-  any lookback under ~30h is served; 8h always lands inside that whatever time of
-  day the poll runs at. A sparse uploader quiet for hours still has a real last reading
+  midnight of its own date, in the unit's own timezone, and a floored span of one
+  day is always served. 8h keeps the window inside that day for any poll running
+  after 08:00 local, and a poll before then reaches into the previous day, which
+  returns *more* data when it is served. Wider lookbacks are not dependable: a
+  two-day floored span is served at some times of day and refused at others (see
+  `docs/api/atw-api-reference.md`). A sparse uploader quiet for hours still has a real last reading
   worth showing, and `last_reading` ([ADR-022](022-reading-provenance.md))
   carries its age.
 - **Synthetic points are stripped by the shared rule.** The server appends

@@ -568,11 +568,15 @@ class MELCloudHomeClient:
         "*_boiler"), plus tank temperature and its setpoint, which /context
         already provides at 60s.
 
-        8h lookback: the server floors "from" to midnight of its own date and
-        rejects a range spanning three calendar days, so any lookback under ~30h
-        is served and 8h always lands inside that (both prod units, 2026-08-24).
-        The endpoint also 500s intermittently on a window it serves moments
-        later, so one failure never establishes a ceiling. Water temperatures
+        8h lookback: the server floors "from" to midnight of its own date, in
+        the unit's own timezone, and a one-day floored span is always served. 8h
+        stays inside that day for any poll after 08:00 local; an earlier poll
+        reaches into the previous day, which returns more data when served.
+        Do not widen it: a two-day span is served at some times of day and
+        refused at others (measured 2026-08-24, see
+        docs/api/atw-api-reference.md). The endpoint also 500s intermittently on
+        a window it serves moments later, so one failure never establishes a
+        ceiling - though eight consecutive ones on a wider window did. Water temperatures
         upload sparsely, so a unit quiet for hours still has a real last reading
         worth showing, and last_reading carries its age (ADR-022) - which makes
         an old reading legible.
