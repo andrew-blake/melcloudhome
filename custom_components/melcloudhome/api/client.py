@@ -418,8 +418,9 @@ class MELCloudHomeClient:
             reading), or None if the response holds no genuine reading. The
             timestamp lets consumers detect stale data: units stop uploading
             outdoor temperature while idle, so the latest reading can be
-            hours old (issues #152, #171). The "x" timestamps are naive but
-            confirmed UTC (ADR-022).
+            hours old (issues #152, #171). The "x" timestamps are naive
+            wall-clock times in the unit's own zone; pass `tz` so the returned
+            Reading carries a real age (ADR-022).
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
