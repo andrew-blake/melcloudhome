@@ -7,17 +7,23 @@ organized separately for better code organization.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
+from datetime import UTC, tzinfo
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.util import dt as dt_util
 
 from .api.models import AirToWaterUnit
 from .const import DOMAIN
 
+_LOGGER = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
     from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
     from .api.models import AirToAirUnit, Building
@@ -184,3 +190,27 @@ def sensor_state_attributes(description: Any, device: Any) -> dict[str, Any]:
     """
     reading = description.reading_fn(device)
     return {"last_reading": reading.recorded_at.isoformat() if reading else None}
+
+
+async def resolve_unit_timezone(hass: HomeAssistant, time_zone: str | None) -> tzinfo:
+    """Resolve a unit's IANA timezone name, falling back to UTC.
+
+    Report endpoints stamp points in the unit's own zone, so this is what makes
+    last_reading a real age. Uses HA's cached async resolver because
+    ZoneInfo() does blocking file I/O and must not run in the event loop.
+
+    Logs at debug on a missing or unrecognised name: "my reading ages look
+    wrong" needs something greppable, same reasoning as the hasBoiler note in
+    models_atw.py.
+    """
+    if time_zone:
+        resolved: tzinfo | None = await dt_util.async_get_time_zone(time_zone)
+        if resolved is not None:
+            return resolved
+        _LOGGER.debug(
+            "Unrecognised unit timeZone %r; report reading ages will assume UTC",
+            time_zone,
+        )
+    else:
+        _LOGGER.debug("Unit reported no timeZone; report reading ages will assume UTC")
+    return UTC

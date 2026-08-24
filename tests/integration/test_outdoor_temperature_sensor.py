@@ -1,6 +1,6 @@
 """Integration tests for outdoor temperature sensor."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -45,7 +45,7 @@ async def setup_integration_with_outdoor_temp(hass: HomeAssistant) -> MockConfig
         [create_mock_ata_building(units=[living_room, bedroom])]
     )
 
-    async def mock_get_outdoor_temp(unit_id: str) -> Reading | None:
+    async def mock_get_outdoor_temp(unit_id: str, tz: tzinfo = UTC) -> Reading | None:
         if unit_id == LIVING_ROOM_ID:
             return Reading(12.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC))
         return None
@@ -172,7 +172,7 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         [create_mock_ata_building(units=[living_room, study])]
     )
 
-    async def mock_get_outdoor_temp(unit_id: str) -> Reading | None:
+    async def mock_get_outdoor_temp(unit_id: str, tz: tzinfo = UTC) -> Reading | None:
         if unit_id == LIVING_ROOM_ID:
             return Reading(8.0, datetime(2026, 2, 7, 11, 55, 0, tzinfo=UTC))
         if unit_id == STUDY_ID:
@@ -200,7 +200,9 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
     assert state_lr.state == "8.0"
     assert state_study.state == "3.0"
 
-    async def mock_get_outdoor_temp_updated(unit_id: str) -> Reading | None:
+    async def mock_get_outdoor_temp_updated(
+        unit_id: str, tz: tzinfo = UTC
+    ) -> Reading | None:
         if unit_id == LIVING_ROOM_ID:
             return Reading(10.0, datetime(2026, 2, 7, 12, 5, 0, tzinfo=UTC))
         if unit_id == STUDY_ID:

@@ -9,7 +9,7 @@ Run with: make test-integration
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -112,7 +112,7 @@ async def test_one_unit_failing_leaves_its_sibling_alone(hass: HomeAssistant) ->
     """
     calls: list[str] = []
 
-    async def per_unit(unit_id: str) -> dict[str, Reading]:
+    async def per_unit(unit_id: str, tz: tzinfo = UTC) -> dict[str, Reading]:
         calls.append(unit_id)
         if unit_id == SECOND_UNIT_ID:
             raise OSError("endpoint down")
