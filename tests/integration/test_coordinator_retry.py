@@ -352,6 +352,7 @@ async def test_deduplication_skips_same_value(coordinator):
         is_in_error=False,
         error_code=None,
         rssi=-50,
+        time_zone=None,
         capabilities=AirToAirCapabilities(),
     )
     coordinator._units = {"unit123": unit}
@@ -387,6 +388,7 @@ async def test_deduplication_sends_different_value(coordinator):
         is_in_error=False,
         error_code=None,
         rssi=-50,
+        time_zone=None,
         capabilities=AirToAirCapabilities(),
     )
     coordinator._units = {"unit123": unit}
