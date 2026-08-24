@@ -127,6 +127,7 @@ class AirToAirUnit:
     is_in_error: bool
     error_code: str | None
     rssi: int | None
+    time_zone: str | None  # IANA name from /context, e.g. "Europe/Stockholm"
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
     energy_consumed: float | None = None  # kWh
@@ -215,6 +216,7 @@ class AirToAirUnit:
             is_in_error=_parse_bool(settings.get("IsInError")),
             error_code=error_code,
             rssi=data.get("rssi"),
+            time_zone=data.get("timeZone"),
             capabilities=capabilities,
             frost_protection=ProtectionModeState.from_dict(data.get("frostProtection")),
             overheat_protection=ProtectionModeState.from_dict(
