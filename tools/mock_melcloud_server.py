@@ -1148,17 +1148,36 @@ class MockMELCloudServer:
 
     @staticmethod
     def _parse_report_window(request: web.Request) -> tuple[datetime, datetime]:
-        """Parse the "from"/"to" query params shared by trendsummary and comfort-graph."""
+        """Parse the "from"/"to" query params shared by all three report endpoints.
+
+        Always returns NAIVE datetimes, because these bounds become the "x"
+        stamps of the emitted datapoints and the real server's stamps are naive.
+        The integration sends an explicit "Z" (see api/client.py
+        _report_params), so fromisoformat would otherwise hand back aware
+        values here and every emitted stamp would carry "+00:00" - which
+        parse_api_timestamp converts rather than interpreting, silently
+        bypassing the unit-timezone path this mock is meant to exercise. The
+        else-branches below have always been naive; this keeps both paths
+        agreeing.
+
+        ponytail: naive UTC, not naive unit-local. The real server stamps in
+        each unit's own zone, so a mock-backed test still cannot show a
+        wrong-timezone conversion - only that one happened at all. Making it
+        faithful means shifting these into the unit's building timezone, which
+        needs the unit id plumbed in here.
+        """
         to_param = request.query.get("to", "")
         from_param = request.query.get("from", "")
 
         if to_param:
             to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
+            to_time = to_time.replace(tzinfo=None)
         else:
             to_time = datetime.now()
 
         if from_param:
             from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
+            from_time = from_time.replace(tzinfo=None)
         else:
             from_time = to_time - timedelta(hours=1)
 
