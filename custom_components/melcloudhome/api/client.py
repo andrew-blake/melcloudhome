@@ -537,16 +537,19 @@ class MELCloudHomeClient:
         "*_boiler"), plus tank temperature and its setpoint, which /context
         already provides at 60s.
 
-        8h lookback: 8h is the widest window that does not 500 (4/6/8h succeed,
-        12h and 16h fail), and that window-size-dependent failure is itself
-        proof the endpoint reads its from/to. Water temperatures upload
-        sparsely, so a unit quiet for hours still has a real last reading worth
-        showing, and last_reading carries its age (ADR-022) - which makes an old
-        reading legible. Widest working window, honoured parameter, visible age.
+        8h lookback: the server floors "from" to midnight of its own date and
+        rejects a range spanning three calendar days, so any lookback under ~30h
+        is served and 8h always lands inside that (both prod units, 2026-08-24).
+        The endpoint also 500s intermittently on a window it serves moments
+        later, so one failure never establishes a ceiling. Water temperatures
+        upload sparsely, so a unit quiet for hours still has a real last reading
+        worth showing, and last_reading carries its age (ADR-022) - which makes
+        an old reading legible.
 
-        Datasets for hardware the unit lacks are NOT omitted: they carry a
-        constant 25 placeholder (measured on two single-zone units over a full
-        day, 2026-08-21). Callers must still gate on capabilities - see
+        Datasets for hardware the unit lacks are still present, but what they
+        hold varies: an empty series on some days, a flat 25 placeholder on
+        others (dated observations in docs/api/atw-api-reference.md). Neither is
+        a genuine reading, and callers must still gate on capabilities - see
         telemetry_tracker.
 
         Args:

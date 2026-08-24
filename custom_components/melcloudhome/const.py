@@ -60,8 +60,8 @@ ATW_TELEMETRY_MEASURES = [
 ]
 
 # Zone-1-suffixed measures, only kept when the device has a second zone: on a
-# single-zone system they carry a constant 25 placeholder, and the unsuffixed
-# pair is that system's zone 1. Gating on has_zone2 cannot regress a two-zone
+# single-zone system they carry no genuine reading, and the unsuffixed pair is
+# that system's zone 1. Gating on has_zone2 cannot regress a two-zone
 # device. The report returns every dataset in one response, so an unwanted
 # measure costs a discarded fake reading and nothing more.
 # Evidence and the untested positive case: docs/api/atw-api-reference.md.
@@ -77,7 +77,7 @@ ATW_TELEMETRY_MEASURES_ZONE2 = [
 ]
 
 # Boiler-circuit measures, only kept when capabilities report a boiler.
-# Same 25 placeholder on devices without one.
+# Same absent-hardware dataset on devices without one.
 ATW_TELEMETRY_MEASURES_BOILER = [
     "flow_temperature_boiler",
     "return_temperature_boiler",

@@ -133,8 +133,9 @@ class TelemetryTracker:
             f"get_water_temperatures({unit.name})",
         )
 
-        # The report returns every dataset regardless of the unit's hardware,
-        # filling absent ones with a constant 25 placeholder, so the capability
+        # The report returns every dataset regardless of the unit's hardware;
+        # absent ones hold no genuine reading (an empty series or a flat 25
+        # placeholder - see docs/api/atw-api-reference.md), so the capability
         # filter that used to decide what to REQUEST now decides what to keep
         # (#266). Same rules, same outcome, one request.
         wanted = list(ATW_TELEMETRY_MEASURES)

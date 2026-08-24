@@ -583,7 +583,7 @@ Returns **every water temperature in one request**, instead of one request per m
 is what the MELCloud Home web app's water-temperatures chart uses, and since
 [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) it is where the integration's
 ATW flow and return temperature sensors get their readings (`get_atw_water_temperatures`,
-`period=Hourly`, 8h lookback — 8h is the widest window the endpoint serves).
+`period=Hourly`, 8h lookback).
 
 ```
 GET /report/v1/internaltemperatures?unitId={unitId}&period=Hourly&from=2026-08-21T00:00:00.0000000&to=2026-08-21T08:00:00.0000000
@@ -630,8 +630,25 @@ including the 7-decimal timestamp format.
 - **Use `period=Hourly`.** It yields genuine per-reading timestamps (irregular seconds, e.g.
   `06:00:16`). `period=Daily` returns 30-minute bucket labels that are not reading times —
   the same data-quality problem documented for `trendsummary` in issue #152.
-- **Window limit: 8 hours.** 4h, 6h and 8h succeed; 12h and 16h return HTTP 500. Comparable
-  to `comfort-graph`'s own window ceiling, different magnitude.
+- **Window limit: two calendar days, not a number of hours.** The server floors `from` to
+  midnight of its own date — and echoes the floored value back — then rejects any range whose
+  floored `from` and `to` span three calendar days. Measured on both prod units, 2026-08-24:
+
+  | Requested `from` → `to` (UTC) | Floored span | Result |
+  |---|---|---|
+  | `08-24T02:14` → `08-24T06:14` | 1 day | 200, echoes `from` `08-24T00:00` |
+  | `08-23T22:14` → `08-24T06:14` | 2 days | 200, echoes `from` `08-23T00:00` |
+  | `08-23T00:14` → `08-24T06:14` | 2 days | 200 |
+  | `08-22T23:14` → `08-24T06:14` | 3 days | 500 |
+
+  A consequence worth knowing: how much data comes back is decided by whether the window
+  crosses midnight, not by its width. Run at 06:14, a 4h lookback stayed inside the current day
+  and returned 40 genuine `flow_temperature` points, while an 8h lookback reached past midnight
+  and returned 485 — same unit, same moment. Run at 02:00 both would cross.
+- **The endpoint 500s intermittently on a window it serves moments later.** Two of roughly five
+  consecutive requests for one unit failed on the same 8h window that had just succeeded, while
+  the other unit served the identical request. A single 500 is therefore not evidence that a
+  window is too wide.
 - **The final datapoint is synthetic.** Every dataset ends with a point stamped with the query
   `to` and the previous value repeated (the "to-echo" artifact, issue #224). Strip it before
   reading a latest value or freshness is reported as zero.
@@ -648,6 +665,7 @@ including the 7-decimal timestamp format.
   | 2026-01-14 (`c2de27f`, #36) | per-measure telemetry | 4h | `"values": []` — **empty** |
   | 2026-08-21 | this report | full day | flat **`25`** for a full day, on two units |
   | 2026-08-23 (`test_get_atw_water_temperatures` cassette) | this report | 8h | `"data": []` — **empty** |
+  | 2026-08-24 (live probe, both prod units) | this report | 8h | `"data": []` — **empty** |
 
   All three units were `hasZone2: false` / `hasBoiler: false`, so capability profile does not
   explain the difference; window length and date are the uncontrolled variables. The vendor's own
