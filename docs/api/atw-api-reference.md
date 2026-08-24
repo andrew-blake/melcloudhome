@@ -630,21 +630,42 @@ including the 7-decimal timestamp format.
 - **Use `period=Hourly`.** It yields genuine per-reading timestamps (irregular seconds, e.g.
   `06:00:16`). `period=Daily` returns 30-minute bucket labels that are not reading times —
   the same data-quality problem documented for `trendsummary` in issue #152.
-- **Window limit: two calendar days, not a number of hours.** The server floors `from` to
-  midnight of its own date — and echoes the floored value back — then rejects any range whose
-  floored `from` and `to` span three calendar days. Measured on both prod units, 2026-08-24:
+- **Window limit: counted in the unit's own calendar days, and not by day count alone.** The
+  server floors `from` to midnight of its own date, in the **unit's** timezone, and echoes the
+  floored value back. A one-day floored span is always served. A three-day span is always
+  refused. **A two-day span is served at some times of day and refused at others**, so treat two
+  days as unreliable rather than supported.
 
-  | Requested `from` → `to` (UTC) | Floored span | Result |
+  Because the floor is in unit-local time and the integration sends an explicit UTC marker, the
+  window crosses local midnight once the lookback exceeds the hours elapsed since midnight *in
+  the unit's zone*, which is offset-dependent. For a `Europe/Stockholm` unit at 15:19 local that
+  threshold is 15.3h: a 12h lookback stays inside the day, a 16h one does not.
+
+  Measured on prod, both times 2026-08-24, one `Europe/Stockholm` unit:
+
+  | Floored span | 06:14 local | 13:19 UTC (15:19 local) |
   |---|---|---|
-  | `08-24T02:14` → `08-24T06:14` | 1 day | 200, echoes `from` `08-24T00:00` |
-  | `08-23T22:14` → `08-24T06:14` | 2 days | 200, echoes `from` `08-23T00:00` |
-  | `08-23T00:14` → `08-24T06:14` | 2 days | 200 |
-  | `08-22T23:14` → `08-24T06:14` | 3 days | 500 |
+  | 1 day | 200 | 200 (8h and 12h return byte-identical payloads) |
+  | 2 days | 200 | **500, eight consecutive attempts across 16h and 20h** |
+  | 3 days | 500 | not retested |
 
-  A consequence worth knowing: how much data comes back is decided by whether the window
-  crosses midnight, not by its width. Run at 06:14, a 4h lookback stayed inside the current day
-  and returned 40 genuine `flow_temperature` points, while an 8h lookback reached past midnight
-  and returned 485 — same unit, same moment. Run at 02:00 both would cross.
+  The eight failures rule out the intermittent-500 behaviour described below: 8h and 12h
+  succeeded first try minutes either side of them.
+
+  **Open question: what actually sets the ceiling.** A pure calendar-day rule does not fit,
+  since the same 2-day span is served in the morning and refused in the afternoon on one date
+  and one unit. Response volume is a candidate, because a 2-day span covers progressively more
+  of the current day as it advances, and the midnight-crossing measurement below shows how
+  sharply the point count grows. That is a hypothesis and nothing here tests it: a request
+  crafted to hold the span at two days while varying only the row count would.
+
+  A consequence worth knowing whatever the mechanism: how much data comes back is decided by
+  whether the window crosses local midnight, not by its width, and the wider window is the one
+  that wins. Run at 06:14, a 4h lookback stayed inside the current day and returned 40 genuine
+  `flow_temperature` points, while an 8h lookback reached past midnight and returned 485: same
+  unit, same moment. The practical effect is that the reachable history shrinks as the day
+  progresses, so early morning can reach yesterday while mid-afternoon is capped at today's
+  local midnight.
 - **The endpoint 500s intermittently on a window it serves moments later.** Two of roughly five
   consecutive requests for one unit failed on the same 8h window that had just succeeded, while
   the other unit served the identical request. A single 500 is therefore not evidence that a
