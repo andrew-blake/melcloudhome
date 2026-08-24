@@ -124,14 +124,22 @@ tooltip are both in unit-local time, and by triangulating a zone-1 setpoint chan
 against Home Assistant's own `/context` history, which is HA-stamped and therefore
 independent.
 
-This resolves the caveat this section previously carried. The earlier evidence was
-a `return_temperature` datapoint sitting 76 seconds inside a UTC-based query
-window — which, as that caveat said, a device at any non-zero offset would have led
-or trailed by far more, and which left a genuinely UTC+0 device indistinguishable.
-That is exactly what it was: the VCR account's units report `Europe/London`,
-`Europe/Skopje` and `Europe/Stockholm`, and the stamps above are from mid-January,
-when `Europe/London` is on GMT and its offset is 0. An offset-0 unit cannot show
-this bug, which is why verification has to use a unit that is not on GMT.
+This resolves the caveat this section previously carried, and two independent
+faults invalidate the old evidence. That evidence was a `return_temperature`
+datapoint sitting 76 seconds inside a UTC-based query window.
+
+First, the datapoint it measured was `data[-1]`, which #224 later established is
+the server echoing the query's own `to` parameter back verbatim. Matching that
+against the request clock tests the timezone of *our request*, not of the data —
+it would sit just inside the window whatever zone the unit was in.
+
+Second, even a genuine datapoint would not have separated the two cases here. As
+the caveat itself said, a device at any non-zero offset would have led or trailed
+by far more, leaving a genuinely UTC+0 device indistinguishable — and that is what
+this was. The VCR account's units report `Europe/London`, `Europe/Skopje` and
+`Europe/Stockholm`, and the stamps above are from mid-January, when `Europe/London`
+is on GMT at offset 0. An offset-0 unit cannot show this bug, which is why
+verification has to use a unit that is not on GMT.
 
 ## Consequences
 
