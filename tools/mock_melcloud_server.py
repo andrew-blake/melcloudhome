@@ -30,9 +30,10 @@ import json
 import logging
 import random
 import signal
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from time import time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import aiohttp_cors
 from aiohttp import web
@@ -1146,38 +1147,70 @@ class MockMELCloudServer:
             charset="utf-8",
         )
 
-    @staticmethod
-    def _parse_report_window(request: web.Request) -> tuple[datetime, datetime]:
-        """Parse the "from"/"to" query params shared by all three report endpoints.
+    def _unit_timezone(self, unit_id: str) -> str:
+        """IANA zone of the building owning `unit_id`, as /context reports it.
 
-        Always returns NAIVE datetimes, because these bounds become the "x"
-        stamps of the emitted datapoints and the real server's stamps are naive.
-        The integration sends an explicit "Z" (see api/client.py
-        _report_params), so fromisoformat would otherwise hand back aware
-        values here and every emitted stamp would carry "+00:00" - which
-        parse_api_timestamp converts rather than interpreting, silently
-        bypassing the unit-timezone path this mock is meant to exercise. The
-        else-branches below have always been naive; this keeps both paths
-        agreeing.
-
-        ponytail: naive UTC, not naive unit-local. The real server stamps in
-        each unit's own zone, so a mock-backed test still cannot show a
-        wrong-timezone conversion - only that one happened at all. Making it
-        faithful means shifting these into the unit's building timezone, which
-        needs the unit id plumbed in here.
+        Same source as the per-unit "timeZone" key, so a client that reads that
+        key and a client that reads these stamps agree.
         """
+        for building in (*self.buildings.values(), *self.guest_buildings.values()):
+            if (
+                unit_id in building["ata_unit_ids"]
+                or unit_id in building["atw_unit_ids"]
+            ):
+                return str(building["timezone"])
+        return "UTC"
+
+    def _parse_report_window(
+        self, request: web.Request, unit_id: str
+    ) -> tuple[datetime, datetime]:
+        """Parse "from"/"to" and return them as NAIVE times in the unit's own zone.
+
+        This is what the real server does, and getting it wrong makes the mock
+        useless for the thing it is most needed for. The real server keeps each
+        unit's points in that unit's local time: it interprets the window in
+        that zone (an offset-less bound is taken as already-local, an explicit
+        one is converted) and stamps the points it returns the same way. So a
+        request for `to = 10:27Z` against a Europe/Stockholm unit comes back
+        with stamps around 12:27, two hours AHEAD of UTC - measured against the
+        real backend 2026-08-24.
+
+        Two mistakes are therefore both possible and both invisible downstream,
+        which is why this is one function and not three:
+
+        - Emitting timezone-AWARE stamps. parse_api_timestamp converts an aware
+          stamp and ignores the zone it was given, so the unit-timezone path is
+          bypassed entirely and every unit looks identical.
+        - Emitting naive UTC. The conversion then runs but on the wrong input,
+          so ages come out wrong by the unit's offset while still differing
+          per unit.
+
+        The integration sends an explicit "Z" (api/client.py _report_params),
+        so the bounds arrive aware; they are normalised to UTC and then shifted
+        into the unit's zone.
+        """
+        zone = ZoneInfo(self._unit_timezone(unit_id))
+
+        def to_unit_local(value: datetime) -> datetime:
+            """UTC (aware or naive) -> naive wall-clock time in the unit's zone."""
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=UTC)
+            return value.astimezone(zone).replace(tzinfo=None)
+
         to_param = request.query.get("to", "")
         from_param = request.query.get("from", "")
 
         if to_param:
-            to_time = datetime.fromisoformat(to_param.replace(".0000000", ""))
-            to_time = to_time.replace(tzinfo=None)
+            to_time = to_unit_local(
+                datetime.fromisoformat(to_param.replace(".0000000", ""))
+            )
         else:
-            to_time = datetime.now()
+            to_time = to_unit_local(datetime.now(UTC))
 
         if from_param:
-            from_time = datetime.fromisoformat(from_param.replace(".0000000", ""))
-            from_time = from_time.replace(tzinfo=None)
+            from_time = to_unit_local(
+                datetime.fromisoformat(from_param.replace(".0000000", ""))
+            )
         else:
             from_time = to_time - timedelta(hours=1)
 
@@ -1190,7 +1223,7 @@ class MockMELCloudServer:
         if not unit_id:
             return web.json_response({"error": "unitId required"}, status=400)
 
-        from_time, to_time = self._parse_report_window(request)
+        from_time, to_time = self._parse_report_window(request, unit_id)
 
         # Generate datapoints (every 10 minutes). Like the real API, genuine
         # readings carry arbitrary seconds (here :26) while synthetic points
@@ -1285,7 +1318,7 @@ class MockMELCloudServer:
         if unit_id not in self.atw_states:
             return web.json_response({"error": "unit not found"}, status=404)
 
-        from_time, to_time = self._parse_report_window(request)
+        from_time, to_time = self._parse_report_window(request, unit_id)
 
         outdoor_temp = self.atw_states[unit_id].get("outdoor_temperature", 10.0)
 
@@ -1325,7 +1358,7 @@ class MockMELCloudServer:
         if unit_id not in self.atw_states:
             return web.json_response({"error": "unit not found"}, status=404)
 
-        from_time, to_time = self._parse_report_window(request)
+        from_time, to_time = self._parse_report_window(request, unit_id)
         state = self.atw_states[unit_id]
         has_zone2 = state.get("has_zone2", False)
         has_boiler = state.get("has_boiler", False)
