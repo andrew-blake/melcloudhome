@@ -42,8 +42,9 @@ class AirToWaterCapabilities:
     has_zone2: bool = False
 
     # Boiler circuit. Devices without one still return the boiler flow/return
-    # telemetry measures, filled with a constant 25 placeholder, so this gates
-    # whether those measures are requested and surfaced at all.
+    # telemetry measures, holding no genuine reading (see
+    # docs/api/atw-api-reference.md), so this gates whether those measures are
+    # requested and surfaced at all.
     has_boiler: bool = False
 
     # Thermostat Support

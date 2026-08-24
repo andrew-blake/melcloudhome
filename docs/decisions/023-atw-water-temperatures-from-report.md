@@ -60,10 +60,10 @@ per unit per cycle.**
 
 - **`period=Hourly`, 8h lookback.** Hourly is the only period whose points carry
   genuine reading timestamps; `Daily` returns 30-minute bucket labels whose
-  values can diverge from the latest reading (#152). 8h is the widest window the
-  endpoint serves — 4/6/8h succeed, 12h and 16h return 500 — and that
-  window-size-dependent failure is itself proof the endpoint reads its
-  `from`/`to`. A sparse uploader quiet for hours still has a real last reading
+  values can diverge from the latest reading (#152). The server floors `from` to
+  midnight of its own date and rejects a range spanning three calendar days, so
+  any lookback under ~30h is served; 8h always lands inside that whatever time of
+  day the poll runs at. A sparse uploader quiet for hours still has a real last reading
   worth showing, and `last_reading` ([ADR-022](022-reading-provenance.md))
   carries its age.
 - **Synthetic points are stripped by the shared rule.** The server appends

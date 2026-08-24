@@ -176,13 +176,13 @@ For each heat pump system, the following entities are created:
 - **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler` (if device reports a boiler)
 
 The unsuffixed Flow and Return pair is created for every heat pump. The rest are gated on
-capabilities, because MELCloud returns a constant 25 °C for measures the hardware doesn't
-have rather than no data at all — so creating them unconditionally produced sensors that
-looked like readings and never were.
+capabilities, because MELCloud still sends a series for measures the hardware doesn't have —
+sometimes empty, sometimes a constant 25 °C, both observed — so creating them unconditionally
+produced sensors that looked like readings and never were.
 
 The Zone 1 pair requires the device to have a **second** zone. On a single-zone system those
-two measures return the placeholder rather than a reading, and the plain Flow Temperature and
-Return Temperature are the zone 1 flow and return. The boiler pair requires the device to
+two measures carry no genuine reading, and the plain Flow Temperature and Return Temperature
+are the zone 1 flow and return. The boiler pair requires the device to
 report a boiler.
 
 A gated sensor that does exist can still sit at `unknown` when a telemetry fetch returns no

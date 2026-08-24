@@ -60,7 +60,8 @@ async def test_queries_hourly_over_an_8h_window(mocker) -> None:
     from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000")
     assert to_dt == datetime(2026, 8, 22, 14, 30, 0)
     assert to_dt.second == 0
-    # 8h is the widest window the endpoint serves; 12h and 16h return 500
+    # 8h always lands inside the server's 2-calendar-day ceiling, whatever
+    # time of day it runs at (docs/api/atw-api-reference.md)
     assert to_dt - from_dt == timedelta(hours=8)
 
     assert result == {
