@@ -1235,3 +1235,27 @@ async def test_energy_request_window_starts_on_the_hour(hass: HomeAssistant) -> 
         assert from_time.microsecond == 0
         # Flooring only ever widens the window, never narrows it
         assert to_time - from_time >= timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)
+
+
+def test_energy_window_normalises_to_utc() -> None:
+    """Test that a local-aware "now" produces the same window as its UTC equal.
+
+    The request format carries no offset marker and strftime drops tzinfo, so an
+    un-normalised local-aware bound would query the wrong window silently.
+    """
+    from zoneinfo import ZoneInfo
+
+    from custom_components.melcloudhome.energy_tracker_base import EnergyTrackerBase
+
+    instant = datetime(2026, 8, 25, 7, 51, tzinfo=UTC)
+    from_utc, to_utc = EnergyTrackerBase._energy_window(instant)
+    from_local, to_local = EnergyTrackerBase._energy_window(
+        instant.astimezone(ZoneInfo("Europe/Skopje"))
+    )
+
+    assert (from_utc, to_utc) == (from_local, to_local)
+    assert from_utc.utcoffset() == timedelta(0)
+    assert from_utc.hour == 7  # floored in UTC, not in +02:00
+
+    with pytest.raises(ValueError, match="aware datetime"):
+        EnergyTrackerBase._energy_window(datetime(2026, 8, 25, 7, 51))
