@@ -21,7 +21,11 @@ from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
 )
 
-from custom_components.melcloudhome.const import DOMAIN, HOUR_VALUE_RETENTION_HOURS
+from custom_components.melcloudhome.const import (
+    DATA_LOOKBACK_HOURS_ENERGY,
+    DOMAIN,
+    HOUR_VALUE_RETENTION_HOURS,
+)
 
 from .conftest import (
     MOCK_CLIENT_PATH,
@@ -1181,3 +1185,53 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
         # Verify no additional energy fetches after unload
         # (Polling task should be cancelled)
         assert mock_client.get_energy_data.call_count == initial_calls
+
+
+@pytest.mark.asyncio
+async def test_energy_request_window_starts_on_the_hour(hass: HomeAssistant) -> None:
+    """Test that the energy request's "from" bound is floored to the hour.
+
+    The server sums only the samples at or after "from", so an unfloored bound
+    makes the oldest bucket a shrinking partial hour: every poll asks for a
+    smaller slice than the last, the value comes back lower, and the decrease
+    guard logs it as "possible API issue" ~4 times an hour per unit forever.
+    Measured on prod 2026-08-25 before the fix; see EnergyTrackerBase._energy_window.
+
+    Validates: the window's leading bucket is always requested whole
+    Tests through: the arguments the client is called with
+    """
+    mock_context = create_mock_ata_energy_context()
+    mock_energy_data = create_mock_energy_response([("2025-01-15T10:00:00Z", 500.0)])
+
+    with (
+        patch(MOCK_CLIENT_PATH) as mock_client_class,
+        patch(MOCK_STORE_PATH) as mock_store_class,
+    ):
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock()
+        mock_client.close = AsyncMock()
+        mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        mock_client.get_energy_data = AsyncMock(return_value=mock_energy_data)
+        type(mock_client).is_authenticated = PropertyMock(return_value=True)
+
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=None)
+        mock_store.async_save = AsyncMock()
+
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+            unique_id="test@example.com",
+        )
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        mock_client.get_energy_data.assert_called()
+        from_time, to_time = mock_client.get_energy_data.call_args.args[1:3]
+
+        assert from_time.minute == 0
+        assert from_time.second == 0
+        assert from_time.microsecond == 0
+        # Flooring only ever widens the window, never narrows it
+        assert to_time - from_time >= timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)
