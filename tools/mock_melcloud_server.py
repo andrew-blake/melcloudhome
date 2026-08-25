@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 # Dataset id -> (base temperature, hidden). `hidden` mirrors the vendor's
-# hardcoded per-dataset-id constant (decompiled App.Shared.ReportTimeDataSet):
+# hardcoded per-dataset-id constant:
 # a presentation default, not a capability signal.
 #
 # Suffixed series the unit's hardware lacks are served as a constant 25. The
