@@ -139,7 +139,9 @@ class TelemetryTracker:
         # absent ones hold no genuine reading (an empty series or a flat 25
         # placeholder - see docs/api/atw-api-reference.md), so the capability
         # filter that used to decide what to REQUEST now decides what to keep
-        # (#266). Same rules, same outcome, one request.
+        # (#266). Same rules, same outcome, one request. The sensors themselves
+        # are gated in sensor_atw.py; this only keeps fake values out of the
+        # cache.
         wanted = list(ATW_TELEMETRY_MEASURES)
         if unit.capabilities and unit.capabilities.has_zone2:
             wanted.extend(ATW_TELEMETRY_MEASURES_ZONE1)
