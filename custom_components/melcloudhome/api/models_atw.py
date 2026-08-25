@@ -206,6 +206,10 @@ class AirToWaterUnit:
     # for telling "endpoint failing for this unit" apart from "no data yet".
     outdoor_temp_last_error: str | None = None
     outdoor_temp_last_error_at: datetime | None = None  # UTC-aware
+    # When a poll last completed, whatever it found. Read against
+    # outdoor_temp_reading.recorded_at, this separates "the endpoint has
+    # nothing newer" from "we have not asked recently" (UTC-aware).
+    outdoor_temp_last_poll_at: datetime | None = None
 
     # Holiday Mode & Frost Protection (read-only state)
     holiday_mode_enabled: bool = False

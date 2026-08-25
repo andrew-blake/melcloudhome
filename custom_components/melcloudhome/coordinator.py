@@ -126,6 +126,13 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             str, datetime
         ] = {}  # Per-unit last poll time
 
+        # Units currently in an outdoor-temp failure streak. A failed poll still
+        # resets the 30-minute timer and keeps the previous value, so without
+        # this a unit failing every poll is indistinguishable from an idle one
+        # at prod's INFO level. Warn on entering the streak, stay quiet inside
+        # it, re-arm on the next success.
+        self._outdoor_temp_failing: set[str] = set()
+
         # Initialize ATA control client
         self.control_client_ata = ATAControlClient(
             hass=hass,
@@ -657,6 +664,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 unit.outdoor_temp_reading = old_unit.outdoor_temp_reading
                 unit.outdoor_temp_last_error = old_unit.outdoor_temp_last_error
                 unit.outdoor_temp_last_error_at = old_unit.outdoor_temp_last_error_at
+                unit.outdoor_temp_last_poll_at = old_unit.outdoor_temp_last_poll_at
 
             if not self._should_poll_outdoor_temp(unit_id):
                 continue
@@ -669,6 +677,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = None
                 unit.outdoor_temp_last_error_at = None
+                unit.outdoor_temp_last_poll_at = datetime.now(UTC)
+
+                if unit_id in self._outdoor_temp_failing:
+                    self._outdoor_temp_failing.discard(unit_id)
+                    _LOGGER.info("%s for %s is working again", log_label, unit.name)
 
                 if reading is not None:
                     unit.has_outdoor_temp_sensor = True
@@ -686,12 +699,22 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = f"{type(err).__name__}: {err}"
                 unit.outdoor_temp_last_error_at = datetime.now(UTC)
+                unit.outdoor_temp_last_poll_at = datetime.now(UTC)
                 _LOGGER.debug(
                     "Failed to fetch %s for %s",
                     log_label,
                     unit.name,
                     exc_info=True,
                 )
+                if unit_id not in self._outdoor_temp_failing:
+                    self._outdoor_temp_failing.add(unit_id)
+                    _LOGGER.warning(
+                        "%s for %s failed and the sensor will keep its previous "
+                        "value until a poll succeeds: %s",
+                        log_label,
+                        unit.name,
+                        err,
+                    )
 
     def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
         """Check if outdoor temp should be polled for a specific unit."""

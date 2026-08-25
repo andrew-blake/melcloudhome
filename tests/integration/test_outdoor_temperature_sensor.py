@@ -272,3 +272,48 @@ async def test_idle_unit_reprobed_after_polling_interval(
     assert unit.outdoor_temp_reading.value == 15.0, (
         f"Expected 15.0°C after re-probe, got {unit.outdoor_temp_reading}"
     )
+
+
+async def test_outdoor_temp_failure_warns_once_per_streak(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that a failing outdoor-temp poll warns once, not on every poll.
+
+    A failed poll resets the 30-minute timer and keeps the previous value, so
+    without a warning at INFO a unit failing every poll looks identical to an
+    idle one. Repeating the warning every poll would be its own noise problem,
+    so it marks entry to the failure streak only.
+
+    Validates: exactly one warning per failure streak
+    Tests through: the log, and hass.states for the retained sensor
+    """
+    unit = create_mock_ata_unit(
+        unit_id=LIVING_ROOM_ID,
+        name="Living Room AC",
+        has_outdoor_sensor=True,
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+
+    def configure(client: Any) -> None:
+        client.get_outdoor_temperature = AsyncMock(
+            side_effect=RuntimeError("upstream exploded")
+        )
+        client.ata = MagicMock()
+        client.ata.set_power = AsyncMock()
+        client.ata.set_temperature = AsyncMock()
+
+    caplog.clear()
+    await setup_ata_integration_custom(hass, mock_context, configure_client=configure)
+
+    warnings = [
+        r
+        for r in caplog.records
+        if r.levelname == "WARNING" and "keep its previous value" in r.getMessage()
+    ]
+    assert len(warnings) == 1, f"expected one warning, got {len(warnings)}"
+
+    state = hass.states.get("sensor.melcloudhome_0efc_87db_outdoor_temperature")
+    assert state is not None
+    assert state.state == "unknown"
