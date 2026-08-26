@@ -126,6 +126,9 @@
       "room_temperature": {
         "name": "Température ambiante"
       },
+      "actual_fan_speed": {
+        "name": "Vitesse de ventilation réelle"
+      },
       "wifi_signal": {
         "name": "Signal Wi‑Fi"
       },

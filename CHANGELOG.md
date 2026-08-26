@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **New "Actual fan speed" sensor for air conditioning units**: the speed the unit is really running, which on units set to "Auto" was not visible before. It comes from the indoor unit, so it lags a little, and it follows the fan rather than the compressor.
 - Heat pump (ATW) flow and return temperature sensors now include a "last reading" timestamp, showing when the unit actually recorded the value rather than when Home Assistant fetched it. MELCloud's telemetry for these can be hours old, or fail for a whole polling cycle while the sensor keeps showing its previous value, and until now there was no way to tell. Outdoor temperature sensors have had this since v2.4.0. (#200)
 
 ### Changed

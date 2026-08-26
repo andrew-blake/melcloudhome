@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Raumtemperatur"
       },
+      "actual_fan_speed": {
+        "name": "Tatsächliche Lüfterstufe"
+      },
       "wifi_signal": {
         "name": "WLAN-Signal"
       },

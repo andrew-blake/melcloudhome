@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Rumstemperatur"
       },
+      "actual_fan_speed": {
+        "name": "Faktisk fläkthastighet"
+      },
       "wifi_signal": {
         "name": "WiFi-signal"
       },

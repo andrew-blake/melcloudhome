@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Θερμοκρασία δωματίου"
       },
+      "actual_fan_speed": {
+        "name": "Πραγματική ταχύτητα ανεμιστήρα"
+      },
       "wifi_signal": {
         "name": "Σήμα WiFi"
       },

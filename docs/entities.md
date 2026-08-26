@@ -35,6 +35,7 @@ For each air conditioning unit, the following entities are created:
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
+- **Actual Fan Speed**: `sensor.melcloudhome_{short_id}_actual_fan_speed` (`off`, `one`…`five`, never `auto`) — the speed the unit is running, as opposed to the climate entity's `fan_mode`, which is the requested one. Under `Auto` this is the only place the running speed is visible. Reported by the indoor unit, so it can be a few minutes behind after switching on or off, and it follows the fan rather than the compressor — a low speed does not mean cooling has stopped
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)

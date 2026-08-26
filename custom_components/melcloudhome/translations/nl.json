@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Kamertemperatuur"
       },
+      "actual_fan_speed": {
+        "name": "Werkelijke ventilatorsnelheid"
+      },
       "wifi_signal": {
         "name": "WiFi-signaal"
       },

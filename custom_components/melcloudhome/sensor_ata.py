@@ -70,6 +70,15 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature,
     ),
+    # The speed the unit runs at, invisible under SetFanSpeed=Auto.
+    # Categorical, like the ATW operation_status sensor.
+    ATASensorEntityDescription(
+        key="actual_fan_speed",
+        translation_key="actual_fan_speed",
+        value_fn=lambda unit: (
+            unit.actual_fan_speed.lower() if unit.actual_fan_speed else None
+        ),
+    ),
     # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
     # Shows received signal strength indication (RSSI) in dBm
     # Typical range: -30 (excellent) to -90 (poor)

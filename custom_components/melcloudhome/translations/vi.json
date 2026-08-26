@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Nhiệt độ phòng"
       },
+      "actual_fan_speed": {
+        "name": "Tốc độ quạt thực tế"
+      },
       "wifi_signal": {
         "name": "Tín hiệu WiFi"
       },

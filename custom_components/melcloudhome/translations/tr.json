@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Oda sıcaklığı"
       },
+      "actual_fan_speed": {
+        "name": "Gerçek fan hızı"
+      },
       "wifi_signal": {
         "name": "WiFi sinyali"
       },

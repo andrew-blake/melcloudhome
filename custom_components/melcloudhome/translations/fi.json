@@ -103,6 +103,9 @@
       "room_temperature": {
         "name": "Huonelämpötila"
       },
+      "actual_fan_speed": {
+        "name": "Todellinen tuulettimen nopeus"
+      },
       "wifi_signal": {
         "name": "WiFi-signaali"
       },
