@@ -10,7 +10,11 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers.storage import Store
 
-from .const import HOUR_VALUE_RETENTION_HOURS, MAX_PLAUSIBLE_HOURLY_ENERGY_KWH
+from .const import (
+    DATA_LOOKBACK_HOURS_ENERGY,
+    HOUR_VALUE_RETENTION_HOURS,
+    MAX_PLAUSIBLE_HOURLY_ENERGY_KWH,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -158,6 +162,39 @@ class EnergyTrackerBase(ABC):
         # new energy data arrives.
         if self._clean_hour_values(datetime.now(UTC)):
             await self._save_energy_data()
+
+    @staticmethod
+    def _energy_window(now: datetime) -> tuple[datetime, datetime]:
+        """Return the (from, to) window for an energy request.
+
+        Do not remove the hour floor on "from". The server sums only the
+        samples at or after "from", so an unfloored bound makes the oldest
+        bucket a shrinking partial hour: each poll asks for a smaller slice
+        than the last, reads a lower value, and trips the decrease guard.
+        Measured 2026-08-25: bucket 2026-08-23 06:00 held 0.567 kWh, read as
+        0.433 at :16 past and 0.133 at :46; re-requesting it floored returned
+        0.567 again.
+
+        The wider window is accepted - the floored request returns 200.
+
+        Flooring in UTC is correct because this endpoint labels its hour buckets
+        in UTC, unlike the /report/v1/ endpoints, which stamp points in the
+        unit's own zone (ADR-022). Measured 2026-08-25: units at +1 and +2 both
+        reported newest bucket 07:00 for one window, and pushing "to" three
+        hours past either unit's local wall-clock surfaced nothing newer.
+
+        Both bounds are normalised to UTC first. The request format
+        ("%Y-%m-%d %H:%M", api/client.py) carries no offset marker, so strftime
+        drops the tzinfo silently: a local-aware `now` would query a shifted
+        window with no error anywhere. A naive `now` raises instead.
+        """
+        if now.tzinfo is None:
+            raise ValueError("energy window needs an aware datetime, got naive")
+        to_time = now.astimezone(UTC)
+        from_time = (to_time - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)).replace(
+            minute=0, second=0, microsecond=0
+        )
+        return from_time, to_time
 
     @staticmethod
     def _parse_hour_timestamp(hour_timestamp: str) -> datetime | None:

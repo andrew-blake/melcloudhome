@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from .api.client_atw import ATWControlClient
 from .api.models import UserContext
 from .api.models_atw import AirToWaterUnit
-from .const import DATA_LOOKBACK_HOURS_ENERGY
 from .energy_tracker_base import EnergyTrackerBase
 
 if TYPE_CHECKING:
@@ -120,8 +119,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
         )
 
         # Setup time range for energy data fetch
-        to_time = datetime.now(UTC)
-        from_time = to_time - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)
+        from_time, to_time = self._energy_window(datetime.now(UTC))
 
         # Fetch both consumed and produced
         await self._update_measure(unit, "consumed", from_time, to_time)
