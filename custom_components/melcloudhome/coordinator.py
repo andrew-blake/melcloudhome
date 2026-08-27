@@ -126,6 +126,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             str, datetime
         ] = {}  # Per-unit last poll time
 
+        # Units in an outdoor-temp failure streak. Warn on entry, stay quiet
+        # inside, re-arm on the next success.
+        self._outdoor_temp_failing: set[str] = set()
+
         # Initialize ATA control client
         self.control_client_ata = ATAControlClient(
             hass=hass,
@@ -252,6 +256,14 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self.client.get_atw_outdoor_temperature,
             "ATW outdoor temperature",
         )
+
+        # A lapsing share removes a unit mid-streak; without this it never
+        # warns again when it returns still failing.
+        live_unit_ids: set[str] = set()
+        for building in context.buildings:
+            live_unit_ids.update(unit.id for unit in building.air_to_air_units)
+            live_unit_ids.update(unit.id for unit in building.air_to_water_units)
+        self._outdoor_temp_failing &= live_unit_ids
 
         # Update caches for O(1) lookups
         self._rebuild_caches(context)
@@ -657,6 +669,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 unit.outdoor_temp_reading = old_unit.outdoor_temp_reading
                 unit.outdoor_temp_last_error = old_unit.outdoor_temp_last_error
                 unit.outdoor_temp_last_error_at = old_unit.outdoor_temp_last_error_at
+                unit.outdoor_temp_last_poll_at = old_unit.outdoor_temp_last_poll_at
 
             if not self._should_poll_outdoor_temp(unit_id):
                 continue
@@ -669,6 +682,13 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = None
                 unit.outdoor_temp_last_error_at = None
+                unit.outdoor_temp_last_poll_at = datetime.now(UTC)
+
+                if unit_id in self._outdoor_temp_failing:
+                    self._outdoor_temp_failing.discard(unit_id)
+                    # Warning, not info: at WARNING the failure would
+                    # otherwise read as never closing.
+                    _LOGGER.warning("%s for %s is working again", log_label, unit.name)
 
                 if reading is not None:
                     unit.has_outdoor_temp_sensor = True
@@ -683,15 +703,26 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 else:
                     _LOGGER.debug("No %s data for %s", log_label, unit.name)
             except Exception as err:
+                failed_at = datetime.now(UTC)
                 self._record_outdoor_temp_poll(unit_id)
                 unit.outdoor_temp_last_error = f"{type(err).__name__}: {err}"
-                unit.outdoor_temp_last_error_at = datetime.now(UTC)
+                unit.outdoor_temp_last_error_at = failed_at
+                unit.outdoor_temp_last_poll_at = failed_at
                 _LOGGER.debug(
                     "Failed to fetch %s for %s",
                     log_label,
                     unit.name,
                     exc_info=True,
                 )
+                if unit_id not in self._outdoor_temp_failing:
+                    self._outdoor_temp_failing.add(unit_id)
+                    _LOGGER.warning(
+                        "%s for %s failed and the sensor will keep its previous "
+                        "value until a poll succeeds: %s",
+                        log_label,
+                        unit.name,
+                        err,
+                    )
 
     def _should_poll_outdoor_temp(self, unit_id: str) -> bool:
         """Check if outdoor temp should be polled for a specific unit."""

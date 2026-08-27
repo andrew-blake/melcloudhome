@@ -272,3 +272,150 @@ async def test_idle_unit_reprobed_after_polling_interval(
     assert unit.outdoor_temp_reading.value == 15.0, (
         f"Expected 15.0°C after re-probe, got {unit.outdoor_temp_reading}"
     )
+
+
+async def test_outdoor_temp_failure_warns_once_per_streak(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that a failing outdoor-temp poll warns on entry to the streak only.
+
+    A failed poll resets the 30-minute timer and keeps the previous value, so a
+    unit failing every poll looked identical to an idle one at prod's level.
+    Warning every poll would be its own noise problem, so it marks entry to the
+    streak, stays quiet inside it, and re-arms once a poll succeeds.
+
+    Validates: one warning on entering a streak, silence inside it, a recovery
+    line on the way out, and a fresh warning for the next streak
+    Tests through: the log, and hass.states for the retained sensor
+    """
+    unit = create_mock_ata_unit(
+        unit_id=LIVING_ROOM_ID,
+        name="Living Room AC",
+        has_outdoor_sensor=True,
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    boom = RuntimeError("upstream exploded")
+
+    def configure(client: Any) -> None:
+        client.get_outdoor_temperature = AsyncMock(side_effect=boom)
+        client.ata = MagicMock()
+        client.ata.set_power = AsyncMock()
+        client.ata.set_temperature = AsyncMock()
+
+    caplog.clear()
+    entry, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=configure
+    )
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    def failure_warnings() -> list[str]:
+        return [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelname == "WARNING" and "keep its previous value" in r.getMessage()
+        ]
+
+    def recovery_warnings() -> list[str]:
+        return [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelname == "WARNING" and "is working again" in r.getMessage()
+        ]
+
+    async def poll_again() -> None:
+        # reset_outdoor_temp_polling clears only the 30-minute gate, so the
+        # streak state survives - which is what this test is about.
+        coordinator.reset_outdoor_temp_polling()
+        await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+        await hass.async_block_till_done()
+
+    assert len(failure_warnings()) == 1, "entering the streak should warn once"
+
+    state = hass.states.get("sensor.melcloudhome_0efc_87db_outdoor_temperature")
+    assert state is not None
+    assert state.state == "unknown"
+
+    # Second failing poll: still inside the streak, so still one warning. An
+    # unconditional warning would give two here.
+    await poll_again()
+    assert len(failure_warnings()) == 1, "a poll inside the streak must stay quiet"
+    assert recovery_warnings() == []
+
+    # A success closes the streak and says so.
+    mock_client.get_outdoor_temperature = AsyncMock(
+        return_value=Reading(11.0, RECORDED_AT)
+    )
+    await poll_again()
+    assert len(recovery_warnings()) == 1, "leaving the streak should log recovery"
+    assert len(failure_warnings()) == 1
+
+    state = hass.states.get("sensor.melcloudhome_0efc_87db_outdoor_temperature")
+    assert state is not None
+    assert state.state == "11.0"
+
+    # Failing again is a new streak, so it warns again.
+    mock_client.get_outdoor_temperature = AsyncMock(side_effect=boom)
+    await poll_again()
+    assert len(failure_warnings()) == 2, "a new streak should warn again"
+
+
+async def test_outdoor_temp_streak_forgotten_when_unit_leaves(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that a unit leaving the account clears its failure streak.
+
+    Shared units disappear when a share lapses. If the streak outlived the
+    unit, one that came back still failing would never warn again.
+
+    Validates: a returning unit warns again rather than staying suppressed
+    Tests through: the log, across a context that drops then restores the unit
+    """
+    unit = create_mock_ata_unit(
+        unit_id=LIVING_ROOM_ID,
+        name="Living Room AC",
+        has_outdoor_sensor=True,
+    )
+    with_unit = create_mock_ata_user_context([create_mock_ata_building(units=[unit])])
+    without_unit = create_mock_ata_user_context([create_mock_ata_building(units=[])])
+    boom = RuntimeError("upstream exploded")
+
+    def configure(client: Any) -> None:
+        client.get_outdoor_temperature = AsyncMock(side_effect=boom)
+        client.ata = MagicMock()
+        client.ata.set_power = AsyncMock()
+        client.ata.set_temperature = AsyncMock()
+
+    caplog.clear()
+    entry, mock_client = await setup_ata_integration_custom(
+        hass, with_unit, configure_client=configure
+    )
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    def failure_warnings() -> int:
+        return len(
+            [
+                r
+                for r in caplog.records
+                if r.levelname == "WARNING"
+                and "keep its previous value" in r.getMessage()
+            ]
+        )
+
+    async def poll_again() -> None:
+        coordinator.reset_outdoor_temp_polling()
+        await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+        await hass.async_block_till_done()
+
+    assert failure_warnings() == 1
+
+    # The share lapses: the unit is gone from the context entirely.
+    mock_client.get_user_context = AsyncMock(return_value=without_unit)
+    await poll_again()
+    assert failure_warnings() == 1, "an absent unit must not warn"
+
+    # It comes back, still failing. Without pruning it would stay suppressed.
+    mock_client.get_user_context = AsyncMock(return_value=with_unit)
+    await poll_again()
+    assert failure_warnings() == 2, "a returning unit should warn again"
