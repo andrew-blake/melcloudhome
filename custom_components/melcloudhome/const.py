@@ -49,7 +49,6 @@ HOUR_VALUE_RETENTION_HOURS = DATA_LOOKBACK_HOURS_ENERGY * 3
 
 # Telemetry polling configuration
 UPDATE_INTERVAL_TELEMETRY = timedelta(minutes=60)  # Hourly (temps change slowly)
-DATA_LOOKBACK_HOURS_TELEMETRY = 4  # Sparse data, 4 hours sufficient
 
 # Outdoor temperature polling configuration (ATA devices)
 UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=30)
@@ -60,10 +59,12 @@ ATW_TELEMETRY_MEASURES = [
     "return_temperature",
 ]
 
-# Zone-1-suffixed measures, only requested when the device has a second zone: on
-# a single-zone system they return a constant 25 placeholder, and the unsuffixed
-# pair is that system's zone 1. Gating on has_zone2 cannot regress a two-zone
-# device. Evidence and the untested positive case: docs/api/atw-api-reference.md.
+# Zone-1-suffixed measures, only kept when the device has a second zone: on a
+# single-zone system they carry no genuine reading, and the unsuffixed pair is
+# that system's zone 1. Gating on has_zone2 cannot regress a two-zone
+# device. The report returns every dataset in one response, so an unwanted
+# measure costs a discarded fake reading and nothing more.
+# Evidence and the untested positive case: docs/api/atw-api-reference.md.
 ATW_TELEMETRY_MEASURES_ZONE1 = [
     "flow_temperature_zone1",
     "return_temperature_zone1",
@@ -75,8 +76,8 @@ ATW_TELEMETRY_MEASURES_ZONE2 = [
     "return_temperature_zone2",
 ]
 
-# Boiler-circuit measures, only requested when capabilities report a boiler.
-# Same 25 placeholder on devices without one.
+# Boiler-circuit measures, only kept when capabilities report a boiler.
+# Same absent-hardware dataset on devices without one.
 ATW_TELEMETRY_MEASURES_BOILER = [
     "flow_temperature_boiler",
     "return_temperature_boiler",
@@ -93,7 +94,6 @@ __all__ = [
     "CONF_DEBUG_MODE",
     "CONF_ENABLE_WEBSOCKET",
     "DATA_LOOKBACK_HOURS_ENERGY",
-    "DATA_LOOKBACK_HOURS_TELEMETRY",
     "DEFAULT_ENABLE_WEBSOCKET",
     "DOMAIN",
     "HOUR_VALUE_RETENTION_HOURS",

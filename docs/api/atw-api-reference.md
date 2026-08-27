@@ -521,15 +521,19 @@ POST /api/protection/frost
 
 ## 8. Telemetry Sensors
 
-### Real-Time Telemetry (Actual Values)
+### Real-Time Telemetry (Actual Values) — HISTORICAL
+
+> **The integration no longer calls this endpoint.** ATW water temperatures come from
+> `report/v1/internaltemperatures` (see *Internal Temperatures Report* below and
+> [ADR-023](../decisions/023-atw-water-temperatures-from-report.md)). The vendor endpoint still
+> exists, and this section is kept as a description of it.
 
 ```
 GET /telemetry/telemetry/actual/{unitId}?from=2026-01-18 16:00&to=2026-01-18 20:00&measure=flow_temperature
 ```
 
-Note the space between date and time, not a `T` — that is what the client sends
-(`client.py`, `get_telemetry_actual`). The report endpoints use
-`YYYY-MM-DDTHH:MM:SS.0000000` instead.
+Note the space between date and time rather than a `T` — that is what the client sent while it
+called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` instead.
 
 **Supported Measures:**
 - `flow_temperature` - System flow temperature (°C)
@@ -573,11 +577,13 @@ Note the space between date and time, not a `T` — that is what the client send
 - **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
 - Use 4-hour lookback window for recent data
 
-### Batched Alternative: Internal Temperatures Report
+### Internal Temperatures Report — the endpoint the integration uses
 
 Returns **every water temperature in one request**, instead of one request per measure. This
-is what the MELCloud Home web app's water-temperatures chart uses. **Not currently used by
-this integration.**
+is what the MELCloud Home web app's water-temperatures chart uses, and since
+[ADR-023](../decisions/023-atw-water-temperatures-from-report.md) it is where the integration's
+ATW flow and return temperature sensors get their readings (`get_atw_water_temperatures`,
+`period=Hourly`, 8h lookback).
 
 ```
 GET /report/v1/internaltemperatures?unitId={unitId}&period=Hourly&from=2026-08-21T00:00:00.0000000&to=2026-08-21T08:00:00.0000000
@@ -624,8 +630,25 @@ including the 7-decimal timestamp format.
 - **Use `period=Hourly`.** It yields genuine per-reading timestamps (irregular seconds, e.g.
   `06:00:16`). `period=Daily` returns 30-minute bucket labels that are not reading times —
   the same data-quality problem documented for `trendsummary` in issue #152.
-- **Window limit: 8 hours.** 4h, 6h and 8h succeed; 12h and 16h return HTTP 500. Comparable
-  to `comfort-graph`'s own window ceiling, different magnitude.
+- **Window limit: two calendar days, not a number of hours.** The server floors `from` to
+  midnight of its own date — and echoes the floored value back — then rejects any range whose
+  floored `from` and `to` span three calendar days. Measured on both prod units, 2026-08-24:
+
+  | Requested `from` → `to` (UTC) | Floored span | Result |
+  |---|---|---|
+  | `08-24T02:14` → `08-24T06:14` | 1 day | 200, echoes `from` `08-24T00:00` |
+  | `08-23T22:14` → `08-24T06:14` | 2 days | 200, echoes `from` `08-23T00:00` |
+  | `08-23T00:14` → `08-24T06:14` | 2 days | 200 |
+  | `08-22T23:14` → `08-24T06:14` | 3 days | 500 |
+
+  A consequence worth knowing: how much data comes back is decided by whether the window
+  crosses midnight, not by its width. Run at 06:14, a 4h lookback stayed inside the current day
+  and returned 40 genuine `flow_temperature` points, while an 8h lookback reached past midnight
+  and returned 485 — same unit, same moment. Run at 02:00 both would cross.
+- **The endpoint 500s intermittently on a window it serves moments later.** Two of roughly five
+  consecutive requests for one unit failed on the same 8h window that had just succeeded, while
+  the other unit served the identical request. A single 500 is therefore not evidence that a
+  window is too wide.
 - **The final datapoint is synthetic.** Every dataset ends with a point stamped with the query
   `to` and the previous value repeated (the "to-echo" artifact, issue #224). Strip it before
   reading a latest value or freshness is reported as zero.
@@ -634,11 +657,27 @@ including the 7-decimal timestamp format.
   for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
   **not** "this hardware is absent"; in `comfort-graph` it is also `true` for
   `room_temperature_zone1`, which is certainly real on a single-zone unit. Do not gate on it.
-- **Absent hardware returns a constant `25`, not an empty series or an error.** On two
-  single-zone units (both `hasBoiler: false`) the four zone1/boiler series were flat at 25 for
-  a full day while `flow_temperature` and `return_temperature` varied normally. The vendor's
-  own client charts that flat line when the series is enabled, so this is server-side
-  behaviour rather than a client convention.
+- **Absent hardware has been observed two different ways, so do not treat either as the rule.**
+  The dataset is always *present*; what it contains varies:
+
+  | Date | Endpoint | Window | Absent-hardware series |
+  |---|---|---|---|
+  | 2026-01-14 (`c2de27f`, #36) | per-measure telemetry | 4h | `"values": []` — **empty** |
+  | 2026-08-21 | this report | full day | flat **`25`** for a full day, on two units |
+  | 2026-08-23 (`test_get_atw_water_temperatures` cassette) | this report | 8h | `"data": []` — **empty** |
+  | 2026-08-24 (live probe, both prod units) | this report | 8h | `"data": []` — **empty** |
+
+  All three units were `hasZone2: false` / `hasBoiler: false`, so capability profile does not
+  explain the difference; window length and date are the uncontrolled variables. The vendor's own
+  client charts the flat 25 line when the series is enabled, so that form is server-side rather
+  than a client convention.
+
+  **Both shapes are handled without a special case:** a dataset holding no genuine reading is
+  omitted by the parser, and a placeholder value is dropped by the capability filter. Nothing
+  should be built that depends on which one arrives.
+- **`set_tank_water_temperature` carried only synthetic points** in the 2026-08-23 recording — 31
+  points, every one seconds-aligned, so none of them is a unit reading. Another reason to take tank
+  temperature and its setpoint from `/context` (Section 2) rather than from this report.
 - **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
   single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`
   for a full day while the unsuffixed pair varied normally. The working assumption is that
@@ -653,17 +692,19 @@ including the 7-decimal timestamp format.
   idle loop looks like as much as a placeholder. It is a single snapshot, so it does **not**
   establish that the zone-1 pair carries real readings when zone 2 is present. Settling that
   needs a time series from a two-zone system while it is actively heating.
-- **Unverified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
+- **Assumed, not verified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
   endpoint**. Both units observed here were single-zone and neither response contained zone-2
-  series, so it is unknown whether the server selects datasets per device or the report is
-  always these 8. (The two-zone evidence above comes from per-measure telemetry on a device
-  that is no longer reachable, not from this endpoint.) **This would have to be answered before
-  anything relied on this endpoint for zone-2 data**, since zone-2 water temps currently come
-  from per-measure calls and do work for the users who have them.
+  series, so it is unknown whether the server selects datasets per device or the report is always
+  these 8. (The two-zone evidence above comes from per-measure telemetry on a device that is no
+  longer reachable, not from this endpoint.) The integration ships on the assumption that a
+  two-zone unit receives them, with a once-per-unit WARNING as detection and `unknown` sensors as
+  the visible symptom if it is wrong — the reasoning, the accepted downside and what would falsify
+  it are in [ADR-023](../decisions/023-atw-water-temperatures-from-report.md). A capture from a
+  real two-zone unit **taken while the system is actively heating** is what would settle it.
 
 **Relationship to the per-measure endpoint:** this returns the same water temperatures that
-`/telemetry/telemetry/actual` serves one measure at a time (Section 8). Note that a single
-failure here costs every measure for that cycle rather than one.
+`/telemetry/telemetry/actual` served one measure at a time (Section 8). A single failure here
+costs every measure for that cycle rather than one.
 
 *(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
 

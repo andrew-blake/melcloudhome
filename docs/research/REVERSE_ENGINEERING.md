@@ -142,7 +142,7 @@ Edit `tools/mock_melcloud_server.py` so its responses reflect the captured devic
 
 - Update the `/context` response to include the captured unit(s).
 - Update the per-unit state response served by `/monitor/ataunit/{id}` or `/monitor/atwunit/{id}` to match.
-- If telemetry matters for the scenario, update the `/telemetry/telemetry/actual/{id}` and `/telemetry/telemetry/energy/{id}` responses too.
+- If telemetry matters for the scenario, update the `/report/v1/internaltemperatures` (ATW water temperatures) and `/telemetry/telemetry/energy/{id}` responses too.
 
 The mock mutates the in-memory device when PUTs arrive, so you can exercise control flows end-to-end through the HA UI.
 

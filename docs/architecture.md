@@ -334,9 +334,9 @@ sequenceDiagram
         APIClient->>Server: GET /report/v1/comfort-graph
         Server-->>APIClient: outdoor temperature
     end
-    loop Every 60 min — ATW flow / return telemetry
-        APIClient->>Server: GET /telemetry/telemetry/actual/{id}
-        Server-->>APIClient: flow + return temperatures
+    loop Every 60 min — ATW water temperatures
+        APIClient->>Server: GET /report/v1/internaltemperatures
+        Server-->>APIClient: every water-temperature dataset
     end
 ```
 

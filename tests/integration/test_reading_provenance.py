@@ -5,6 +5,10 @@ and HA's own timestamps cannot show it - an identical rewrite advances only
 `last_reported`, which records our write, not the unit's reading. These tests
 cover the `last_reading` attribute that does.
 
+Water temperatures come from report/v1/internaltemperatures, one request per
+unit carrying every measure as a dataset (ADR-023), so the boundary these mock
+is `get_atw_water_temperatures`.
+
 Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
@@ -18,6 +22,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.melcloudhome.api.parsing import Reading, parse_api_timestamp
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 from custom_components.melcloudhome.sensor_ata import ATA_SENSOR_TYPES
 from custom_components.melcloudhome.sensor_atw import ATW_SENSOR_TYPES
@@ -31,13 +36,19 @@ from .conftest import (
 
 FLOW_TEMP_ENTITY_ID = "sensor.melcloudhome_0efc_9abc_flow_temperature"
 
-# Wall-clock format the telemetry endpoint uses: naive, 9 fractional digits.
-API_TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f000"
+# Stamp format the report endpoint uses on its datapoints: naive ISO, UTC.
+API_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
-def _telemetry_response(*points: dict[str, Any]) -> dict[str, Any]:
-    """Build a /telemetry/telemetry/actual response body."""
-    return {"measureData": [{"values": list(points)}]}
+def _readings(*points: tuple[str, float]) -> dict[str, Reading]:
+    """Build a get_atw_water_temperatures result for flow_temperature.
+
+    The client has already stripped the synthetic chart points by this layer,
+    so what reaches the tracker is one Reading per dataset that held a genuine
+    one - and datasets that held none are simply absent.
+    """
+    newest = max(points, key=lambda point: parse_api_timestamp(point[0]))
+    return {"flow_temperature": Reading(newest[1], parse_api_timestamp(newest[0]))}
 
 
 def _expected_last_reading(api_time: str) -> str:
@@ -46,9 +57,9 @@ def _expected_last_reading(api_time: str) -> str:
 
 
 async def _setup_with_telemetry(
-    hass: HomeAssistant, response: dict[str, Any] | None
+    hass: HomeAssistant, response: dict[str, Reading] | None
 ) -> Any:
-    """Set up a single-zone ATW device whose telemetry poll returns `response`.
+    """Set up a single-zone ATW device whose water-temp poll returns `response`.
 
     The first telemetry fetch runs as a background task (ADR-021), so it needs
     wait_background_tasks - and that in turn needs the WebSocket listener off,
@@ -56,7 +67,9 @@ async def _setup_with_telemetry(
     """
 
     def configure_client(mock_client: AsyncMock) -> None:
-        mock_client.get_telemetry_actual = AsyncMock(return_value=response)
+        mock_client.get_atw_water_temperatures = AsyncMock(
+            return_value={} if response is None else response
+        )
 
     _, mock_client = await setup_atw_integration_custom(
         hass,
@@ -80,9 +93,7 @@ async def test_successful_poll_reports_an_hours_old_datapoint(
     takes the value, and nothing in the entity state says the reading is old.
     """
     stamp = (dt_util.utcnow() - timedelta(hours=3)).strftime(API_TIME_FORMAT)
-    await _setup_with_telemetry(
-        hass, _telemetry_response({"time": stamp, "value": 41.5})
-    )
+    await _setup_with_telemetry(hass, _readings((stamp, 41.5)))
 
     state = hass.states.get(FLOW_TEMP_ENTITY_ID)
     assert state is not None
@@ -102,14 +113,11 @@ async def test_last_reading_is_the_payload_time_not_now(hass: HomeAssistant) -> 
     Stamping it with utcnow() would make every sensor look permanently fresh,
     which is the exact failure this attribute exists to expose.
     """
-    await _setup_with_telemetry(
-        hass,
-        _telemetry_response({"time": "2026-01-14 12:48:44.047000000", "value": 38.0}),
-    )
+    await _setup_with_telemetry(hass, _readings(("2026-01-14T12:48:44", 38.0)))
 
     state = hass.states.get(FLOW_TEMP_ENTITY_ID)
     assert state is not None
-    assert state.attributes["last_reading"] == "2026-01-14T12:48:44.047000+00:00"
+    assert state.attributes["last_reading"] == "2026-01-14T12:48:44+00:00"
 
 
 @pytest.mark.asyncio
@@ -122,15 +130,15 @@ async def test_failed_poll_keeps_the_previous_reading_unrestamped(
     value; the point of last_reading is that the stamp keeps standing still
     while it does.
     """
-    stamp = "2026-01-14 12:48:44.047000000"
-    mock_client = await _setup_with_telemetry(
-        hass, _telemetry_response({"time": stamp, "value": 38.0})
-    )
+    stamp = "2026-01-14T12:48:44"
+    mock_client = await _setup_with_telemetry(hass, _readings((stamp, 38.0)))
     assert hass.states.get(FLOW_TEMP_ENTITY_ID).attributes[
         "last_reading"
     ] == _expected_last_reading(stamp)
 
-    mock_client.get_telemetry_actual = AsyncMock(side_effect=OSError("endpoint down"))
+    mock_client.get_atw_water_temperatures = AsyncMock(
+        side_effect=OSError("endpoint down")
+    )
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=61))
     await hass.async_block_till_done(wait_background_tasks=True)
 
@@ -145,13 +153,13 @@ async def test_newest_datapoint_is_chosen_by_timestamp_not_position(
     hass: HomeAssistant,
 ) -> None:
     """Trust the datapoints' own stamps over the response ordering."""
-    newest = "2026-01-14 13:02:43.927000000"
+    newest = "2026-01-14T13:02:43"
     await _setup_with_telemetry(
         hass,
-        _telemetry_response(
-            {"time": "2026-01-14 12:48:44.047000000", "value": 30.0},
-            {"time": newest, "value": 44.0},
-            {"time": "2026-01-14 12:58:43.944000000", "value": 35.0},
+        _readings(
+            ("2026-01-14T12:48:44", 30.0),
+            (newest, 44.0),
+            ("2026-01-14T12:58:43", 35.0),
         ),
     )
 
@@ -162,26 +170,28 @@ async def test_newest_datapoint_is_chosen_by_timestamp_not_position(
 
 
 @pytest.mark.asyncio
-async def test_unparsable_datapoint_costs_only_that_datapoint(
+async def test_successful_poll_that_omits_a_measure_clears_it(
     hass: HomeAssistant,
 ) -> None:
-    """A bad point must not take the whole measure out of service.
+    """A measure the report stops carrying reads unknown, not its last value.
 
-    The window is parsed in full, so without a per-point guard one malformed
-    time would abort the measure for as long as it stayed in the lookback.
+    The pair with test_failed_poll_keeps_the_previous_reading_unrestamped: a
+    failed request keeps the cache, a successful one that omits the measure
+    clears it (ADR-020). Testing only one of them proves neither, because the
+    two paths differ by a raise.
     """
-    await _setup_with_telemetry(
-        hass,
-        _telemetry_response(
-            {"time": "not-a-timestamp", "value": 11.1},
-            {"time": "2026-08-21 09:15:22.000000000", "value": 39.5},
-        ),
-    )
+    stamp = "2026-01-14T12:48:44"
+    mock_client = await _setup_with_telemetry(hass, _readings((stamp, 38.0)))
+    assert float(hass.states.get(FLOW_TEMP_ENTITY_ID).state) == 38.0
+
+    mock_client.get_atw_water_temperatures = AsyncMock(return_value={})
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=61))
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     state = hass.states.get(FLOW_TEMP_ENTITY_ID)
     assert state is not None
-    assert float(state.state) == 39.5
-    assert state.attributes["last_reading"] == "2026-08-21T09:15:22+00:00"
+    assert state.state == "unknown"
+    assert state.attributes["last_reading"] is None
 
 
 @pytest.mark.asyncio

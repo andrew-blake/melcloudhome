@@ -22,8 +22,8 @@ from .const_shared import (
     API_FIELD_VALUE,
     API_FIELD_VALUES,
     API_REPORT_COMFORT_GRAPH,
+    API_REPORT_INTERNAL_TEMPERATURES,
     API_REPORT_TRENDSUMMARY,
-    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
@@ -346,6 +346,47 @@ class MELCloudHomeClient:
             params=params,
         )
 
+    def _latest_genuine_reading(self, data: list[dict[str, Any]]) -> Reading | None:
+        """Return the newest genuine reading in one report dataset's points.
+
+        Report responses mix real unit readings with synthetic chart points -
+        bucket-aligned repeats and a final echo of the query's own "to". Genuine
+        readings carry the unit's upload time with arbitrary seconds, so points
+        with seconds == 0 are skipped (issue #224; callers send a seconds-aligned
+        "to" precisely so the echo is caught by this rule).
+
+        The newest reading is chosen by its own timestamp rather than by its
+        position in the series. Responses arrive in ascending order, but
+        last_reading is user-visible and an out-of-order response would send a
+        timestamp backwards (ADR-022).
+
+        An unparsable point costs that point only: the whole window is scanned,
+        so one bad stamp would otherwise abort a measure for as long as it
+        stayed in the lookback. Transport failures still raise from the caller,
+        so a 500 stays distinguishable from "no reading" (issue #251).
+        """
+        stamped: list[tuple[datetime, float]] = []
+
+        for point in data:
+            try:
+                recorded_at = point.get("x")
+                value = point.get("y")
+                if recorded_at is None or value is None:
+                    continue
+                timestamp = parse_api_timestamp(str(recorded_at))
+                if timestamp.second == 0:
+                    continue  # Synthetic chart point, not a unit reading
+                stamped.append((timestamp, float(value)))
+            except (AttributeError, TypeError, ValueError, OverflowError):
+                # Log the whole point, not the offending field: repr escapes
+                # control characters, so a hostile value cannot forge a log line.
+                _LOGGER.debug("Skipping unparsable report point: %s", point)
+
+        if not stamped:
+            return None
+        recorded_at_newest, value_newest = max(stamped)  # tuples sort by time first
+        return Reading(value_newest, recorded_at_newest)
+
     def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> Reading | None:
         """Extract outdoor temperature and its timestamp from trendsummary response.
 
@@ -362,10 +403,8 @@ class MELCloudHomeClient:
         ]
 
         The server appends synthetic chart points: bucket-aligned repeats and
-        an echo of the query's own "to". Genuine readings carry the unit's
-        upload time with arbitrary seconds, so points with seconds == 0 are
-        skipped — the caller sends a seconds-aligned "to" so the echo is
-        caught by the same rule (issue #224).
+        an echo of the query's own "to". _latest_genuine_reading holds the rule
+        that separates those from real readings (issue #224).
 
         Args:
             response: Trendsummary API response (list or dict)
@@ -384,19 +423,25 @@ class MELCloudHomeClient:
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
-                for point in reversed(dataset.get("data", [])):
-                    recorded_at = point.get("x")
-                    if recorded_at is None:
-                        continue
-                    timestamp = parse_api_timestamp(str(recorded_at))
-                    if timestamp.second == 0:
-                        continue  # Synthetic chart point, not a unit reading
-                    value = point.get("y")
-                    if value is None:
-                        continue  # Reading without a value; try older points
-                    return Reading(float(value), timestamp)
-                return None  # No genuine reading in the window
+                return self._latest_genuine_reading(dataset.get("data", []))
         return None  # No outdoor temp dataset found
+
+    def _report_params(self, unit_id: str, lookback: timedelta) -> dict[str, str]:
+        """Build the query for a /report/v1/ request over `lookback`.
+
+        period=Hourly is the only period whose points carry genuine reading
+        timestamps; Daily returns 30-minute bucket labels (issue #152). "to" is
+        truncated to seconds=0 so the server's to-echo point is identifiable as
+        synthetic (see _latest_genuine_reading).
+        """
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
+        return {
+            "unitId": unit_id,
+            "period": "Hourly",
+            # Format: 2026-01-12T20:00:00.0000000 (7 decimals for nanoseconds)
+            "from": (now - lookback).strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+        }
 
     async def _get_report_outdoor_temperature(
         self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
@@ -416,16 +461,7 @@ class MELCloudHomeClient:
         reading, so the coordinator can record it for diagnostics (issue
         #251) instead of both cases looking identically like "no data yet".
         """
-        now = datetime.now(UTC).replace(second=0, microsecond=0)
-        from_time = now - lookback
-
-        # Format: 2026-01-12T20:00:00.0000000 (7 decimal places for nanoseconds)
-        params = {
-            "unitId": unit_id,
-            "period": "Hourly",
-            "from": from_time.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-        }
+        params = self._report_params(unit_id, lookback)
 
         response = await self._api_request("GET", endpoint, params=params)
         if response is None:
@@ -491,52 +527,59 @@ class MELCloudHomeClient:
             API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"
         )
 
-    async def get_telemetry_actual(
-        self,
-        unit_id: str,
-        from_time: Any,  # datetime
-        to_time: Any,  # datetime
-        measure: str,
-    ) -> dict[str, Any] | None:
-        """
-        Get actual telemetry data for ATW device.
+    async def get_atw_water_temperatures(self, unit_id: str) -> dict[str, Reading]:
+        """Get every ATW water temperature in one request.
+
+        The internaltemperatures report carries all water-temperature series for
+        a unit in one response, keyed by dataset id - and those ids are exactly
+        the measure names the per-measure telemetry endpoint used
+        ("flow_temperature", "return_temperature", "*_zone1", "*_zone2",
+        "*_boiler"), plus tank temperature and its setpoint, which /context
+        already provides at 60s.
+
+        8h lookback: the server floors "from" to midnight of its own date and
+        rejects a range spanning three calendar days, so any lookback under ~30h
+        is served and 8h always lands inside that (both prod units, 2026-08-24).
+        The endpoint also 500s intermittently on a window it serves moments
+        later, so one failure never establishes a ceiling. Water temperatures
+        upload sparsely, so a unit quiet for hours still has a real last reading
+        worth showing, and last_reading carries its age (ADR-022) - which makes
+        an old reading legible.
+
+        Datasets for hardware the unit lacks are still present, but what they
+        hold varies: an empty series on some days, a flat 25 placeholder on
+        others (dated observations in docs/api/atw-api-reference.md). Neither is
+        a genuine reading, and callers must still gate on capabilities - see
+        telemetry_tracker.
 
         Args:
-            unit_id: ATW device UUID
-            from_time: Start time (UTC-aware datetime)
-            to_time: End time (UTC-aware datetime)
-            measure: Measure name (snake_case: "flow_temperature", etc.)
+            unit_id: ATW unit UUID
 
         Returns:
-            Telemetry data with timestamped values, or None if 304 Not Modified
-
-        Example response:
-            {
-                "measureData": [{
-                    "deviceId": "unit-uuid",
-                    "type": "flowTemperature",
-                    "values": [
-                        {"time": "2026-01-14 10:00:00.000000000", "value": "45.2"},
-                        {"time": "2026-01-14 10:01:00.000000000", "value": "45.3"},
-                    ]
-                }]
-            }
-
-        Raises:
-            AuthenticationError: Session expired (401)
-            ApiError: API request failed
+            {dataset_id: Reading} for every dataset holding at least one genuine
+            reading. Datasets carrying only synthetic chart points are omitted,
+            so an absent key means "the endpoint answered and had nothing for
+            this measure" - distinct from a raise, which means the request
+            failed. Raises rather than swallowing API errors, same contract as
+            the outdoor-temperature reports (issue #251).
         """
-        params = {
-            "from": from_time.strftime("%Y-%m-%d %H:%M"),
-            "to": to_time.strftime("%Y-%m-%d %H:%M"),
-            "measure": measure,
-        }
-
-        return await self._api_request(
-            "GET",
-            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
-            params=params,
+        params = self._report_params(unit_id, timedelta(hours=8))
+        response = await self._api_request(
+            "GET", API_REPORT_INTERNAL_TEMPERATURES, params=params
         )
+        # Mobile BFF wraps the report in a list
+        report = response[0] if isinstance(response, list) and response else response
+        datasets = report.get("datasets", []) if isinstance(report, dict) else []
+
+        readings: dict[str, Reading] = {}
+        for dataset in datasets:
+            dataset_id = dataset.get("id")
+            if not dataset_id:
+                continue
+            reading = self._latest_genuine_reading(dataset.get("data", []))
+            if reading is not None:
+                readings[dataset_id] = reading
+        return readings
 
     def parse_energy_response(self, data: dict[str, Any] | None) -> float | None:
         """
