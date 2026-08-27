@@ -25,4 +25,9 @@ def serialize_outdoor_temp_fields(
             if unit.outdoor_temp_last_error_at
             else None
         ),
+        "outdoor_temp_last_poll_at": (
+            unit.outdoor_temp_last_poll_at.isoformat()
+            if unit.outdoor_temp_last_poll_at
+            else None
+        ),
     }
