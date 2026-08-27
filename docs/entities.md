@@ -35,7 +35,7 @@ For each air conditioning unit, the following entities are created:
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
-- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature` (if available)
+- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
 - **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
 - **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_minimum` / `_maximum` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
