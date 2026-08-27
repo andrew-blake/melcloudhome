@@ -1,272 +1,345 @@
 {
-  "version": 1,
-  "minor_version": 1,
-  "key": "lovelace.melcloudhome_testing",
-  "data": {
-    "config": {
-      "views": [
+ "version": 1,
+ "minor_version": 1,
+ "key": "lovelace.melcloudhome_testing",
+ "data": {
+  "config": {
+   "views": [
+    {
+     "type": "sections",
+     "max_columns": 4,
+     "title": "My Home House Heat Pump (mock)",
+     "sections": [
+      {
+       "type": "grid",
+       "cards": [
         {
-          "title": "Icons",
-          "sections": [
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATW - Heat Pump",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "thermostat",
-                      "entity": "climate.melcloudhome_bf2d_5666_zone_1",
-                      "features": [
-                        {
-                          "type": "climate-hvac-modes"
-                        },
-                        {
-                          "style": "icons",
-                          "type": "climate-preset-modes"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATW - Tank",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "thermostat",
-                      "entity": "water_heater.melcloudhome_bf2d_5666_tank",
-                      "features": [
-                        {
-                          "type": "water-heater-operation-modes"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "sensor.melcloudhome_bf2d_5666_operation_status",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "show_entity_picture": false,
-                      "hide_state": false,
-                      "vertical": false,
-                      "features_position": "bottom"
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "binary_sensor.melcloudhome_bf2d_5666_forced_dhw_active",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATA",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "thermostat",
-                  "entity": "climate.melcloudhome_bf8d_5119_climate",
-                  "features": [
-                    {
-                      "style": "icons",
-                      "type": "climate-fan-modes"
-                    },
-                    {
-                      "type": "climate-hvac-modes"
-                    },
-                    {
-                      "style": "icons",
-                      "type": "climate-swing-modes"
-                    },
-                    {
-                      "style": "icons",
-                      "type": "climate-swing-horizontal-modes"
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "type": "sections",
-          "max_columns": 4,
-          "cards": []
+         "type": "heading",
+         "heading": "My Home House Heat Pump (mock) - live",
+         "heading_style": "title"
         },
         {
-          "title": "Dropdowns",
-          "sections": [
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATW - Heat Pump",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "thermostat",
-                      "entity": "climate.melcloudhome_bf2d_5666_zone_1",
-                      "features": [
-                        {
-                          "style": "dropdown",
-                          "type": "climate-hvac-modes"
-                        },
-                        {
-                          "style": "dropdown",
-                          "type": "climate-preset-modes"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATW - Tank",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "vertical-stack",
-                  "cards": [
-                    {
-                      "type": "thermostat",
-                      "entity": "water_heater.melcloudhome_bf2d_5666_tank",
-                      "features": [
-                        {
-                          "style": "dropdown",
-                          "type": "water-heater-operation-modes"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "switch.melcloudhome_bf2d_5666_system_power",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "sensor.melcloudhome_bf2d_5666_operation_status",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "show_entity_picture": false,
-                      "hide_state": false,
-                      "vertical": false,
-                      "features_position": "bottom"
-                    },
-                    {
-                      "type": "tile",
-                      "entity": "binary_sensor.melcloudhome_bf2d_5666_forced_dhw_active",
-                      "name": {
-                        "type": "entity"
-                      },
-                      "vertical": false,
-                      "features_position": "bottom"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "grid",
-              "cards": [
-                {
-                  "type": "heading",
-                  "heading": "ATA",
-                  "heading_style": "title"
-                },
-                {
-                  "type": "thermostat",
-                  "entity": "climate.melcloudhome_bf8d_5119_climate",
-                  "features": [
-                    {
-                      "style": "dropdown",
-                      "type": "climate-fan-modes"
-                    },
-                    {
-                      "style": "dropdown",
-                      "type": "climate-hvac-modes"
-                    },
-                    {
-                      "style": "dropdown",
-                      "type": "climate-swing-modes"
-                    },
-                    {
-                      "style": "dropdown",
-                      "type": "climate-swing-horizontal-modes"
-                    }
-                  ]
-                }
-              ]
-            }
-          ],
-          "type": "sections",
-          "max_columns": 4,
-          "cards": []
+         "type": "tile",
+         "entity": "climate.my_home_melcloudhome_bf2d_5666_zone_1"
+        },
+        {
+         "type": "tile",
+         "entity": "water_heater.my_home_melcloudhome_bf2d_5666_tank"
+        },
+        {
+         "type": "tile",
+         "entity": "switch.my_home_melcloudhome_bf2d_5666_system_power"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.my_home_melcloudhome_bf2d_5666_operation_status"
+        },
+        {
+         "type": "tile",
+         "entity": "binary_sensor.my_home_melcloudhome_bf2d_5666_forced_dhw_active"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.my_home_melcloudhome_bf2d_5666_outdoor_temperature"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.my_home_melcloudhome_bf2d_5666_tank_temperature"
         }
-      ]
+       ]
+      },
+      {
+       "type": "grid",
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Water temperatures",
+         "heading_style": "title"
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "5minute",
+         "entities": [
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler"
+         ],
+         "stat_types": [
+          "mean"
+         ],
+         "days_to_show": 7,
+         "title": "All water temperatures (7d mean) - includes series no longer reported",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "history-graph",
+         "hours_to_show": 24,
+         "title": "Raw states (24h) - gaps are unknown, not a steady value",
+         "entities": [
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2",
+          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler",
+          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler"
+         ],
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "markdown",
+         "title": "Reading provenance",
+         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature', 'last_reading') or '-' }} |\n| flow temperature zone 1 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1', 'last_reading') or '-' }} |\n| return temperature zone 1 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1', 'last_reading') or '-' }} |\n| flow temperature zone 2 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2', 'last_reading') or '-' }} |\n| return temperature zone 2 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2', 'last_reading') or '-' }} |\n| flow temperature boiler | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler', 'last_reading') or '-' }} |\n| return temperature boiler | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler', 'last_reading') or '-' }} |",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      },
+      {
+       "type": "grid",
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Energy and diagnostics",
+         "heading_style": "title"
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "hour",
+         "entities": [
+          "sensor.my_home_melcloudhome_bf2d_5666_energy_consumed",
+          "sensor.my_home_melcloudhome_bf2d_5666_energy_produced"
+         ],
+         "stat_types": [
+          "sum"
+         ],
+         "days_to_show": 7,
+         "title": "Energy (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "5minute",
+         "entities": [
+          "sensor.my_home_melcloudhome_bf2d_5666_coefficient_of_performance"
+         ],
+         "stat_types": [
+          "mean",
+          "min",
+          "max"
+         ],
+         "days_to_show": 7,
+         "title": "COP (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "hour",
+         "entities": [
+          "sensor.my_home_melcloudhome_bf2d_5666_wifi_signal"
+         ],
+         "stat_types": [
+          "mean"
+         ],
+         "days_to_show": 7,
+         "title": "WiFi signal (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "sections",
+     "max_columns": 4,
+     "title": "Shared Building Dual Zone Heat Pump (mock)",
+     "sections": [
+      {
+       "type": "grid",
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Shared Building Dual Zone Heat Pump (mock) - live",
+         "heading_style": "title"
+        },
+        {
+         "type": "tile",
+         "entity": "climate.shared_building_melcloudhome_aed2_9abc_zone_1"
+        },
+        {
+         "type": "tile",
+         "entity": "climate.shared_building_melcloudhome_aed2_9abc_zone_2"
+        },
+        {
+         "type": "tile",
+         "entity": "water_heater.shared_building_melcloudhome_aed2_9abc_tank"
+        },
+        {
+         "type": "tile",
+         "entity": "switch.shared_building_melcloudhome_aed2_9abc_system_power"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_operation_status"
+        },
+        {
+         "type": "tile",
+         "entity": "binary_sensor.shared_building_melcloudhome_aed2_9abc_forced_dhw_active"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_outdoor_temperature"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_tank_temperature"
+        }
+       ]
+      },
+      {
+       "type": "grid",
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Water temperatures",
+         "heading_style": "title"
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "5minute",
+         "entities": [
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler"
+         ],
+         "stat_types": [
+          "mean"
+         ],
+         "days_to_show": 7,
+         "title": "All water temperatures (7d mean) - includes series no longer reported",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "history-graph",
+         "hours_to_show": 24,
+         "title": "Raw states (24h) - gaps are unknown, not a steady value",
+         "entities": [
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2",
+          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler",
+          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler"
+         ],
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "markdown",
+         "title": "Reading provenance",
+         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature', 'last_reading') or '-' }} |\n| flow temperature zone 1 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1', 'last_reading') or '-' }} |\n| return temperature zone 1 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1', 'last_reading') or '-' }} |\n| flow temperature zone 2 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2', 'last_reading') or '-' }} |\n| return temperature zone 2 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2', 'last_reading') or '-' }} |\n| flow temperature boiler | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler', 'last_reading') or '-' }} |\n| return temperature boiler | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler', 'last_reading') or '-' }} |",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      },
+      {
+       "type": "grid",
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Energy and diagnostics",
+         "heading_style": "title"
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "hour",
+         "entities": [
+          "sensor.shared_building_melcloudhome_aed2_9abc_energy_consumed",
+          "sensor.shared_building_melcloudhome_aed2_9abc_energy_produced"
+         ],
+         "stat_types": [
+          "sum"
+         ],
+         "days_to_show": 7,
+         "title": "Energy (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "5minute",
+         "entities": [
+          "sensor.shared_building_melcloudhome_aed2_9abc_coefficient_of_performance"
+         ],
+         "stat_types": [
+          "mean",
+          "min",
+          "max"
+         ],
+         "days_to_show": 7,
+         "title": "COP (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "statistics-graph",
+         "chart_type": "line",
+         "period": "hour",
+         "entities": [
+          "sensor.shared_building_melcloudhome_aed2_9abc_wifi_signal"
+         ],
+         "stat_types": [
+          "mean"
+         ],
+         "days_to_show": 7,
+         "title": "WiFi signal (7d)",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      }
+     ]
     }
+   ]
   }
+ }
 }
