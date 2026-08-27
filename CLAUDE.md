@@ -77,6 +77,7 @@ make test                        # All tests with coverage
 - **Testing strategy:** `docs/testing-strategy.md` - Test types, when to use each
 - **Deployment tools:** `tools/README.md` - Automated deployment, remote testing
 - **Release process:** `docs/release-process.md` - Release + beta workflows
+- **Writing a PR description:** the `pr-body` skill in `.claude/skills/pr-body/` - required sections, the title as an H1, and what a Testing box may claim
 
 ### Research & Tools
 
