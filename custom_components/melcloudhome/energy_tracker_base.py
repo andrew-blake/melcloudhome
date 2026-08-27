@@ -182,8 +182,15 @@ class EnergyTrackerBase(ABC):
         unit's own zone (ADR-022). Measured 2026-08-25: units at +1 and +2 both
         reported newest bucket 07:00 for one window, and pushing "to" three
         hours past either unit's local wall-clock surfaced nothing newer.
+
+        Both bounds are normalised to UTC first. The request format
+        ("%Y-%m-%d %H:%M", api/client.py) carries no offset marker, so strftime
+        drops the tzinfo silently: a local-aware `now` would query a shifted
+        window with no error anywhere. A naive `now` raises instead.
         """
-        to_time = now
+        if now.tzinfo is None:
+            raise ValueError("energy window needs an aware datetime, got naive")
+        to_time = now.astimezone(UTC)
         from_time = (to_time - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)).replace(
             minute=0, second=0, microsecond=0
         )
