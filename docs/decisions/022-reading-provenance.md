@@ -102,19 +102,44 @@ Identifying a placeholder takes the value as well. The vendor serves its constan
 looks like a steady circuit. The capability gating in #266 handles that case and
 stands independently of this change.
 
-## Timezone Caveat
+## Timezone
 
-Telemetry timestamps are naive, with 9 fractional digits
-(`2026-01-14 12:48:44.047000000`), and are treated as UTC.
-`datetime.fromisoformat` parses that form as-is from Python 3.11, so no
-truncation guard is needed.
+Report timestamps are naive wall-clock times in the **unit's own timezone**, which
+`/context` reports per unit as an IANA name (`timeZone`, e.g. `Europe/Stockholm`).
+`parse_api_timestamp` converts them to UTC using that zone, and `_report_params`
+builds `from`/`to` in it. The stamps carry 9 fractional digits
+(`2026-01-14 12:48:44.047000000`), which `datetime.fromisoformat` parses as-is from
+Python 3.11, so no truncation guard is needed.
 
-The evidence is **consistent with** UTC rather than proof of it: the
-`return_temperature` cassette's newest datapoint sits 76 seconds inside a
-UTC-based query window, which a device at any non-zero offset would have led or
-trailed by far more. The VCR account's device country is unknown, so a
-genuinely UTC+0 device would be indistinguishable. This is the same standard
-already applied to `trendsummary` and `comfort-graph` timestamps.
+This matters twice over. The server compares the naive `from`/`to` strings it
+receives against locally-stamped rows, so a UTC window silently drops the most
+recent offset-hours of data; and a local stamp read as UTC computes an age that
+is offset-hours too young. Together they made a reading at least offset-hours old
+present as current — the exact failure this ADR exists to prevent.
+
+Measured 2026-08-24 by pushing `to` into the UTC future: on `internaltemperatures`
+and `trendsummary` alike, shifting by exactly the unit's offset reached the present
+and no further. Corroborated by the vendor web app, whose own `to`-echo and chart
+tooltip are both in unit-local time, and by triangulating a zone-1 setpoint change
+against Home Assistant's own `/context` history, which is HA-stamped and therefore
+independent.
+
+This resolves the caveat this section previously carried, and two independent
+faults invalidate the old evidence. That evidence was a `return_temperature`
+datapoint sitting 76 seconds inside a UTC-based query window.
+
+First, the datapoint it measured was `data[-1]`, which #224 later established is
+the server echoing the query's own `to` parameter back verbatim. Matching that
+against the request clock tests the timezone of *our request*, not of the data —
+it would sit just inside the window whatever zone the unit was in.
+
+Second, even a genuine datapoint would not have separated the two cases here. As
+the caveat itself said, a device at any non-zero offset would have led or trailed
+by far more, leaving a genuinely UTC+0 device indistinguishable — and that is what
+this was. The VCR account's units report `Europe/London`, `Europe/Skopje` and
+`Europe/Stockholm`, and the stamps above are from mid-January, when `Europe/London`
+is on GMT at offset 0. An offset-0 unit cannot show this bug, which is why
+verification has to use a unit that is not on GMT.
 
 ## Consequences
 

@@ -9,7 +9,7 @@ Provides unified API access using the Facade pattern:
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
 from typing import Any
 
 import aiohttp
@@ -346,7 +346,9 @@ class MELCloudHomeClient:
             params=params,
         )
 
-    def _latest_genuine_reading(self, data: list[dict[str, Any]]) -> Reading | None:
+    def _latest_genuine_reading(
+        self, data: list[dict[str, Any]], tz: tzinfo = UTC
+    ) -> Reading | None:
         """Return the newest genuine reading in one report dataset's points.
 
         Report responses mix real unit readings with synthetic chart points -
@@ -373,7 +375,7 @@ class MELCloudHomeClient:
                 value = point.get("y")
                 if recorded_at is None or value is None:
                     continue
-                timestamp = parse_api_timestamp(str(recorded_at))
+                timestamp = parse_api_timestamp(str(recorded_at), tz)
                 if timestamp.second == 0:
                     continue  # Synthetic chart point, not a unit reading
                 stamped.append((timestamp, float(value)))
@@ -387,7 +389,9 @@ class MELCloudHomeClient:
         recorded_at_newest, value_newest = max(stamped)  # tuples sort by time first
         return Reading(value_newest, recorded_at_newest)
 
-    def _parse_outdoor_temp(self, response: dict[str, Any] | list) -> Reading | None:
+    def _parse_outdoor_temp(
+        self, response: dict[str, Any] | list, tz: tzinfo = UTC
+    ) -> Reading | None:
         """Extract outdoor temperature and its timestamp from trendsummary response.
 
         Response format (mobile BFF wraps in a list):
@@ -414,8 +418,9 @@ class MELCloudHomeClient:
             reading), or None if the response holds no genuine reading. The
             timestamp lets consumers detect stale data: units stop uploading
             outdoor temperature while idle, so the latest reading can be
-            hours old (issues #152, #171). The "x" timestamps are naive but
-            confirmed UTC (ADR-022).
+            hours old (issues #152, #171). The "x" timestamps are naive
+            wall-clock times in the unit's own zone; pass `tz` so the returned
+            Reading carries a real age (ADR-022).
         """
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
@@ -423,7 +428,7 @@ class MELCloudHomeClient:
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
-                return self._latest_genuine_reading(dataset.get("data", []))
+                return self._latest_genuine_reading(dataset.get("data", []), tz)
         return None  # No outdoor temp dataset found
 
     def _report_params(self, unit_id: str, lookback: timedelta) -> dict[str, str]:
@@ -433,18 +438,38 @@ class MELCloudHomeClient:
         timestamps; Daily returns 30-minute bucket labels (issue #152). "to" is
         truncated to seconds=0 so the server's to-echo point is identifiable as
         synthetic (see _latest_genuine_reading).
+
+        The trailing "Z" is load-bearing. The server keeps each unit's points in
+        the unit's OWN timezone and compares from/to against that local column.
+        A value with no offset is taken as already-local, so the naive UTC window
+        this used to send silently dropped the most recent offset-hours of data.
+        An explicit offset makes the server convert instead. Measured 2026-08-24
+        on all three report endpoints: appending "Z" moved the newest returned
+        reading forward by exactly the unit's own offset, and returned 200 every
+        time.
+
+        Do NOT "simplify" this to unit-local wall-clock time. That is what the
+        vendor's own client sends, but it would put the unit's timezone on the
+        request path, so a unit whose /context omits timeZone would get stale
+        data instead of merely a mislabelled age.
         """
         now = datetime.now(UTC).replace(second=0, microsecond=0)
         return {
             "unitId": unit_id,
             "period": "Hourly",
-            # Format: 2026-01-12T20:00:00.0000000 (7 decimals for nanoseconds)
-            "from": (now - lookback).strftime("%Y-%m-%dT%H:%M:%S.0000000"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000"),
+            # 7 decimals for nanoseconds, then an explicit UTC marker:
+            # 2026-01-12T20:00:00.0000000Z ("Z" is a literal, not a directive)
+            "from": (now - lookback).strftime("%Y-%m-%dT%H:%M:%S.0000000Z"),
+            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000Z"),
         }
 
     async def _get_report_outdoor_temperature(
-        self, endpoint: str, unit_id: str, lookback: timedelta, log_label: str
+        self,
+        endpoint: str,
+        unit_id: str,
+        lookback: timedelta,
+        log_label: str,
+        tz: tzinfo = UTC,
     ) -> Reading | None:
         """Shared implementation for get_outdoor_temperature/get_atw_outdoor_temperature.
 
@@ -473,9 +498,11 @@ class MELCloudHomeClient:
                 params["to"],
             )
             return None
-        return self._parse_outdoor_temp(response)
+        return self._parse_outdoor_temp(response, tz)
 
-    async def get_outdoor_temperature(self, unit_id: str) -> Reading | None:
+    async def get_outdoor_temperature(
+        self, unit_id: str, tz: tzinfo = UTC
+    ) -> Reading | None:
         """Get latest outdoor temperature for an ATA unit.
 
         Queries trendsummary with Hourly period, which is the only period
@@ -498,10 +525,12 @@ class MELCloudHomeClient:
             reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
-            API_REPORT_TRENDSUMMARY, unit_id, timedelta(hours=48), "trendsummary"
+            API_REPORT_TRENDSUMMARY, unit_id, timedelta(hours=48), "trendsummary", tz
         )
 
-    async def get_atw_outdoor_temperature(self, unit_id: str) -> Reading | None:
+    async def get_atw_outdoor_temperature(
+        self, unit_id: str, tz: tzinfo = UTC
+    ) -> Reading | None:
         """Get latest outdoor temperature for an ATW unit.
 
         ATW's live /context OutdoorTemperature can be present but silently
@@ -513,8 +542,8 @@ class MELCloudHomeClient:
         starting more than ~4 days back, so this cannot reach as far as ATA's
         48h. 24h clears the largest observed reporting gap with margin.
 
-        Reuses _parse_outdoor_temp's UTC-timestamp assumption, confirmed
-        separately for comfort-graph (ADR-022).
+        Timestamps come back in the unit's own zone; pass `tz` so last_reading
+        is a real age (see docs/api/atw-api-reference.md).
 
         Args:
             unit_id: ATW unit UUID
@@ -524,10 +553,12 @@ class MELCloudHomeClient:
             reading), or None if not available
         """
         return await self._get_report_outdoor_temperature(
-            API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph"
+            API_REPORT_COMFORT_GRAPH, unit_id, timedelta(hours=24), "comfort-graph", tz
         )
 
-    async def get_atw_water_temperatures(self, unit_id: str) -> dict[str, Reading]:
+    async def get_atw_water_temperatures(
+        self, unit_id: str, tz: tzinfo = UTC
+    ) -> dict[str, Reading]:
         """Get every ATW water temperature in one request.
 
         The internaltemperatures report carries all water-temperature series for
@@ -537,11 +568,15 @@ class MELCloudHomeClient:
         "*_boiler"), plus tank temperature and its setpoint, which /context
         already provides at 60s.
 
-        8h lookback: the server floors "from" to midnight of its own date and
-        rejects a range spanning three calendar days, so any lookback under ~30h
-        is served and 8h always lands inside that (both prod units, 2026-08-24).
-        The endpoint also 500s intermittently on a window it serves moments
-        later, so one failure never establishes a ceiling. Water temperatures
+        8h lookback: the server floors "from" to midnight of its own date, in
+        the unit's own timezone, and a one-day floored span is always served. 8h
+        stays inside that day for any poll after 08:00 local; an earlier poll
+        reaches into the previous day, which returns more data when served.
+        Do not widen it: a two-day span is served at some times of day and
+        refused at others (measured 2026-08-24, see
+        docs/api/atw-api-reference.md). The endpoint also 500s intermittently on
+        a window it serves moments later, so one failure never establishes a
+        ceiling - though eight consecutive ones on a wider window did. Water temperatures
         upload sparsely, so a unit quiet for hours still has a real last reading
         worth showing, and last_reading carries its age (ADR-022) - which makes
         an old reading legible.
@@ -576,7 +611,7 @@ class MELCloudHomeClient:
             dataset_id = dataset.get("id")
             if not dataset_id:
                 continue
-            reading = self._latest_genuine_reading(dataset.get("data", []))
+            reading = self._latest_genuine_reading(dataset.get("data", []), tz)
             if reading is not None:
                 readings[dataset_id] = reading
         return readings

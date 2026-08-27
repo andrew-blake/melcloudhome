@@ -24,6 +24,7 @@ from .const import (
     ATW_TELEMETRY_MEASURES_ZONE1,
     ATW_TELEMETRY_MEASURES_ZONE2,
 )
+from .helpers import resolve_unit_timezone
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -128,8 +129,9 @@ class TelemetryTracker:
         # and the cache keeps its previous readings, whose age last_reading
         # shows. A response that arrives and omits a measure is the other case,
         # handled below.
+        tz = await resolve_unit_timezone(self._hass, unit.time_zone)
         readings = await self._execute_with_retry(
-            partial(self._client.get_atw_water_temperatures, unit.id),
+            partial(self._client.get_atw_water_temperatures, unit.id, tz),
             f"get_water_temperatures({unit.name})",
         )
 

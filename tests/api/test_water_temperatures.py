@@ -56,8 +56,8 @@ async def test_queries_hourly_over_an_8h_window(mocker) -> None:
     params = kwargs["params"]
     assert params["unitId"] == "unit-1"
     assert params["period"] == "Hourly"
-    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000")
-    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000")
+    to_dt = datetime.strptime(params["to"], "%Y-%m-%dT%H:%M:%S.0000000Z")
+    from_dt = datetime.strptime(params["from"], "%Y-%m-%dT%H:%M:%S.0000000Z")
     assert to_dt == datetime(2026, 8, 22, 14, 30, 0)
     assert to_dt.second == 0
     # 8h always lands inside the server's 2-calendar-day ceiling, whatever

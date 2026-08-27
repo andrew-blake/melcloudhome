@@ -61,9 +61,12 @@ per unit per cycle.**
 - **`period=Hourly`, 8h lookback.** Hourly is the only period whose points carry
   genuine reading timestamps; `Daily` returns 30-minute bucket labels whose
   values can diverge from the latest reading (#152). The server floors `from` to
-  midnight of its own date and rejects a range spanning three calendar days, so
-  any lookback under ~30h is served; 8h always lands inside that whatever time of
-  day the poll runs at. A sparse uploader quiet for hours still has a real last reading
+  midnight of its own date, in the unit's own timezone, and a floored span of one
+  day is always served. 8h keeps the window inside that day for any poll running
+  after 08:00 local, and a poll before then reaches into the previous day, which
+  returns *more* data when it is served. Wider lookbacks are not dependable: a
+  two-day floored span is served at some times of day and refused at others (see
+  `docs/api/atw-api-reference.md`). A sparse uploader quiet for hours still has a real last reading
   worth showing, and `last_reading` ([ADR-022](022-reading-provenance.md))
   carries its age.
 - **Synthetic points are stripped by the shared rule.** The server appends
@@ -90,16 +93,18 @@ response carried zone-2 series. Shipping zone-2 datasets for a unit that has
 zone 2 is therefore an assumption, taken deliberately (2026-08-21, reaffirmed
 2026-08-22) rather than established by evidence.**
 
-**What tilts it that way:** the vendor's decompiled `App.Shared.ReportTimeDataSet`
-carries hardcoded static templates for `flow_temperature_zone2` and
-`return_temperature_zone2` alongside the eight datasets seen on the wire,
-`App.Shared` is shared with the server so the server builds responses from those
-templates, and the `INTEMP_REPORT` label namespace has keys for both.
+**What tilts it that way:** the report's dataset ids are exactly the measure names
+the per-measure telemetry endpoint used, zone-2 names included (`const.py`), so the
+report continues a naming scheme that already has a place for them; and the eight
+datasets a single-zone unit receives include `*_zone1` and `*_boiler` series for
+hardware it does not have, so the server is not filtering datasets by device
+capability on any axis visible from the wire.
 
-**What keeps it an assumption:** the same namespace carries
-`ROOM_TEMPERATURE_ZONE1` and `SET_TEMPERATURE_ZONE1`, and neither is emitted even
-though that hardware exists. Template and label presence is a superset of what
-the server sends.
+**What keeps it an assumption:** if that unfiltered set is simply fixed at eight,
+zone-2 series never arrive for anyone. The `INTEMP_REPORT` label namespace also
+carries `ROOM_TEMPERATURE_ZONE1` and `SET_TEMPERATURE_ZONE1` — both observed on
+`comfort-graph` — and neither is emitted here even though that hardware exists, so
+label presence is a superset of what the server sends.
 
 **What would falsify it:** a diagnostics capture from a real two-zone unit taken
 while the system is actively heating, showing the report without zone-2 datasets.
