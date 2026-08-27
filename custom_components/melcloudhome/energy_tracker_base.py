@@ -176,6 +176,12 @@ class EnergyTrackerBase(ABC):
         0.567 again.
 
         The wider window is accepted - the floored request returns 200.
+
+        Flooring in UTC is correct because this endpoint labels its hour buckets
+        in UTC, unlike the /report/v1/ endpoints, which stamp points in the
+        unit's own zone (ADR-022). Measured 2026-08-25: units at +1 and +2 both
+        reported newest bucket 07:00 for one window, and pushing "to" three
+        hours past either unit's local wall-clock surfaced nothing newer.
         """
         to_time = now
         from_time = (to_time - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)).replace(
