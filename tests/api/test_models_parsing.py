@@ -331,6 +331,16 @@ class TestActualFanSpeedGuard:
         """Anything outside the six words parses to None."""
         assert self._unit("Turbo").actual_fan_speed is None
 
+    def test_next_ordinal_rejected(self) -> None:
+        """The realistic unknown value, not a made-up word.
+
+        `numberOfFanSpeeds` does not bound this field: a 3-speed unit was seen
+        reporting "Four" (see ACTUAL_FAN_SPEEDS), so a unit at the top of a
+        five-speed range reporting "Six" is the case this guard most plausibly
+        has to survive.
+        """
+        assert self._unit("Six").actual_fan_speed is None
+
     def test_empty_string_rejected(self) -> None:
         """An empty value is absence, not a speed."""
         assert self._unit("").actual_fan_speed is None

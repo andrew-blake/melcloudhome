@@ -68,6 +68,16 @@ VANE_NUMERIC_TO_WORD = {
 # "Auto", and reports "Off" when it is not running. All six were observed on
 # real hardware on 2026-08-28. Anything outside this list is rejected at parse
 # time, because the sensor is a device_class=ENUM whose options derive from it.
+#
+# This is the vocabulary observed so far, NOT a proven ceiling.
+# `numberOfFanSpeeds` does not bound the field: on 2026-08-28 a unit
+# advertising `numberOfFanSpeeds: 3`, set to "Three", reported "Four" in the
+# same /context object (read from the API directly, not through this parser).
+# Whether the unit has more taps than it advertises or reports on a different
+# internal scale is unknown, so a unit at the top of a five-speed range might
+# report something above "Five". Do not add speculative values here: an
+# unlisted value warns once and reads `unknown`, and that warning is the only
+# way we would find out.
 ACTUAL_FAN_SPEEDS = [
     "Off",
     "One",
