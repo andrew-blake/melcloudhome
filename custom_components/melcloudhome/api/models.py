@@ -11,6 +11,7 @@ from typing import Any
 from . import const_ata, const_atw, const_shared
 from .models_ata import AirToAirUnit
 from .models_atw import AirToWaterUnit
+from .parsing import strip_line_breaks
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,9 +59,12 @@ class Building:
         # Parse A2W units (NEW)
         a2w_units_data = data.get(const_atw.API_FIELD_AIR_TO_WATER_UNITS, [])
 
+        # Flattened before the log below as well as the field: a building name
+        # is app-chosen too (see models_ata.from_dict).
+        building_name = strip_line_breaks(data.get("name", "Unknown"))
+
         # DEBUG: Log building context for ATW units
         if a2w_units_data:
-            building_name = data.get("name", "Unknown")
             _LOGGER.debug(
                 "[Building '%s'] Processing %d ATW unit(s)",
                 building_name,
@@ -71,7 +75,7 @@ class Building:
 
         return cls(
             id=data["id"],
-            name=data.get("name", "Unknown"),
+            name=building_name,
             is_guest=is_guest,
             air_to_air_units=a2a_units,
             air_to_water_units=a2w_units,

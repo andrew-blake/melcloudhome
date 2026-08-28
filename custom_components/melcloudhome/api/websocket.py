@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 import aiohttp
 
 from .auth import _redact_url
-from .parsing import sanitize_for_log
+from .parsing import strip_line_breaks
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -191,12 +191,12 @@ class MELCloudHomeWebSocket:
                 continue
             settings = data.get("settings")
             names = [
-                sanitize_for_log(s["name"])
+                strip_line_breaks(s["name"])
                 for s in (settings if isinstance(settings, list) else [])
                 if isinstance(s, dict) and s.get("name")
             ]
             try:
-                await self._on_delta(sanitize_for_log(unit_id), names)
+                await self._on_delta(strip_line_breaks(unit_id), names)
             except Exception:
                 # A misbehaving handler must never kill the listen loop.
                 _LOGGER.debug("WebSocket delta handler failed", exc_info=True)

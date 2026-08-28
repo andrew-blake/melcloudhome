@@ -90,12 +90,19 @@ def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def sanitize_for_log(value: object) -> str:
-    """Strip CR/LF from server-supplied strings so they can't forge log lines.
+def strip_line_breaks(value: object) -> str:
+    """Flatten CR/LF out of a server-supplied string.
 
-    Unconditional on purpose: CodeQL only recognizes unconditional barriers, so
-    adding a branch here would silently stop this working as a `py/log-injection`
-    barrier for every caller.
+    Applied to every name and value the API hands us that can reach a log line
+    or a Home Assistant entity name. A device name is chosen by whoever owns the
+    device in the MELCloud app, and on a shared building that is somebody else's
+    account, so a name carrying CR/LF could forge log lines in a reader's own
+    log (CWE-117) - which matters most when that log is being read to diagnose a
+    fault, or pasted into an issue.
+
+    Unconditional on purpose: CodeQL's `py/log-injection` only recognizes a
+    helper as a barrier when every path through it strips, so adding a branch
+    here would silently stop this working for every caller.
     """
     return str(value).replace("\r", "").replace("\n", " ")
 

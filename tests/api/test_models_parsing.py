@@ -16,7 +16,9 @@ from typing import Any
 import pytest
 
 from custom_components.melcloudhome.api import models_ata
+from custom_components.melcloudhome.api.models import Building
 from custom_components.melcloudhome.api.models_ata import AirToAirUnit
+from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 from custom_components.melcloudhome.api.parsing import (
     parse_bool,
     parse_int,
@@ -371,6 +373,57 @@ class TestActualFanSpeedGuard:
                 self._unit(f"Bogus{i}")
         assert len(models_ata._warned_fan_speeds) == models_ata._MAX_WARNED_FAN_SPEEDS
         assert len(caplog.records) == models_ata._MAX_WARNED_FAN_SPEEDS
+
+
+class TestNameLineBreaks:
+    """Names arrive from the MELCloud app, so they are not ours to trust.
+
+    On a shared building the name was chosen by another account, and it reaches
+    both log lines and Home Assistant entity names. Flattening happens once at
+    the parse boundary so no downstream caller has to remember.
+    """
+
+    FORGED = "Lounge\r\nERROR:root:disk failure"
+
+    def test_ata_unit_name(self) -> None:
+        unit = AirToAirUnit.from_dict(
+            {
+                "id": "unit-1",
+                "givenDisplayName": self.FORGED,
+                "settings": [],
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+        assert "\n" not in unit.name
+        assert "\r" not in unit.name
+        assert unit.name.startswith("Lounge")
+
+    def test_atw_unit_name(self) -> None:
+        unit = AirToWaterUnit.from_dict(
+            {
+                "id": "unit-2",
+                "givenDisplayName": self.FORGED,
+                "settings": [],
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+        assert "\n" not in unit.name
+        assert "\r" not in unit.name
+
+    def test_building_name(self) -> None:
+        """Also covers the debug line that logs it before the field is set."""
+        building = Building.from_dict(
+            {
+                "id": "building-1",
+                "name": self.FORGED,
+                "airToAirUnits": [],
+                "airToWaterUnits": [],
+            }
+        )
+        assert "\n" not in building.name
+        assert "\r" not in building.name
 
 
 class TestVaneNormalization:

@@ -17,7 +17,7 @@ from .parsing import (
     Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
-    sanitize_for_log,
+    strip_line_breaks,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,8 +60,8 @@ def _parse_actual_fan_speed(value: object, unit_name: object) -> str | None:
         _LOGGER.warning(
             "%s reported the fan speed %s, which this integration does not "
             "recognise, so its actual fan speed sensor will show as unknown",
-            sanitize_for_log(unit_name),
-            sanitize_for_log(value),
+            strip_line_breaks(unit_name),
+            strip_line_breaks(value),
         )
     return None
 
@@ -253,9 +253,14 @@ class AirToAirUnit:
         error_code_value = settings.get("ErrorCode", "")
         error_code = error_code_value if error_code_value else None
 
+        # The display name is chosen in the MELCloud app, so on a shared
+        # building it is somebody else's string. Flatten it once here and every
+        # log line and entity name built from it is safe by construction.
+        name = strip_line_breaks(data.get("givenDisplayName", "Unknown"))
+
         return cls(
             id=data["id"],
-            name=data.get("givenDisplayName", "Unknown"),
+            name=name,
             power=_parse_bool(settings.get("Power")),
             operation_mode=settings.get("OperationMode", OPERATION_MODE_HEAT),
             set_temperature=_parse_float(settings.get("SetTemperature")),
@@ -265,8 +270,7 @@ class AirToAirUnit:
             # unit cannot be. Anything unrecognised becomes None here, so the
             # ENUM sensor reads `unknown` rather than raising on the state write.
             actual_fan_speed=_parse_actual_fan_speed(
-                settings.get("ActualFanSpeed"),
-                data.get("givenDisplayName", "Unknown"),
+                settings.get("ActualFanSpeed"), name
             ),
             vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
