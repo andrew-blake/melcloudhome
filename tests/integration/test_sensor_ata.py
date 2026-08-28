@@ -325,6 +325,15 @@ async def test_actual_fan_speed_sensor(hass: HomeAssistant) -> None:
     state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
     assert state is not None
     assert state.state == "two"
+    assert state.attributes["device_class"] == "enum"
+    assert state.attributes["options"] == [
+        "off",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+    ]
     # Shares the climate entity's vocabulary rather than the API's capitalisation.
     climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
     assert climate_state is not None

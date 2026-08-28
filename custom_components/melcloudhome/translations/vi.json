@@ -104,7 +104,15 @@
         "name": "Nhiệt độ phòng"
       },
       "actual_fan_speed": {
-        "name": "Tốc độ quạt thực tế"
+        "name": "Tốc độ quạt thực tế",
+        "state": {
+          "off": "Tắt",
+          "one": "Quạt 1",
+          "two": "Quạt 2",
+          "three": "Quạt 3",
+          "four": "Quạt 4",
+          "five": "Quạt 5"
+        }
       },
       "wifi_signal": {
         "name": "Tín hiệu WiFi"

@@ -104,7 +104,15 @@
         "name": "Kamertemperatuur"
       },
       "actual_fan_speed": {
-        "name": "Werkelijke ventilatorsnelheid"
+        "name": "Werkelijke ventilatorsnelheid",
+        "state": {
+          "off": "Uit",
+          "one": "Ventilator 1",
+          "two": "Ventilator 2",
+          "three": "Ventilator 3",
+          "four": "Ventilator 4",
+          "five": "Ventilator 5"
+        }
       },
       "wifi_signal": {
         "name": "WiFi-signaal"

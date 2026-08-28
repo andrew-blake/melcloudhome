@@ -234,6 +234,7 @@ def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
     unit.set_temperature = 22.0
     unit.room_temperature = 21.0
     unit.set_fan_speed = "Auto"
+    unit.actual_fan_speed = "Two"
     unit.vane_vertical_direction = "Auto"
     unit.vane_horizontal_direction = "Auto"
     unit.in_standby_mode = False

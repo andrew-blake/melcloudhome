@@ -104,7 +104,15 @@
         "name": "Oda sıcaklığı"
       },
       "actual_fan_speed": {
-        "name": "Gerçek fan hızı"
+        "name": "Gerçek fan hızı",
+        "state": {
+          "off": "Kapalı",
+          "one": "Fan 1",
+          "two": "Fan 2",
+          "three": "Fan 3",
+          "four": "Fan 4",
+          "five": "Fan 5"
+        }
       },
       "wifi_signal": {
         "name": "WiFi sinyali"

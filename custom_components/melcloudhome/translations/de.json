@@ -104,7 +104,15 @@
         "name": "Raumtemperatur"
       },
       "actual_fan_speed": {
-        "name": "Tatsächliche Lüfterstufe"
+        "name": "Tatsächliche Lüfterstufe",
+        "state": {
+          "off": "Aus",
+          "one": "Lüfter 1",
+          "two": "Lüfter 2",
+          "three": "Lüfter 3",
+          "four": "Lüfter 4",
+          "five": "Lüfter 5"
+        }
       },
       "wifi_signal": {
         "name": "WLAN-Signal"

@@ -275,7 +275,7 @@ class TestActualFanSpeed:
     def test_not_normalized_like_set_fan_speed(self) -> None:
         """Numeric zero must not become Auto - a running unit has no Auto speed."""
         unit = self._unit([{"name": "ActualFanSpeed", "value": "0"}])
-        assert unit.actual_fan_speed != "Auto"
+        assert unit.actual_fan_speed == "0"
 
     def test_independent_of_set_fan_speed(self) -> None:
         """The point of the field: Auto requested, a concrete speed running."""

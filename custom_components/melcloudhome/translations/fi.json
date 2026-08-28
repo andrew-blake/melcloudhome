@@ -104,7 +104,15 @@
         "name": "Huonelämpötila"
       },
       "actual_fan_speed": {
-        "name": "Todellinen tuulettimen nopeus"
+        "name": "Todellinen tuulettimen nopeus",
+        "state": {
+          "off": "Pois päältä",
+          "one": "Tuuletin 1",
+          "two": "Tuuletin 2",
+          "three": "Tuuletin 3",
+          "four": "Tuuletin 4",
+          "five": "Tuuletin 5"
+        }
       },
       "wifi_signal": {
         "name": "WiFi-signaali"

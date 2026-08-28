@@ -104,7 +104,15 @@
         "name": "Romtemperatur"
       },
       "actual_fan_speed": {
-        "name": "Faktisk viftehastighet"
+        "name": "Faktisk viftehastighet",
+        "state": {
+          "off": "Av",
+          "one": "Vifte 1",
+          "two": "Vifte 2",
+          "three": "Vifte 3",
+          "four": "Vifte 4",
+          "five": "Vifte 5"
+        }
       },
       "wifi_signal": {
         "name": "WiFi-signal"
