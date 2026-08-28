@@ -311,3 +311,63 @@ async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) 
         state = hass.states.get(entity_id)
         assert state is not None, f"{entity_id} was not created"
         assert state.state == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_actual_fan_speed_sensor(hass: HomeAssistant) -> None:
+    """Test the sensor reports the running speed while fan_mode reads auto."""
+    unit = create_mock_ata_unit(set_fan_speed="Auto", actual_fan_speed="Two")
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    assert state is not None
+    assert state.state == "two"
+    assert state.attributes["device_class"] == "enum"
+    assert state.attributes["options"] == [
+        "off",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+    ]
+    # Shares the climate entity's vocabulary rather than the API's capitalisation.
+    climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
+    assert climate_state is not None
+    assert climate_state.attributes["fan_mode"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_actual_fan_speed_sensor_reports_off(hass: HomeAssistant) -> None:
+    """Test a stopped fan reads "off": a real value, not a missing reading."""
+    unit = create_mock_ata_unit(power=False, actual_fan_speed="Off")
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    assert state is not None
+    assert state.state == "off"
+
+
+@pytest.mark.asyncio
+async def test_actual_fan_speed_sensor_created_when_absent(
+    hass: HomeAssistant,
+) -> None:
+    """Test a missing value reads as `unknown` and never suppresses creation.
+
+    Same rule as room temperature and RSSI (#219, #226).
+    """
+    unit = create_mock_ata_unit(actual_fan_speed=None)
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    assert state is not None
+    assert state.state == "unknown"

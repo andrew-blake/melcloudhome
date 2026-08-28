@@ -103,6 +103,17 @@
       "room_temperature": {
         "name": "อุณหภูมิห้อง"
       },
+      "actual_fan_speed": {
+        "name": "ความเร็วพัดลมจริง",
+        "state": {
+          "off": "ปิด",
+          "one": "พัดลม 1",
+          "two": "พัดลม 2",
+          "three": "พัดลม 3",
+          "four": "พัดลม 4",
+          "five": "พัดลม 5"
+        }
+      },
       "wifi_signal": {
         "name": "สัญญาณ WiFi"
       },

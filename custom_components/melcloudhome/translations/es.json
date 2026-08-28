@@ -103,6 +103,17 @@
       "room_temperature": {
         "name": "Temperatura de la habitación"
       },
+      "actual_fan_speed": {
+        "name": "Velocidad real del ventilador",
+        "state": {
+          "off": "Apagado",
+          "one": "Velocidad 1",
+          "two": "Velocidad 2",
+          "three": "Velocidad 3",
+          "four": "Velocidad 4",
+          "five": "Velocidad 5"
+        }
+      },
       "wifi_signal": {
         "name": "Señal WiFi"
       },

@@ -121,6 +121,9 @@ class AirToAirUnit:
     set_temperature: float | None
     room_temperature: float | None
     set_fan_speed: str | None
+    # What the unit is running, as opposed to set_fan_speed's request.
+    # Reports "Off", never "Auto". Lags by the unit's upload interval.
+    actual_fan_speed: str | None
     vane_vertical_direction: str | None
     vane_horizontal_direction: str | None
     in_standby_mode: bool
@@ -209,6 +212,9 @@ class AirToAirUnit:
             set_temperature=_parse_float(settings.get("SetTemperature")),
             room_temperature=_parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),
+            # Not normalize_fan_speed: that maps "0" to "Auto", which a running
+            # unit cannot be.
+            actual_fan_speed=settings.get("ActualFanSpeed"),
             vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
             ),

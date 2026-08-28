@@ -246,6 +246,49 @@ class TestFanSpeedNormalization:
         assert unit.set_fan_speed == "UnknownSpeed"
 
 
+class TestActualFanSpeed:
+    """Test ActualFanSpeed parsing: can be "Off", never "Auto"."""
+
+    @staticmethod
+    def _unit(settings: list[dict[str, str]]) -> AirToAirUnit:
+        return AirToAirUnit.from_dict(
+            {
+                "id": "test-unit",
+                "givenDisplayName": "Test",
+                "settings": settings,
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+
+    def test_word_values_parsed(self) -> None:
+        """Observed values, including Off, are kept as reported."""
+        for word in ["Off", "One", "Two", "Three", "Four", "Five"]:
+            unit = self._unit([{"name": "ActualFanSpeed", "value": word}])
+            assert unit.actual_fan_speed == word
+
+    def test_missing_field_is_none(self) -> None:
+        """A payload without the field must not raise."""
+        unit = self._unit([{"name": "SetFanSpeed", "value": "Auto"}])
+        assert unit.actual_fan_speed is None
+
+    def test_not_normalized_like_set_fan_speed(self) -> None:
+        """Numeric zero must not become Auto - a running unit has no Auto speed."""
+        unit = self._unit([{"name": "ActualFanSpeed", "value": "0"}])
+        assert unit.actual_fan_speed == "0"
+
+    def test_independent_of_set_fan_speed(self) -> None:
+        """The point of the field: Auto requested, a concrete speed running."""
+        unit = self._unit(
+            [
+                {"name": "SetFanSpeed", "value": "Auto"},
+                {"name": "ActualFanSpeed", "value": "Two"},
+            ]
+        )
+        assert unit.set_fan_speed == "Auto"
+        assert unit.actual_fan_speed == "Two"
+
+
 class TestVaneNormalization:
     """Test vane direction normalization edge cases."""
 

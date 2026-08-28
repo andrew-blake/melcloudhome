@@ -103,6 +103,17 @@
       "room_temperature": {
         "name": "Temperatura ambiente"
       },
+      "actual_fan_speed": {
+        "name": "Velocità effettiva della ventola",
+        "state": {
+          "off": "Spento",
+          "one": "Ventola 1",
+          "two": "Ventola 2",
+          "three": "Ventola 3",
+          "four": "Ventola 4",
+          "five": "Ventola 5"
+        }
+      },
       "wifi_signal": {
         "name": "Segnale WiFi"
       },

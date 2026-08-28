@@ -103,6 +103,17 @@
       "room_temperature": {
         "name": "Room temperature"
       },
+      "actual_fan_speed": {
+        "name": "Actual fan speed",
+        "state": {
+          "off": "Off",
+          "one": "Fan 1",
+          "two": "Fan 2",
+          "three": "Fan 3",
+          "four": "Fan 4",
+          "five": "Fan 5"
+        }
+      },
       "wifi_signal": {
         "name": "WiFi signal"
       },
