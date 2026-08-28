@@ -1,10 +1,12 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from .const_ata import (
+    ACTUAL_FAN_SPEEDS,
     FAN_SPEED_NUMERIC_TO_WORD,
     OPERATION_MODE_HEAT,
     VANE_HORIZONTAL_AMERICAN_TO_BRITISH,
@@ -15,7 +17,54 @@ from .parsing import (
     Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
+    sanitize_for_log,
 )
+
+_LOGGER = logging.getLogger(__name__)
+
+# Keyed by lowercase so a change of case upstream reads as the same speed
+# rather than as an unknown one.
+_ACTUAL_FAN_SPEED_BY_KEY = {speed.lower(): speed for speed in ACTUAL_FAN_SPEEDS}
+
+# Unknown values already logged. from_dict runs on every poll and every
+# socket-triggered refresh, so without this a single unrecognised value would
+# write a warning every few seconds for as long as the unit reports it.
+#
+# ponytail: unbounded in principle, capped in practice. Only distinct unknown
+# values grow it, and the cap stops a unit that reports garbage from growing it
+# without limit - at the cost of going quiet after that many. Swap for an
+# LRU if a real device ever reaches the cap.
+_MAX_WARNED_FAN_SPEEDS = 20
+_warned_fan_speeds: set[str] = set()
+
+
+def _parse_actual_fan_speed(value: object, unit_name: object) -> str | None:
+    """Return a recognised ActualFanSpeed word, or None having warned once.
+
+    The sensor built on this field is a device_class=ENUM whose options come
+    from ACTUAL_FAN_SPEEDS, and HA raises on a state write outside an ENUM's
+    options. Returning None instead leaves the sensor reading `unknown`, which
+    degrades one sensor rather than failing the write.
+    """
+    if value is None or value == "":
+        return None
+    known = _ACTUAL_FAN_SPEED_BY_KEY.get(str(value).lower())
+    if known is not None:
+        return known
+    text = str(value)
+    if (
+        text not in _warned_fan_speeds
+        and len(_warned_fan_speeds) < _MAX_WARNED_FAN_SPEEDS
+    ):
+        _warned_fan_speeds.add(text)
+        _LOGGER.warning(
+            "%s reported the fan speed %s, which this integration does not "
+            "recognise, so its actual fan speed sensor will show as unknown",
+            sanitize_for_log(unit_name),
+            sanitize_for_log(value),
+        )
+    return None
+
 
 # ==============================================================================
 # Air-to-Air (A/C) Models
@@ -213,8 +262,12 @@ class AirToAirUnit:
             room_temperature=_parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),
             # Not normalize_fan_speed: that maps "0" to "Auto", which a running
-            # unit cannot be.
-            actual_fan_speed=settings.get("ActualFanSpeed"),
+            # unit cannot be. Anything unrecognised becomes None here, so the
+            # ENUM sensor reads `unknown` rather than raising on the state write.
+            actual_fan_speed=_parse_actual_fan_speed(
+                settings.get("ActualFanSpeed"),
+                data.get("givenDisplayName", "Unknown"),
+            ),
             vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
             ),

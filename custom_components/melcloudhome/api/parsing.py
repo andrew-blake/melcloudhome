@@ -90,6 +90,16 @@ def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def sanitize_for_log(value: object) -> str:
+    """Strip CR/LF from server-supplied strings so they can't forge log lines.
+
+    Unconditional on purpose: CodeQL only recognizes unconditional barriers, so
+    adding a branch here would silently stop this working as a `py/log-injection`
+    barrier for every caller.
+    """
+    return str(value).replace("\r", "").replace("\n", " ")
+
+
 class Reading(NamedTuple):
     """A measured value with the time the unit actually recorded it.
 

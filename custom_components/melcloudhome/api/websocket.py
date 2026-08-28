@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 import aiohttp
 
 from .auth import _redact_url
+from .parsing import sanitize_for_log
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -45,14 +46,6 @@ _HEARTBEAT = 30
 # backoff forever — each cycle costing a hash fetch and possibly a token
 # refresh.
 _STABLE_SESSION_SECS = 60
-
-
-def _sanitize(value: object) -> str:
-    """Strip CR/LF from server-supplied strings so they can't forge log lines.
-
-    Unconditional on purpose: CodeQL only recognizes unconditional barriers.
-    """
-    return str(value).replace("\r", "").replace("\n", " ")
 
 
 # Callback invoked for each unit that reports a state change:
@@ -198,12 +191,12 @@ class MELCloudHomeWebSocket:
                 continue
             settings = data.get("settings")
             names = [
-                _sanitize(s["name"])
+                sanitize_for_log(s["name"])
                 for s in (settings if isinstance(settings, list) else [])
                 if isinstance(s, dict) and s.get("name")
             ]
             try:
-                await self._on_delta(_sanitize(unit_id), names)
+                await self._on_delta(sanitize_for_log(unit_id), names)
             except Exception:
                 # A misbehaving handler must never kill the listen loop.
                 _LOGGER.debug("WebSocket delta handler failed", exc_info=True)

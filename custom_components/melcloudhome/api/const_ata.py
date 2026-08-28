@@ -63,6 +63,20 @@ VANE_NUMERIC_TO_WORD = {
     "7": "Swing",
 }
 
+# ActualFanSpeed values, as the API words them. The same ordinal series as
+# FAN_SPEEDS, except a running unit reports the speed it picked rather than
+# "Auto", and reports "Off" when it is not running. All six were observed on
+# real hardware on 2026-08-28. Anything outside this list is rejected at parse
+# time, because the sensor is a device_class=ENUM whose options derive from it.
+ACTUAL_FAN_SPEEDS = [
+    "Off",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+]
+
 # Fan Speed Mappings (Control API numeric strings <-> word strings)
 # Used for normalization when API returns "0"-"5" but we use "Auto", "One"-"Five"
 FAN_SPEED_NUMERIC_TO_WORD = {
@@ -93,6 +107,7 @@ TEMP_MIN_COOL_DRY = 16.0
 # Note: Headers are constructed inline by the API client
 
 __all__ = [
+    "ACTUAL_FAN_SPEEDS",
     "API_CONTROL_UNIT",
     "API_FIELD_AIR_TO_AIR_UNITS",
     "FAN_SPEEDS",
