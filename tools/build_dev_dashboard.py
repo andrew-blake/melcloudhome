@@ -113,9 +113,10 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
 
     The sensor is a device_class=ENUM, so it has no long-term statistics and a
     statistics-graph cannot show it: history-graph renders the states as a
-    timeline instead, which is the only way to see Auto modulating. The mock
-    server does not emit ActualFanSpeed, so mock units read `unknown` here and
-    only the real-API entry's units show a series.
+    timeline instead, which is the only way to see Auto modulating.
+
+    Mock units carry a series too, derived rather than modulating, so a mock row
+    reading `unknown` is a fault rather than a gap in the mock.
     """
     fans = [f"sensor.{prefix}_actual_fan_speed" for prefix in prefixes]
     climates = [f"climate.{prefix}_climate" for prefix in prefixes]
