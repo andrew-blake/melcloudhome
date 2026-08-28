@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the dev ATW testing dashboard from the live entity registry.
+"""Generate the dev testing dashboard from the live entity registry.
+
+One view per ATW unit, plus a single view comparing the ATA units' fan speeds.
 
 `make dev-reset` restores `dev-config-template/.storage/`, so a dashboard only
 survives a reset if it lives there. A static snapshot cannot: entity IDs carry
@@ -10,7 +12,7 @@ So the design is committed as this generator rather than as its output. It reads
 whatever ATW units the registry holds and emits cards for them, which also means
 it keeps working when a device share lapses or a building is renamed.
 
-    # write the live dashboard for every ATW unit found
+    # write the live dashboard for every unit found
     python3 tools/build_dev_dashboard.py
 
     # refresh the committed template with the mock units only
@@ -82,6 +84,95 @@ def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
             continue  # ATA unit
         units.append((prefix, f"climate.{prefix}_zone_2" in entity_ids))
     return units
+
+
+def find_ata_units(storage: Path) -> list[str]:
+    """Return the entity_id prefix of each ATA unit in the registry.
+
+    An ATA unit is the inverse of find_atw_units' test: a climate entity with
+    no water heater beside it. Reading the registry rather than assuming keeps
+    this correct when a shared unit disappears.
+    """
+    registry = json.loads((storage / "core.entity_registry").read_text())
+    entity_ids = {entry["entity_id"] for entry in registry["data"]["entities"]}
+    prefixes = {
+        match.group(1)
+        for entity_id in entity_ids
+        if (match := ENTITY_RE.match(entity_id))
+    }
+    return sorted(
+        prefix
+        for prefix in prefixes
+        if f"climate.{prefix}_climate" in entity_ids
+        and f"water_heater.{prefix}_tank" not in entity_ids
+    )
+
+
+def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, Any]:
+    """One view comparing every ATA unit's actual fan speed against its mode.
+
+    The sensor is a device_class=ENUM, so it has no long-term statistics and a
+    statistics-graph cannot show it: history-graph renders the states as a
+    timeline instead, which is the only way to see Auto modulating. The mock
+    server does not emit ActualFanSpeed, so mock units read `unknown` here and
+    only the real-API entry's units show a series.
+    """
+    fans = [f"sensor.{prefix}_actual_fan_speed" for prefix in prefixes]
+    climates = [f"climate.{prefix}_climate" for prefix in prefixes]
+    return {
+        "type": "sections",
+        "max_columns": 4,
+        "title": "ATA fan speed",
+        "path": "ata-fan",
+        "sections": [
+            {
+                "type": "grid",
+                # Full width: these are wide time series read side by side, and
+                # the default two-column grid squeezes them unreadably.
+                "column_span": 4,
+                "cards": [
+                    _heading("Actual fan speed"),
+                    {
+                        "type": "history-graph",
+                        "hours_to_show": 24,
+                        "title": "Actual fan speed (24h) - never Auto, Off means powered down",
+                        "entities": fans,
+                        "grid_options": {"columns": "full", "rows": "auto"},
+                    },
+                    _heading("Requested mode, for correlation"),
+                    {
+                        # fan_mode is a climate attribute, which history-graph
+                        # cannot plot, so this shows hvac state only. Comparing
+                        # requested against actual needs a template sensor.
+                        "type": "history-graph",
+                        "hours_to_show": 24,
+                        "title": "Power and HVAC mode (24h)",
+                        "entities": climates,
+                        "grid_options": {"columns": "full"},
+                    },
+                    _heading("Changes as text"),
+                    {
+                        "type": "logbook",
+                        "hours_to_show": 24,
+                        "target": {"entity_id": fans},
+                        "grid_options": {"columns": "full"},
+                    },
+                    {
+                        "type": "markdown",
+                        "title": "Current",
+                        "content": "| unit | requested | actual |\n|---|---|---|\n"
+                        + "\n".join(
+                            f"| {label(prefix, names)} "
+                            f"| {{{{ state_attr('climate.{prefix}_climate', 'fan_mode') }}}} "
+                            f"| {{{{ states('sensor.{prefix}_actual_fan_speed') }}}} |"
+                            for prefix in prefixes
+                        ),
+                        "grid_options": {"columns": "full"},
+                    },
+                ],
+            }
+        ],
+    }
 
 
 def device_names(storage: Path) -> dict[str, str]:
@@ -250,11 +341,13 @@ def main() -> int:
     args = parser.parse_args()
 
     units = find_atw_units(args.storage)
+    ata = find_ata_units(args.storage)
     names = device_names(args.storage)
     if args.mock_only:
         units = [u for u in units if u[0].startswith(MOCK_BUILDINGS)]
-    if not units:
-        print("No ATW units found - is the integration configured?")
+        ata = [p for p in ata if p.startswith(MOCK_BUILDINGS)]
+    if not units and not ata:
+        print("No units found - is the integration configured?")
         return 1
 
     out = args.out or args.storage / DASHBOARD
@@ -264,7 +357,8 @@ def main() -> int:
         "key": DASHBOARD,
         "data": {
             "config": {
-                "views": [build_view(p, z, names) for p, z in units],
+                "views": [build_view(p, z, names) for p, z in units]
+                + ([build_ata_fan_view(ata, names)] if ata else []),
             }
         },
     }
@@ -275,9 +369,12 @@ def main() -> int:
         envelope = existing
 
     out.write_text(json.dumps(envelope, indent=1) + "\n")
-    print(f"Wrote {out} with {len(units)} view(s):")
+    total = len(units) + (1 if ata else 0)
+    print(f"Wrote {out} with {total} view(s):")
     for prefix, has_zone2 in units:
         print(f"  {label(prefix, names)}{' [zone 2]' if has_zone2 else ''}")
+    if ata:
+        print(f"  ATA fan speed [{len(ata)} unit(s)]")
     print("Restart HA to pick it up: make dev-restart")
     return 0
 

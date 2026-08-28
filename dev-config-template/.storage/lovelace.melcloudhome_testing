@@ -338,6 +338,81 @@
        ]
       }
      ]
+    },
+    {
+     "type": "sections",
+     "max_columns": 4,
+     "title": "ATA fan speed",
+     "path": "ata-fan",
+     "sections": [
+      {
+       "type": "grid",
+       "column_span": 4,
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Actual fan speed",
+         "heading_style": "title"
+        },
+        {
+         "type": "history-graph",
+         "hours_to_show": 24,
+         "title": "Actual fan speed (24h) - never Auto, Off means powered down",
+         "entities": [
+          "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
+          "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed"
+         ],
+         "grid_options": {
+          "columns": "full",
+          "rows": "auto"
+         }
+        },
+        {
+         "type": "heading",
+         "heading": "Requested mode, for correlation",
+         "heading_style": "title"
+        },
+        {
+         "type": "history-graph",
+         "hours_to_show": 24,
+         "title": "Power and HVAC mode (24h)",
+         "entities": [
+          "climate.my_home_melcloudhome_0efc_87db_climate",
+          "climate.my_home_melcloudhome_bf8d_5119_climate"
+         ],
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "heading",
+         "heading": "Changes as text",
+         "heading_style": "title"
+        },
+        {
+         "type": "logbook",
+         "hours_to_show": 24,
+         "target": {
+          "entity_id": [
+           "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
+           "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed"
+          ]
+         },
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "markdown",
+         "title": "Current",
+         "content": "| unit | requested | actual |\n|---|---|---|\n| My Home Living Room AC (mock) | {{ state_attr('climate.my_home_melcloudhome_0efc_87db_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed') }} |\n| Orchard Cottage Living Room (mock) | {{ state_attr('climate.my_home_melcloudhome_bf8d_5119_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed') }} |",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      }
+     ]
     }
    ]
   }
