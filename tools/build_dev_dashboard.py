@@ -139,30 +139,30 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
                         "entities": fans,
                         "grid_options": {"columns": "full", "rows": "auto"},
                     },
-                    _heading("Requested mode, for correlation"),
+                    _heading("Changes as text, fan and mode interleaved"),
                     {
-                        # fan_mode is a climate attribute, which history-graph
-                        # cannot plot, so this shows hvac state only. Comparing
-                        # requested against actual needs a template sensor.
-                        "type": "history-graph",
-                        "hours_to_show": 24,
-                        "title": "Power and HVAC mode (24h)",
-                        "entities": climates,
-                        "grid_options": {"columns": "full"},
-                    },
-                    _heading("Changes as text"),
-                    {
+                        # No second history-graph for the climate entities: for
+                        # a climate entity that card plots current and target
+                        # temperature, not hvac state, so it showed sixteen
+                        # temperature series under a title promising modes. The
+                        # logbook gives what correlation actually needs - fan
+                        # and power changes in one chronological list.
                         "type": "logbook",
                         "hours_to_show": 24,
-                        "target": {"entity_id": fans},
+                        "target": {"entity_id": fans + climates},
                         "grid_options": {"columns": "full"},
                     },
                     {
                         "type": "markdown",
                         "title": "Current",
-                        "content": "| unit | requested | actual |\n|---|---|---|\n"
+                        # ATA units have no power switch entity: power is the
+                        # climate entity's state, off versus a mode, and it is
+                        # what explains an actual speed of off.
+                        "content": "| unit | power / mode | requested | actual |"
+                        "\n|---|---|---|---|\n"
                         + "\n".join(
                             f"| {label(prefix, names)} "
+                            f"| {{{{ states('climate.{prefix}_climate') }}}} "
                             f"| {{{{ state_attr('climate.{prefix}_climate', 'fan_mode') }}}} "
                             f"| {{{{ states('sensor.{prefix}_actual_fan_speed') }}}} |"
                             for prefix in prefixes

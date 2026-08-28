@@ -369,24 +369,7 @@
         },
         {
          "type": "heading",
-         "heading": "Requested mode, for correlation",
-         "heading_style": "title"
-        },
-        {
-         "type": "history-graph",
-         "hours_to_show": 24,
-         "title": "Power and HVAC mode (24h)",
-         "entities": [
-          "climate.my_home_melcloudhome_0efc_87db_climate",
-          "climate.my_home_melcloudhome_bf8d_5119_climate"
-         ],
-         "grid_options": {
-          "columns": "full"
-         }
-        },
-        {
-         "type": "heading",
-         "heading": "Changes as text",
+         "heading": "Changes as text, fan and mode interleaved",
          "heading_style": "title"
         },
         {
@@ -395,7 +378,9 @@
          "target": {
           "entity_id": [
            "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
-           "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed"
+           "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed",
+           "climate.my_home_melcloudhome_0efc_87db_climate",
+           "climate.my_home_melcloudhome_bf8d_5119_climate"
           ]
          },
          "grid_options": {
@@ -405,7 +390,7 @@
         {
          "type": "markdown",
          "title": "Current",
-         "content": "| unit | requested | actual |\n|---|---|---|\n| My Home Living Room AC (mock) | {{ state_attr('climate.my_home_melcloudhome_0efc_87db_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed') }} |\n| Orchard Cottage Living Room (mock) | {{ state_attr('climate.my_home_melcloudhome_bf8d_5119_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed') }} |",
+         "content": "| unit | power / mode | requested | actual |\n|---|---|---|---|\n| My Home Living Room AC (mock) | {{ states('climate.my_home_melcloudhome_0efc_87db_climate') }} | {{ state_attr('climate.my_home_melcloudhome_0efc_87db_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed') }} |\n| My Home Bedroom AC (mock) | {{ states('climate.my_home_melcloudhome_bf8d_5119_climate') }} | {{ state_attr('climate.my_home_melcloudhome_bf8d_5119_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed') }} |",
          "grid_options": {
           "columns": "full"
          }
