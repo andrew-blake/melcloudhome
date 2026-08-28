@@ -180,27 +180,37 @@ def device_names(storage: Path) -> dict[str, str]:
 
     Device names are personal data for real units, so they are looked up from
     the local registry rather than written into this file.
+
+    Joined entity -> device_id -> device rather than matched on the entity id's
+    `<uuid first 4>_<uuid last 4>` short form, because that short form is NOT
+    unique: the mock unit `bf8d5678-...-456789ab5119` and the real
+    `bf8d1e84-...-25b87a945119` both render `bf8d_5119`, and matching on it gave
+    the mock unit the real device's name. The entity registry's device_id is
+    exact.
     """
-    registry = json.loads((storage / "core.device_registry").read_text())
-    names = {}
-    for device in registry["data"]["devices"]:
-        name = device.get("name_by_user") or device.get("name") or ""
-        for identifier in device.get("identifiers", []):
-            if len(identifier) > 1:
-                names[str(identifier[1])] = name
+    devices = json.loads((storage / "core.device_registry").read_text())
+    by_id = {
+        device["id"]: (device.get("name_by_user") or device.get("name") or "")
+        for device in devices["data"]["devices"]
+    }
+    entities = json.loads((storage / "core.entity_registry").read_text())
+    names: dict[str, str] = {}
+    for entry in entities["data"]["entities"]:
+        match = ENTITY_RE.match(entry["entity_id"])
+        name = by_id.get(entry.get("device_id") or "")
+        if match and name:
+            names[match.group(1)] = name
     return names
 
 
 def label(prefix: str, names: dict[str, str]) -> str:
     """A human view title, preferring the device's own name."""
-    short = prefix.split("_melcloudhome_")[1]
     kind = "mock" if prefix.startswith(MOCK_BUILDINGS) else "real"
-    for unit_id, name in names.items():
-        clean = unit_id.replace("-", "")
-        if name and short == f"{clean[:4]}_{clean[-4:]}":
-            return f"{name} ({kind})"
-    building = prefix.split("_melcloudhome_")[0].replace("_", " ").title()
-    return f"{building} {short} ({kind})"
+    name = names.get(prefix)
+    if name:
+        return f"{name} ({kind})"
+    building, _, short = prefix.partition("_melcloudhome_")
+    return f"{building.replace('_', ' ').title()} {short} ({kind})"
 
 
 def _heading(text: str) -> dict[str, Any]:
