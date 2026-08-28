@@ -156,6 +156,24 @@ ATA_WIRE_MAP = {
 }
 
 
+def _actual_fan_speed(state: dict[str, Any]) -> str:
+    """Derive ActualFanSpeed the way a real indoor unit reports it.
+
+    The real API sends this field on every ATA unit, so omitting it made the
+    mock's /context unlike anything a real server returns. A running unit
+    reports the speed it picked and never "Auto"; a unit that is off reports
+    "Off".
+
+    ponytail: Auto resolves to a fixed middle speed rather than modelling the
+    unit's own logic. Real hardware modulates minute to minute (observed
+    two/one alternating on consecutive polls), which nothing here needs.
+    """
+    if not state["power"] or state["in_standby_mode"]:
+        return "Off"
+    requested = state["set_fan_speed"]
+    return "Three" if requested == "Auto" else requested
+
+
 def _delta_frame(unit_id: str, settings: list) -> list:
     """One unitStateChanged frame in the wire shape the socket sends."""
     return [
@@ -1510,6 +1528,7 @@ class MockMELCloudServer:
             {"name": "SetTemperature", "value": str(state["set_temperature"])},
             {"name": "RoomTemperature", "value": str(state["room_temperature"])},
             {"name": "SetFanSpeed", "value": state["set_fan_speed"]},
+            {"name": "ActualFanSpeed", "value": _actual_fan_speed(state)},
             {
                 "name": "VaneVerticalDirection",
                 "value": state["vane_vertical_direction"],
