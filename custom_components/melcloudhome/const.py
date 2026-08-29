@@ -33,7 +33,7 @@ UPDATE_INTERVAL_ENERGY = timedelta(minutes=30)
 # with no error and no marker, so a wider window silently loses the newest hours
 # and the cumulative total stops growing. 23 rather than 24 because "from" is
 # floored to the hour: at 24 the cut lands on the current hour's start and drops
-# the hour in progress. Measured 2026-08-29, see #292.
+# the hour in progress. See #294 for the measurements.
 DATA_LOOKBACK_HOURS_ENERGY = 23
 
 # Sanity ceiling for a single hourly energy reading (kWh). The MELCloud cloud
