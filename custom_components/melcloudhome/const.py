@@ -29,7 +29,12 @@ DEFAULT_ENABLE_WEBSOCKET = True
 
 # Energy polling configuration
 UPDATE_INTERVAL_ENERGY = timedelta(minutes=30)
-DATA_LOOKBACK_HOURS_ENERGY = 48
+# The endpoint truncates its response 24 hours after "from" and drops the rest,
+# with no error and no marker, so a wider window silently loses the newest hours
+# and the cumulative total stops growing. 23 rather than 24 because "from" is
+# floored to the hour: at 24 the cut lands on the current hour's start and drops
+# the hour in progress. See #294 for the measurements.
+DATA_LOOKBACK_HOURS_ENERGY = 23
 
 # Sanity ceiling for a single hourly energy reading (kWh). The MELCloud cloud
 # API has been observed to occasionally return corrupt values around 65536 *

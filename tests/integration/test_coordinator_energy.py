@@ -1255,7 +1255,12 @@ def test_energy_window_normalises_to_utc() -> None:
 
     assert (from_utc, to_utc) == (from_local, to_local)
     assert from_utc.utcoffset() == timedelta(0)
-    assert from_utc.hour == 7  # floored in UTC, not in +02:00
+    # Derived, not a literal: this previously hard-coded the hour that a
+    # 48-hour lookback produced, so changing the constant failed the test for a
+    # reason that had nothing to do with what it checks.
+    assert from_utc == (instant - timedelta(hours=DATA_LOOKBACK_HOURS_ENERGY)).replace(
+        minute=0, second=0, microsecond=0
+    )
 
     with pytest.raises(ValueError, match="aware datetime"):
         EnergyTrackerBase._energy_window(datetime(2026, 8, 25, 7, 51))
