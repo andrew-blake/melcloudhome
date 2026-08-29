@@ -21,6 +21,7 @@ from homeassistant.const import (
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api.const_ata import ACTUAL_FAN_SPEEDS
 from .api.models import AirToAirUnit, Building
 from .api.parsing import Reading
 from .helpers import (
@@ -70,14 +71,15 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         value_fn=lambda unit: unit.room_temperature,
     ),
-    # The speed the unit runs at, invisible under SetFanSpeed=Auto.
-    # numberOfFanSpeeds caps the series at five; "auto" is not among them,
-    # because a running unit reports the speed it picked.
+    # The speed the unit runs at, invisible under SetFanSpeed=Auto. "auto" is
+    # not among the options because a running unit reports the speed it picked.
     ATASensorEntityDescription(
         key="actual_fan_speed",
         translation_key="actual_fan_speed",
         device_class=SensorDeviceClass.ENUM,
-        options=["off", "one", "two", "three", "four", "five"],
+        # Derived, so the parser's accepted set and the entity's options
+        # cannot drift: models_ata rejects anything outside ACTUAL_FAN_SPEEDS.
+        options=[speed.lower() for speed in ACTUAL_FAN_SPEEDS],
         value_fn=lambda unit: (
             unit.actual_fan_speed.lower() if unit.actual_fan_speed else None
         ),

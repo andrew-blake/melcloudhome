@@ -1,10 +1,13 @@
 """Air-to-Air (A/C) data models for MELCloud Home API."""
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from typing import Any
 
 from .const_ata import (
+    ACTUAL_FAN_SPEEDS,
     FAN_SPEED_NUMERIC_TO_WORD,
     OPERATION_MODE_HEAT,
     VANE_HORIZONTAL_AMERICAN_TO_BRITISH,
@@ -15,11 +18,49 @@ from .parsing import (
     Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
+    strip_line_breaks,
 )
 
-# ==============================================================================
-# Air-to-Air (A/C) Models
-# ==============================================================================
+_LOGGER = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=20)
+def _warn_unknown_fan_speed(speed: str, unit_name: str) -> None:
+    """Log an unrecognised fan speed, once per unit that reports it.
+
+    Cached for the side effect rather than the return value: `from_dict` runs on
+    every poll and every socket-triggered refresh, so without this a single
+    unrecognised value would write a warning every few seconds. `maxsize` bounds
+    the record and evicts the oldest, so a unit reporting varying rubbish cannot
+    grow it without limit or silence it permanently.
+    """
+    _LOGGER.warning(
+        "%s reported the fan speed %s, which this integration does not "
+        "recognise, so its actual fan speed sensor will show as unknown",
+        unit_name,
+        strip_line_breaks(speed),
+    )
+
+
+def _parse_actual_fan_speed(value: object, unit_name: str) -> str | None:
+    """Return a recognised ActualFanSpeed word, or None having warned once.
+
+    The sensor built on this field is a device_class=ENUM, and HA raises on a
+    state write outside an ENUM's options. Returning None leaves the sensor
+    reading `unknown`, degrading one sensor rather than failing the write.
+
+    Numeric forms are rejected rather than mapped. The socket sends this field
+    numerically but discards values before they reach here, and every captured
+    /context serves words, so a numeric map would handle a variation never seen
+    on this path and would consume the warning that is how we would find out.
+    """
+    if value is None or value == "":
+        return None
+    text = str(value)
+    if text in ACTUAL_FAN_SPEEDS:
+        return text
+    _warn_unknown_fan_speed(text, unit_name)
+    return None
 
 
 @dataclass
@@ -204,17 +245,22 @@ class AirToAirUnit:
         error_code_value = settings.get("ErrorCode", "")
         error_code = error_code_value if error_code_value else None
 
+        name = strip_line_breaks(data.get("givenDisplayName") or "Unknown")
+
         return cls(
             id=data["id"],
-            name=data.get("givenDisplayName", "Unknown"),
+            name=name,
             power=_parse_bool(settings.get("Power")),
             operation_mode=settings.get("OperationMode", OPERATION_MODE_HEAT),
             set_temperature=_parse_float(settings.get("SetTemperature")),
             room_temperature=_parse_float(settings.get("RoomTemperature")),
             set_fan_speed=normalize_fan_speed(settings.get("SetFanSpeed")),
             # Not normalize_fan_speed: that maps "0" to "Auto", which a running
-            # unit cannot be.
-            actual_fan_speed=settings.get("ActualFanSpeed"),
+            # unit cannot be. Anything unrecognised becomes None here, so the
+            # ENUM sensor reads `unknown` rather than raising on the state write.
+            actual_fan_speed=_parse_actual_fan_speed(
+                settings.get("ActualFanSpeed"), name
+            ),
             vane_vertical_direction=normalize_vertical_vane(
                 settings.get("VaneVerticalDirection")
             ),

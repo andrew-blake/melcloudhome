@@ -338,6 +338,66 @@
        ]
       }
      ]
+    },
+    {
+     "type": "sections",
+     "max_columns": 4,
+     "title": "ATA fan speed",
+     "path": "ata-fan",
+     "sections": [
+      {
+       "type": "grid",
+       "column_span": 4,
+       "cards": [
+        {
+         "type": "heading",
+         "heading": "Actual fan speed",
+         "heading_style": "title"
+        },
+        {
+         "type": "history-graph",
+         "hours_to_show": 24,
+         "title": "Actual fan speed (24h) - never Auto, Off means powered down",
+         "entities": [
+          "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
+          "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed"
+         ],
+         "grid_options": {
+          "columns": "full",
+          "rows": "auto"
+         }
+        },
+        {
+         "type": "heading",
+         "heading": "Changes as text, fan and mode interleaved",
+         "heading_style": "title"
+        },
+        {
+         "type": "logbook",
+         "hours_to_show": 24,
+         "target": {
+          "entity_id": [
+           "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
+           "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed",
+           "climate.my_home_melcloudhome_0efc_87db_climate",
+           "climate.my_home_melcloudhome_bf8d_5119_climate"
+          ]
+         },
+         "grid_options": {
+          "columns": "full"
+         }
+        },
+        {
+         "type": "markdown",
+         "title": "Current",
+         "content": "| unit | power / mode | requested | actual |\n|---|---|---|---|\n| My Home Living Room AC (mock) | {{ states('climate.my_home_melcloudhome_0efc_87db_climate') }} | {{ state_attr('climate.my_home_melcloudhome_0efc_87db_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed') }} |\n| My Home Bedroom AC (mock) | {{ states('climate.my_home_melcloudhome_bf8d_5119_climate') }} | {{ state_attr('climate.my_home_melcloudhome_bf8d_5119_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed') }} |",
+         "grid_options": {
+          "columns": "full"
+         }
+        }
+       ]
+      }
+     ]
     }
    ]
   }

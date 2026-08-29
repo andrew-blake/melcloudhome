@@ -63,6 +63,32 @@ VANE_NUMERIC_TO_WORD = {
     "7": "Swing",
 }
 
+# ActualFanSpeed values, as the API words them. The same ordinal series as
+# FAN_SPEEDS, except a running unit reports the speed it picked rather than
+# "Auto", and reports "Off" when it is not running. All six were observed on
+# real hardware on 2026-08-28. Anything outside this list is rejected at parse
+# time, because the sensor is a device_class=ENUM whose options derive from it.
+#
+# This is the vocabulary observed so far, NOT a proven ceiling.
+# `numberOfFanSpeeds` does not bound the field: on 2026-08-28 all three
+# three-speed units on the test account reported "Four" while set to "Three",
+# read from /context directly rather than through this parser. Why is unknown,
+# and nothing has been observed above "Five". Do not add speculative values
+# here: an unlisted value warns once and reads `unknown`, and that warning is
+# the only way we would find out the range is wider.
+#
+# Adding an observed value is two places, not one: the sensor's `options` derive
+# from this list, but each of the 14 files under `translations/` needs a
+# matching `state` key or the new value shows untranslated everywhere.
+ACTUAL_FAN_SPEEDS = [
+    "Off",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+]
+
 # Fan Speed Mappings (Control API numeric strings <-> word strings)
 # Used for normalization when API returns "0"-"5" but we use "Auto", "One"-"Five"
 FAN_SPEED_NUMERIC_TO_WORD = {
@@ -93,6 +119,7 @@ TEMP_MIN_COOL_DRY = 16.0
 # Note: Headers are constructed inline by the API client
 
 __all__ = [
+    "ACTUAL_FAN_SPEEDS",
     "API_CONTROL_UNIT",
     "API_FIELD_AIR_TO_AIR_UNITS",
     "FAN_SPEEDS",

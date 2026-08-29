@@ -90,6 +90,37 @@ def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def strip_line_breaks(value: object) -> str:
+    """Flatten CR/LF out of a server-supplied string.
+
+    Applied to every name and value the API hands us that can reach a log line
+    or a Home Assistant entity name. A device name is chosen by whoever owns the
+    device in the MELCloud app, and on a shared building that is somebody else's
+    account, so a name carrying CR/LF could forge log lines in a reader's own
+    log (CWE-117) - which matters most when that log is being read to diagnose a
+    fault, or pasted into an issue.
+
+    Covers the separators `str.splitlines()` honours, not just CR/LF, because a
+    browser log viewer or log shipper splits on those too. Every one becomes a
+    space rather than vanishing: the same string is a Home Assistant device
+    name, where dropping a character would silently corrupt what a user sees.
+
+    Unconditional and written as a chain on purpose: CodeQL's `py/log-injection`
+    recognizes a helper as a barrier only when every path through it strips, and
+    it matches chained `.replace()` calls, so a branch or a loop here would
+    silently stop this working for every caller.
+    """
+    return (
+        str(value)
+        .replace("\r\n", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("\u2028", " ")
+        .replace("\u2029", " ")
+        .replace("\x85", " ")
+    )
+
+
 class Reading(NamedTuple):
     """A measured value with the time the unit actually recorded it.
 

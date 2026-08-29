@@ -9,9 +9,16 @@ Tests focus on edge cases in helper functions that could cause real bugs:
 Avoids theatre: Only tests non-trivial logic with real edge cases.
 """
 
+import logging
+from collections.abc import Iterator
 from typing import Any
 
+import pytest
+
+from custom_components.melcloudhome.api import models_ata
+from custom_components.melcloudhome.api.models import Building
 from custom_components.melcloudhome.api.models_ata import AirToAirUnit
+from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 from custom_components.melcloudhome.api.parsing import (
     parse_bool,
     parse_int,
@@ -273,9 +280,13 @@ class TestActualFanSpeed:
         assert unit.actual_fan_speed is None
 
     def test_not_normalized_like_set_fan_speed(self) -> None:
-        """Numeric zero must not become Auto - a running unit has no Auto speed."""
+        """Numeric zero must not become Auto - a running unit has no Auto speed.
+
+        It is rejected rather than passed through: the sensor is an ENUM whose
+        options are the six words, so "0" would raise on the state write.
+        """
         unit = self._unit([{"name": "ActualFanSpeed", "value": "0"}])
-        assert unit.actual_fan_speed == "0"
+        assert unit.actual_fan_speed is None
 
     def test_independent_of_set_fan_speed(self) -> None:
         """The point of the field: Auto requested, a concrete speed running."""
@@ -287,6 +298,131 @@ class TestActualFanSpeed:
         )
         assert unit.set_fan_speed == "Auto"
         assert unit.actual_fan_speed == "Two"
+
+
+class TestActualFanSpeedGuard:
+    """An unrecognised value must degrade one sensor, not break the write.
+
+    The entity half of this pair is covered by
+    tests/integration/test_sensor_ata.py::test_actual_fan_speed_sensor_created_when_absent,
+    which asserts None reads as `unknown`.
+    """
+
+    @staticmethod
+    def _unit(value: str, name: str = "Test") -> AirToAirUnit:
+        return AirToAirUnit.from_dict(
+            {
+                "id": "test-unit",
+                "givenDisplayName": name,
+                "settings": [{"name": "ActualFanSpeed", "value": value}],
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+
+    @pytest.fixture(autouse=True)
+    def _clear_warned(self) -> Iterator[None]:
+        """The warn-once record is an lru_cache, so it leaks between tests."""
+        models_ata._warn_unknown_fan_speed.cache_clear()
+        yield
+        models_ata._warn_unknown_fan_speed.cache_clear()
+
+    def test_unknown_value_rejected(self) -> None:
+        """Anything outside the six words parses to None."""
+        assert self._unit("Turbo").actual_fan_speed is None
+
+    def test_next_ordinal_rejected(self) -> None:
+        """The realistic unknown value rather than a made-up word."""
+        assert self._unit("Six").actual_fan_speed is None
+
+    def test_numeric_rejected(self) -> None:
+        """The socket words this field numerically; /context has never done so.
+
+        Mapping numerics would handle a variation never seen on this path, and
+        would consume the warning that is how we would learn of it.
+        """
+        assert self._unit("2").actual_fan_speed is None
+
+    def test_empty_string_rejected(self) -> None:
+        """An empty value is absence, not a speed."""
+        assert self._unit("").actual_fan_speed is None
+
+    def test_warns_once_per_value(self, caplog: pytest.LogCaptureFixture) -> None:
+        """from_dict runs every poll, so repeats must not re-warn."""
+        with caplog.at_level(logging.WARNING):
+            for _ in range(3):
+                self._unit("Turbo")
+        assert len(caplog.records) == 1
+        assert "Turbo" in caplog.text
+
+    def test_warns_again_for_a_different_value(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A second unknown value is new information."""
+        with caplog.at_level(logging.WARNING):
+            self._unit("Turbo")
+            self._unit("Whisper")
+        assert len(caplog.records) == 2
+
+    def test_warning_cannot_forge_a_log_line(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Both the value and the unit name are remote-controlled."""
+        with caplog.at_level(logging.WARNING):
+            self._unit("Turbo\nERROR:root:forged", name="Unit\r\nfaked")
+        assert "\n" not in caplog.records[0].getMessage()
+        assert "\r" not in caplog.records[0].getMessage()
+
+
+class TestNameLineBreaks:
+    """Names arrive from the MELCloud app, so they are not ours to trust.
+
+    On a shared building the name was chosen by another account, and it reaches
+    both log lines and Home Assistant entity names. Flattening happens once at
+    the parse boundary so no downstream caller has to remember.
+    """
+
+    FORGED = "Lounge\r\nERROR:root:disk failure"
+
+    def test_ata_unit_name(self) -> None:
+        unit = AirToAirUnit.from_dict(
+            {
+                "id": "unit-1",
+                "givenDisplayName": self.FORGED,
+                "settings": [],
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+        assert "\n" not in unit.name
+        assert "\r" not in unit.name
+        assert unit.name.startswith("Lounge")
+
+    def test_atw_unit_name(self) -> None:
+        unit = AirToWaterUnit.from_dict(
+            {
+                "id": "unit-2",
+                "givenDisplayName": self.FORGED,
+                "settings": [],
+                "capabilities": {},
+                "schedule": [],
+            }
+        )
+        assert "\n" not in unit.name
+        assert "\r" not in unit.name
+
+    def test_building_name(self) -> None:
+        """Also covers the debug line that logs it before the field is set."""
+        building = Building.from_dict(
+            {
+                "id": "building-1",
+                "name": self.FORGED,
+                "airToAirUnits": [],
+                "airToWaterUnits": [],
+            }
+        )
+        assert "\n" not in building.name
+        assert "\r" not in building.name
 
 
 class TestVaneNormalization:

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the dev ATW testing dashboard from the live entity registry.
+"""Generate the dev testing dashboard from the live entity registry.
+
+One view per ATW unit, plus a single view comparing the ATA units' fan speeds.
 
 `make dev-reset` restores `dev-config-template/.storage/`, so a dashboard only
 survives a reset if it lives there. A static snapshot cannot: entity IDs carry
@@ -10,7 +12,7 @@ So the design is committed as this generator rather than as its output. It reads
 whatever ATW units the registry holds and emits cards for them, which also means
 it keeps working when a device share lapses or a building is renamed.
 
-    # write the live dashboard for every ATW unit found
+    # write the live dashboard for every unit found
     python3 tools/build_dev_dashboard.py
 
     # refresh the committed template with the mock units only
@@ -26,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +62,13 @@ WATER_TEMPS = (
 ENTITY_RE = re.compile(r"^[a-z_]+\.(.+_melcloudhome_[0-9a-f]{4}_[0-9a-f]{4})_")
 
 
+@lru_cache(maxsize=1)
+def _entities(storage: Path) -> tuple[dict[str, Any], ...]:
+    """The entity registry, parsed once for the three callers that want it."""
+    registry = json.loads((storage / "core.entity_registry").read_text())
+    return tuple(registry["data"]["entities"])
+
+
 def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
     """Return (entity_id_prefix, has_zone2) for each ATW unit in the registry.
 
@@ -66,10 +76,9 @@ def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
     entity. Both are capability-gated at creation (#266), so the registry is
     the honest source for what a unit actually has.
     """
-    registry = json.loads((storage / "core.entity_registry").read_text())
     prefixes: set[str] = set()
     entity_ids: set[str] = set()
-    for entry in registry["data"]["entities"]:
+    for entry in _entities(storage):
         entity_id = entry["entity_id"]
         entity_ids.add(entity_id)
         match = ENTITY_RE.match(entity_id)
@@ -84,32 +93,124 @@ def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
     return units
 
 
+def find_ata_units(storage: Path) -> list[str]:
+    """Return the entity_id prefix of each ATA unit in the registry.
+
+    An ATA unit is the inverse of find_atw_units' test: a climate entity with
+    no water heater beside it. Reading the registry rather than assuming keeps
+    this correct when a shared unit disappears.
+    """
+    entity_ids = {entry["entity_id"] for entry in _entities(storage)}
+    prefixes = {
+        match.group(1)
+        for entity_id in entity_ids
+        if (match := ENTITY_RE.match(entity_id))
+    }
+    return sorted(
+        prefix
+        for prefix in prefixes
+        if f"climate.{prefix}_climate" in entity_ids
+        and f"water_heater.{prefix}_tank" not in entity_ids
+    )
+
+
+def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, Any]:
+    """One view comparing every ATA unit's actual fan speed against its mode.
+
+    The sensor is a device_class=ENUM, so it has no long-term statistics and a
+    statistics-graph cannot show it: history-graph renders the states as a
+    timeline instead, which is the only way to see Auto modulating.
+
+    Mock units carry a series too, derived rather than modulating, so a mock row
+    reading `unknown` is a fault rather than a gap in the mock.
+    """
+    fans = [f"sensor.{prefix}_actual_fan_speed" for prefix in prefixes]
+    climates = [f"climate.{prefix}_climate" for prefix in prefixes]
+    return {
+        "type": "sections",
+        "max_columns": 4,
+        "title": "ATA fan speed",
+        "path": "ata-fan",
+        "sections": [
+            {
+                "type": "grid",
+                # Full width: these are wide time series read side by side, and
+                # the default two-column grid squeezes them unreadably.
+                "column_span": 4,
+                "cards": [
+                    _heading("Actual fan speed"),
+                    {
+                        "type": "history-graph",
+                        "hours_to_show": 24,
+                        "title": "Actual fan speed (24h) - never Auto, Off means powered down",
+                        "entities": fans,
+                        "grid_options": {"columns": "full", "rows": "auto"},
+                    },
+                    _heading("Changes as text, fan and mode interleaved"),
+                    {
+                        "type": "logbook",
+                        "hours_to_show": 24,
+                        "target": {"entity_id": fans + climates},
+                        "grid_options": {"columns": "full"},
+                    },
+                    {
+                        "type": "markdown",
+                        "title": "Current",
+                        # ATA units have no power switch entity: power is the
+                        # climate entity's state, off versus a mode, and it is
+                        # what explains an actual speed of off.
+                        "content": "| unit | power / mode | requested | actual |"
+                        "\n|---|---|---|---|\n"
+                        + "\n".join(
+                            f"| {label(prefix, names)} "
+                            f"| {{{{ states('climate.{prefix}_climate') }}}} "
+                            f"| {{{{ state_attr('climate.{prefix}_climate', 'fan_mode') }}}} "
+                            f"| {{{{ states('sensor.{prefix}_actual_fan_speed') }}}} |"
+                            for prefix in prefixes
+                        ),
+                        "grid_options": {"columns": "full"},
+                    },
+                ],
+            }
+        ],
+    }
+
+
 def device_names(storage: Path) -> dict[str, str]:
     """Map entity-id prefix -> the device's display name, read at runtime.
 
     Device names are personal data for real units, so they are looked up from
     the local registry rather than written into this file.
+
+    Joined entity -> device_id -> device rather than matched on the entity id's
+    `<uuid first 4>_<uuid last 4>` short form, because that short form is NOT
+    unique: the mock unit `bf8d5678-...-456789ab5119` and the real
+    `bf8d1e84-...-25b87a945119` both render `bf8d_5119`, and matching on it gave
+    the mock unit the real device's name. The entity registry's device_id is
+    exact.
     """
-    registry = json.loads((storage / "core.device_registry").read_text())
-    names = {}
-    for device in registry["data"]["devices"]:
-        name = device.get("name_by_user") or device.get("name") or ""
-        for identifier in device.get("identifiers", []):
-            if len(identifier) > 1:
-                names[str(identifier[1])] = name
+    devices = json.loads((storage / "core.device_registry").read_text())
+    by_id = {
+        device["id"]: (device.get("name_by_user") or device.get("name") or "")
+        for device in devices["data"]["devices"]
+    }
+    names: dict[str, str] = {}
+    for entry in _entities(storage):
+        match = ENTITY_RE.match(entry["entity_id"])
+        name = by_id.get(entry.get("device_id") or "")
+        if match and name:
+            names[match.group(1)] = name
     return names
 
 
 def label(prefix: str, names: dict[str, str]) -> str:
     """A human view title, preferring the device's own name."""
-    short = prefix.split("_melcloudhome_")[1]
     kind = "mock" if prefix.startswith(MOCK_BUILDINGS) else "real"
-    for unit_id, name in names.items():
-        clean = unit_id.replace("-", "")
-        if name and short == f"{clean[:4]}_{clean[-4:]}":
-            return f"{name} ({kind})"
-    building = prefix.split("_melcloudhome_")[0].replace("_", " ").title()
-    return f"{building} {short} ({kind})"
+    name = names.get(prefix)
+    if name:
+        return f"{name} ({kind})"
+    building, _, short = prefix.partition("_melcloudhome_")
+    return f"{building.replace('_', ' ').title()} {short} ({kind})"
 
 
 def _heading(text: str) -> dict[str, Any]:
@@ -250,11 +351,13 @@ def main() -> int:
     args = parser.parse_args()
 
     units = find_atw_units(args.storage)
+    ata = find_ata_units(args.storage)
     names = device_names(args.storage)
     if args.mock_only:
         units = [u for u in units if u[0].startswith(MOCK_BUILDINGS)]
-    if not units:
-        print("No ATW units found - is the integration configured?")
+        ata = [p for p in ata if p.startswith(MOCK_BUILDINGS)]
+    if not units and not ata:
+        print("No units found - is the integration configured?")
         return 1
 
     out = args.out or args.storage / DASHBOARD
@@ -264,7 +367,8 @@ def main() -> int:
         "key": DASHBOARD,
         "data": {
             "config": {
-                "views": [build_view(p, z, names) for p, z in units],
+                "views": [build_view(p, z, names) for p, z in units]
+                + ([build_ata_fan_view(ata, names)] if ata else []),
             }
         },
     }
@@ -275,9 +379,12 @@ def main() -> int:
         envelope = existing
 
     out.write_text(json.dumps(envelope, indent=1) + "\n")
-    print(f"Wrote {out} with {len(units)} view(s):")
+    total = len(units) + (1 if ata else 0)
+    print(f"Wrote {out} with {total} view(s):")
     for prefix, has_zone2 in units:
         print(f"  {label(prefix, names)}{' [zone 2]' if has_zone2 else ''}")
+    if ata:
+        print(f"  ATA fan speed [{len(ata)} unit(s)]")
     print("Restart HA to pick it up: make dev-restart")
     return 0
 

@@ -10,6 +10,7 @@ from .parsing import (
     Reading,
     parse_bool as _parse_bool,
     parse_float as _parse_float,
+    strip_line_breaks,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -275,7 +276,7 @@ class AirToWaterUnit:
         return cls(
             # Identity
             id=data["id"],
-            name=data.get("givenDisplayName", "Unknown"),
+            name=strip_line_breaks(data.get("givenDisplayName") or "Unknown"),
             # Power
             power=power,
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
