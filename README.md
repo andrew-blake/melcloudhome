@@ -12,9 +12,9 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.4.2
 
-**Energy totals were silently freezing.** From 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request this integration was making, so energy sensors quietly stopped counting while still looking healthy: no error, no "unavailable", just a flat line on the Energy dashboard. The integration now asks for a window MELCloud answers in full, and anything missed while a sensor was stuck is picked up on the first update after you upgrade.
-
 **A new "Actual fan speed" sensor for air conditioning units.** It shows the speed a unit is really running at, which on units set to "Auto" was not visible anywhere before. Contributed by Christian Lackas.
+
+**Energy totals were silently freezing.** From 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request this integration was making, so energy sensors quietly stopped counting while still looking healthy: no error, no "unavailable", just a flat line on the Energy dashboard. The integration now asks for a window MELCloud answers in full, and anything missed while a sensor was stuck is picked up on the first update after you upgrade.
 
 **More reliable outdoor temperature readings.** Heat pump (ATW) outdoor temperature could get stuck at an incorrect value with no way to tell it was wrong - it's now read from the same source as the MELCloud Home app's Reports → Comfort graph. Air conditioning (ATA) outdoor temperature could occasionally fail to update because of an error from the MELCloud API; it's now more reliable, at the cost of showing "unknown" a bit sooner for units left idle for more than 2 days.
 
