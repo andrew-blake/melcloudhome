@@ -5,15 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [2.4.2] - unreleased
 
 ### Added
 
 - **New "Actual fan speed" sensor for air conditioning units**: the speed the unit is really running, which on units set to "Auto" was not visible before. It comes from the indoor unit, so it lags a little, and it follows the fan rather than the compressor.
+- Outdoor temperature now tells you when it stops working. A failed poll writes one warning naming the unit, and one more when it recovers; the sensor keeps its last value meanwhile. A diagnostics download also records when each unit's outdoor temperature was last fetched.
 - Heat pump (ATW) flow and return temperature sensors now include a "last reading" timestamp, showing when the unit actually recorded the value rather than when Home Assistant fetched it. MELCloud's telemetry for these can be hours old, or fail for a whole polling cycle while the sensor keeps showing its previous value, and until now there was no way to tell. Outdoor temperature sensors have had this since v2.4.0. (#200)
 
 ### Changed
+
+- A fan speed the integration does not recognise now shows that unit's "Actual fan speed" sensor as "unknown" and logs one warning naming the unit, instead of that sensor failing. Every other sensor on the unit keeps working. If you see that warning, please report the value so it can be added.
 
 - Because that "last reading" timestamp updates whenever a fresher reading arrives, heat pump flow and return temperature sensors — and outdoor temperature sensors — now register a state change on those updates even when the temperature itself is unchanged. An automation that triggers on any state change of these sensors will fire more often than before; trigger on the value with a `to`/`from` or a template condition if that matters to you. (#200)
 - Heat pump (ATW) flow and return temperature sensors now show "unknown" when MELCloud stops reporting that temperature, instead of holding the last value they saw. A number that has stopped updating looks exactly like a live one on a dashboard or a history graph, which is the problem this removes; the "last reading" timestamp is still there for cases where MELCloud is reporting normally and the unit itself is simply idle.
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Energy totals stopped increasing.** Since 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request the integration was making, so energy sensors silently stopped counting while still appearing to work: no error, no "unavailable", and the Energy dashboard drawing a flat line rather than a gap. The integration now asks for a narrower window that MELCloud answers in full. Nothing is lost - the readings missed while a sensor was stuck are picked up on the first update after upgrading. (#294)
+- Energy readings no longer produce "decrease" warnings in the Home Assistant log. Recorded totals were correct throughout, so there is no history to repair.
 - **Outdoor and heat pump water temperatures were showing readings older than they appeared.** Readings are timestamped in your unit's own local time, but the integration was reading them as UTC — so it both asked for the wrong window, missing the most recent hour or two of data, and then reported what it did get as more recent than it was. If your unit is not in a UTC timezone, these sensors now update sooner and the "last reading" time is accurate. UK installations in winter were unaffected; everywhere else was out by the local offset.
 - **Heat pump (ATW) flow and return temperatures update far more reliably.** The MELCloud request they used was failing most of the time: measured at 89% of attempts over two days on a real installation, while every other request the integration makes succeeded, so these sensors regularly sat on a reading hours old. They now come from the same source as the MELCloud Home app's water temperature chart, which returns every temperature in one request and fails far less often. A reading can still be older than the last hour when the heat pump itself stops sending water temperatures while it is idle — several hours is normal for a unit that is doing nothing. Some of the staleness seen before this release was the timezone problem fixed above rather than idle hardware, so expect fresher readings than that measurement suggested. The "last reading" timestamp is there to show you when that is happening.
 - Heat pump (ATW) outdoor temperature could get stuck at an incorrect value (e.g. a value of 0) with no way to tell it was wrong. It's now read from the same source as the MELCloud Home app's Reports → Comfort graph, which doesn't have this problem. (#251)
@@ -29,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Heat pumps (ATW) no longer get sensors for hardware they don't have.** Up to seven sensors per single-zone heat pump were being created that could never show a real reading: the three Zone 2 sensors, and Flow/Return Temperature Zone 1 and Flow/Return Temperature Boiler. MELCloud reports absent hardware inconsistently — zone 2 comes back as the text "None", and the zone-1 and boiler temperatures come back as a constant 25 °C — so both looked like real data. On a single-zone system the plain Flow Temperature and Return Temperature sensors are that system's zone 1 flow and return. The removed sensors now show as unavailable and Home Assistant offers to delete them: click the entity, then the cog, then Delete. (#264, #266)
 - Dutch and Vietnamese names for the holiday mode start and end date sensors read as instructions ("Start holiday mode") rather than labels. They now read as names, matching every other language. (#255)
 - Diagnostics downloads could still contain a real device or building name inside entity IDs, even though the named fields were already redacted. Anything before the `melcloudhome_` marker in an entity ID is now replaced with a placeholder, so a diagnostics file attached to a bug report no longer reveals them. (#262)
-
 
 ## [2.4.1] - 2026-08-14
 
@@ -44,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - New devices (and fresh installs) will get entity IDs that follow your Home Assistant language, not just English, for a few diagnostic sensors — including the COP sensor and the minimum/maximum frost and overheat protection sensors — now that they're generated correctly from the translated name rather than the raw internal key. Existing entities are unaffected.
-
 
 ## [2.4.0] - 2026-08-01
 
@@ -71,7 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Heat pump flow and return temperature sensors could be missing after a restart. They were only created if a reading had already arrived, so a brief connection problem while Home Assistant was starting made them disappear until you reloaded the integration. They are now always created, and show as "unknown" if your heat pump does not report that particular reading - if several of them stay "unknown" permanently, please let us know in a GitHub issue. (#220)
 - Outdoor temperature sensors could go missing after a restart. The sensor was only created if its first reading happened to arrive during startup, so a brief connection problem could drop it for the whole session until you reloaded - and on air conditioning units that share one outdoor unit, one could disappear while the other kept working. They are now always created and show as "unknown" until a reading arrives. (#226)
 
-
 ## [2.3.5] - 2026-07-06
 
 ### Added
@@ -82,7 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Corrupt hourly energy readings from the MELCloud cloud (~6,553 kWh for a single hour) are now rejected instead of being added to the energy sensor, which could permanently inflate totals and corrupt the Energy Dashboard. A warning is logged once per rejected reading. (#161)
 - Installs that already accumulated a corrupt reading have the affected energy sensor reset to 0 automatically on upgrade, and it counts normally from there. Note this does not repair Energy Dashboard history: spikes already recorded there need a one-time manual fix (see `tools/README.md`). (#161)
-
 
 ## [2.3.4] - 2026-06-18
 
@@ -98,7 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Sensitive data (email addresses, IP addresses) could appear in diagnostic reports and log files (#130)
 
-
 ## [2.3.3] - 2026-06-04
 
 ### Added
@@ -110,20 +109,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Outdoor temperature sensor stuck `unavailable` for mostly-idle units. The integration now uses the `Daily` report period instead of `Hourly` — the hourly window silently drops data for units inactive for more than ~1 hour. Units idle at startup are also re-probed every 30 minutes so the sensor recovers automatically when the AC next runs, without needing an HA restart. ([#110](https://github.com/andrew-blake/melcloudhome/issues/110))
 
-
 ## [2.3.2] - 2026-04-22
 
 ### Added
 
 - Greek (el) translations (thanks @h-ram)
 
-
 ## [2.3.1] - 2026-04-20
 
 ### Fixed
 
 - Vertical swing mode "Swing" silently ignored on A/C units without horizontal vanes (e.g. MSZ-HR25VFK2). The integration now sends vane commands per axis — matching the official MELCloud app — instead of always sending both axes together. ([#100](https://github.com/andrew-blake/melcloudhome/issues/100))
-
 
 ## [2.3.0] - 2026-04-16
 
@@ -145,7 +141,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Swedish (sv) translations (thanks @MHultman)
 - HACS default repository preparation: render_readme, workflow_dispatch validation trigger (thanks @sginestrini)
 
-
 ## [2.2.4] - 2026-04-04
 
 ### Added
@@ -156,7 +151,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated pre-commit hooks: ruff v0.8.4→v0.15.9, mypy v1.13.0→v1.20.0, pre-commit-hooks v5→v6, codespell v2.3.0→v2.4.2
 
-
 ## [2.2.3] - 2026-04-02
 
 ### Added
@@ -165,13 +159,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Finnish (fi) translations (thanks @zrajna)
 - Portuguese (pt) translations (thanks @tixastronauta)
 
-
 ## [2.2.2] - 2026-04-02
 
 ### Added
 
 - Italian (it) translations (thanks @sginestrini)
-
 
 ## [2.2.1] - 2026-02-19
 
