@@ -29,21 +29,11 @@ DEFAULT_ENABLE_WEBSOCKET = True
 
 # Energy polling configuration
 UPDATE_INTERVAL_ENERGY = timedelta(minutes=30)
-# The energy endpoint truncates its response to 24 hours from "from" and drops
-# everything after it, with no error and no marker. A 48-hour window therefore
-# never returned the most recent 24 hours at all: the per-hour ledger stopped
-# gaining entries, no delta was ever added, and the cumulative total froze while
-# the sensor stayed available and the poll kept succeeding.
-#
-# Measured 2026-08-29 against one unit, same minute, only the window varying:
-#   48h -> newest bucket 08-28 07:00     36h -> 08-28 19:00
-#   30h -> 08-29 01:00                   24h -> 08-29 07:00
-#   23h -> 08-29 08:00 (the current hour)
-# In every case the newest bucket sits 24 hours after "from".
-#
-# 23, not 24: "from" is floored to the hour, so at 24 the cap lands exactly on
-# the current hour's start and the in-progress hour is dropped. 23 keeps the cap
-# past it for the whole hour.
+# The endpoint truncates its response 24 hours after "from" and drops the rest,
+# with no error and no marker, so a wider window silently loses the newest hours
+# and the cumulative total stops growing. 23 rather than 24 because "from" is
+# floored to the hour: at 24 the cut lands on the current hour's start and drops
+# the hour in progress. Measured 2026-08-29, see #292.
 DATA_LOOKBACK_HOURS_ENERGY = 23
 
 # Sanity ceiling for a single hourly energy reading (kWh). The MELCloud cloud
