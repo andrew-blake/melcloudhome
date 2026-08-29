@@ -76,6 +76,10 @@ VANE_NUMERIC_TO_WORD = {
 # and nothing has been observed above "Five". Do not add speculative values
 # here: an unlisted value warns once and reads `unknown`, and that warning is
 # the only way we would find out the range is wider.
+#
+# Adding an observed value is two places, not one: the sensor's `options` derive
+# from this list, but each of the 14 files under `translations/` needs a
+# matching `state` key or the new value shows untranslated everywhere.
 ACTUAL_FAN_SPEEDS = [
     "Off",
     "One",

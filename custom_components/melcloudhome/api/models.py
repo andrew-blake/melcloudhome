@@ -59,9 +59,9 @@ class Building:
         # Parse A2W units (NEW)
         a2w_units_data = data.get(const_atw.API_FIELD_AIR_TO_WATER_UNITS, [])
 
-        # Flattened before the log below as well as the field: a building name
-        # is app-chosen too (see models_ata.from_dict).
-        building_name = strip_line_breaks(data.get("name", "Unknown"))
+        # `or` rather than a get default: an explicit null would otherwise
+        # stringify to "None" and reach HA as a suggested area of that name.
+        building_name = strip_line_breaks(data.get("name") or "Unknown")
 
         # DEBUG: Log building context for ATW units
         if a2w_units_data:

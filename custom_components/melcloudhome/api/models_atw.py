@@ -276,9 +276,7 @@ class AirToWaterUnit:
         return cls(
             # Identity
             id=data["id"],
-            # See models_ata.from_dict: an app-chosen name on a shared building
-            # is somebody else's string, so flatten it at the boundary.
-            name=strip_line_breaks(data.get("givenDisplayName", "Unknown")),
+            name=strip_line_breaks(data.get("givenDisplayName") or "Unknown"),
             # Power
             power=power,
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),

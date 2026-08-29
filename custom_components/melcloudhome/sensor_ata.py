@@ -73,8 +73,6 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
     ),
     # The speed the unit runs at, invisible under SetFanSpeed=Auto. "auto" is
     # not among the options because a running unit reports the speed it picked.
-    # numberOfFanSpeeds does NOT cap the value, despite what this comment said
-    # when the sensor was added - see ACTUAL_FAN_SPEEDS for the counter-example.
     ATASensorEntityDescription(
         key="actual_fan_speed",
         translation_key="actual_fan_speed",

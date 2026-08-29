@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from typing import Any
 
 from .const_ata import (
@@ -22,53 +23,44 @@ from .parsing import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Keyed by lowercase so a change of case upstream reads as the same speed
-# rather than as an unknown one.
-_ACTUAL_FAN_SPEED_BY_KEY = {speed.lower(): speed for speed in ACTUAL_FAN_SPEEDS}
 
-# Unknown values already logged. from_dict runs on every poll and every
-# socket-triggered refresh, so without this a single unrecognised value would
-# write a warning every few seconds for as long as the unit reports it.
-#
-# ponytail: unbounded in principle, capped in practice. Only distinct unknown
-# values grow it, and the cap stops a unit that reports garbage from growing it
-# without limit - at the cost of going quiet after that many. Swap for an
-# LRU if a real device ever reaches the cap.
-_MAX_WARNED_FAN_SPEEDS = 20
-_warned_fan_speeds: set[str] = set()
+@lru_cache(maxsize=20)
+def _warn_unknown_fan_speed(speed: str, unit_name: str) -> None:
+    """Log an unrecognised fan speed, once per unit that reports it.
+
+    Cached for the side effect rather than the return value: `from_dict` runs on
+    every poll and every socket-triggered refresh, so without this a single
+    unrecognised value would write a warning every few seconds. `maxsize` bounds
+    the record and evicts the oldest, so a unit reporting varying rubbish cannot
+    grow it without limit or silence it permanently.
+    """
+    _LOGGER.warning(
+        "%s reported the fan speed %s, which this integration does not "
+        "recognise, so its actual fan speed sensor will show as unknown",
+        unit_name,
+        strip_line_breaks(speed),
+    )
 
 
-def _parse_actual_fan_speed(value: object, unit_name: object) -> str | None:
+def _parse_actual_fan_speed(value: object, unit_name: str) -> str | None:
     """Return a recognised ActualFanSpeed word, or None having warned once.
 
-    The sensor built on this field is a device_class=ENUM whose options come
-    from ACTUAL_FAN_SPEEDS, and HA raises on a state write outside an ENUM's
-    options. Returning None instead leaves the sensor reading `unknown`, which
-    degrades one sensor rather than failing the write.
+    The sensor built on this field is a device_class=ENUM, and HA raises on a
+    state write outside an ENUM's options. Returning None leaves the sensor
+    reading `unknown`, degrading one sensor rather than failing the write.
+
+    Numeric forms are rejected rather than mapped. The socket sends this field
+    numerically but discards values before they reach here, and every captured
+    /context serves words, so a numeric map would handle a variation never seen
+    on this path and would consume the warning that is how we would find out.
     """
     if value is None or value == "":
         return None
-    known = _ACTUAL_FAN_SPEED_BY_KEY.get(str(value).lower())
-    if known is not None:
-        return known
     text = str(value)
-    if (
-        text not in _warned_fan_speeds
-        and len(_warned_fan_speeds) < _MAX_WARNED_FAN_SPEEDS
-    ):
-        _warned_fan_speeds.add(text)
-        _LOGGER.warning(
-            "%s reported the fan speed %s, which this integration does not "
-            "recognise, so its actual fan speed sensor will show as unknown",
-            strip_line_breaks(unit_name),
-            strip_line_breaks(value),
-        )
+    if text in ACTUAL_FAN_SPEEDS:
+        return text
+    _warn_unknown_fan_speed(text, unit_name)
     return None
-
-
-# ==============================================================================
-# Air-to-Air (A/C) Models
-# ==============================================================================
 
 
 @dataclass
@@ -253,10 +245,7 @@ class AirToAirUnit:
         error_code_value = settings.get("ErrorCode", "")
         error_code = error_code_value if error_code_value else None
 
-        # The display name is chosen in the MELCloud app, so on a shared
-        # building it is somebody else's string. Flatten it once here and every
-        # log line and entity name built from it is safe by construction.
-        name = strip_line_breaks(data.get("givenDisplayName", "Unknown"))
+        name = strip_line_breaks(data.get("givenDisplayName") or "Unknown")
 
         return cls(
             id=data["id"],

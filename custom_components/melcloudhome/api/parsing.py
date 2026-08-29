@@ -100,11 +100,25 @@ def strip_line_breaks(value: object) -> str:
     log (CWE-117) - which matters most when that log is being read to diagnose a
     fault, or pasted into an issue.
 
-    Unconditional on purpose: CodeQL's `py/log-injection` only recognizes a
-    helper as a barrier when every path through it strips, so adding a branch
-    here would silently stop this working for every caller.
+    Covers the separators `str.splitlines()` honours, not just CR/LF, because a
+    browser log viewer or log shipper splits on those too. Every one becomes a
+    space rather than vanishing: the same string is a Home Assistant device
+    name, where dropping a character would silently corrupt what a user sees.
+
+    Unconditional and written as a chain on purpose: CodeQL's `py/log-injection`
+    recognizes a helper as a barrier only when every path through it strips, and
+    it matches chained `.replace()` calls, so a branch or a loop here would
+    silently stop this working for every caller.
     """
-    return str(value).replace("\r", "").replace("\n", " ")
+    return (
+        str(value)
+        .replace("\r\n", " ")
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("\u2028", " ")
+        .replace("\u2029", " ")
+        .replace("\x85", " ")
+    )
 
 
 class Reading(NamedTuple):

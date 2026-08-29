@@ -322,33 +322,30 @@ class TestActualFanSpeedGuard:
 
     @pytest.fixture(autouse=True)
     def _clear_warned(self) -> Iterator[None]:
-        """The warn-once record is module state, so it leaks between tests."""
-        models_ata._warned_fan_speeds.clear()
+        """The warn-once record is an lru_cache, so it leaks between tests."""
+        models_ata._warn_unknown_fan_speed.cache_clear()
         yield
-        models_ata._warned_fan_speeds.clear()
+        models_ata._warn_unknown_fan_speed.cache_clear()
 
     def test_unknown_value_rejected(self) -> None:
         """Anything outside the six words parses to None."""
         assert self._unit("Turbo").actual_fan_speed is None
 
     def test_next_ordinal_rejected(self) -> None:
-        """The realistic unknown value, not a made-up word.
-
-        `numberOfFanSpeeds` does not bound this field: a 3-speed unit was seen
-        reporting "Four" (see ACTUAL_FAN_SPEEDS), so a unit at the top of a
-        five-speed range reporting "Six" is the case this guard most plausibly
-        has to survive.
-        """
+        """The realistic unknown value rather than a made-up word."""
         assert self._unit("Six").actual_fan_speed is None
+
+    def test_numeric_rejected(self) -> None:
+        """The socket words this field numerically; /context has never done so.
+
+        Mapping numerics would handle a variation never seen on this path, and
+        would consume the warning that is how we would learn of it.
+        """
+        assert self._unit("2").actual_fan_speed is None
 
     def test_empty_string_rejected(self) -> None:
         """An empty value is absence, not a speed."""
         assert self._unit("").actual_fan_speed is None
-
-    def test_case_change_still_recognised(self) -> None:
-        """A case change upstream is the same speed, not an unknown one."""
-        assert self._unit("FOUR").actual_fan_speed == "Four"
-        assert self._unit("four").actual_fan_speed == "Four"
 
     def test_warns_once_per_value(self, caplog: pytest.LogCaptureFixture) -> None:
         """from_dict runs every poll, so repeats must not re-warn."""
@@ -375,14 +372,6 @@ class TestActualFanSpeedGuard:
             self._unit("Turbo\nERROR:root:forged", name="Unit\r\nfaked")
         assert "\n" not in caplog.records[0].getMessage()
         assert "\r" not in caplog.records[0].getMessage()
-
-    def test_warning_stops_at_the_cap(self, caplog: pytest.LogCaptureFixture) -> None:
-        """A unit reporting garbage must not grow the record without limit."""
-        with caplog.at_level(logging.WARNING):
-            for i in range(models_ata._MAX_WARNED_FAN_SPEEDS + 5):
-                self._unit(f"Bogus{i}")
-        assert len(models_ata._warned_fan_speeds) == models_ata._MAX_WARNED_FAN_SPEEDS
-        assert len(caplog.records) == models_ata._MAX_WARNED_FAN_SPEEDS
 
 
 class TestNameLineBreaks:

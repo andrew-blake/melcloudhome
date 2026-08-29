@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,13 @@ WATER_TEMPS = (
 ENTITY_RE = re.compile(r"^[a-z_]+\.(.+_melcloudhome_[0-9a-f]{4}_[0-9a-f]{4})_")
 
 
+@lru_cache(maxsize=1)
+def _entities(storage: Path) -> tuple[dict[str, Any], ...]:
+    """The entity registry, parsed once for the three callers that want it."""
+    registry = json.loads((storage / "core.entity_registry").read_text())
+    return tuple(registry["data"]["entities"])
+
+
 def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
     """Return (entity_id_prefix, has_zone2) for each ATW unit in the registry.
 
@@ -68,10 +76,9 @@ def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
     entity. Both are capability-gated at creation (#266), so the registry is
     the honest source for what a unit actually has.
     """
-    registry = json.loads((storage / "core.entity_registry").read_text())
     prefixes: set[str] = set()
     entity_ids: set[str] = set()
-    for entry in registry["data"]["entities"]:
+    for entry in _entities(storage):
         entity_id = entry["entity_id"]
         entity_ids.add(entity_id)
         match = ENTITY_RE.match(entity_id)
@@ -93,8 +100,7 @@ def find_ata_units(storage: Path) -> list[str]:
     no water heater beside it. Reading the registry rather than assuming keeps
     this correct when a shared unit disappears.
     """
-    registry = json.loads((storage / "core.entity_registry").read_text())
-    entity_ids = {entry["entity_id"] for entry in registry["data"]["entities"]}
+    entity_ids = {entry["entity_id"] for entry in _entities(storage)}
     prefixes = {
         match.group(1)
         for entity_id in entity_ids
@@ -142,12 +148,6 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
                     },
                     _heading("Changes as text, fan and mode interleaved"),
                     {
-                        # No second history-graph for the climate entities: for
-                        # a climate entity that card plots current and target
-                        # temperature, not hvac state, so it showed sixteen
-                        # temperature series under a title promising modes. The
-                        # logbook gives what correlation actually needs - fan
-                        # and power changes in one chronological list.
                         "type": "logbook",
                         "hours_to_show": 24,
                         "target": {"entity_id": fans + climates},
@@ -194,9 +194,8 @@ def device_names(storage: Path) -> dict[str, str]:
         device["id"]: (device.get("name_by_user") or device.get("name") or "")
         for device in devices["data"]["devices"]
     }
-    entities = json.loads((storage / "core.entity_registry").read_text())
     names: dict[str, str] = {}
-    for entry in entities["data"]["entities"]:
+    for entry in _entities(storage):
         match = ENTITY_RE.match(entry["entity_id"])
         name = by_id.get(entry.get("device_id") or "")
         if match and name:
