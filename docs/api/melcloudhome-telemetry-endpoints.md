@@ -176,6 +176,14 @@ Retrieves energy consumption data over a specified time range.
 - `interval` - Aggregation interval: `Hour`, `Day`, `Week`, `Month`
 - `measure` - `cumulative_energy_consumed_since_last_upload`
 
+> **⚠️ The response is truncated 24 hours after `from`**, whatever `to` says, with
+> no error and no marker in the body. A window wider than 24 hours therefore
+> silently omits its most recent hours: request `from` = now - 48h and the newest
+> bucket returned is 24 hours old. The cut is anchored on `from`, not on the first
+> bucket holding data. Measured 2026-08-29 across six units; see issue #294. The
+> integration keeps its window under 24 hours for this reason
+> (`DATA_LOOKBACK_HOURS_ENERGY`).
+
 **Example Request:**
 ```
 GET /telemetry/telemetry/energy/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from=2025-11-16%2000:00&to=2025-11-16%2023:59&interval=Hour&measure=cumulative_energy_consumed_since_last_upload
