@@ -14,6 +14,7 @@ Entries must be seeded in the wrapper shape {"version": 1, "key": ..., "data":
 Run with: make test-integration
 """
 
+import asyncio
 import copy
 import hashlib
 from datetime import UTC, datetime, timedelta
@@ -149,8 +150,19 @@ EMAIL = "test@example.com"
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "empty_payload",
+    [
+        # What _save_energy_data writes when empty (truthy dict) - the normal
+        # steady state for an ATA-only install's ATW file
+        {"cumulative": {}, "hour_values": {}},
+        # A falsy-but-present payload: the only shape that separates the
+        # required `is None` guard from a truthiness guard
+        {},
+    ],
+)
 async def test_migration_does_not_rerun_when_new_key_present_but_empty(
-    hass: HomeAssistant, hass_storage: dict[str, Any]
+    hass: HomeAssistant, hass_storage: dict[str, Any], empty_payload: dict
 ) -> None:
     """Case 1: the guard is `is None`, not truthiness.
 
@@ -163,9 +175,7 @@ async def test_migration_does_not_rerun_when_new_key_present_but_empty(
     hass_storage[LEGACY_ATA_KEY] = stored(
         LEGACY_ATA_KEY, v2_payload({UNIT_A: 25.7}, sentinel)
     )
-    hass_storage[ata_key(EMAIL)] = stored(
-        ata_key(EMAIL), {"cumulative": {}, "hour_values": {}}
-    )
+    hass_storage[ata_key(EMAIL)] = stored(ata_key(EMAIL), empty_payload)
 
     client = make_mock_client(
         context_for_unit(UNIT_A), energy_response([(sentinel, 800.0)])
@@ -228,7 +238,14 @@ async def test_legacy_file_is_never_written(
 async def test_single_entry_migrates_with_totals_unchanged(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    """Case 3: the path almost every real user is on."""
+    """Case 3: the path almost every real user is on.
+
+    The first energy poll is gated on an event so the migration save can be
+    observed on its own: the save must be unconditional at setup, not left
+    for the first poll to write. A restart in the gap would otherwise
+    re-migrate from the frozen legacy file, dropping everything accumulated
+    in between.
+    """
     sentinel = recent_hour(2)
     hass_storage[LEGACY_ATA_KEY] = stored(
         LEGACY_ATA_KEY, v2_payload({UNIT_A: 25.7}, sentinel)
@@ -237,8 +254,28 @@ async def test_single_entry_migrates_with_totals_unchanged(
     client = make_mock_client(
         context_for_unit(UNIT_A), energy_response([(sentinel, 800.0)])
     )
+    release_poll = asyncio.Event()
+
+    async def gated_energy_response(*args: Any, **kwargs: Any) -> dict:
+        await release_poll.wait()
+        return energy_response([(sentinel, 800.0)])
+
+    client.get_energy_data = AsyncMock(side_effect=gated_energy_response)
+
     with patch(MOCK_CLIENT_PATH, return_value=client):
-        await setup_entry(hass, make_entry(EMAIL, unique_id=EMAIL))
+        entry = make_entry(EMAIL, unique_id=EMAIL)
+        entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # The startup fetch is parked on the event, so the only thing that
+        # can have written the new key is the migration save itself
+        assert hass_storage[ata_key(EMAIL)]["data"]["cumulative"][UNIT_A][
+            "consumed"
+        ] == pytest.approx(25.7)
+
+        release_poll.set()
+        await wait_for_startup_fetch(hass, entry)
 
     state = hass.states.get(SENSOR_A)
     assert state is not None
