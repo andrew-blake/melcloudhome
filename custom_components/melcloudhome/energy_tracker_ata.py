@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Storage key for ATA energy data
+# Base storage key: pre-#290 shared (legacy) name, and the stem of the
+# per-account key "melcloudhome_energy_data_<account hash>". Not dead code:
+# the migration in EnergyTrackerBase.async_setup still reads the legacy file.
 STORAGE_KEY = "melcloudhome_energy_data"
 
 
@@ -36,6 +38,7 @@ class ATAEnergyTracker(EnergyTrackerBase):
             [Callable[[], Awaitable[Any]], str], Awaitable[Any]
         ],
         get_coordinator_data: Callable[[], UserContext | None],
+        account_suffix: str,
     ) -> None:
         """Initialize ATA energy tracker.
 
@@ -44,8 +47,9 @@ class ATAEnergyTracker(EnergyTrackerBase):
             client: MELCloud Home API client
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_coordinator_data: Callable to get current coordinator data
+            account_suffix: Per-account storage suffix (account_storage_suffix)
         """
-        super().__init__(hass, STORAGE_KEY)
+        super().__init__(hass, f"{STORAGE_KEY}_{account_suffix}", STORAGE_KEY)
         self._client = client
         self._execute_with_retry = execute_with_retry
         self._get_coordinator_data = get_coordinator_data

@@ -82,6 +82,12 @@ async def async_get_config_entry_diagnostics(
             "update_interval": coordinator.update_interval.total_seconds()
             if coordinator.update_interval
             else None,
+            # The account hash in the key is one-way; without this a support
+            # request cannot tell which .storage energy file is this entry's
+            "energy_storage_keys": {
+                "ata": coordinator.energy_tracker.storage_key,
+                "atw": coordinator.energy_tracker_atw.storage_key,
+            },
         },
         "websocket": coordinator.ws_diagnostics(),
         "entities": entity_data,

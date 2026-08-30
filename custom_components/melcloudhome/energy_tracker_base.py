@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -26,6 +27,32 @@ STORAGE_VERSION = 1
 
 # Wh to kWh conversion factor
 WH_TO_KWH_FACTOR = 1000.0
+
+
+def account_storage_suffix(config_entry: Any) -> str:
+    """Derive the per-account storage-key suffix from a config entry.
+
+    Keyed on a hash of ``unique_id`` (the lowercased account email, set in
+    config_flow) rather than ``entry_id``: entry_id changes when a user
+    removes and re-adds the integration, and keying on it would orphan every
+    such user's accumulated energy history (issue #290 fixed the shared-key
+    corruption; the fix must not regress re-add survival).
+
+    Neither null case may be stringified - ``sha256(str(None))`` would hash
+    every affected entry to the same suffix and rebuild #290 under a nicer
+    filename. ``unique_id`` is typed ``str | None``, so fall back to
+    ``entry_id``; a missing entry only occurs in tests (production always
+    passes one, __init__.py), so it gets a fixed sentinel and would fail
+    loudly in CI if two such coordinators ever shared storage.
+    """
+    if config_entry is None:
+        return "unscoped"
+    account_id: str = (
+        config_entry.unique_id
+        if config_entry.unique_id is not None
+        else config_entry.entry_id
+    )
+    return hashlib.sha256(account_id.encode()).hexdigest()[:12]
 
 
 class EnergyTrackerBase(ABC):
@@ -62,12 +89,17 @@ class EnergyTrackerBase(ABC):
         - async_update_energy_data(): Fetch and process energy data
     """
 
-    def __init__(self, hass: HomeAssistant, storage_key: str) -> None:
+    def __init__(
+        self, hass: HomeAssistant, storage_key: str, legacy_storage_key: str
+    ) -> None:
         """Initialize base energy tracker.
 
         Args:
             hass: Home Assistant instance
-            storage_key: Storage key for persistence (e.g., "melcloudhome_energy_data")
+            storage_key: Per-account storage key for persistence
+                (e.g., "melcloudhome_energy_data_<account hash>")
+            legacy_storage_key: Pre-#290 shared storage key, read once by the
+                migration in async_setup and never written
         """
         self._hass = hass
 
@@ -93,6 +125,15 @@ class EnergyTrackerBase(ABC):
 
         # Persistent storage
         self._store: Store = Store(hass, STORAGE_VERSION, storage_key)
+        self._legacy_storage_key = legacy_storage_key
+
+    @property
+    def storage_key(self) -> str:
+        """The per-account storage key (surfaced in diagnostics: the account
+        hash is one-way, so without this a support request cannot identify
+        which .storage file is theirs)."""
+        key: str = self._store.key
+        return key
 
     @abstractmethod
     async def async_update_energy_data(self, now: datetime | None = None) -> None:
@@ -111,6 +152,23 @@ class EnergyTrackerBase(ABC):
 
         # Load persisted energy data from storage
         stored_data = await self._store.async_load()
+
+        # One-shot migration from the pre-#290 shared storage key. The new
+        # key's absence is the migration guard, and it must be "is None",
+        # not truthiness: an empty-but-present file is normal steady state
+        # (ATA-only installs rewrite an empty ATW file every 30 minutes),
+        # and re-migrating one would land the legacy values as an upward
+        # jump that total_increasing books as real consumption.
+        #
+        # The legacy file is read, never written or deleted. It is the
+        # rollback safety net for an irreversible migration, and leaving it
+        # untouched is what makes concurrent migration of two entries safe.
+        migrating = stored_data is None
+        if migrating:
+            stored_data = await Store(
+                self._hass, STORAGE_VERSION, self._legacy_storage_key
+            ).async_load()
+
         if stored_data:
             cumulative_data = stored_data.get("cumulative", {})
             hour_values_data = stored_data.get("hour_values", {})
@@ -160,7 +218,21 @@ class EnergyTrackerBase(ABC):
         # sanity check existed, and bound storage growth (see GitHub issue
         # #161). Persist immediately so the correction survives even if no
         # new energy data arrives.
-        if self._clean_hour_values(datetime.now(UTC)):
+        cleaned = self._clean_hour_values(datetime.now(UTC))
+        if migrating:
+            _LOGGER.info(
+                "Migrated energy storage from %s to %s (%d unit(s))",
+                self._legacy_storage_key,
+                self._store.key,
+                len(self._energy_cumulative),
+            )
+            # Save unconditionally, even when nothing was migrated, so the
+            # new key exists and migration never re-runs from the frozen
+            # legacy file after a later restart. _save_energy_data swallows
+            # write failures, so a failed save re-migrates on next start;
+            # the loss is bounded by one poll interval and accepted.
+            await self._save_energy_data()
+        elif cleaned:
             await self._save_energy_data()
 
     @staticmethod
