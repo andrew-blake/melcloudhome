@@ -12,17 +12,13 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.4.2
 
-**A new "Actual fan speed" sensor for air conditioning units.** It shows the speed a unit is really running at, which on units set to "Auto" was not visible anywhere before. Contributed by Christian Lackas.
+**A new "Actual fan speed" sensor for air conditioning units.** It shows the speed a unit is really running at, which on units set to "Auto" was not visible anywhere before. It follows the fan rather than the compressor, so a low speed does not mean cooling has stopped. Contributed by [@lackas](https://github.com/lackas).
 
-**Energy totals were silently freezing.** From 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request this integration was making, so energy sensors quietly stopped counting while still looking healthy: no error, no "unavailable", just a flat line on the Energy dashboard. The integration now asks for a window MELCloud answers in full, and anything missed while a sensor was stuck is picked up on the first update after you upgrade.
+**Energy totals were silently freezing.** From 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request this integration was making, so energy sensors quietly stopped counting while still looking healthy: no error, no "unavailable", just a flat line on the Energy dashboard. Anything missed while a sensor was stuck is picked up on the first update after you upgrade.
 
-**More reliable outdoor temperature readings.** Heat pump (ATW) outdoor temperature could get stuck at an incorrect value with no way to tell it was wrong - it's now read from the same source as the MELCloud Home app's Reports → Comfort graph. Air conditioning (ATA) outdoor temperature could occasionally fail to update because of an error from the MELCloud API; it's now more reliable, at the cost of showing "unknown" a bit sooner for units left idle for more than 2 days.
+**Two things to check if you have a heat pump.** Single-zone systems were being given up to seven sensors for hardware they don't have; those now show as unavailable and Home Assistant offers to delete them. And flow and return temperature sensors now update whenever a fresher reading arrives, even when the temperature itself is unchanged, so an automation triggering on any state change of these will fire more often than before - trigger on the value instead.
 
-**Faster startup.** Your devices and entities now appear as soon as Home Assistant starts rather than waiting for the first readings to be fetched from MELCloud, which could take around a minute on installs with several devices. Energy and temperature sensors may briefly show "unknown" after a restart until their first value arrives.
-
-**You can now see how old a temperature reading is.** Heat pump flow and return temperature sensors gained a "last reading" timestamp, showing when the unit actually recorded the value. MELCloud's readings for these can be hours old, and previously a sensor that had stopped updating looked identical to one that was current. One consequence: an automation triggering on any state change of these sensors will fire more often, because the timestamp updates even when the temperature does not.
-
-**Fewer sensors that never worked.** Heat pumps no longer get Zone 2, Zone 1 or Boiler flow and return temperature sensors unless the hardware is actually there - MELCloud reported those as real values when they were not. Up to seven sensors per single-zone heat pump will show as unavailable after upgrading and can be deleted.
+Also in this release: heat pump water temperatures come from a more reliable source and show when the unit actually recorded them, outdoor temperature no longer gets stuck at a wrong value or misdated for units outside UTC and now warns in the log when it stops arriving, devices and entities appear as soon as Home Assistant starts rather than waiting for the first readings, Dutch and Vietnamese sensor names read as labels rather than instructions, and diagnostics downloads no longer leak device names through entity IDs.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
