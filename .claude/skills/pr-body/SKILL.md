@@ -52,6 +52,11 @@ The file opens with the title as an H1, so the one line a reviewer reads first
 is reviewed and versioned with the body rather than improvised at the command
 line.
 
+Write every paragraph, bullet and checkbox as one unwrapped line. GitHub
+renders a newline inside a paragraph as a line break, so hard-wrapped prose
+ships its wrapping to the reviewer; the prettier step in `handoff.md` repairs
+it, but composing unwrapped is what keeps the diff of a later edit readable.
+
 **Write the title last, from the finished body.** Composing the body is what
 establishes what the change is; a title written first frames the body instead,
 and you cannot tell whether a title merely repeats the Summary's opening
@@ -203,5 +208,6 @@ in front of them.
 | Explaining why a card, flag or graph exists                                                                 | Put it in the docstring                                                                                                        |
 | Arguing for the method instead of reporting what ran                                                        | Say what ran and what it showed. A Testing preamble that defends the approach is commentary                                    |
 | An em dash                                                                                                  | A colon where it introduces an elaboration, commas or brackets where it wraps an aside. A body full of them reads as generated |
+| Hard-wrapping paragraphs or bullets                                                                         | One line each; GitHub renders the wrap as line breaks                                                                          |
 | Every box checked when verification is partial                                                              | Leave the box unchecked and say why                                                                                            |
 | Overwriting a body that was handed over for editing                                                         | Read it first, keep the author's wording, report the change                                                                    |
