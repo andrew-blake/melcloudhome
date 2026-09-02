@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Storage key for ATW energy data
+# Base storage key: pre-#290 shared (legacy) name, and the stem of the
+# per-account key "melcloudhome_energy_data_atw_<account hash>". Not dead code:
+# the migration in EnergyTrackerBase.async_setup still reads the legacy file.
 STORAGE_KEY = "melcloudhome_energy_data_atw"
 
 
@@ -41,6 +43,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
             [Callable[[], Awaitable[Any]], str], Awaitable[Any]
         ],
         get_coordinator_data: Callable[[], UserContext | None],
+        account_suffix: str,
     ) -> None:
         """Initialize ATW energy tracker.
 
@@ -49,8 +52,9 @@ class ATWEnergyTracker(EnergyTrackerBase):
             client: ATW control client with energy API methods
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_coordinator_data: Callable to get current coordinator data
+            account_suffix: Per-account storage suffix (account_storage_suffix)
         """
-        super().__init__(hass, STORAGE_KEY)
+        super().__init__(hass, f"{STORAGE_KEY}_{account_suffix}", STORAGE_KEY)
         self._client = client
         self._execute_with_retry = execute_with_retry
         self._get_coordinator_data = get_coordinator_data

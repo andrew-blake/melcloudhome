@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- With two MELCloud accounts configured, each account's energy totals kept overwriting the other's, so energy sensors jumped backwards after restarts and corrupted long-term statistics. Each account now keeps its own totals, carried over automatically on the first restart after upgrading. That first restart shows the backwards jump one final time as each account takes over its own copy; statistics already corrupted by earlier jumps are not repaired, and issue #290 describes how to clean them up. Installs with a single account are unaffected. (#290)
 - Energy totals stopped increasing. From 28 August MELCloud stopped returning the most recent 24 hours of energy data, so sensors silently stopped counting while still looking healthy. Anything missed while a sensor was stuck is picked up on the first update after upgrading. (#294)
 - Energy readings no longer produce "decrease" warnings in the log. Recorded totals were correct throughout, so there is no history to repair.
 - Outdoor and water temperatures were older than they appeared. Readings are timestamped in the unit's local time but were read as UTC, so these sensors both missed recent data and reported it as fresher than it was. UK installs in winter were unaffected; everywhere else was out by the local offset.

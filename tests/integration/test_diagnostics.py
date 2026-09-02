@@ -122,6 +122,12 @@ async def test_diagnostics_basic_structure(hass: HomeAssistant) -> None:
         assert diagnostics["coordinator"]["last_update_success"] is True
         assert diagnostics["coordinator"]["update_interval"] == 60.0
 
+        # Per-account energy storage keys (issue #290): the account hash is
+        # one-way, so diagnostics is how a support request identifies its files
+        storage_keys = diagnostics["coordinator"]["energy_storage_keys"]
+        assert storage_keys["ata"].startswith("melcloudhome_energy_data_")
+        assert storage_keys["atw"].startswith("melcloudhome_energy_data_atw_")
+
 
 @pytest.mark.asyncio
 async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:

@@ -34,6 +34,7 @@ from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
 from .energy_tracker_ata import ATAEnergyTracker
 from .energy_tracker_atw import ATWEnergyTracker
+from .energy_tracker_base import account_storage_suffix
 from .helpers import resolve_unit_timezone
 from .telemetry_tracker import TelemetryTracker
 
@@ -91,12 +92,17 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Re-authentication lock to prevent concurrent re-auth attempts
         self._reauth_lock = asyncio.Lock()
 
+        # Energy storage is scoped per account so two config entries never
+        # share a file (issue #290)
+        account_suffix = account_storage_suffix(config_entry)
+
         # Initialize ATA energy tracker
         self.energy_tracker = ATAEnergyTracker(
             hass=hass,
             client=client,
             execute_with_retry=self._execute_with_retry,
             get_coordinator_data=lambda: self.data,
+            account_suffix=account_suffix,
         )
 
         # Initialize ATW energy tracker
@@ -105,6 +111,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             client=client.atw,  # Pass ATW-specific client, not facade
             execute_with_retry=self._execute_with_retry,
             get_coordinator_data=lambda: self.data,
+            account_suffix=account_suffix,
         )
 
         # Initialize telemetry tracker
