@@ -132,15 +132,18 @@ sibling branch's body, carries no information about this body at all.
 Before handing it over, format it and check it:
 
 ```bash
-npx --yes prettier@3 --prose-wrap preserve --write _claude/pr-bodies/<name>.md
+npx --yes prettier@3 --prose-wrap never --write _claude/pr-bodies/<name>.md
 grep -n '—' _claude/pr-bodies/<name>.md   # em dashes: rewrite, see SKILL.md
 ```
 
-`--prose-wrap preserve` is deliberate. It fixes list spacing, trailing
-whitespace, table alignment and the final newline while leaving long lines
-alone, because GitHub reflows paragraphs and a hard-wrapped body reads badly
-there. Do not run markdownlint on a body: its line-length rule fires on prose
-that is meant to be unwrapped, and following it would break the convention.
+`--prose-wrap never` is deliberate: it joins every paragraph, bullet and
+checkbox back onto one line, which is the convention GitHub expects. GitHub
+renders a newline inside a paragraph as a line break, so a body composed
+hard-wrapped ships its wrapping to the reviewer; `preserve` would ratify that
+instead of repairing it. It also fixes list spacing, trailing whitespace,
+table alignment and the final newline. Do not run markdownlint on a body: its
+line-length rule fires on prose that is meant to be unwrapped, and following
+it would break the convention.
 
 ## Creating the PR from the file
 
