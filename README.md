@@ -10,7 +10,7 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.4.2
+## What's New in v2.5.0
 
 **A new "Actual fan speed" sensor for air conditioning units.** It shows the speed a unit is really running at, which on units set to "Auto" was not visible anywhere before. It follows the fan rather than the compressor, so a low speed does not mean cooling has stopped. Contributed by [@lackas](https://github.com/lackas).
 
