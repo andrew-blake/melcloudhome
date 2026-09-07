@@ -1,6 +1,6 @@
 """One failed poll must not take every entity unavailable (issue #309).
 
-A single /context request that times out or fails on the network used to mark
+A single /context request that times out, fails on the network or gets a 5xx used to mark
 the whole integration failed, so all entities read "unavailable" until the next
 poll succeeded 60 s later. The coordinator now carries the previous data across
 up to two consecutive failed polls and only gives up on the third.
@@ -22,7 +22,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.melcloudhome.api.exceptions import ApiError
+from custom_components.melcloudhome.api.exceptions import (
+    ApiError,
+    ServiceUnavailableError,
+)
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 
 from .conftest import create_mock_ata_user_context, setup_ata_integration_custom
@@ -122,3 +125,28 @@ async def test_failure_tolerance_resets_after_a_good_poll(
     await _next_poll(hass)
 
     assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+
+
+@pytest.mark.asyncio
+async def test_single_503_keeps_entities_available(hass: HomeAssistant) -> None:
+    """A server-side 5xx is tolerated like a timeout while data is held."""
+    _context, mock_client = await _setup(hass)
+    mock_client.get_user_context = AsyncMock(side_effect=ServiceUnavailableError(503))
+
+    await _next_poll(hass)
+
+    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+
+
+@pytest.mark.asyncio
+async def test_third_503_marks_unavailable(hass: HomeAssistant) -> None:
+    """Three 5xx in a row is an outage and still reads unavailable."""
+    _context, mock_client = await _setup(hass)
+    mock_client.get_user_context = AsyncMock(side_effect=ServiceUnavailableError(503))
+
+    await _next_poll(hass)
+    await _next_poll(hass)
+    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+
+    await _next_poll(hass)
+    assert hass.states.get(_CLIMATE_ENTITY).state == STATE_UNAVAILABLE

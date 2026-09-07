@@ -166,6 +166,31 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             data={**self._config_entry.data, **self.client.get_token_snapshot()},
         )
 
+    def _tolerate_poll_failure(self, err: BaseException) -> UserContext | None:
+        """Return the previous data if this failed poll should be ridden out.
+
+        One timed-out, dropped or 5xx poll used to mark every entity
+        unavailable until the next poll succeeded 60 s later (#309). The
+        first MAX_TOLERATED_POLL_FAILURES consecutive failures keep the last
+        data; the one after is a real outage and the caller propagates it.
+        None means "do not tolerate": no data held yet, or budget spent.
+        """
+        previous: UserContext | None = self.data
+        if (
+            previous is None
+            or self._transient_poll_failures >= MAX_TOLERATED_POLL_FAILURES
+        ):
+            return None
+        self._transient_poll_failures += 1
+        _LOGGER.warning(
+            "MELCloud poll failed (%s); keeping the last data until the next poll"
+            " (%d of %d tolerated)",
+            str(err) or type(err).__name__,
+            self._transient_poll_failures,
+            MAX_TOLERATED_POLL_FAILURES,
+        )
+        return previous
+
     async def _async_update_data(self) -> UserContext:
         """Fetch data from API endpoint."""
         try:
@@ -176,6 +201,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
                 "coordinator_update",
             )
         except ServiceUnavailableError as err:
+            if (previous := self._tolerate_poll_failure(err)) is not None:
+                return previous
             self._outage_retry_count += 1
             retry_after = min(120 * 2 ** (self._outage_retry_count - 1), 900)
             _LOGGER.warning(
@@ -187,25 +214,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         except ConfigEntryAuthFailed:
             raise
         except (TimeoutError, HomeAssistantError) as err:
-            # One timed-out or dropped poll used to mark every entity
-            # unavailable until the next poll succeeded 60 s later (#309).
-            # Carry the previous data across the tolerated failures; the one
-            # after is a real outage and propagates as before.
-            previous: UserContext | None = self.data
-            if (
-                previous is None
-                or self._transient_poll_failures >= MAX_TOLERATED_POLL_FAILURES
-            ):
-                raise
-            self._transient_poll_failures += 1
-            _LOGGER.warning(
-                "MELCloud poll failed (%s); keeping the last data until the next poll"
-                " (%d of %d tolerated)",
-                str(err) or type(err).__name__,
-                self._transient_poll_failures,
-                MAX_TOLERATED_POLL_FAILURES,
-            )
-            return previous
+            if (previous := self._tolerate_poll_failure(err)) is not None:
+                return previous
+            raise
 
         self._outage_retry_count = 0
         if self._transient_poll_failures:
