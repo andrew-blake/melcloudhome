@@ -196,7 +196,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._transient_poll_failures += 1
             _LOGGER.warning(
                 "MELCloud poll failed (%s); keeping the last data until the next poll",
-                err or type(err).__name__,
+                str(err) or type(err).__name__,
             )
             return previous
 

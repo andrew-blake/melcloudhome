@@ -58,10 +58,14 @@ async def test_single_timed_out_poll_keeps_entities_available(
 
     assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
     assert hass.states.get(_ROOM_TEMP_ENTITY).state == "20.0"
-    assert any(
-        r.levelno == logging.WARNING and "keeping" in r.message.lower()
+    warnings = [
+        r.message
         for r in caplog.records
-    ), "a tolerated failure must be visible in the log"
+        if r.levelno == logging.WARNING and "keeping" in r.message.lower()
+    ]
+    assert warnings, "a tolerated failure must be visible in the log"
+    # A bare TimeoutError has an empty str(); the line must still say what failed.
+    assert "TimeoutError" in warnings[0]
 
 
 @pytest.mark.asyncio
