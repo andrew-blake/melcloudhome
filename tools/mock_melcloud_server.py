@@ -236,6 +236,8 @@ class MockMELCloudServer:
         self.ws_clients: set[web.WebSocketResponse] = set()
         self.ws_accept_then_close = False
         self.ws_reject_hash = False
+        # Test-only: HTTP statuses the next /context calls answer with, in order
+        self.context_fail_queue: list[int] = []
 
     def _init_ata_devices(self) -> dict[str, dict[str, Any]]:
         """Initialize default ATA (Air-to-Air) device states.
@@ -547,6 +549,12 @@ class MockMELCloudServer:
         elif action == "clear":
             self.ws_accept_then_close = False
             self.ws_reject_hash = False
+            self.context_fail_queue = []
+        elif action == "fail-context":
+            # Next `count` /context calls answer with `status` (default one 503)
+            self.context_fail_queue = [int(body.get("status", 503))] * int(
+                body.get("count", 1)
+            )
         elif action == "emit-delta":
             if "unit_id" not in body or "settings" not in body:
                 return web.json_response(
@@ -671,6 +679,10 @@ class MockMELCloudServer:
         - buildings: Owned buildings (full access)
         - guestBuildings: Shared buildings (guest access, full control)
         """
+        if self.context_fail_queue:
+            status = self.context_fail_queue.pop(0)
+            logger.info("🎛️  User Context Request answered with injected %d", status)
+            return web.Response(status=status)
         logger.info("📋 User Context Request")
 
         buildings_response = []
