@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- A single failed request to MELCloud no longer makes every entity "unavailable" for a minute or two. Once a minute the integration asks MELCloud for the current state of all devices, and when that one request timed out or dropped, every sensor and climate entity went unavailable until the next request succeeded. The integration now keeps the last known values across one failed request and logs a warning; only a second consecutive failure marks entities unavailable, so a real outage still shows. The 30 second request timeout is unchanged. (#309)
+
 ## [2.5.0] - 2026-09-02
 
 ### Added

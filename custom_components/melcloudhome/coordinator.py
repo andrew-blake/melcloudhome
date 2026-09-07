@@ -127,6 +127,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
 
         # Outage backoff: tracks consecutive 5xx failures for retry spacing
         self._outage_retry_count: int = 0
+        self._transient_poll_failures: int = 0
 
         # Outdoor temperature tracking for ATA devices
         self._last_outdoor_temp_poll: dict[
@@ -182,8 +183,30 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             if _UPDATE_FAILED_HAS_RETRY_AFTER:
                 raise UpdateFailed(str(err), retry_after=retry_after) from err
             raise UpdateFailed(str(err)) from err
+        except ConfigEntryAuthFailed:
+            raise
+        except (TimeoutError, HomeAssistantError) as err:
+            # One timed-out or dropped poll used to mark every entity
+            # unavailable until the next poll succeeded 60 s later (#309).
+            # Carry the previous data across a single failure; a second
+            # consecutive one is a real outage and propagates as before.
+            previous: UserContext | None = self.data
+            if previous is None or self._transient_poll_failures >= 1:
+                raise
+            self._transient_poll_failures += 1
+            _LOGGER.warning(
+                "MELCloud poll failed (%s); keeping the last data until the next poll",
+                err or type(err).__name__,
+            )
+            return previous
 
         self._outage_retry_count = 0
+        if self._transient_poll_failures:
+            _LOGGER.info(
+                "MELCloud poll recovered after %d failed poll",
+                self._transient_poll_failures,
+            )
+            self._transient_poll_failures = 0
 
         # Debug logging: Log verbose device states (controlled by HA logger config)
         for building in context.buildings:
