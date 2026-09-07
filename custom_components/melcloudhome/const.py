@@ -16,6 +16,10 @@ if TYPE_CHECKING:
 # Domain and update interval (shared by all device types)
 DOMAIN = "melcloudhome"
 UPDATE_INTERVAL = timedelta(seconds=60)
+# Consecutive failed polls carried on the previous data before entities go
+# unavailable. MELCloud slow patches seen on three installs mostly took two
+# polls in a row (#309); the third failure is treated as a real outage.
+MAX_TOLERATED_POLL_FAILURES = 2
 PLATFORMS = ["climate"]
 
 # Configuration keys

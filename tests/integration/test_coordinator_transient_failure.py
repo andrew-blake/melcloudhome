@@ -3,7 +3,7 @@
 A single /context request that times out or fails on the network used to mark
 the whole integration failed, so all entities read "unavailable" until the next
 poll succeeded 60 s later. The coordinator now carries the previous data across
-one failed poll and only gives up on the second consecutive failure.
+up to two consecutive failed polls and only gives up on the third.
 
 Tested through hass.states only.
 
@@ -84,12 +84,15 @@ async def test_single_network_error_keeps_entities_available(
 
 
 @pytest.mark.asyncio
-async def test_second_consecutive_failure_marks_unavailable_then_recovers(
+async def test_third_consecutive_failure_marks_unavailable_then_recovers(
     hass: HomeAssistant,
 ) -> None:
-    """Two failures in a row is a real outage; the next success restores state."""
+    """Three failures in a row is a real outage; the next success restores state."""
     mock_context, mock_client = await _setup(hass)
     mock_client.get_user_context = AsyncMock(side_effect=TimeoutError())
+
+    await _next_poll(hass)
+    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
 
     await _next_poll(hass)
     assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
@@ -106,14 +109,16 @@ async def test_second_consecutive_failure_marks_unavailable_then_recovers(
 async def test_failure_tolerance_resets_after_a_good_poll(
     hass: HomeAssistant,
 ) -> None:
-    """Fail, succeed, fail: the second failure is a fresh single failure."""
+    """Fail twice, succeed, fail twice: the count restarts at the good poll."""
     mock_context, mock_client = await _setup(hass)
 
     mock_client.get_user_context = AsyncMock(side_effect=TimeoutError())
     await _next_poll(hass)
+    await _next_poll(hass)
     mock_client.get_user_context = AsyncMock(return_value=mock_context)
     await _next_poll(hass)
     mock_client.get_user_context = AsyncMock(side_effect=TimeoutError())
+    await _next_poll(hass)
     await _next_poll(hass)
 
     assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT

@@ -115,8 +115,8 @@ async def test_connection_state_sensor_reflects_coordinator_status(
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    # One failed poll keeps the last data (#309); the second marks the outage.
-    for _ in range(2):
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
         await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
         await hass.async_block_till_done()
 
@@ -138,8 +138,8 @@ async def test_error_sensor_unavailable_when_coordinator_fails(
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    # One failed poll keeps the last data (#309); the second marks the outage.
-    for _ in range(2):
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
         await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
         await hass.async_block_till_done()
 
@@ -156,8 +156,8 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    # One failed poll keeps the last data (#309); the second marks the outage.
-    for _ in range(2):
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
         await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
         await hass.async_block_till_done()
 

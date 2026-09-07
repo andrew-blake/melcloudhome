@@ -25,6 +25,7 @@ from .const import (
     CONF_ENABLE_WEBSOCKET,
     DEFAULT_ENABLE_WEBSOCKET,
     DOMAIN,
+    MAX_TOLERATED_POLL_FAILURES,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ENERGY,
     UPDATE_INTERVAL_OUTDOOR_TEMP,
@@ -188,22 +189,28 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         except (TimeoutError, HomeAssistantError) as err:
             # One timed-out or dropped poll used to mark every entity
             # unavailable until the next poll succeeded 60 s later (#309).
-            # Carry the previous data across a single failure; a second
-            # consecutive one is a real outage and propagates as before.
+            # Carry the previous data across the tolerated failures; the one
+            # after is a real outage and propagates as before.
             previous: UserContext | None = self.data
-            if previous is None or self._transient_poll_failures >= 1:
+            if (
+                previous is None
+                or self._transient_poll_failures >= MAX_TOLERATED_POLL_FAILURES
+            ):
                 raise
             self._transient_poll_failures += 1
             _LOGGER.warning(
-                "MELCloud poll failed (%s); keeping the last data until the next poll",
+                "MELCloud poll failed (%s); keeping the last data until the next poll"
+                " (%d of %d tolerated)",
                 str(err) or type(err).__name__,
+                self._transient_poll_failures,
+                MAX_TOLERATED_POLL_FAILURES,
             )
             return previous
 
         self._outage_retry_count = 0
         if self._transient_poll_failures:
             _LOGGER.info(
-                "MELCloud poll recovered after %d failed poll",
+                "MELCloud poll recovered after %d failed poll(s)",
                 self._transient_poll_failures,
             )
             self._transient_poll_failures = 0
