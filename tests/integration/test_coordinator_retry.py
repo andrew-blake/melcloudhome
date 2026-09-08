@@ -402,3 +402,40 @@ async def test_deduplication_sends_different_value(coordinator):
 
     # SHOULD call API
     assert coordinator.client.ata.set_power.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_new_debounce_request_does_not_cancel_in_flight_refresh(
+    coordinator, hass
+):
+    """A second debounced request must not kill a refresh already running.
+
+    Seen on prod: a WebSocket delta landing while the previous delta's refresh
+    was mid-request cancelled that refresh. HA's coordinator treats a cancelled
+    refresh as a silent failure (last_update_success=False, no log, no listener
+    update), followed by a bogus "recovered" on the next poll.
+    """
+    from custom_components.melcloudhome.api.models import UserContext
+
+    mock_context = AsyncMock(spec=UserContext)
+    mock_context.buildings = []
+    coordinator.client.restore_tokens("token", "refresh", time.time() + 3600)
+
+    started = asyncio.Event()
+    gate = asyncio.Event()
+
+    async def slow_context() -> UserContext:
+        started.set()
+        await gate.wait()
+        return mock_context
+
+    coordinator.client.get_user_context = slow_context
+    await coordinator.async_request_refresh_debounced(delay=0.01)
+    await started.wait()  # first refresh is now mid-request
+
+    await coordinator.async_request_refresh_debounced(delay=0.01)  # a new delta
+    gate.set()
+    await asyncio.sleep(0.05)
+    await hass.async_block_till_done()
+
+    assert coordinator.last_update_success is True

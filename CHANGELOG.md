@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - One or two failed requests to MELCloud no longer make every entity "unavailable" for a minute or two. Once a minute the integration asks MELCloud for the current state of all devices, and when that request timed out, dropped, or got a server error, every sensor and climate entity went unavailable until the next request succeeded. The integration now keeps the last known values across up to two consecutive failed requests of any kind and logs a warning each time; the third failure in a row marks entities unavailable, so a real outage still shows and server errors still back off as before once that happens. The 30 second request timeout is unchanged. (#309)
+- A change arriving from the MELCloud app or remote control while Home Assistant was already fetching the previous one could silently abort that fetch. The log then showed "Fetching melcloudhome data recovered" with nothing to recover from, and any entity that happened to update in the next few seconds briefly read unavailable. The fetch now always runs to completion; a new change only restarts the short wait before it.
 
 ## [2.5.0] - 2026-09-02
 

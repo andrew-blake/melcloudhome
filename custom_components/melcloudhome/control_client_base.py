@@ -45,7 +45,12 @@ class ControlClientBase:
             """Wait then refresh."""
             await asyncio.sleep(delay)
             _LOGGER.debug("Debounced refresh executing after %.1fs delay", delay)
-            await self._async_request_refresh()  # type: ignore[attr-defined]
+            # Only the wait is cancellable. Cancelling this task once the
+            # refresh has started would cancel the refresh itself, which HA's
+            # coordinator records as a silent failure (last_update_success
+            # False, no log, no listener update) followed by a bogus
+            # "recovered" on the next poll.
+            await asyncio.shield(self._async_request_refresh())  # type: ignore[attr-defined]
 
         self._refresh_debounce_task = self._hass.async_create_task(_delayed_refresh())
 
