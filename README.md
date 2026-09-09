@@ -10,15 +10,11 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.5.0
+## What's New in v2.5.1
 
-**A new "Actual fan speed" sensor for air conditioning units.** It shows the speed a unit is really running at, which on units set to "Auto" was not visible anywhere before. It follows the fan rather than the compressor, so a low speed does not mean cooling has stopped. Contributed by [@lackas](https://github.com/lackas).
+**Entities no longer go "unavailable" when MELCloud has a bad moment.** The integration asks MELCloud for the state of every device once a minute, and a single request that timed out, dropped, or came back with a server error used to turn every sensor and climate entity unavailable until the next request succeeded, a minute or two later. It now keeps the last known values through up to two failed requests in a row, so a brief wobble at MELCloud passes unnoticed. A third failure in a row still shows as unavailable, because at that point something is genuinely wrong. Reported in [#309](https://github.com/andrew-blake/melcloudhome/issues/309).
 
-**Energy totals were silently freezing.** From 28 August, MELCloud stopped returning the most recent 24 hours of energy data for the request this integration was making, so energy sensors quietly stopped counting while still looking healthy: no error, no "unavailable", just a flat line on the Energy dashboard. Anything missed while a sensor was stuck is picked up on the first update after you upgrade.
-
-**Two things to check if you have a heat pump.** Single-zone systems were being given up to seven sensors for hardware they don't have; those now show as unavailable and Home Assistant offers to delete them. And flow and return temperature sensors now update whenever a fresher reading arrives, even when the temperature itself is unchanged, so an automation triggering on any state change of these will fire more often than before - trigger on the value instead.
-
-Also in this release: with two MELCloud accounts configured, energy totals no longer overwrite each other and jump backwards after restarts (the first restart after upgrading shows the jump one last time, and [#290](https://github.com/andrew-blake/melcloudhome/issues/290) describes cleaning up statistics already affected), heat pump water temperatures come from a more reliable source and show when the unit actually recorded them, outdoor temperature no longer gets stuck at a wrong value or misdated for units outside UTC and now warns in the log when it stops arriving, devices and entities appear as soon as Home Assistant starts rather than waiting for the first readings, Dutch and Vietnamese sensor names read as labels rather than instructions, and diagnostics downloads no longer leak device names through entity IDs.
+**A change made on the app or remote could interrupt an update already in progress.** When one arrived while Home Assistant was still fetching the previous one, the fetch was abandoned part way, the log claimed a recovery that had not happened, and entities updating in the next few seconds could briefly read unavailable. Updates now always run to completion.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
