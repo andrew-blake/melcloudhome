@@ -20,7 +20,6 @@ UPDATE_INTERVAL = timedelta(seconds=60)
 # unavailable. MELCloud slow patches seen on three installs mostly took two
 # polls in a row (#309); the third failure is treated as a real outage.
 MAX_TOLERATED_POLL_FAILURES = 2
-PLATFORMS = ["climate"]
 
 # Configuration keys
 CONF_DEBUG_MODE = "debug_mode"
@@ -107,7 +106,7 @@ __all__ = [
     "DOMAIN",
     "HOUR_VALUE_RETENTION_HOURS",
     "MAX_PLAUSIBLE_HOURLY_ENERGY_KWH",
-    "PLATFORMS",
+    "MAX_TOLERATED_POLL_FAILURES",
     "UPDATE_INTERVAL",
     "UPDATE_INTERVAL_ENERGY",
     "UPDATE_INTERVAL_OUTDOOR_TEMP",
