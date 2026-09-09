@@ -115,8 +115,10 @@ async def test_connection_state_sensor_reflects_coordinator_status(
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
-    await hass.async_block_till_done()
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
+        await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+        await hass.async_block_till_done()
 
     assert hass.states.get(connection_sensor_id).state == STATE_OFF
 
@@ -136,8 +138,10 @@ async def test_error_sensor_unavailable_when_coordinator_fails(
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
-    await hass.async_block_till_done()
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
+        await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+        await hass.async_block_till_done()
 
     assert hass.states.get(error_sensor_id).state == "unavailable"
 
@@ -152,8 +156,10 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
     from custom_components.melcloudhome.const import DOMAIN
 
     mock_client.get_user_context = AsyncMock(side_effect=ApiError("Connection failed"))
-    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
-    await hass.async_block_till_done()
+    # Two failed polls keep the last data (#309); the third marks the outage.
+    for _ in range(3):
+        await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+        await hass.async_block_till_done()
 
     connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
     connection_state = hass.states.get(connection_sensor_id)
