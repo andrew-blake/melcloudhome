@@ -12,10 +12,9 @@ applies to these writes)
 
 ## Context
 
-An ATA unit bridged to HomeKit appears as a bare thermostat. Temperature and
-operating mode are controllable, and fan speed and the vane are not reachable at
-all, from the Home app or from Siri. Both are fully controllable inside Home
-Assistant, so the capability exists and stops at the bridge.
+An ATA unit bridged to HomeKit appears as a bare thermostat. Whilst temperature
+and operating mode are exposed to HomeKit, the fan speed and the vane are not,
+even though they are fully controllable inside Home Assistant.
 
 ### Evidence
 
