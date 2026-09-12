@@ -32,6 +32,24 @@ For each air conditioning unit, the following entities are created:
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Real-time heating/cooling/idle status
 
+### Fan Entity
+
+- **Entity ID**: `fan.melcloudhome_{short_id}_a_c_fan`
+- **Name**: `<device> A/C fan`
+- **Created when**: The unit reports `number_of_fan_speeds` of 1 or more
+
+Carries fan speed as a percentage, the vertical vane as oscillation, and unit
+power. It exists because Home Assistant's HomeKit bridge cannot expose either
+control from the climate entity; see ADR-025.
+
+Fan speed is settable from both this entity and the climate entity's fan mode
+dropdown. Both control the same unit and cannot disagree, since both read one
+coordinator field.
+
+Turning this entity off powers the air conditioner down, because an air
+conditioner has no "fan off, unit running" state. That applies to Google Home
+and Alexa as well as to HomeKit.
+
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`

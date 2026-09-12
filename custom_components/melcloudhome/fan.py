@@ -82,6 +82,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         | FanEntityFeature.TURN_ON
         | FanEntityFeature.TURN_OFF
     )
+    _attr_translation_key = "melcloudhome"  # For preset mode translations
 
     def __init__(
         self,
