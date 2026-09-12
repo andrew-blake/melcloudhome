@@ -2,6 +2,13 @@
 # containers (see docker-compose.test.yml).
 name: melcloudhome-dev
 
+# Shared by every service below; Compose ignores top-level x-* keys.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # Mock MELCloud API Server
   melcloud-mock:
@@ -14,11 +21,7 @@ services:
     networks:
       - ha-dev
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
 
   # Home Assistant with auto-setup
   homeassistant:
@@ -42,11 +45,7 @@ services:
     depends_on:
       - melcloud-mock
     restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *default-logging
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |

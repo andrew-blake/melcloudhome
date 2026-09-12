@@ -47,12 +47,13 @@ _VANE_AUTO = "Auto"
 # intermediate position), each preceded by a power-on write. The shared
 # write-dedup in control_client_ata compares against coordinator data, which
 # stays stale for the whole debounced-refresh window, so it cannot suppress
-# these. with_debounced_refresh() defaults to a 2.0s delay; this guard window
-# needs to be at least that long to bridge the gap until a refresh lands, plus
-# headroom for scheduling and network jitter within the burst itself. The speed
-# write is deferred by _SPEED_DEBOUNCE_WINDOW before its refresh is even
-# requested, so the stale window is the sum of the two and still fits inside
-# this guard.
+# these. with_debounced_refresh() defaults to a 2.0s delay, and that timer is
+# shared with the control client and restarted by every WebSocket delta, so the
+# stale window has no fixed upper bound -- during a busy drag it can outlast
+# this guard. Three seconds covers the ordinary case (one refresh delay plus the
+# deferred speed write, with headroom for scheduling and network jitter) without
+# claiming to cover every case: when it is outlasted, the only consequence is
+# one redundant power-on write, which the API accepts on a running unit.
 _POWER_ON_GUARD_WINDOW = 3.0
 
 # How long a slider position must stand still before it is written. Overlapping
@@ -253,6 +254,14 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         fan.turn_on -- called with guard left False -- always powers on: the
         guard exists to tame set_percentage's drag burst, not to make the
         documented service unreliable.
+
+        The deadline is armed before the write is awaited, not after. HomeKit's
+        bridge dispatches each service call as its own un-awaited task and HA
+        takes no per-entity lock, so calls genuinely interleave at the await
+        below; arming afterwards lets every call that arrives while the first
+        power-on is in flight past the check and issue its own. Arming first
+        would, on its own, make a *failed* power-on suppress the retry that
+        follows it, so the deadline is put back if the write raises.
         """
         if (
             guard
@@ -262,13 +271,17 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             return
 
         device = self.get_device()
-        if device and device.operation_mode:
-            await self.coordinator.async_set_power_and_mode(
-                self._unit_id, True, device.operation_mode
-            )
-        else:
-            await self.coordinator.async_set_power(self._unit_id, True)
         self._power_on_guard_until = time.monotonic() + _POWER_ON_GUARD_WINDOW
+        try:
+            if device and device.operation_mode:
+                await self.coordinator.async_set_power_and_mode(
+                    self._unit_id, True, device.operation_mode
+                )
+            else:
+                await self.coordinator.async_set_power(self._unit_id, True)
+        except Exception:
+            self._power_on_guard_until = None
+            raise
 
     async def _async_apply_percentage(
         self, percentage: int, *, guard: bool = False
@@ -284,6 +297,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         _async_power_on; see that method and async_set_percentage.
         """
         if percentage == 0:
+            # Dragging to the zero detent is an explicit power-off, which
+            # invalidates the guard's premise; see async_turn_off.
+            self._power_on_guard_until = None
             await self.coordinator.async_set_power(self._unit_id, False)
             return
         await self._async_power_on(guard=guard)
@@ -306,14 +322,22 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         debounced) timer when the *service call* returns, which is before this
         write has even been issued. Requesting it after the write keeps the poll
         downstream of the thing it is meant to observe.
+
+        The refresh runs even when the write raises: this is a timer callback,
+        so there is no service call left to report the failure to, and without a
+        refresh the tile would keep showing the speed that was never written
+        until the next poll. The exception still propagates and is logged by the
+        job that runs this callback.
         """
         self._cancel_speed_write = None
         percentage = self._pending_percentage
         if percentage is None:
             return
         self._pending_percentage = None
-        await self._async_apply_percentage(percentage, guard=True)
-        await self.coordinator.async_request_refresh_debounced()
+        try:
+            await self._async_apply_percentage(percentage, guard=True)
+        finally:
+            await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the fan speed.
@@ -333,14 +357,23 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         dedup can't catch the repeats because it reads coordinator data that
         stays stale for the whole debounced-refresh window. fan.turn_on does
         not set guard, so it always powers on regardless of a recent drag.
+
+        The pending value and its timer are taken before the power-on is
+        awaited. HomeKit's bridge dispatches each call as its own un-awaited
+        task and HA takes no per-entity lock, so a call that suspends on the
+        power-on request resumes after a newer one has already run: writing the
+        pending value afterwards would let the older slider position overwrite
+        the newer one and win the timer, which is exactly the #318 symptom.
+        Claiming it first means the last call to *enter* this method owns the
+        write, whatever order the awaits finish in.
         """
-        if percentage > 0:
-            await self._async_power_on(guard=True)
         self._pending_percentage = percentage
         self._cancel_pending_speed_write()
         self._cancel_speed_write = async_call_later(
             self.hass, _SPEED_DEBOUNCE_WINDOW, self._async_write_pending_percentage
         )
+        if percentage > 0:
+            await self._async_power_on(guard=True)
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel a pending speed write so nothing fires after removal."""
@@ -390,6 +423,18 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         An air conditioner has no "fan off, unit running" state, so this is the
         only thing off can mean. ADR-025 records that this is deliberate, and
         that HomeKit shows the button whether or not the feature is declared.
+
+        The power-on guard is dropped here. It is armed whenever a guarded
+        power-on runs, including when the shared write-dedup skipped the API
+        call because the unit was already on -- so a slider drag on a running
+        unit leaves it armed for three seconds without any power write having
+        happened. Turning the unit off inside that window and dragging the
+        slider straight back up would then hit set_percentage alone (the bridge
+        sends Active and RotationSpeed together and skips fan.turn_on), the
+        guard would suppress the power-on, and the unit would stay off with a
+        speed write landing on it. An explicit power-off invalidates the
+        premise the guard rests on, so it stops applying.
         """
         self._cancel_pending_speed_write()
+        self._power_on_guard_until = None
         await self.coordinator.async_set_power(self._unit_id, False)
