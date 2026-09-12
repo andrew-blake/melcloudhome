@@ -284,6 +284,63 @@ async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None
 
 
 @pytest.mark.asyncio
+async def test_set_percentage_burst_powers_on_exactly_once(
+    hass: HomeAssistant,
+) -> None:
+    """A HomeKit slider drag issues several set_percentage calls in quick
+    succession, each preceded by a power-on. The shared write-dedup can't
+    suppress the repeats (it reads coordinator data that stays stale for the
+    whole debounced-refresh window), so fan.py's own guard must collapse them
+    to a single power write, while each distinct speed still gets sent.
+    """
+    _, mock_client = await _setup(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
+    )
+
+    for percentage in (20, 40, 60):
+        await hass.services.async_call(
+            "fan",
+            "set_percentage",
+            {"entity_id": _FAN_ENTITY, "percentage": percentage},
+            blocking=True,
+        )
+
+    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_fan_speed.call_count == 3
+    assert [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list] == [
+        "One",
+        "Two",
+        "Three",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_turn_on_still_powers_on_after_a_set_percentage_burst(
+    hass: HomeAssistant,
+) -> None:
+    """The drag-burst guard must never make the documented turn_on service
+    unreliable: an explicit fan.turn_on always powers on, even immediately
+    after a set_percentage call already consumed the guard window.
+    """
+    _, mock_client = await _setup(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "set_percentage",
+        {"entity_id": _FAN_ENTITY, "percentage": 20},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
+    )
+
+    assert mock_client.ata.set_power_and_mode.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     """A unit with neither swing nor air direction gets no oscillate control."""
     await _setup(hass, power=True, has_swing=False, has_air_direction=False)
