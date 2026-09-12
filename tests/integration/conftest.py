@@ -358,6 +358,8 @@ def create_mock_ata_unit(
     overheat_protection: "ProtectionModeState | None" = None,
     holiday_mode: "ProtectionModeState | None" = None,
     number_of_fan_speeds: int = 5,
+    has_swing: bool = True,
+    has_air_direction: bool = True,
 ) -> "AirToAirUnit":
     """Create a mock AirToAirUnit for testing."""
     from custom_components.melcloudhome.api.models_ata import (
@@ -384,6 +386,8 @@ def create_mock_ata_unit(
         capabilities=AirToAirCapabilities(
             has_energy_consumed_meter=has_energy_meter,
             number_of_fan_speeds=number_of_fan_speeds,
+            has_swing=has_swing,
+            has_air_direction=has_air_direction,
         ),
         energy_consumed=energy_consumed,
         has_outdoor_temp_sensor=has_outdoor_sensor,

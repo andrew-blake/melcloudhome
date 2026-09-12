@@ -209,6 +209,17 @@
       "holiday_mode": {
         "name": "Modo férias"
       }
+    },
+    "fan": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Automático"
+            }
+          }
+        }
+      }
     }
   },
   "services": {

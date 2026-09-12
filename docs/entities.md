@@ -50,6 +50,13 @@ Turning this entity off powers the air conditioner down, because an air
 conditioner has no "fan off, unit running" state. That applies to Google Home
 and Alexa as well as to HomeKit.
 
+Oscillation is only offered on units that report a vane, so a unit with neither
+swing nor air direction gets the speed slider and power without it.
+
+If your HomeKit Bridge is configured with a filter such as
+`include_domains: [climate]`, add `fan` to it, otherwise this entity is not
+bridged and the new tile never appears.
+
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`

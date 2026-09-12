@@ -27,6 +27,7 @@ _FAN_ENTITY = "fan.melcloudhome_a1b2_9abc_a_c_fan"
 def _configure_ata_controls(client: Any) -> None:
     client.ata = MagicMock()
     client.ata.set_power = AsyncMock()
+    client.ata.set_power_and_mode = AsyncMock()
     client.ata.set_fan_speed = AsyncMock()
     client.ata.set_vane_vertical = AsyncMock()
 
@@ -256,3 +257,102 @@ async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
     )
 
     assert mock_client.ata.set_vane_vertical.call_args[0][1] == "Auto"
+
+
+async def _setup_one_unit(hass: HomeAssistant, **unit_kwargs: Any) -> Any:
+    """Set up the integration with a single ATA unit built from unit_kwargs."""
+    mock_context = create_mock_ata_user_context(
+        buildings=[
+            create_mock_ata_building(units=[create_mock_ata_unit(**unit_kwargs)])
+        ]
+    )
+    return await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+
+@pytest.mark.asyncio
+async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None:
+    """Power-on carries the mode, so no operationMode=null reaches the API.
+
+    A bare power write can fault a multi-zone outdoor unit. The unit starts off
+    because the control client skips a write the device already satisfies.
+    """
+    _, mock_client = await _setup_one_unit(hass, power=False, operation_mode="Heat")
+
+    await hass.services.async_call(
+        "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
+    )
+
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    mock_client.ata.set_power.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_turn_on_with_percentage_sets_power_and_speed(
+    hass: HomeAssistant,
+) -> None:
+    """turn_on(percentage=40) powers on and commands speed two of five."""
+    _, mock_client = await _setup_one_unit(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "turn_on",
+        {"entity_id": _FAN_ENTITY, "percentage": 40},
+        blocking=True,
+    )
+
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Two"
+
+
+@pytest.mark.asyncio
+async def test_turn_on_with_auto_preset_sets_power_and_speed(
+    hass: HomeAssistant,
+) -> None:
+    """HomeKit's Auto toggle routes through turn_on, so it must power on too."""
+    _, mock_client = await _setup_one_unit(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Three"
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "turn_on",
+        {"entity_id": _FAN_ENTITY, "preset_mode": "auto"},
+        blocking=True,
+    )
+
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Auto"
+
+
+@pytest.mark.asyncio
+async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None:
+    """Dragging the HomeKit slider up on an off tile must start the unit.
+
+    The bridge sends Active=1 and RotationSpeed in one write and then skips
+    fan.turn_on, so set_percentage alone has to power the unit on.
+    """
+    _, mock_client = await _setup_one_unit(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "set_percentage",
+        {"entity_id": _FAN_ENTITY, "percentage": 60},
+        blocking=True,
+    )
+
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+
+
+@pytest.mark.asyncio
+async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
+    """A unit with neither swing nor air direction gets no oscillate control."""
+    await _setup_one_unit(hass, power=True, has_swing=False, has_air_direction=False)
+
+    assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes

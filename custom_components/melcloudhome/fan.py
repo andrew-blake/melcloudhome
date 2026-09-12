@@ -76,12 +76,6 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
     environment (aiohttp version conflict). Mypy sees HA base classes as 'Any'.
     """
 
-    _attr_supported_features = (
-        FanEntityFeature.SET_SPEED
-        | FanEntityFeature.OSCILLATE
-        | FanEntityFeature.TURN_ON
-        | FanEntityFeature.TURN_OFF
-    )
     _attr_translation_key = "melcloudhome"  # For preset mode translations
 
     def __init__(
@@ -109,6 +103,17 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         speeds = unit.capabilities.number_of_fan_speeds
         self._ordered_speeds = _NUMBERED_SPEEDS[:speeds]
         self._attr_speed_count = len(self._ordered_speeds)
+
+        # Oscillation writes vaneVerticalDirection, so only offer it where the
+        # hardware has a vane. Same gate the climate entity puts on SWING_MODE.
+        features = (
+            FanEntityFeature.SET_SPEED
+            | FanEntityFeature.TURN_ON
+            | FanEntityFeature.TURN_OFF
+        )
+        if unit.capabilities.has_swing or unit.capabilities.has_air_direction:
+            features |= FanEntityFeature.OSCILLATE
+        self._attr_supported_features = features
 
     @property
     def is_on(self) -> bool | None:
@@ -160,6 +165,40 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             self._unit_id, _VANE_SWING if oscillating else _VANE_AUTO
         )
 
+    async def _async_power_on(self) -> None:
+        """Power the unit on without disturbing its operation mode.
+
+        A bare power write sends operationMode=null, which can trigger a
+        mode-conflict fault on multi-zone outdoor units. The mode is only
+        omitted when the device reports none to preserve.
+        """
+        device = self.get_device()
+        if device and device.operation_mode:
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, device.operation_mode
+            )
+        else:
+            await self.coordinator.async_set_power(self._unit_id, True)
+
+    async def _async_apply_percentage(self, percentage: int) -> None:
+        """Apply a slider position: zero powers off, anything else sets a speed.
+
+        The unit is powered on as well as sped up, because the HomeKit bridge
+        sends Active=1 and RotationSpeed in one write when the slider is dragged
+        up on an off tile, and then deliberately skips fan.turn_on on the
+        assumption that a SET_SPEED fan powers itself on. The control client
+        skips a write the device already satisfies, so on an already-running
+        unit this costs no extra API call.
+        """
+        if percentage == 0:
+            await self.coordinator.async_set_power(self._unit_id, False)
+            return
+        await self._async_power_on()
+        speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
+        await self.coordinator.async_set_fan_speed(
+            self._unit_id, normalize_to_api(speed)
+        )
+
     @with_debounced_refresh()
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the fan speed.
@@ -169,13 +208,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         without returning, so it would power the unit down and then also send a
         speed. Zero means unit power off here, and nothing else.
         """
-        if percentage == 0:
-            await self.coordinator.async_set_power(self._unit_id, False)
-            return
-        speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
-        await self.coordinator.async_set_fan_speed(
-            self._unit_id, normalize_to_api(speed)
-        )
+        await self._async_apply_percentage(percentage)
 
     @with_debounced_refresh()
     async def async_set_preset_mode(self, preset_mode: str) -> None:
@@ -191,17 +224,20 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Power the unit on, optionally at a given speed."""
-        await self.coordinator.async_set_power(self._unit_id, True)
+        """Power the unit on, optionally at a given speed or preset.
+
+        percentage=0 is permitted by the service schema and means the same here
+        as it does to fan.set_percentage: power off.
+        """
         if preset_mode is not None:
+            await self._async_power_on()
             await self.coordinator.async_set_fan_speed(
                 self._unit_id, normalize_to_api(preset_mode)
             )
-        elif percentage:
-            speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
-            await self.coordinator.async_set_fan_speed(
-                self._unit_id, normalize_to_api(speed)
-            )
+        elif percentage is not None:
+            await self._async_apply_percentage(percentage)
+        else:
+            await self._async_power_on()
 
     @with_debounced_refresh()
     async def async_turn_off(self, **kwargs: Any) -> None:

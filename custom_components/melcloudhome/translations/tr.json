@@ -209,6 +209,17 @@
       "holiday_mode": {
         "name": "Tatil modu"
       }
+    },
+    "fan": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Oto"
+            }
+          }
+        }
+      }
     }
   },
   "services": {

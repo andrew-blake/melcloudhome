@@ -121,6 +121,7 @@ The integration creates the following entities for each device:
 **Air-to-Air (ATA) Systems:**
 
 - Climate control (HVAC modes, temperature, fan speeds, swing)
+- Fan (fan speed, vane oscillation, unit power — gives HomeKit a speed slider and swing switch)
 - Sensors (room temperature, outdoor temperature, WiFi signal, energy consumption)
 - Binary sensors (error state, connection status)
 

@@ -108,7 +108,9 @@ hard-code it and the slider's detents stop matching the hardware.
 `vane_vertical_direction == "Swing"`, so the vane round-trips without any
 vocabulary or reported-value change. The seven real vane positions remain on the
 climate entity's `swing_mode`, since HomeKit's control is binary and cannot
-express them.
+express them. `OSCILLATE` is declared only where `capabilities.has_swing` or
+`has_air_direction` is set, the gate the climate entity already puts on
+`SWING_MODE`, so a unit without a vane gets no switch rather than a dead one.
 
 ### How `auto` is represented
 
@@ -127,6 +129,13 @@ Home app shows the button either way, and leaving it undeclared merely makes it
 fail and spring back. Given a button that cannot be removed, one that works is
 preferred to one that does nothing, so "turn off the A/C fan" switching the unit
 off is accepted knowingly.
+
+Setting a non-zero speed powers the unit on as well as commanding the speed. The
+bridge sends `Active=1` and `RotationSpeed` together when the slider is dragged
+up on an inactive tile, then deliberately skips `fan.turn_on` on the documented
+assumption that a `SET_SPEED` fan powers itself on. Every power-on carries the
+device's current `operation_mode`, because a bare power write sends
+`operationMode=null`, which can fault a multi-zone outdoor unit.
 
 ## Alternatives Considered
 
@@ -203,9 +212,11 @@ users nothing.
 
 ## Consequences
 
-- HomeKit gains a second tile per unit, for example "Living Room A/C fan",
-  carrying the speed slider, the swing switch and power. The climate accessory is
-  untouched and continues to publish temperature and mode only.
+- HomeKit gains a second tile per unit, for example "Living Room A-C fan",
+  carrying the speed slider, the swing switch and power. The Home app shows a
+  hyphen because the bridge substitutes one for the slash in the entity name. The
+  climate accessory is untouched and continues to publish temperature and mode
+  only.
 - The air conditioner keeps publishing as a Thermostat rather than as an air
   conditioner. Correct classification needs `HeaterCooler`, which needs the
   rejected vocabulary change and a manual accessory-type change besides.
@@ -226,8 +237,10 @@ users nothing.
   swung and unswung from the Home app, ends on `Auto`. Restoring the prior
   position would mean holding state the coordinator does not keep, which is not
   worth it for a binary control, so the loss is accepted.
-- `percentage` reports the commanded speed, so in `auto` the slider shows the
-  setpoint rather than the speed the fan is running. Reporting `actual_fan_speed`
+- `percentage` reports the commanded speed, and is unknown in `auto` because no
+  numbered speed is commanded then; the `auto` preset carries that state instead.
+  The bridge skips the characteristic update while percentage is unknown, so the
+  HomeKit slider holds whatever it last showed. Reporting `actual_fan_speed`
   (#285) would be more informative but makes reads and writes reference different
   API fields, so it is deferred rather than adopted silently.
 - Existing automations, templates and service calls keep working unchanged,
