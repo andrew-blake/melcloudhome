@@ -198,8 +198,7 @@ plain YAML and bridge that instead. It is rejected as the answer because it asks
 every affected user to write and maintain the same mapping by hand, in a project
 whose users are Home Assistant owners rather than developers, and it still
 creates a second entity, so it carries this decision's main cost without its
-convenience. It remains a reasonable interim workaround to offer anyone who wants
-the controls before this ships.
+convenience.
 
 **Doing nothing** is core's position and is defensible: the developer
 documentation explicitly permits custom fan modes, and in
