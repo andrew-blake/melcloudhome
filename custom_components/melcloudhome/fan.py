@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.util.percentage import (
     ordered_list_item_to_percentage,
     percentage_to_ordered_list_item,
@@ -47,8 +49,21 @@ _VANE_AUTO = "Auto"
 # stays stale for the whole debounced-refresh window, so it cannot suppress
 # these. with_debounced_refresh() defaults to a 2.0s delay; this guard window
 # needs to be at least that long to bridge the gap until a refresh lands, plus
-# headroom for scheduling and network jitter within the burst itself.
+# headroom for scheduling and network jitter within the burst itself. The speed
+# write is deferred by _SPEED_DEBOUNCE_WINDOW before its refresh is even
+# requested, so the stale window is the sum of the two and still fits inside
+# this guard.
 _POWER_ON_GUARD_WINDOW = 3.0
+
+# How long a slider position must stand still before it is written. Overlapping
+# speed writes are applied by the server in arrival order, not issue order, so a
+# burst can land on an earlier value than the one the user released on (#318):
+# a drag ending on Three wrote Two, Three, Three, Three and settled on Two.
+# Sending only the final position makes that race impossible. The writes in that
+# production log were ~260ms apart, so the window has to be comfortably wider
+# than that or the timer fires mid-drag and the burst is back; 0.5s is roughly
+# double the measured gap and still reads as immediate at the tile.
+_SPEED_DEBOUNCE_WINDOW = 0.5
 
 
 async def async_setup_entry(
@@ -106,6 +121,10 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         # monotonic() deadline until which a *guarded* power-on is suppressed;
         # see _POWER_ON_GUARD_WINDOW and _async_power_on.
         self._power_on_guard_until: float | None = None
+
+        # Pending debounced speed write; see _SPEED_DEBOUNCE_WINDOW.
+        self._cancel_speed_write: CALLBACK_TYPE | None = None
+        self._pending_percentage: int | None = None
 
         # Named for the air conditioner: a Home app user who did not install
         # the integration should not read this as a room fan.
@@ -232,7 +251,29 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             self._unit_id, normalize_to_api(speed)
         )
 
-    @with_debounced_refresh()
+    def _cancel_pending_speed_write(self) -> None:
+        """Drop any speed write still waiting on the debounce timer."""
+        if self._cancel_speed_write is not None:
+            self._cancel_speed_write()
+            self._cancel_speed_write = None
+
+    async def _async_write_pending_percentage(self, _now: datetime) -> None:
+        """Write the slider position the user actually settled on.
+
+        The refresh is requested here rather than by @with_debounced_refresh on
+        async_set_percentage, because that decorator starts its own (separately
+        debounced) timer when the *service call* returns, which is before this
+        write has even been issued. Requesting it after the write keeps the poll
+        downstream of the thing it is meant to observe.
+        """
+        self._cancel_speed_write = None
+        percentage = self._pending_percentage
+        if percentage is None:
+            return
+        self._pending_percentage = None
+        await self._async_apply_percentage(percentage, guard=True)
+        await self.coordinator.async_request_refresh_debounced()
+
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the fan speed.
 
@@ -241,17 +282,34 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         without returning, so it would power the unit down and then also send a
         speed. Zero means unit power off here, and nothing else.
 
+        Only the speed write is debounced; the power-on stays immediate so the
+        unit starts the moment a drag begins rather than half a second later.
+        Deferring zero along with the rest is deliberate: dragging *through* the
+        zero detent on the way up no longer powers the unit off en route.
+
         guard=True here (and only here): a slider drag calls this repeatedly in
         quick succession, each preceded by a power-on, and the shared write-
         dedup can't catch the repeats because it reads coordinator data that
         stays stale for the whole debounced-refresh window. fan.turn_on does
         not set guard, so it always powers on regardless of a recent drag.
         """
-        await self._async_apply_percentage(percentage, guard=True)
+        if percentage > 0:
+            await self._async_power_on(guard=True)
+        self._pending_percentage = percentage
+        self._cancel_pending_speed_write()
+        self._cancel_speed_write = async_call_later(
+            self.hass, _SPEED_DEBOUNCE_WINDOW, self._async_write_pending_percentage
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel a pending speed write so nothing fires after removal."""
+        self._cancel_pending_speed_write()
+        await super().async_will_remove_from_hass()
 
     @with_debounced_refresh()
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Hand speed selection back to the unit."""
+        self._cancel_pending_speed_write()
         await self.coordinator.async_set_fan_speed(
             self._unit_id, normalize_to_api(preset_mode)
         )
@@ -267,7 +325,13 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
 
         percentage=0 is permitted by the service schema and means the same here
         as it does to fan.set_percentage: power off.
+
+        Applied immediately, not debounced: an explicit service call is a
+        deliberate single command, not a drag. Same reasoning that has turn_on
+        bypass the power-on guard. It does supersede a pending drag write, which
+        would otherwise land afterwards and undo it.
         """
+        self._cancel_pending_speed_write()
         if preset_mode is not None:
             await self._async_power_on()
             await self.coordinator.async_set_fan_speed(
@@ -286,4 +350,5 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         only thing off can mean. ADR-025 records that this is deliberate, and
         that HomeKit shows the button whether or not the feature is declared.
         """
+        self._cancel_pending_speed_write()
         await self.coordinator.async_set_power(self._unit_id, False)
