@@ -221,7 +221,11 @@ users nothing.
   `ClimateEntityFeature.FAN_MODE` and breaking every existing
   `climate.set_fan_mode` call.
 - The vane is binary through HomeKit. Positions one to five stay reachable from
-  Home Assistant only.
+  Home Assistant only, and switching oscillation off returns the vane to `Auto`
+  rather than to the position it held before. A unit set to position three, then
+  swung and unswung from the Home app, ends on `Auto`. Restoring the prior
+  position would mean holding state the coordinator does not keep, which is not
+  worth it for a binary control, so the loss is accepted.
 - `percentage` reports the commanded speed, so in `auto` the slider shows the
   setpoint rather than the speed the fan is running. Reporting `actual_fan_speed`
   (#285) would be more informative but makes reads and writes reference different
