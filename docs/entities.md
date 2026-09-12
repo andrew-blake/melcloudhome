@@ -53,14 +53,13 @@ and Alexa as well as to HomeKit.
 Oscillation is only offered on units that report a vane, so a unit with neither
 swing nor air direction gets the speed slider and power without it.
 
-If your HomeKit Bridge is configured with a filter such as
-`include_domains: [climate]`, add `fan` to it, otherwise this entity is not
-bridged and the new tile never appears.
+Under `auto` the percentage keeps the last speed you chose and the unit picks
+its own, so the speed it is actually running is in the Actual Fan Speed sensor
+below.
 
-In auto, the speed slider keeps the last speed you chose and the unit picks its
-own. The Home app's title still reads that percentage, so it shows the speed the
-unit will go back to rather than the one it is running now. The speed it is
-actually running is in the Actual Fan Speed sensor below.
+**Using this in Apple Home?** See [the HomeKit guide](homekit.md), which covers
+adding the fan to your bridge, what the tile does, and the behaviour that
+surprises people.
 
 ### Sensors
 
