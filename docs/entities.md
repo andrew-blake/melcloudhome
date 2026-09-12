@@ -47,8 +47,9 @@ dropdown. Both control the same unit and cannot disagree, since both read one
 coordinator field.
 
 Turning this entity off powers the air conditioner down, because an air
-conditioner has no "fan off, unit running" state. That applies to Google Home
-and Alexa as well as to HomeKit.
+conditioner has no "fan off, unit running" state. The same should apply anywhere
+else the entity is exposed, such as Google Home or Alexa, though only HomeKit
+has been tested.
 
 Oscillation is only offered on units that report a vane, so a unit with neither
 swing nor air direction gets the speed slider and power without it.

@@ -268,8 +268,10 @@ users nothing.
   rejected vocabulary change and a manual accessory-type change besides.
 - The fan entity reaches every voice assistant, not only HomeKit. A `fan`
   domain entity appears in Google Home and Alexa as a fan with a power switch,
-  for every user, whether or not they bridge to HomeKit. Anyone asking Google or
-  Alexa to turn that fan off switches the air conditioner off.
+  for every user, whether or not they bridge to HomeKit, so anyone asking Google
+  or Alexa to turn that fan off switches the air conditioner off. This follows
+  from the entity being an ordinary `fan` and has not been exercised on either
+  assistant; only HomeKit has been tested.
 - Fan speed becomes settable from two places in HA, the climate entity's
   `fan_mode` dropdown and the new entity's percentage, visible on the device page
   and in both more-info dialogs but not on the dashboard thermostat card unless

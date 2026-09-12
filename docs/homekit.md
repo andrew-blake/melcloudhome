@@ -50,7 +50,7 @@ On the tile itself, the icon and the name do different things.
 Tapping the **icon** switches the unit on or off. Tapping the **label** opens
 the speed slider.
 
-This is easy to miss. If you are hunting for a power button, it is the icon.
+If you are looking for a power button, the icon is it.
 
 ## Finding Oscillate and Fan Mode
 
@@ -59,22 +59,21 @@ power button in that view: the slider is the power control, and setting it to
 anything above zero starts the unit. **Oscillate** and **Fan Mode** (Manual or
 Auto) are one level further in, behind the cog icon in the corner.
 
-They are easy to miss, because nothing on the slider view hints that there is
-more behind the cog. Apple decides which fan controls sit on the tile and which
-sit on the settings page, and the integration has no say in it.
+Nothing on the slider view hints that there is more behind the cog. Apple
+decides which fan controls sit on the tile and which sit on the settings page,
+and the integration has no say in it.
 
 ## Turning the fan off turns the air conditioner off
-
-This is the one that surprises everyone, so it is worth reading twice.
 
 An air conditioner has no "fan off, unit still running" state. The fan is the
 air conditioner. So turning the fan tile off, or dragging its speed slider down
 to zero, switches the whole unit off. Turning it back on starts the air
 conditioner again, in the mode it was last using.
 
-The same applies to Google Home and Alexa, where the unit also appears as a fan.
-Asking a voice assistant to turn off the living room A/C fan stops the air
-conditioning in that room.
+We have only checked this through HomeKit. The entity is an ordinary Home
+Assistant fan though, so if you also expose your entities to Google Home or
+Alexa it will appear there as a fan too, and asking either of them to turn that
+fan off should stop the air conditioning in the same way.
 
 If what you actually want is the unit running quietly, set the lowest speed
 rather than turning the fan off.
@@ -109,27 +108,10 @@ watch the unit modulating in Auto, watch it there.
 ## Units that report no vane
 
 Some units report no vane to the MELCloud Home service, and those get no
-Oscillate control. There is nothing missing and nothing to configure, and it is
-not unusual for a unit to report no vane.
+Oscillate control. There is nothing missing and nothing to configure.
 
-The alternative would be an Oscillate switch that did nothing at all, which is
-worse than no switch.
-
-If a unit has a vane you can move from the official MELCloud Home app and still
-gets no Oscillate control here, that is worth
-[raising as an issue](https://github.com/andrew-blake/melcloudhome/issues).
-
-## Two things that look wrong and are not
-
-**The name reads "A-C fan".** The entity is called "A/C fan". HomeKit does not
-allow a slash in an accessory name and puts a hyphen in its place, so the Home
-app shows "A-C fan". Nothing has gone wrong, and you can rename the accessory in
-the Home app if it bothers you.
-
-**"Not certified to work with HomeKit".** This banner appears when you pair, and
-it appears for everything Home Assistant bridges, not just these fans. Home
-Assistant's bridge is not part of Apple's certification programme. It is normal
-and it is not a problem.
+If you think one of your units has a vane but gets no Oscillate control, please
+[raise an issue](https://github.com/andrew-blake/melcloudhome/issues).
 
 ## Why the thermostat tile stays a plain thermostat
 
