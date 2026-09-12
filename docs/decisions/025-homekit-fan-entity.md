@@ -14,20 +14,17 @@ applies to these writes)
 
 An ATA unit bridged to HomeKit appears as a bare thermostat. Whilst temperature
 and operating mode are exposed to HomeKit, the fan speed and the vane are not,
-even though they are fully controllable inside Home Assistant.
+even though they are fully controllable inside Home Assistant. Reported as
+[issue #318](https://github.com/andrew-blake/melcloudhome/issues/318), which
+identified the vane gate correctly and proposed renaming the vane values; the fan
+gap was found while verifying that report against hardware.
 
 ### Evidence
 
 An ATA unit was bridged to HomeKit on HA 2026.7.4 and paired to an iOS client.
-The published accessory contains two services and nothing else, read from
-`.storage/homekit.<entry>.iids` for that accessory's aid:
-
-- `3E` AccessoryInformation
-- `4A` Thermostat, with `0F` CurrentHeatingCoolingState, `33`
-  TargetHeatingCoolingState, `11` CurrentTemperature, `35` TargetTemperature,
-  `36` TemperatureDisplayUnits
-
-There is no `B6` SwingMode characteristic and no `B7` Fanv2 service.
+Reading `.storage/homekit.<entry>.iids` for that accessory's aid shows two
+services and nothing else: `3E` AccessoryInformation and `4A` Thermostat. There
+is no `B6` SwingMode characteristic and no `B7` Fanv2 service.
 
 ### Why both controls are missing
 
@@ -47,34 +44,39 @@ unless the reported mode lowercases into `ordered_fan_speeds`, and
 set. Advertising standard names while continuing to report `"three"` or
 `"swing"` leaves the corresponding control permanently stale.
 
-### The accessory type is mostly out of reach
+### The Heater Cooler accessory type
 
-From 2026.8.0 the bridge can publish a climate entity as `HeaterCooler`
-(`type_heater_coolers.py`), HAP's air-conditioner service, which carries speed
-and swing on the accessory itself. Qualifying for it needs
-`climate_supports_heater_cooler`, which a standard swing pair alone satisfies.
+From 2026.8.0 the bridge can publish a climate entity as a Heater Cooler rather
+than a Thermostat. That is HAP's air-conditioner service, and it puts mode,
+temperature, fan speed and swing on a single tile, which is how the device
+actually works. The HomeKit Bridge documentation says which entities get it:
 
-`_async_resolve_climate_type` auto-routes only when `stored_type is None and allow_auto and not
-aid_storage.entity_is_allocated(entity_id)`, so an entity that is already bridged
-keeps its Thermostat until a user changes the accessory type by hand in the
-bridge options. Every install affected by this problem today is in exactly that
-position.
+> Air conditioners and heat pumps that offer two or more fan speeds or a swing
+> mode that can be turned off.
 
-### How many installs this affects
+The fan speeds here are numbered rather than named, and the vane has no `off`, so
+these units meet neither condition and do not qualify.
 
-Both controls are missing for anyone bridging ATA units to HomeKit, and the gap
-is structural rather than intermittent, so it affects every such install rather
-than some. How many that is remains unknown: there is no telemetry on how many
-installs bridge to HomeKit, and the direct evidence is a single issue report, so
-this record claims no measured population.
+More importantly, qualifying does not bring fan speed with it. An entity that
+qualifies on its swing values alone still advertises no standard fan names, so
+its tile would gain a swing switch and no speed slider. Reaching both controls on
+one tile means changing both vocabularies.
+
+One smaller limit, which shrinks over time rather than persisting: the
+documentation also says entities "already exposed before this feature was
+introduced keep their Thermostat accessory", so anyone who has already bridged a
+unit must change the accessory type by hand. Issue #318 is the first time HomeKit
+has come up for this integration, so that is a handful of people, and anyone
+bridging later would get the Heater Cooler automatically.
+
+### Who this affects
+
+Both controls are missing for anyone bridging ATA units to HomeKit, so it affects
+every such install rather than some.
 
 HomeKit, and Siri with it, is often the interface used by people in a household
 who never open Home Assistant, so a control missing there is missing entirely for
 those users rather than merely inconvenient.
-
-Reported as [issue #318](https://github.com/andrew-blake/melcloudhome/issues/318),
-which identified the vane gate correctly and proposed renaming the vane values.
-The fan gap was found while verifying that report against hardware.
 
 ## Decision
 
@@ -84,12 +86,10 @@ unit power. The climate vocabulary is left alone: `ATA_FAN_SPEEDS`,
 the climate entity keeps its own dropdowns and the new entity is an additional
 surface rather than a replacement.
 
-Precedent for one unit carrying both a climate and a fan entity is
-`home_connect`, which does this for an air conditioner. `smartthings` is the
-counter-precedent, declining a fan entity for anything with a cooling setpoint on
-the reasoning that the climate entity already carries the control; that reasoning
-does not apply here, because on this integration the climate entity demonstrably
-cannot carry it through the bridge.
+`home_connect` is the precedent, shipping both a climate and a fan entity for one
+air conditioner. `smartthings` is the counter-precedent, refusing a fan entity
+for anything with a cooling setpoint because the climate entity already carries
+the control, which is the one thing that is not true here.
 
 ### Why a fan entity rather than the climate entity
 
@@ -113,11 +113,9 @@ express them.
 ### How `auto` is represented
 
 `auto` goes in `preset_modes`, alone, because a percentage cannot express it.
-With exactly one preset, `type_fans.create_services` appends
-`CHAR_TARGET_FAN_STATE`, so it surfaces as HomeKit's Auto toggle rather than a
-stray switch, and turning it off restores the previous percentage. This is a
-decision rather than an implementation detail, because the single-preset case is
-what produces that behaviour and adding a second preset would silently change it.
+Being alone is the decision rather than an accident: with exactly one preset the
+bridge appends `CHAR_TARGET_FAN_STATE`, giving HomeKit's proper Auto toggle,
+whereas a second preset would silently turn both into stray switches.
 
 ### Power maps to the unit
 
@@ -132,9 +130,10 @@ off is accepted knowingly.
 
 ## Alternatives Considered
 
-**Adding `off` and `vertical` to `swing_modes`** is what #318 proposed, and this
-record previously adopted it. It is rejected on three counts, each verified in
-core source.
+**Adding `off` and `vertical` to `swing_modes`** is what #318 proposed, and it
+was the assumed path until review found the three problems below, each verified
+in core source. It is recorded at this length because it looks additive and safe,
+and is neither.
 
 For the swing toggle to read correctly, `is_swing_on` requires the *reported*
 `swing_mode` to be `vertical` rather than `swing`, so the change is not additive
@@ -149,9 +148,11 @@ Fanv2 on the Thermostat with `CHAR_ACTIVE` configured unconditionally, and
 `off`. That ships a dead control: a power button on the new tile that visibly
 does nothing.
 
-The justification for accepting all that was promotion to `HeaterCooler`, which
-per the Context section requires a manual accessory-type change on every
-already-bridged entity, so the payoff mostly does not arrive.
+The justification for accepting all that was promotion to the Heater Cooler
+accessory. That payoff is real for anyone bridging later, and delayed for anyone
+already bridged, who must change the accessory type by hand. What it would not
+deliver is fan speed, which needs the rename below as well, so the swing change
+alone buys a better-looking tile and leaves half the reported problem in place.
 
 **Renaming `fan_modes` to standard names** has the most precedent in core:
 `midea`, `gree`, `sensibo` and `lg_thinq` all map vendor speeds onto standard
@@ -159,23 +160,46 @@ names, and `midea` shows it need not cost HA anything, keeping five speeds by
 using standard names in the middle and custom `silent` and `full` at the
 extremes. It is rejected because of the read-back gate, which would force the
 reported `fan_mode` from `"three"` to `"medium"` and silently break templates,
-because HomeKit would reach only three of five speeds, and because
-`geoffdavis/esphome-mitsubishiheatpump` ran this experiment on the same hardware;
-its
+because HomeKit would reach only three of five speeds, and because the same
+renaming has already been tried on this hardware and rejected by its users.
+
+`geoffdavis/esphome-mitsubishiheatpump` drives the same hardware through a library
+whose fan map is numbered, then had to invent a mapping onto `low`, `medium`,
+`high` and `middle` because ESPHome forces a fixed set of names. Its
 [issue #135](https://github.com/geoffdavis/esphome-mitsubishiheatpump/issues/135)
-is a user asking to be put back on numbers because `medium` and `middle` are
-indistinguishable. It would also destroy the case-fold symmetry of
-`normalize_to_api`, currently a pure round trip against the API's own vocabulary.
+is three users asking for numbers back, one keeping a lookup table to remember
+which of `medium` and `middle` is which, and it was closed when the reporter
+installed a template component to undo the renaming from outside.
+
+Renaming would also destroy the case-fold symmetry of `normalize_to_api`,
+currently a pure round trip against the API's own vocabulary.
 Putting speed on the `HeaterCooler` accessory would be the tidiest outcome of
-all, but it is unreachable without this rename and so falls with it.
+all, but it is unreachable without this rename and so falls with it. Note that
+it would not have been the better outcome for resolution: `HeaterCooler` derives
+its slider step from `100 / len(ordered_fan_speeds)` exactly as the Thermostat's
+linked fan service does, so it too would reach three of five speeds. The fan
+entity gives five.
+
+**Documenting a template recipe instead of shipping a platform** would work, and
+it is what the ESPHome users fell back on. Core's template integration has no
+climate platform, which is why they needed a third-party component from HACS, but
+it does have a template fan supporting `speed_count`, `percentage`,
+`preset_modes` and `oscillating`, so a user could wrap the climate entity in
+plain YAML and bridge that instead. It is rejected as the answer because it asks
+every affected user to write and maintain the same mapping by hand, in a project
+whose users are Home Assistant owners rather than developers, and it still
+creates a second entity, so it carries this decision's main cost without its
+convenience. It remains a reasonable interim workaround to offer anyone who wants
+the controls before this ships.
 
 **Doing nothing** is core's position and is defensible: the developer
 documentation explicitly permits custom fan modes, and in
 [architecture discussion #553](https://github.com/home-assistant/architecture/discussions/553)
 a maintainer rejected expanding the built-in sets on the grounds that the options
 are vendor-specific. HA core's own `melcloud_home` integration has the same gap
-for the same hardware. It is rejected because the complaints are being filed
-here.
+for the same hardware. Doing nothing is the right answer when a fix costs more
+than the problem, and it is rejected here because the fan entity costs existing
+users nothing.
 
 ## Consequences
 
@@ -185,7 +209,7 @@ here.
 - The air conditioner keeps publishing as a Thermostat rather than as an air
   conditioner. Correct classification needs `HeaterCooler`, which needs the
   rejected vocabulary change and a manual accessory-type change besides.
-- **The fan entity reaches every voice assistant, not only HomeKit.** A `fan`
+- The fan entity reaches every voice assistant, not only HomeKit. A `fan`
   domain entity appears in Google Home and Alexa as a fan with a power switch,
   for every user, whether or not they bridge to HomeKit. Anyone asking Google or
   Alexa to turn that fan off switches the air conditioner off.
@@ -205,14 +229,7 @@ here.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 
-## Open Questions
-
-- Entity creation is gated on a stable capability, `number_of_fan_speeds > 0`.
-  The behaviour when `unit.capabilities` is `None` is unresolved: `ATAClimate`
-  falls back to all five speeds in that case, and whether the fan entity should
-  follow that fallback or skip creation needs deciding during implementation.
-
-### Conditions for Revisiting
+## Conditions for Revisiting
 
 - **If core ever auto-routes already-bridged entities to `HeaterCooler`**, or if
   changing the accessory type by hand becomes normal, the swing vocabulary
@@ -232,6 +249,8 @@ here.
 - `homekit/type_fans.py`, `type_thermostats.py`, `type_heater_coolers.py`,
   `climate_base.py`, `climate_util.py`, `accessories.py` and `aidmanager.py` in
   HA core, read from the 2026.9.1 wheel and diffed against 2026.8.0
+- [HomeKit Bridge documentation](https://www.home-assistant.io/integrations/homekit/),
+  which is the source of both quotations above
 - [Climate entity developer docs](https://developers.home-assistant.io/docs/core/entity/climate/#fan-modes),
   which permit custom fan modes
 - [issue #318](https://github.com/andrew-blake/melcloudhome/issues/318)
