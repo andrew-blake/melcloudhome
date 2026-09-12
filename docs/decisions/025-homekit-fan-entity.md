@@ -285,10 +285,11 @@ users nothing.
   position would mean holding state the coordinator does not keep, which is not
   worth it for a binary control, so the loss is accepted.
 - Units whose capabilities report no vane get no oscillation control at all.
-  That is common rather than exceptional: three of the six units in the
-  installation this was verified against report none, so without the capability
-  gate half of them would have carried a swing switch wired to hardware that
-  cannot swing.
+  Such units are real rather than hypothetical: several were found in the
+  installation this was verified against, and without the capability gate each
+  would have carried a swing switch wired to hardware that cannot swing. How
+  common they are across the fleet is not known, and the gate does not depend
+  on it.
 - `percentage` reports the commanded speed and the `auto` preset carries the
   auto state. Leaving `auto` returns the unit to the speed the user last chose
   rather than to a bridge default, and the percentage is unknown only before any
