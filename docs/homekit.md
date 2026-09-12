@@ -38,10 +38,9 @@ Take care at the entity selection step: leaving the fan selection empty means
 the whole domain, so every unit in your home gets bridged. Pick the ones you
 want explicitly if you only want some of them.
 
-Home Assistant reloads the bridge when you save. If the new tile has not
-appeared in the Home app after a minute or two, restart Home Assistant. New
-accessories arrive in whichever room the Home app puts them in by default, so
-you may want to move them into the right room afterwards.
+Home Assistant rebuilds the bridge when you save, so the new tile appears
+without restarting anything. It arrives in whichever room the Home app chooses
+by default, so you may want to move it into the right room afterwards.
 
 ## Tapping the icon and tapping the label
 
@@ -107,8 +106,8 @@ watch the unit modulating in Auto, watch it there.
 ## Units that report no vane
 
 Some units report no vane to the MELCloud Home service, and those get no
-Oscillate control. There is nothing missing and nothing to configure. It is not
-unusual either: in one six-unit household, three of the units report none.
+Oscillate control. There is nothing missing and nothing to configure, and it is
+not unusual for a unit to report no vane.
 
 The alternative would be an Oscillate switch that did nothing at all, which is
 worse than no switch.
