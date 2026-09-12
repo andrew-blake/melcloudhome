@@ -14,6 +14,11 @@ services:
     networks:
       - ha-dev
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Home Assistant with auto-setup
   homeassistant:
@@ -37,6 +42,11 @@ services:
     depends_on:
       - melcloud-mock
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
