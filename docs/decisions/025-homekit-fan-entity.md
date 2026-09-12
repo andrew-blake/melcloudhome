@@ -237,12 +237,20 @@ users nothing.
   swung and unswung from the Home app, ends on `Auto`. Restoring the prior
   position would mean holding state the coordinator does not keep, which is not
   worth it for a binary control, so the loss is accepted.
-- `percentage` reports the commanded speed, and is unknown in `auto` because no
-  numbered speed is commanded then; the `auto` preset carries that state instead.
-  The bridge skips the characteristic update while percentage is unknown, so the
-  HomeKit slider holds whatever it last showed. Reporting `actual_fan_speed`
-  (#285) would be more informative but makes reads and writes reference different
-  API fields, so it is deferred rather than adopted silently.
+- `percentage` reports the commanded speed; the `auto` preset carries the auto
+  state, since a percentage cannot express it. While the unit is in `auto`,
+  `percentage` reports the last numbered speed commanded rather than `None`,
+  and is unknown only before any numbered speed has ever been seen. This
+  matches HAP's own model: `RotationSpeed` is the manual setpoint that persists
+  while `TargetFanState` is Auto, not a value that goes blank when Auto is
+  selected. It also matters for HomeKit's Manual/Auto toggle specifically:
+  `type_fans.set_single_preset_mode` reads back our `percentage` when the user
+  switches out of Auto, and falls back to a hard-coded 50% if it finds `None`,
+  moving the unit to whatever speed that percentage maps to rather than the one
+  the user was actually on. Reporting the remembered speed closes that gap.
+  Reporting `actual_fan_speed` (#285) would be more informative but makes reads
+  and writes reference different API fields, so it remains deferred rather than
+  adopted here.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 

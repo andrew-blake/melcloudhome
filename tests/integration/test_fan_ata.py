@@ -14,6 +14,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.melcloudhome.const import DOMAIN
+
 from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
@@ -81,12 +83,48 @@ async def test_percentage_reflects_commanded_speed(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_percentage_is_none_in_auto(hass: HomeAssistant) -> None:
-    """No numbered speed is commanded in auto, so percentage is unknown."""
+async def test_percentage_is_none_before_any_numbered_speed_seen(
+    hass: HomeAssistant,
+) -> None:
+    """Auto with nothing remembered yet leaves percentage unknown.
+
+    The unit starts in auto, so there is no numbered speed to resume; today's
+    behaviour (the HomeKit bridge falling back to its own hard-coded 50%) is
+    the correct graceful degradation here. See
+    test_percentage_reports_last_numbered_speed_in_auto for the case where a
+    speed *has* been seen.
+    """
     await _setup(hass, power=True, set_fan_speed="Auto")
 
     state = hass.states.get(_FAN_ENTITY)
     assert state.attributes["percentage"] is None
+    assert state.attributes["preset_mode"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_percentage_reports_last_numbered_speed_in_auto(
+    hass: HomeAssistant,
+) -> None:
+    """Switching to auto from a numbered speed keeps reporting that speed.
+
+    Regression test for #318: HomeKit's bridge reads back our percentage when
+    the user leaves Auto for Manual, and falls back to a hard-coded 50% if it
+    finds None -- moving the unit to a speed the user never chose. Reporting
+    the last numbered speed we saw instead of None lets leaving auto resume
+    it.
+    """
+    _, mock_client = await _setup(hass, power=True, set_fan_speed="Three")
+
+    updated_unit = create_mock_ata_unit(power=True, set_fan_speed="Auto")
+    updated_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[updated_unit])]
+    )
+    mock_client.get_user_context = AsyncMock(return_value=updated_context)
+    await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(_FAN_ENTITY)
+    assert state.attributes["percentage"] == 60
     assert state.attributes["preset_mode"] == "auto"
 
 

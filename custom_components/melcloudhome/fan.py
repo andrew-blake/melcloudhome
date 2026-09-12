@@ -137,6 +137,21 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         self._ordered_speeds = _NUMBERED_SPEEDS[:speeds]
         self._attr_speed_count = len(self._ordered_speeds)
 
+        # Percentage of the last numbered speed seen, so that while the unit
+        # is in auto, percentage (below) can report it instead of None. See
+        # _handle_coordinator_update and percentage. Seeded from the unit this
+        # entity was constructed with -- itself the coordinator's first fetch,
+        # not a write of ours -- so a unit that starts on a numbered speed and
+        # is switched straight to auto on the very next update still has
+        # something to resume. Stays None if the unit starts in auto: nothing
+        # has been seen yet, so percentage keeps returning None (ADR-025).
+        self._last_numbered_percentage: int | None = None
+        initial_speed = (unit.set_fan_speed or "").lower()
+        if initial_speed in self._ordered_speeds:
+            self._last_numbered_percentage = ordered_list_item_to_percentage(
+                self._ordered_speeds, initial_speed
+            )
+
         # Oscillation writes vaneVerticalDirection, so only offer it where the
         # hardware has a vane. Same gate the climate entity puts on SWING_MODE.
         features = (
@@ -160,13 +175,19 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
     def percentage(self) -> int | None:
         """Return the commanded speed as a percentage.
 
-        None while the unit is in auto, because no numbered speed is
-        commanded then; the auto preset carries that state instead.
+        While the unit is in auto, no numbered speed is commanded -- the auto
+        preset carries that state instead -- so this reports the percentage of
+        the last numbered speed seen (see _handle_coordinator_update), letting
+        HomeKit's Manual/Auto toggle resume the speed the user was actually on
+        instead of falling back to its own hard-coded 50%. None only if no
+        numbered speed has ever been seen.
         """
         device = self.get_device()
         if device is None or device.set_fan_speed is None:
             return None
         speed = device.set_fan_speed.lower()
+        if speed == _AUTO_PRESET:
+            return self._last_numbered_percentage
         if speed not in self._ordered_speeds:
             return None
         return ordered_list_item_to_percentage(  # type: ignore[no-any-return]
@@ -182,6 +203,26 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         if device.set_fan_speed.lower() == _AUTO_PRESET:
             return _AUTO_PRESET
         return None
+
+    def _handle_coordinator_update(self) -> None:
+        """Remember the last numbered speed seen, then update entity state.
+
+        The commanded speed can change from the climate entity's fan_mode
+        dropdown, the vendor's own app, or a service call -- none of which are
+        calls into this entity, so they all arrive here rather than through a
+        write this class made itself. ATAEntityBase (CoordinatorEntity) does
+        not override this hook, so this is the only place that sees every one
+        of those paths; super() below reaches CoordinatorEntity's default
+        implementation directly and still writes the state.
+        """
+        device = self.get_device()
+        if device is not None and device.set_fan_speed is not None:
+            speed = device.set_fan_speed.lower()
+            if speed in self._ordered_speeds:
+                self._last_numbered_percentage = ordered_list_item_to_percentage(
+                    self._ordered_speeds, speed
+                )
+        super()._handle_coordinator_update()
 
     @property
     def oscillating(self) -> bool | None:
