@@ -32,13 +32,20 @@ def _configure_ata_controls(client: Any) -> None:
     client.ata.set_vane_vertical = AsyncMock()
 
 
+async def _setup(hass: HomeAssistant, **unit_kw: Any) -> tuple[Any, Any]:
+    """Set up the integration with one ATA unit, returning (entry, mock_client)."""
+    context = create_mock_ata_user_context(
+        buildings=[create_mock_ata_building(units=[create_mock_ata_unit(**unit_kw)])]
+    )
+    return await setup_ata_integration_custom(
+        hass, context, configure_client=_configure_ata_controls
+    )
+
+
 @pytest.mark.asyncio
 async def test_fan_entity_created_for_ata_unit(hass: HomeAssistant) -> None:
     """A unit with fan speeds gets a fan entity."""
-    mock_context = create_mock_ata_user_context()
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass)
 
     assert hass.states.get(_FAN_ENTITY) is not None
 
@@ -46,13 +53,7 @@ async def test_fan_entity_created_for_ata_unit(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_percentage_reflects_commanded_speed(hass: HomeAssistant) -> None:
     """Speed three of five reports as 60 percent."""
-    mock_unit = create_mock_ata_unit(power=True, set_fan_speed="Three")
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, power=True, set_fan_speed="Three")
 
     assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 60
 
@@ -60,13 +61,7 @@ async def test_percentage_reflects_commanded_speed(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_percentage_is_none_in_auto(hass: HomeAssistant) -> None:
     """No numbered speed is commanded in auto, so percentage is unknown."""
-    mock_unit = create_mock_ata_unit(power=True, set_fan_speed="Auto")
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, power=True, set_fan_speed="Auto")
 
     state = hass.states.get(_FAN_ENTITY)
     assert state.attributes["percentage"] is None
@@ -76,10 +71,7 @@ async def test_percentage_is_none_in_auto(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_set_percentage_sends_matching_speed(hass: HomeAssistant) -> None:
     """Forty percent of five speeds is speed two."""
-    mock_context = create_mock_ata_user_context()
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass)
 
     await hass.services.async_call(
         "fan",
@@ -95,10 +87,7 @@ async def test_set_percentage_sends_matching_speed(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_set_percentage_zero_powers_the_unit_off(hass: HomeAssistant) -> None:
     """Zero means unit power off, and sends no speed."""
-    mock_context = create_mock_ata_user_context()
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass)
 
     await hass.services.async_call(
         "fan",
@@ -119,13 +108,7 @@ async def test_set_preset_mode_auto(hass: HomeAssistant) -> None:
     when the device already holds the requested value (ADR-018), and the mock
     helper defaults to "Auto".
     """
-    mock_unit = create_mock_ata_unit(power=True, set_fan_speed="Three")
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass, power=True, set_fan_speed="Three")
 
     await hass.services.async_call(
         "fan",
@@ -140,10 +123,7 @@ async def test_set_preset_mode_auto(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_turn_off_powers_the_unit_down(hass: HomeAssistant) -> None:
     """An air conditioner has no fan-off state, so off means unit power off."""
-    mock_context = create_mock_ata_user_context()
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass)
 
     await hass.services.async_call(
         "fan", "turn_off", {"entity_id": _FAN_ENTITY}, blocking=True
@@ -155,15 +135,7 @@ async def test_turn_off_powers_the_unit_down(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_speed_count_follows_device_capability(hass: HomeAssistant) -> None:
     """A three-speed unit gets three steps, not five."""
-    mock_unit = create_mock_ata_unit(
-        power=True, set_fan_speed="Three", number_of_fan_speeds=3
-    )
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, power=True, set_fan_speed="Three", number_of_fan_speeds=3)
 
     state = hass.states.get(_FAN_ENTITY)
     assert state.attributes["percentage_step"] == pytest.approx(100 / 3)
@@ -173,13 +145,7 @@ async def test_speed_count_follows_device_capability(hass: HomeAssistant) -> Non
 @pytest.mark.asyncio
 async def test_no_fan_entity_without_fan_speeds(hass: HomeAssistant) -> None:
     """A unit reporting no speeds gets no fan entity."""
-    mock_unit = create_mock_ata_unit(number_of_fan_speeds=0)
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, number_of_fan_speeds=0)
 
     assert hass.states.get(_FAN_ENTITY) is None
 
@@ -187,13 +153,7 @@ async def test_no_fan_entity_without_fan_speeds(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_oscillating_true_when_vane_swinging(hass: HomeAssistant) -> None:
     """The API's Swing is the only vane value that oscillates."""
-    mock_unit = create_mock_ata_unit(power=True, vane_vertical="Swing")
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, power=True, vane_vertical="Swing")
 
     assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is True
 
@@ -204,13 +164,7 @@ async def test_oscillating_false_for_fixed_positions(
     hass: HomeAssistant, vane: str
 ) -> None:
     """Auto is a fixed mode-dependent angle, not a sweep, per the vendor manual."""
-    mock_unit = create_mock_ata_unit(power=True, vane_vertical=vane)
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    await _setup(hass, power=True, vane_vertical=vane)
 
     assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is False
 
@@ -218,10 +172,7 @@ async def test_oscillating_false_for_fixed_positions(
 @pytest.mark.asyncio
 async def test_oscillate_on_sends_swing(hass: HomeAssistant) -> None:
     """Turning oscillation on sets the vane to Swing."""
-    mock_context = create_mock_ata_user_context()
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass)
 
     await hass.services.async_call(
         "fan",
@@ -241,13 +192,7 @@ async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
     would switch oscillation off from, and because the control client skips a
     write matching the device's current value (ADR-018).
     """
-    mock_unit = create_mock_ata_unit(power=True, vane_vertical="Swing")
-    mock_context = create_mock_ata_user_context(
-        buildings=[create_mock_ata_building(units=[mock_unit])]
-    )
-    _, mock_client = await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
+    _, mock_client = await _setup(hass, power=True, vane_vertical="Swing")
 
     await hass.services.async_call(
         "fan",
@@ -259,18 +204,6 @@ async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
     assert mock_client.ata.set_vane_vertical.call_args[0][1] == "Auto"
 
 
-async def _setup_one_unit(hass: HomeAssistant, **unit_kwargs: Any) -> Any:
-    """Set up the integration with a single ATA unit built from unit_kwargs."""
-    mock_context = create_mock_ata_user_context(
-        buildings=[
-            create_mock_ata_building(units=[create_mock_ata_unit(**unit_kwargs)])
-        ]
-    )
-    return await setup_ata_integration_custom(
-        hass, mock_context, configure_client=_configure_ata_controls
-    )
-
-
 @pytest.mark.asyncio
 async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None:
     """Power-on carries the mode, so no operationMode=null reaches the API.
@@ -278,7 +211,7 @@ async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None
     A bare power write can fault a multi-zone outdoor unit. The unit starts off
     because the control client skips a write the device already satisfies.
     """
-    _, mock_client = await _setup_one_unit(hass, power=False, operation_mode="Heat")
+    _, mock_client = await _setup(hass, power=False, operation_mode="Heat")
 
     await hass.services.async_call(
         "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
@@ -293,7 +226,7 @@ async def test_turn_on_with_percentage_sets_power_and_speed(
     hass: HomeAssistant,
 ) -> None:
     """turn_on(percentage=40) powers on and commands speed two of five."""
-    _, mock_client = await _setup_one_unit(
+    _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
 
@@ -313,7 +246,7 @@ async def test_turn_on_with_auto_preset_sets_power_and_speed(
     hass: HomeAssistant,
 ) -> None:
     """HomeKit's Auto toggle routes through turn_on, so it must power on too."""
-    _, mock_client = await _setup_one_unit(
+    _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Three"
     )
 
@@ -335,7 +268,7 @@ async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None
     The bridge sends Active=1 and RotationSpeed in one write and then skips
     fan.turn_on, so set_percentage alone has to power the unit on.
     """
-    _, mock_client = await _setup_one_unit(
+    _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
 
@@ -353,6 +286,6 @@ async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None
 @pytest.mark.asyncio
 async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     """A unit with neither swing nor air direction gets no oscillate control."""
-    await _setup_one_unit(hass, power=True, has_swing=False, has_air_direction=False)
+    await _setup(hass, power=True, has_swing=False, has_air_direction=False)
 
     assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes
