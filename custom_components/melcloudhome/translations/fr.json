@@ -209,6 +209,17 @@
       "cop": {
         "name": "Coefficient de performance"
       }
+    },
+    "fan": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Automatique"
+            }
+          }
+        }
+      }
     }
   },
   "services": {

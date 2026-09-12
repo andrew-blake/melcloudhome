@@ -26,6 +26,9 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-020: Report `unknown`, Not `unavailable`, for Missing Readings](decisions/020-unknown-for-missing-readings.md) - `available_fn` removed from all entity descriptions (amends ADR-006, ADR-008)
 - [ADR-021: Deferred Startup Fetch](decisions/021-deferred-startup-fetch.md) - The first energy/telemetry fetch runs in a background task instead of blocking entity creation
 - [ADR-022: A Reading Is a Value Plus the Time the Unit Recorded It](decisions/022-reading-provenance.md) - `Reading` + `reading_fn` + the `last_reading` attribute for slow-cadence sensors (amends ADR-006)
+- [ADR-023: ATW Water Temperatures Come From the Internal Temperatures Report](decisions/023-atw-water-temperatures-from-report.md) - flow and return temperatures read from the report endpoint rather than the device payload
+- [ADR-024: Energy Storage Is Scoped Per Account](decisions/024-entry-scoped-energy-storage.md) - energy totals keyed by config entry so two accounts cannot overwrite each other
+- [ADR-025: Exposing Fan Speed and Vane to HomeKit](decisions/025-homekit-fan-entity.md) - a `fan` entity per ATA unit, because the HomeKit bridge cannot expose either control from the climate entity
 
 ## Architecture
 

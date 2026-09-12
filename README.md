@@ -121,6 +121,7 @@ The integration creates the following entities for each device:
 **Air-to-Air (ATA) Systems:**
 
 - Climate control (HVAC modes, temperature, fan speeds, swing)
+- Fan (fan speed, vane oscillation, unit power — gives HomeKit a speed slider and swing switch)
 - Sensors (room temperature, outdoor temperature, WiFi signal, energy consumption)
 - Binary sensors (error state, connection status)
 
@@ -135,6 +136,8 @@ The integration creates the following entities for each device:
 *Energy monitoring auto-detected from device capabilities
 
 **Complete entity reference:** See [docs/entities.md](docs/entities.md) for detailed entity IDs, control options, and configuration examples.
+
+**Apple HomeKit:** See [docs/homekit.md](docs/homekit.md) for what the fan entity looks like in the Home app, how to get it bridged, and the behaviour that surprises people.
 
 ## Troubleshooting
 
@@ -193,6 +196,7 @@ These intervals balance update frequency with API rate limits. Real-time updates
 
 **Documentation:**
 
+- [Using MELCloud Home with Apple HomeKit](docs/homekit.md) - What appears in the Home app and how it behaves
 - [Architecture Overview](docs/architecture.md) - Visual system architecture with mermaid diagrams
 - [Testing Best Practices](docs/testing-best-practices.md) - Development setup and testing guidelines
 - [Architecture Decision Records](docs/README.md#architecture-decision-records-adrs) - Key architectural decisions

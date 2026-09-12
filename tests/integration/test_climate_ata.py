@@ -322,3 +322,38 @@ async def test_device_removal_entity_becomes_unavailable(hass: HomeAssistant) ->
 
     state = hass.states.get(_CLIMATE_ENTITY)
     assert state is None  # Entity not created when no units
+
+
+@pytest.mark.asyncio
+async def test_climate_vocabularies_are_unchanged(hass: HomeAssistant) -> None:
+    """Pin both vocabularies against a future tidy-up.
+
+    ADR-025 rejected adding HomeKit's standard names to swing_modes: doing so
+    requires swing_mode to report "vertical" instead of "swing", which breaks
+    templates silently, and it builds a linked fan service on the Thermostat
+    whose power button is rejected and visibly does nothing. The fan entity
+    carries these controls instead. Read that ADR before changing this test.
+    """
+    mock_context = create_mock_ata_user_context()
+    await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    state = hass.states.get(_CLIMATE_ENTITY)
+    assert state.attributes["fan_modes"] == [
+        "auto",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+    ]
+    assert state.attributes["swing_modes"] == [
+        "auto",
+        "swing",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+    ]
