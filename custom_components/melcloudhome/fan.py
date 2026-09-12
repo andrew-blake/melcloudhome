@@ -33,6 +33,13 @@ _LOGGER = logging.getLogger(__name__)
 _AUTO_PRESET = ATA_FAN_SPEEDS[0]
 _NUMBERED_SPEEDS = ATA_FAN_SPEEDS[1:]
 
+# The vane values oscillation maps onto. "Swing" sweeps; "Auto" is a fixed
+# angle chosen by operating mode, which the Mitsubishi MSZ-LN instructions and
+# the MELCloud Home manual both document, so reporting Auto as not oscillating
+# is true of the hardware.
+_VANE_SWING = "Swing"
+_VANE_AUTO = "Auto"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -71,6 +78,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
 
     _attr_supported_features = (
         FanEntityFeature.SET_SPEED
+        | FanEntityFeature.OSCILLATE
         | FanEntityFeature.TURN_ON
         | FanEntityFeature.TURN_OFF
     )
@@ -135,6 +143,21 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         if device.set_fan_speed.lower() == _AUTO_PRESET:
             return _AUTO_PRESET
         return None
+
+    @property
+    def oscillating(self) -> bool | None:
+        """Return true while the vane is sweeping."""
+        device = self.get_device()
+        if device is None or device.vane_vertical_direction is None:
+            return None
+        return device.vane_vertical_direction == _VANE_SWING
+
+    @with_debounced_refresh()
+    async def async_oscillate(self, oscillating: bool) -> None:
+        """Start or stop the vane sweeping."""
+        await self.coordinator.async_set_vane_vertical(
+            self._unit_id, _VANE_SWING if oscillating else _VANE_AUTO
+        )
 
     @with_debounced_refresh()
     async def async_set_percentage(self, percentage: int) -> None:

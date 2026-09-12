@@ -181,3 +181,78 @@ async def test_no_fan_entity_without_fan_speeds(hass: HomeAssistant) -> None:
     )
 
     assert hass.states.get(_FAN_ENTITY) is None
+
+
+@pytest.mark.asyncio
+async def test_oscillating_true_when_vane_swinging(hass: HomeAssistant) -> None:
+    """The API's Swing is the only vane value that oscillates."""
+    mock_unit = create_mock_ata_unit(power=True, vane_vertical="Swing")
+    mock_context = create_mock_ata_user_context(
+        buildings=[create_mock_ata_building(units=[mock_unit])]
+    )
+    await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("vane", ["Auto", "One", "Five"])
+async def test_oscillating_false_for_fixed_positions(
+    hass: HomeAssistant, vane: str
+) -> None:
+    """Auto is a fixed mode-dependent angle, not a sweep, per the vendor manual."""
+    mock_unit = create_mock_ata_unit(power=True, vane_vertical=vane)
+    mock_context = create_mock_ata_user_context(
+        buildings=[create_mock_ata_building(units=[mock_unit])]
+    )
+    await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is False
+
+
+@pytest.mark.asyncio
+async def test_oscillate_on_sends_swing(hass: HomeAssistant) -> None:
+    """Turning oscillation on sets the vane to Swing."""
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "oscillate",
+        {"entity_id": _FAN_ENTITY, "oscillating": True},
+        blocking=True,
+    )
+
+    assert mock_client.ata.set_vane_vertical.call_args[0][1] == "Swing"
+
+
+@pytest.mark.asyncio
+async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
+    """Turning it off returns the vane to the unit's own positioning.
+
+    The vane must start on "Swing", both because that is the only state you
+    would switch oscillation off from, and because the control client skips a
+    write matching the device's current value (ADR-018).
+    """
+    mock_unit = create_mock_ata_unit(power=True, vane_vertical="Swing")
+    mock_context = create_mock_ata_user_context(
+        buildings=[create_mock_ata_building(units=[mock_unit])]
+    )
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    await hass.services.async_call(
+        "fan",
+        "oscillate",
+        {"entity_id": _FAN_ENTITY, "oscillating": False},
+        blocking=True,
+    )
+
+    assert mock_client.ata.set_vane_vertical.call_args[0][1] == "Auto"
