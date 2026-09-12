@@ -57,6 +57,11 @@ If your HomeKit Bridge is configured with a filter such as
 `include_domains: [climate]`, add `fan` to it, otherwise this entity is not
 bridged and the new tile never appears.
 
+In auto, the speed slider keeps the last speed you chose and the unit picks its
+own. The Home app's title still reads that percentage, so it shows the speed the
+unit will go back to rather than the one it is running now. The speed it is
+actually running is in the Actual Fan Speed sensor below.
+
 ### Sensors
 
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`

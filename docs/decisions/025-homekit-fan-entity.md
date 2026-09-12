@@ -251,6 +251,17 @@ users nothing.
   Reporting `actual_fan_speed` (#285) would be more informative but makes reads
   and writes reference different API fields, so it remains deferred rather than
   adopted here.
+- **In `auto`, the Home app's title misreports the running speed, and this is
+  accepted.** Its accessory page renders `RotationSpeed` as "N% Speed"
+  regardless of `TargetFanState`, so in `auto` it shows the speed the unit will
+  resume, not the one it is running. Observed on hardware: the title read
+  "100% Speed" while the unit modulated itself down to speed two. The bridge
+  reads the same `percentage` for both the title and the Manual fallback, so
+  the two cannot be answered differently. Reporting `actual_fan_speed` would
+  make the title honest at the cost of putting that field's several-minute lag
+  behind the manual slider, where the position would visibly spring back after
+  a drag and look like the control rejecting input. Between a title that
+  misinforms and a control that appears broken, the title is preferred.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 
