@@ -69,8 +69,18 @@ async def test_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_set_hvac_mode_noop_when_already_matches(hass: HomeAssistant) -> None:
-    """Test that set_hvac_mode is a no-op when power+mode already match device state."""
+async def test_set_hvac_mode_writes_even_when_already_matching(
+    hass: HomeAssistant,
+) -> None:
+    """A redundant-looking power+mode command still reaches the API (#318).
+
+    This asserted the opposite until the write-dedup was removed from the two
+    power methods. Coordinator data is stale for the whole window between a
+    write and the next completed refresh, so "already matches" could not be
+    told apart from "was just commanded", and a real power-off issued inside
+    that window was dropped while the unit kept running. ADR-018 pre-authorised
+    the removal; the cost is one extra call per redundant scene application.
+    """
     mock_unit = create_mock_ata_unit(power=True, operation_mode="Heat")
     mock_context = create_mock_ata_user_context(
         [create_mock_ata_building(units=[mock_unit])]
@@ -86,7 +96,8 @@ async def test_set_hvac_mode_noop_when_already_matches(hass: HomeAssistant) -> N
         blocking=True,
     )
 
-    mock_client.ata.set_power_and_mode.assert_not_called()
+    mock_client.ata.set_power_and_mode.assert_called_once()
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
     mock_client.ata.set_power.assert_not_called()
 
 

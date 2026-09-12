@@ -285,8 +285,8 @@ async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
 async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None:
     """Power-on carries the mode, so no operationMode=null reaches the API.
 
-    A bare power write can fault a multi-zone outdoor unit. The unit starts off
-    because the control client skips a write the device already satisfies.
+    A bare power write can fault a multi-zone outdoor unit. What is under test
+    is which method carries the write, not whether it is sent.
     """
     _, mock_client = await _setup(hass, power=False, operation_mode="Heat")
 
@@ -518,16 +518,15 @@ async def test_power_off_disarms_the_power_on_guard(
     """Turning the unit off must not leave a drag's guard suppressing the restart.
 
     Reachable entirely from the Home app on a running unit: dragging the slider
-    arms the guard even when the shared write-dedup skipped the API call because
-    the unit was already on, and nothing about that write happening or not
-    clears it. Tap the tile off (or drag to the zero detent), then drag straight
+    arms the guard whether or not the unit needed the power-on, and nothing
+    about that write clears it. Tap the tile off (or drag to the zero detent),
+    then drag straight
     back up: the bridge sends Active and RotationSpeed together and deliberately
     skips fan.turn_on, so it arrives as set_percentage alone. A surviving guard
     would suppress the power-on and leave the unit off with a speed write landing
     on it, contradicting docs/homekit.md.
 
-    The unit is modelled as off throughout so the writes reach the API mock
-    rather than being skipped by the write-dedup (ADR-018). The guard window is
+    The guard window is
     widened out of the way because it is measured on the real clock, which
     async_fire_time_changed does not move: at its production three seconds the
     result would depend on how long the test itself took to run, and the only
@@ -550,14 +549,45 @@ async def test_power_off_disarms_the_power_on_guard(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
+async def test_power_off_lands_while_the_power_on_is_still_stale(
+    hass: HomeAssistant, power_off: Any
+) -> None:
+    """A drag up then straight back down must switch the unit off (#318).
+
+    Observed on hardware: from off, a drag up followed by a drag to zero left
+    the air conditioner running while the Home app showed it off. The power-on
+    had not reached coordinator data yet -- the refresh is scheduled 2.0s after
+    the write returns and then has its own round trip -- so the off was compared
+    against a cache still reading power=False and deduplicated away. Two offs
+    were dropped that way, 1.65s and 2.4s after the power-on.
+
+    The mock context keeps reporting power=False for the whole test, which is
+    exactly that stale window: the off must still reach the API.
+    """
+    _, mock_client = await _setup(
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
+    )
+
+    await _set_percentage(hass, 40)
+    assert mock_client.ata.set_power_and_mode.call_count == 1
+
+    await power_off(hass)
+
+    mock_client.ata.set_power.assert_called_once()
+    assert mock_client.ata.set_power.call_args[0][1] is False
+
+
+@pytest.mark.asyncio
 async def test_dragging_through_zero_does_not_power_off(
     hass: HomeAssistant,
 ) -> None:
     """Passing the zero detent mid-drag must not stop the unit.
 
     Only the released position counts, so a drag from low through zero and back
-    up sends one speed and no power-off. The unit starts on, so a power-off
-    write would really be issued rather than skipped by the write-dedup.
+    up sends one speed and no power-off. Power writes are never deduplicated,
+    so a power-off reaching the control client would reach the API too: the
+    assertion below fails if the zero detent is applied mid-drag.
     """
     _, mock_client = await _setup(
         hass, power=True, operation_mode="Heat", set_fan_speed="Auto"

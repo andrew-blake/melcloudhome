@@ -44,16 +44,19 @@ _VANE_SWING = "Swing"
 _VANE_AUTO = "Auto"
 
 # HomeKit streams several set_percentage calls per slider drag (one per
-# intermediate position), each preceded by a power-on write. The shared
-# write-dedup in control_client_ata compares against coordinator data, which
-# stays stale for the whole debounced-refresh window, so it cannot suppress
-# these. with_debounced_refresh() defaults to a 2.0s delay, and that timer is
-# shared with the control client and restarted by every WebSocket delta, so the
-# stale window has no fixed upper bound -- during a busy drag it can outlast
-# this guard. Three seconds covers the ordinary case (one refresh delay plus the
-# deferred speed write, with headroom for scheduling and network jitter) without
-# claiming to cover every case: when it is outlasted, the only consequence is
-# one redundant power-on write, which the API accepts on a running unit.
+# intermediate position), each preceded by a power-on write, and nothing below
+# this entity collapses them: control_client_ata deliberately does not
+# deduplicate power writes, because comparing against coordinator data dropped
+# real power-offs issued inside the stale window (#318, ADR-018).
+#
+# No constant is safe here, and this one is not sized against the stale window:
+# the refresh is scheduled 2.0s after a write *returns* and then has its own API
+# round trip, and on hardware a write was still being compared against stale
+# data 2.4s after the preceding one. Three seconds is a plain guess at the span
+# of one drag. Being wrong is cheap in one direction only, which is why a guess
+# is acceptable: this guard suppresses *repeat* power-ons within a drag, so too
+# short wastes an API call the unit accepts while already running, and no
+# command is lost. It is never allowed to suppress an explicit fan.turn_on.
 _POWER_ON_GUARD_WINDOW = 3.0
 
 # How long a slider position must stand still before it is written. Overlapping
@@ -291,10 +294,12 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         The unit is powered on as well as sped up, because the HomeKit bridge
         sends Active=1 and RotationSpeed in one write when the slider is dragged
         up on an off tile, and then deliberately skips fan.turn_on on the
-        assumption that a SET_SPEED fan powers itself on. The control client
-        skips a write the device already satisfies, so on an already-running
-        unit this costs no extra API call. guard is forwarded to
-        _async_power_on; see that method and async_set_percentage.
+        assumption that a SET_SPEED fan powers itself on. Power writes are not
+        deduplicated by the control client (#318), so on an already-running unit
+        this costs one redundant power-on per drag, which the guard collapses to
+        one however many intermediate positions the drag passes through. guard
+        is forwarded to _async_power_on; see that method and
+        async_set_percentage.
         """
         if percentage == 0:
             # Dragging to the zero detent is an explicit power-off, which
@@ -353,10 +358,10 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         zero detent on the way up no longer powers the unit off en route.
 
         guard=True here (and only here): a slider drag calls this repeatedly in
-        quick succession, each preceded by a power-on, and the shared write-
-        dedup can't catch the repeats because it reads coordinator data that
-        stays stale for the whole debounced-refresh window. fan.turn_on does
-        not set guard, so it always powers on regardless of a recent drag.
+        quick succession, each preceded by a power-on, and the control client
+        does not deduplicate power writes at all (#318), so nothing below this
+        entity collapses them. fan.turn_on does not set guard, so it always
+        powers on regardless of a recent drag.
 
         The pending value and its timer are taken before the power-on is
         awaited. HomeKit's bridge dispatches each call as its own un-awaited
@@ -425,10 +430,10 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         that HomeKit shows the button whether or not the feature is declared.
 
         The power-on guard is dropped here. It is armed whenever a guarded
-        power-on runs, including when the shared write-dedup skipped the API
-        call because the unit was already on -- so a slider drag on a running
-        unit leaves it armed for three seconds without any power write having
-        happened. Turning the unit off inside that window and dragging the
+        power-on runs, including on a unit that was already on, so a slider drag
+        on a running unit leaves it armed for three seconds having written
+        nothing the unit needed. Turning the unit off inside that window and
+        dragging the
         slider straight back up would then hit set_percentage alone (the bridge
         sends Active and RotationSpeed together and skips fan.turn_on), the
         guard would suppress the power-on, and the unit would stay off with a

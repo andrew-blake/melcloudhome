@@ -4,8 +4,8 @@
 **Date:** 2026-09-11
 **Relates to:** [ADR-013](013-automatic-friendly-device-names.md) (the device
 naming this entity inherits),
-[ADR-018](018-out-of-band-state-sync-limitation.md) (the deduplication that
-applies to these writes)
+[ADR-018](018-out-of-band-state-sync-limitation.md) (the deduplication
+trade-off these writes change)
 **Decision Makers:** @andrew-blake
 
 ---
@@ -175,9 +175,9 @@ a second, and short enough that deliberate steps a few seconds apart are each
 treated as their own settled position rather than swallowed.
 
 The power-on is not deferred, so the unit starts the moment a drag begins. It is
-suppressed for a few seconds after one succeeds instead, because the shared
-write-deduplication compares against coordinator data that stays stale until the
-next refresh and so cannot recognise the repeats itself. An explicit
+suppressed for a few seconds after one succeeds instead, because power writes
+are not deduplicated below this entity (see Consequences), so nothing else
+collapses the repeats. An explicit
 `fan.turn_on` is never suppressed: the suppression exists to tame the drag
 burst, not to make the documented service unreliable.
 
@@ -309,6 +309,30 @@ users nothing.
   Between a title that misinforms and a control that appears broken, the title
   is preferred, and #285 stays deferred. The running speed remains visible in
   the Actual Fan Speed sensor, which under `auto` is the only place it appears.
+- **ATA power writes are no longer deduplicated**, in either `async_set_power`
+  or `async_set_power_and_mode`. The write-deduplication compares the requested
+  value against coordinator data, which is stale for the whole window between a
+  write and the next completed refresh, so a power-off issued inside that window
+  is compared against a cache still reading the pre-write value and dropped.
+  Verified on hardware: from off, a drag up followed immediately by a drag to
+  zero produced two dropped offs, 1.65s and 2.4s after the power-on, nothing
+  reached the API, and the air conditioner kept running while the Home app
+  showed it off. [ADR-018](018-out-of-band-state-sync-limitation.md)
+  pre-authorised removing deduplication from power for exactly this case;
+  `async_set_power_and_mode` post-dates that record, carries the same check on
+  the same field and has the same defect, so it is covered too. Mode,
+  temperature, fan speed and both vanes keep theirs, on ADR-018's rate-limit
+  reasoning.
+- The weakness is not created by this entity: the climate entity reaches it with
+  an off-then-on inside the same window. The slider changes the probability,
+  because it puts on and off at two ends of one gesture.
+- The cost accepted is a power-on write the unit does not need whenever the
+  slider is dragged on an already-running unit. `_POWER_ON_GUARD_WINDOW`
+  collapses repeats within a drag, so that is roughly one extra write per drag
+  rather than one per slider position, and `RequestPacer` still spaces it. A
+  rapid set-then-reverse remains swallowed for every other field, which is left
+  alone deliberately: a wrong setpoint or vane is visible and re-commandable,
+  where a unit left running is neither.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 
