@@ -31,8 +31,9 @@ Bridge** → **Configure**, and add the fan entities you want to the list the
 bridge exposes.
 
 If your bridge is filtered to climate entities only, for example with
-`include_domains: [climate]`, the fan will never appear however long you wait.
-Add `fan` to the filter.
+`include_domains: [climate]`, add `fan` to the filter as well. Without it the
+fan entities are not offered to HomeKit at all, so the new tile will not show
+up.
 
 Take care at the entity selection step: leaving the fan selection empty means
 the whole domain, so every unit in your home gets bridged. Pick the ones you
@@ -47,18 +48,20 @@ by default, so you may want to move it into the right room afterwards.
 On the tile itself, the icon and the name do different things.
 
 Tapping the **icon** switches the unit on or off. Tapping the **label** opens
-the controls.
+the speed slider.
 
 This is easy to miss. If you are hunting for a power button, it is the icon.
 
-## The controls behind the label
+## Finding Oscillate and Fan Mode
 
-Open the fan tile and you get three controls: **Oscillate**, **Fan Mode**
-(Manual or Auto) and **Fan Speed**.
+Opening the tile gives you the speed slider and nothing else. There is no
+power button in that view: the slider is the power control, and setting it to
+anything above zero starts the unit. **Oscillate** and **Fan Mode** (Manual or
+Auto) are one level further in, behind the cog icon in the corner.
 
-Only the speed slider and the power are on the tile itself. Apple decides which
-fan controls sit on a tile and which sit on the page behind it, and the
-integration has no say in that.
+They are easy to miss, because nothing on the slider view hints that there is
+more behind the cog. Apple decides which fan controls sit on the tile and which
+sit on the settings page, and the integration has no say in it.
 
 ## Turning the fan off turns the air conditioner off
 
