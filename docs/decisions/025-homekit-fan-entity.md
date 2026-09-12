@@ -98,26 +98,46 @@ swing switch from `FanEntityFeature.OSCILLATE`, with no fixed name set involved,
 so a fan entity has no vocabulary gate and both controls work from values the
 integration computes directly.
 
-`FanEntity.percentage_step` is `100 / speed_count`,
-which the bridge passes as `PROP_MIN_STEP`, so setting `speed_count` from
+`FanEntity.percentage_step` is `100 / speed_count`, which the bridge passes as
+`PROP_MIN_STEP`, so setting `speed_count` from
 `capabilities.number_of_fan_speeds` puts one slider detent on each real speed.
 Every speed stays reachable only while `speed_count` tracks that capability;
-hard-code it and the slider's detents stop matching the hardware.
+hard-code it and the slider's detents stop matching the hardware. That same
+division is why a unit reporting no fan speeds at all gets no fan entity: a
+`speed_count` of zero would make every state update raise.
 
 `oscillating` is a boolean the integration derives from
 `vane_vertical_direction == "Swing"`, so the vane round-trips without any
-vocabulary or reported-value change. The seven real vane positions remain on the
-climate entity's `swing_mode`, since HomeKit's control is binary and cannot
-express them. `OSCILLATE` is declared only where `capabilities.has_swing` or
+vocabulary or reported-value change. `Swing` sweeps and `Auto` is a fixed angle
+chosen by operating mode, so reporting `Auto` as not oscillating is true of the
+hardware. The seven real vane positions remain on the climate entity's
+`swing_mode`, since HomeKit's control is binary and cannot express them.
+`OSCILLATE` is declared only where `capabilities.has_swing` or
 `has_air_direction` is set, the gate the climate entity already puts on
 `SWING_MODE`, so a unit without a vane gets no switch rather than a dead one.
+
+Oscillating writes the vane and nothing else, so switching it on does not start
+a stopped unit. It sets the vane for the next time the unit runs.
 
 ### How `auto` is represented
 
 `auto` goes in `preset_modes`, alone, because a percentage cannot express it.
 Being alone is the decision rather than an accident: with exactly one preset the
 bridge appends `CHAR_TARGET_FAN_STATE`, giving HomeKit's proper Auto toggle,
-whereas a second preset would silently turn both into stray switches.
+whereas a second preset would silently turn both into stray switches. The cost
+is borne inside Home Assistant, where the fan dialog renders no preset selector
+for a single preset, so `auto` is chosen from the climate entity's `fan_mode`
+dropdown or a service call rather than from this entity.
+
+While `auto` is selected, `percentage` keeps reporting the last numbered speed
+the unit has been seen on rather than going blank, and is unknown only before
+any numbered speed has been seen at all. That matches HAP's own model, in which
+`RotationSpeed` is the manual setpoint that persists while `TargetFanState` is
+Auto rather than a value that goes blank when Auto is selected. It also matters
+for the Manual/Auto toggle specifically: `type_fans.set_single_preset_mode`
+reads that percentage back when the user leaves Auto and falls back to a
+hard-coded 50% if it finds `None`, moving the unit to whatever speed that maps
+to instead of the one the user was actually on.
 
 ### Power maps to the unit
 
@@ -133,16 +153,39 @@ off is accepted knowingly.
 Setting a non-zero speed powers the unit on as well as commanding the speed. The
 bridge sends `Active=1` and `RotationSpeed` together when the slider is dragged
 up on an inactive tile, then deliberately skips `fan.turn_on` on the documented
-assumption that a `SET_SPEED` fan powers itself on. Every power-on carries the
+assumption that a `SET_SPEED` fan powers itself on. A power-on carries the
 device's current `operation_mode`, because a bare power write sends
-`operationMode=null`, which can fault a multi-zone outdoor unit.
+`operationMode=null`, which can fault a multi-zone outdoor unit; the mode is
+omitted only when the device reports none to preserve. Powering off carries
+nothing, since there is no mode to keep on the way down.
+
+### One write per slider drag
+
+A HomeKit slider drag is not one command. The bridge sends every intermediate
+position the finger passes through, so one gesture arrives as a burst of speed
+writes. Those writes overlap in flight and the server applies them in the order
+they arrive rather than the order they were issued, so the position the user
+released on can lose to an earlier one: a drag ending on speed three settled the
+unit on speed two.
+
+Only the final position is written, half a second after the slider stops moving.
+One write per gesture makes the ordering race impossible. The window has to be
+wider than the gap between intermediate positions, which is around a quarter of
+a second, and short enough that deliberate steps a few seconds apart are each
+treated as their own settled position rather than swallowed.
+
+The power-on is not deferred, so the unit starts the moment a drag begins. It is
+suppressed for a few seconds after one succeeds instead, because the shared
+write-deduplication compares against coordinator data that stays stale until the
+next refresh and so cannot recognise the repeats itself. An explicit
+`fan.turn_on` is never suppressed: the suppression exists to tame the drag
+burst, not to make the documented service unreliable.
 
 ## Alternatives Considered
 
-**Adding `off` and `vertical` to `swing_modes`** is what #318 proposed, and it
-was the assumed path until review found the three problems below, each verified
-in core source. It is recorded at this length because it looks additive and safe,
-and is neither.
+**Adding `off` and `vertical` to `swing_modes`** is what #318 proposed. It is
+recorded at this length because it looks additive and safe, and is neither; each
+of the three problems below is verified in core source.
 
 For the swing toggle to read correctly, `is_swing_on` requires the *reported*
 `swing_mode` to be `vertical` rather than `swing`, so the change is not additive
@@ -182,6 +225,7 @@ installed a template component to undo the renaming from outside.
 
 Renaming would also destroy the case-fold symmetry of `normalize_to_api`,
 currently a pure round trip against the API's own vocabulary.
+
 Putting speed on the `HeaterCooler` accessory would be the tidiest outcome of
 all, but it is unreachable without this rename and so falls with it. Note that
 it would not have been the better outcome for resolution: `HeaterCooler` derives
@@ -211,11 +255,14 @@ users nothing.
 
 ## Consequences
 
-- HomeKit gains a second tile per unit, for example "Living Room A-C fan",
-  carrying the speed slider, the swing switch and power. The Home app shows a
-  hyphen because the bridge substitutes one for the slash in the entity name. The
-  climate accessory is untouched and continues to publish temperature and mode
-  only.
+- HomeKit gains a second tile per unit, for example "Living Room A-C fan". The
+  Home app shows a hyphen because the bridge substitutes one for the slash in
+  the entity name; the name stays as it is, since "A-C fan" still reads as an
+  air conditioner rather than a room fan. The tile carries power and the speed
+  slider, with Oscillate and the Manual/Auto toggle on the accessory page behind
+  it. That placement is the Home app's own layout for a fan service and is not
+  something the integration chooses. The climate accessory is untouched and
+  continues to publish temperature and mode only.
 - The air conditioner keeps publishing as a Thermostat rather than as an air
   conditioner. Correct classification needs `HeaterCooler`, which needs the
   rejected vocabulary change and a manual accessory-type change besides.
@@ -226,41 +273,39 @@ users nothing.
 - Fan speed becomes settable from two places in HA, the climate entity's
   `fan_mode` dropdown and the new entity's percentage, visible on the device page
   and in both more-info dialogs but not on the dashboard thermostat card unless
-  the user opted into the `climate-fan-modes` card feature. The overlap is
-  accepted, because suppressing the dropdown would mean dropping
-  `ClimateEntityFeature.FAN_MODE` and breaking every existing
-  `climate.set_fan_mode` call.
+  the user opted into the `climate-fan-modes` card feature. The two surfaces
+  cannot disagree, since both read the same coordinator field, and either one
+  reflects a change made from the other. The overlap is accepted, because
+  suppressing the dropdown would mean dropping `ClimateEntityFeature.FAN_MODE`
+  and breaking every existing `climate.set_fan_mode` call.
 - The vane is binary through HomeKit. Positions one to five stay reachable from
   Home Assistant only, and switching oscillation off returns the vane to `Auto`
   rather than to the position it held before. A unit set to position three, then
   swung and unswung from the Home app, ends on `Auto`. Restoring the prior
   position would mean holding state the coordinator does not keep, which is not
   worth it for a binary control, so the loss is accepted.
-- `percentage` reports the commanded speed; the `auto` preset carries the auto
-  state, since a percentage cannot express it. While the unit is in `auto`,
-  `percentage` reports the last numbered speed commanded rather than `None`,
-  and is unknown only before any numbered speed has ever been seen. This
-  matches HAP's own model: `RotationSpeed` is the manual setpoint that persists
-  while `TargetFanState` is Auto, not a value that goes blank when Auto is
-  selected. It also matters for HomeKit's Manual/Auto toggle specifically:
-  `type_fans.set_single_preset_mode` reads back our `percentage` when the user
-  switches out of Auto, and falls back to a hard-coded 50% if it finds `None`,
-  moving the unit to whatever speed that percentage maps to rather than the one
-  the user was actually on. Reporting the remembered speed closes that gap.
-  Reporting `actual_fan_speed` (#285) would be more informative but makes reads
-  and writes reference different API fields, so it remains deferred rather than
-  adopted here.
+- Units whose capabilities report no vane get no oscillation control at all.
+  That is common rather than exceptional: three of the six units in the
+  installation this was verified against report none, so without the capability
+  gate half of them would have carried a swing switch wired to hardware that
+  cannot swing.
+- `percentage` reports the commanded speed and the `auto` preset carries the
+  auto state. Leaving `auto` returns the unit to the speed the user last chose
+  rather than to a bridge default, and the percentage is unknown only before any
+  numbered speed has been seen.
 - **In `auto`, the Home app's title misreports the running speed, and this is
   accepted.** Its accessory page renders `RotationSpeed` as "N% Speed"
   regardless of `TargetFanState`, so in `auto` it shows the speed the unit will
   resume, not the one it is running. Observed on hardware: the title read
-  "100% Speed" while the unit modulated itself down to speed two. The bridge
-  reads the same `percentage` for both the title and the Manual fallback, so
-  the two cannot be answered differently. Reporting `actual_fan_speed` would
-  make the title honest at the cost of putting that field's several-minute lag
-  behind the manual slider, where the position would visibly spring back after
-  a drag and look like the control rejecting input. Between a title that
-  misinforms and a control that appears broken, the title is preferred.
+  "100% Speed" while the unit modulated itself down to speed two, audibly. The
+  bridge reads the same `percentage` for both the title and the Manual fallback,
+  so the two cannot be answered differently. Reporting `actual_fan_speed` (#285)
+  would make the title honest, but it makes reads and writes reference different
+  API fields, and that field lags by several minutes, so the manual slider would
+  visibly spring back after a drag and look like the control rejecting input.
+  Between a title that misinforms and a control that appears broken, the title
+  is preferred, and #285 stays deferred. The running speed remains visible in
+  the Actual Fan Speed sensor, which under `auto` is the only place it appears.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 
