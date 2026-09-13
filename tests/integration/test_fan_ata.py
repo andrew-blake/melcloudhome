@@ -652,10 +652,9 @@ async def test_reversing_a_speed_inside_the_refresh_window_still_writes(
 ) -> None:
     """A -> B -> A must reach the API three times.
 
-    The cache only learns a written value at the next completed refresh, so
-    without write-through the third call is compared against a stale A and
-    deduplicated away. Verified as a real defect on hardware: the slider sprang
-    back to B and the unit never changed.
+    The cache only learns a written value at the next completed refresh, so the
+    third call used to be compared against a stale A and dropped. Seen on
+    hardware: the slider sprang back to B and the unit never changed.
     """
     _, mock_client = await _setup(
         hass, power=True, operation_mode="Heat", set_fan_speed="One"

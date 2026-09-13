@@ -37,14 +37,10 @@ class ControlClientBase:
     def _notify_listeners(self) -> None:
         """Push a written-through value to entities without waiting for a poll.
 
-        The cached model is what entities read, so a write-through is invisible
-        until listeners are told. Without this the dedup cache and the displayed
-        state disagree for the whole refresh window.
-
-        A listener that raises must not fail the service call: the write has
-        already succeeded, and reporting failure for it would be a lie. HA gained
-        its own guard here in 2026.7.4, but `hacs.json` still supports 2025.8.0,
-        which has none.
+        Entities read the cached model, so a write-through stays invisible until
+        listeners are told. A raising listener must not fail the service call:
+        the write already succeeded. HA guards this itself from 2026.7.4; the
+        hacs.json floor is 2025.8.0, which does not.
         """
         try:
             self._async_update_listeners()

@@ -21,17 +21,11 @@ _LOGGER = logging.getLogger(__name__)
 class ATAControlClient(ControlClientBase):
     """Handles ATA device control operations with retry logic and debounced refresh.
 
-    Every successful write is applied to the cached device model. Deduplication
-    compares against that cache, and a poll is 6-9 seconds behind a write in
-    practice, so without this a command reversing a recent one is compared
-    against a value we have already superseded and dropped (see ADR-026). The
-    next poll overwrites the cache with server truth, which bounds how long an
-    optimistic value can survive.
-
-    The device is re-fetched after the write rather than reusing the reference
-    the dedup check holds: a poll completing while the write is in flight
-    rebuilds the cache, and that earlier reference would then be an orphan
-    nothing reads.
+    Every successful write is applied to the cached device model, because
+    deduplication compares against that cache and a poll lags a write by
+    several seconds (ADR-026). Re-fetch the device after the write: a poll
+    completing mid-write rebuilds the cache, leaving the reference the dedup
+    check holds an orphan.
     """
 
     def __init__(
