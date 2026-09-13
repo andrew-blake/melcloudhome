@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,14 +18,38 @@ class ControlClientBase:
     refresh method in their __init__.
     """
 
-    def __init__(self, hass: "HomeAssistant") -> None:
+    def __init__(
+        self,
+        hass: "HomeAssistant",
+        async_update_listeners: Callable[[], None],
+    ) -> None:
         """Initialize base control client.
 
         Args:
             hass: Home Assistant instance
+            async_update_listeners: Coordinator hook that pushes cached state
+                to entities
         """
         self._hass = hass
         self._refresh_debounce_task: asyncio.Task | None = None
+        self._async_update_listeners = async_update_listeners
+
+    def _notify_listeners(self) -> None:
+        """Push a written-through value to entities without waiting for a poll.
+
+        The cached model is what entities read, so a write-through is invisible
+        until listeners are told. Without this the dedup cache and the displayed
+        state disagree for the whole refresh window.
+
+        A listener that raises must not fail the service call: the write has
+        already succeeded, and reporting failure for it would be a lie. HA gained
+        its own guard here in 2026.7.4, but `hacs.json` still supports 2025.8.0,
+        which has none.
+        """
+        try:
+            self._async_update_listeners()
+        except Exception:
+            _LOGGER.exception("Listener update failed after a control write")
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing.

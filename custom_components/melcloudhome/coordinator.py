@@ -146,6 +146,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             execute_with_retry=self._execute_with_retry,
             get_device=self.get_ata_device,
             async_request_refresh=self.async_request_refresh,
+            async_update_listeners=self.async_update_listeners,
         )
 
         # Initialize ATW control client
@@ -155,6 +156,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             execute_with_retry=self._execute_with_retry,
             get_atw_device=self.get_atw_device,
             async_request_refresh=self.async_request_refresh,
+            async_update_listeners=self.async_update_listeners,
         )
 
     def _persist_tokens(self) -> None:

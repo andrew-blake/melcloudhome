@@ -30,6 +30,7 @@ class ATAControlClient(ControlClientBase):
         ],
         get_device: Callable[[str], AirToAirUnit | None],
         async_request_refresh: Callable[[], Awaitable[None]],
+        async_update_listeners: Callable[[], None],
     ) -> None:
         """Initialize ATA control client.
 
@@ -39,9 +40,10 @@ class ATAControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_device: Callable to get ATA device by ID
             async_request_refresh: Callable to request coordinator refresh
+            async_update_listeners: Callable to push cached state to entities
         """
         # Initialize base class (provides shared debouncing logic)
-        super().__init__(hass)
+        super().__init__(hass, async_update_listeners)
 
         self._client = client
         self._execute_with_retry = execute_with_retry
