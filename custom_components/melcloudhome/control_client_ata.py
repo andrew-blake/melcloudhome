@@ -19,7 +19,20 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ATAControlClient(ControlClientBase):
-    """Handles ATA device control operations with retry logic and debounced refresh."""
+    """Handles ATA device control operations with retry logic and debounced refresh.
+
+    Every successful write is applied to the cached device model. Deduplication
+    compares against that cache, and a poll is 6-9 seconds behind a write in
+    practice, so without this a command reversing a recent one is compared
+    against a value we have already superseded and dropped (see ADR-026). The
+    next poll overwrites the cache with server truth, which bounds how long an
+    optimistic value can survive.
+
+    The device is re-fetched after the write rather than reusing the reference
+    the dedup check holds: a poll completing while the write is in flight
+    rebuilds the cache, and that earlier reference would then be an orphan
+    nothing reads.
+    """
 
     def __init__(
         self,
@@ -70,6 +83,12 @@ class ATAControlClient(ControlClientBase):
             f"set_power_and_mode({unit_id}, {power}, {mode})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.power = power
+            device.operation_mode = mode
+            self._notify_listeners()
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
 
@@ -92,6 +111,11 @@ class ATAControlClient(ControlClientBase):
             f"set_power({unit_id}, {power})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.power = power
+            self._notify_listeners()
+
     async def async_set_mode(self, unit_id: str, mode: str) -> None:
         """Set operation mode with automatic session recovery.
 
@@ -112,6 +136,11 @@ class ATAControlClient(ControlClientBase):
             lambda: self._client.ata.set_mode(unit_id, mode),
             f"set_mode({unit_id}, {mode})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.operation_mode = mode
+            self._notify_listeners()
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery.
@@ -136,6 +165,11 @@ class ATAControlClient(ControlClientBase):
             f"set_temperature({unit_id}, {temperature})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.set_temperature = temperature
+            self._notify_listeners()
+
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery.
 
@@ -158,6 +192,11 @@ class ATAControlClient(ControlClientBase):
             lambda: self._client.ata.set_fan_speed(unit_id, fan_speed),
             f"set_fan_speed({unit_id}, {fan_speed})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.set_fan_speed = fan_speed
+            self._notify_listeners()
 
     async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """Set vertical vane position with automatic session recovery.
@@ -186,6 +225,11 @@ class ATAControlClient(ControlClientBase):
             f"set_vane_vertical({unit_id}, {vertical})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.vane_vertical_direction = vertical
+            self._notify_listeners()
+
     async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
         """Set horizontal vane position with automatic session recovery.
 
@@ -210,3 +254,8 @@ class ATAControlClient(ControlClientBase):
             lambda: self._client.ata.set_vane_horizontal(unit_id, horizontal),
             f"set_vane_horizontal({unit_id}, {horizontal})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.vane_horizontal_direction = horizontal
+            self._notify_listeners()

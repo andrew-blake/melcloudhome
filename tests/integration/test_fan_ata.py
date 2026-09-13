@@ -644,3 +644,56 @@ async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     await _setup(hass, power=True, has_swing=False, has_air_direction=False)
 
     assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes
+
+
+@pytest.mark.asyncio
+async def test_reversing_a_speed_inside_the_refresh_window_still_writes(
+    hass: HomeAssistant,
+) -> None:
+    """A -> B -> A must reach the API three times.
+
+    The cache only learns a written value at the next completed refresh, so
+    without write-through the third call is compared against a stale A and
+    deduplicated away. Verified as a real defect on hardware: the slider sprang
+    back to B and the unit never changed.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    for percentage in (40, 20, 40):
+        await _set_percentage(hass, percentage)
+        await _let_the_speed_write_land(hass)
+
+    assert [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list] == [
+        "Two",
+        "One",
+        "Two",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_repeating_a_speed_is_still_deduplicated(hass: HomeAssistant) -> None:
+    """Write-through must not cost the scene-burst reduction dedup exists for."""
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    for _ in range(3):
+        await _set_percentage(hass, 40)
+        await _let_the_speed_write_land(hass)
+
+    mock_client.ata.set_fan_speed.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_entity_shows_a_written_speed_before_the_next_refresh(
+    hass: HomeAssistant,
+) -> None:
+    """The write-through is pushed to entities rather than waiting for a poll."""
+    await _setup(hass, power=True, operation_mode="Heat", set_fan_speed="One")
+
+    await _set_percentage(hass, 80)
+    await _let_the_speed_write_land(hass)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
