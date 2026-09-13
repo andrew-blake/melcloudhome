@@ -312,6 +312,9 @@ async def test_atw_zone2_set_cooling_mode(hass: HomeAssistant) -> None:
     )
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_mode_zone2 = AsyncMock()
+    # Selecting a mode powers the system on first, and ATW power is no longer
+    # deduplicated against the cache (#310), so this call is now made.
+    mock_client.atw.set_power = AsyncMock()
 
     await hass.services.async_call(
         "climate",

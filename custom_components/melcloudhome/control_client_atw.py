@@ -20,7 +20,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ATWControlClient(ControlClientBase):
-    """Handles ATW device control operations with retry logic and debounced refresh."""
+    """Handles ATW device control operations with retry logic and debounced refresh.
+
+    Every successful write is applied to the cached device model, because
+    deduplication compares against that cache and a poll lags a write by
+    several seconds (ADR-026). Standby is the one exception; see
+    async_set_standby_mode.
+    """
 
     def __init__(
         self,
@@ -57,6 +63,7 @@ class ATWControlClient(ControlClientBase):
         control_name: str,
         control_fn: Callable[[AirToWaterUnit], Awaitable[None]],
         pre_check: Callable[[AirToWaterUnit], None] | None = None,
+        apply: Callable[[AirToWaterUnit], None] | None = None,
     ) -> None:
         """Generic ATW control method with validation and retry.
 
@@ -65,6 +72,9 @@ class ATWControlClient(ControlClientBase):
             control_name: Human-readable control name for logging
             control_fn: Control function that takes unit and executes API call
             pre_check: Optional validation function (raises HomeAssistantError if invalid)
+            apply: Optional mutation applied to the cached unit once the write
+                has succeeded, so deduplication and entities both see the new
+                value before the next poll (ADR-026)
 
         Raises:
             HomeAssistantError: If unit not found or pre-check fails
@@ -91,25 +101,32 @@ class ATWControlClient(ControlClientBase):
             f"{control_name}({unit_id})",
         )
 
+        # A poll completing mid-write rebuilds the cache, so atw_device can be
+        # an orphan by now.
+        if apply and (unit := self._get_atw_device(unit_id)):
+            apply(unit)
+            self._notify_listeners()
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
+
+        Power is never deduplicated against cached state. The cache can be
+        wrong because the cloud is wrong, and an owner must always be able to
+        reassert power (#310). This mirrors ATA, and ADR-018 pre-authorised it.
 
         Args:
             unit_id: ATW unit ID
             power: True=ON, False=OFF
         """
-        # Skip if already in desired state (prevents duplicate API calls)
-        device = self._get_atw_device(unit_id)
-        if device and device.power == power:
-            _LOGGER.debug(
-                "Power already %s for ATW %s, skipping API call", power, unit_id[-8:]
-            )
-            return
+
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.power = power
 
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",
             control_fn=lambda unit: self._client.atw.set_power(unit.id, power),
+            apply=apply,
         )
 
     async def async_set_temperature_zone1(
@@ -131,12 +148,16 @@ class ATWControlClient(ControlClientBase):
             )
             return
 
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.set_temperature_zone1 = temperature
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 temperature",
             control_fn=lambda unit: self._client.atw.set_temperature_zone1(
                 unit.id, temperature
             ),
+            apply=apply,
         )
 
     async def async_set_temperature_zone2(
@@ -165,6 +186,9 @@ class ATWControlClient(ControlClientBase):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.set_temperature_zone2 = temperature
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 temperature",
@@ -172,6 +196,7 @@ class ATWControlClient(ControlClientBase):
                 unit.id, temperature
             ),
             pre_check=_check_zone2,
+            apply=apply,
         )
 
     async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
@@ -181,10 +206,15 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             mode: One of ATW_OPERATION_MODES_ZONE
         """
+
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.operation_mode_zone1 = mode
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone1(unit.id, mode),
+            apply=apply,
         )
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
@@ -202,11 +232,15 @@ class ATWControlClient(ControlClientBase):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.operation_mode_zone2 = mode
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone2(unit.id, mode),
             pre_check=_check_zone2,
+            apply=apply,
         )
 
     async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
@@ -226,12 +260,16 @@ class ATWControlClient(ControlClientBase):
             )
             return
 
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.set_tank_water_temperature = temperature
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="DHW temperature",
             control_fn=lambda unit: self._client.atw.set_dhw_temperature(
                 unit.id, temperature
             ),
+            apply=apply,
         )
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
@@ -241,12 +279,17 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             enabled: True=DHW priority, False=normal
         """
+
+        def apply(unit: AirToWaterUnit) -> None:
+            unit.forced_hot_water_mode = enabled
+
         return await self._execute_atw_control(
             unit_id=unit_id,
             control_name="forced DHW",
             control_fn=lambda unit: self._client.atw.set_forced_hot_water(
                 unit.id, enabled
             ),
+            apply=apply,
         )
 
     async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
@@ -255,6 +298,11 @@ class ATWControlClient(ControlClientBase):
         Note: Real devices may ignore standby=True when system is powered on.
         API accepts the command but device state remains in_standby_mode=False.
         Validated with real ATW device (ftcModel: 3) via VCR testing.
+
+        This setter alone skips the write-through the others do: the device
+        stays out of the state the API accepts, so caching it would record
+        something false. The field has no deduplication, so waiting for the
+        poll costs nothing.
 
         Args:
             unit_id: ATW unit ID
