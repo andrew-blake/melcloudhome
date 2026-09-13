@@ -5,7 +5,9 @@
 **Relates to:** [ADR-013](013-automatic-friendly-device-names.md) (the device
 naming this entity inherits),
 [ADR-018](018-out-of-band-state-sync-limitation.md) (the deduplication
-trade-off these writes change)
+trade-off these writes change),
+[ADR-026](026-write-through-control-cache.md) (which closes the same defect on
+every remaining field, found through this entity's slider)
 **Decision Makers:** @andrew-blake
 
 ---
@@ -322,7 +324,11 @@ users nothing.
   `async_set_power_and_mode` post-dates that record, carries the same check on
   the same field and has the same defect, so it is covered too. Mode,
   temperature, fan speed and both vanes keep theirs, on ADR-018's rate-limit
-  reasoning.
+  reasoning. Hardware testing of this entity then found the same command-drop on
+  fan speed, reachable from the climate dropdown as well as the slider; see
+  [ADR-026](026-write-through-control-cache.md), which closes it for those
+  fields by writing each successful write through to the cache dedup compares
+  against.
 - The weakness is not created by this entity: the climate entity reaches it with
   an off-then-on inside the same window. The slider changes the probability,
   because it puts on and off at two ends of one gesture.

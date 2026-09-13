@@ -1,6 +1,6 @@
 # ADR-018: Out-of-Band State Sync Limitation and Deduplication Trade-off
 
-**Status:** Accepted (limitation documented) — resolved by [ADR-019](019-websocket-realtime-updates.md)'s default-on WebSocket accelerator; still applies when the WebSocket toggle is turned off
+**Status:** Accepted (limitation documented), amended 2026-09-13 — resolved by [ADR-019](019-websocket-realtime-updates.md)'s default-on WebSocket accelerator; still applies when the WebSocket toggle is turned off. Two of the candidates below have since been enacted: dedup was removed from power on both device types (#310, #318), and every other successful write is now applied to the cache it is compared against (see [ADR-026](026-write-through-control-cache.md)). The limitation this ADR describes is unchanged — write-through addresses the cache lagging our own writes, not someone else changing the unit.
 **Date:** 2026-06-14
 
 ## Context
@@ -50,7 +50,8 @@ Until WebSocket is reliable and implemented, the stale-cache window is structura
 | Option | Closes window? | Risk |
 |---|---|---|
 | Remove dedup entirely | No — re-exposes rate limiting | High: burst scene patterns hit API limits |
-| Remove dedup from power only | Yes, for power | Low: 1 extra call per redundant scene trigger |
+| Remove dedup from power only | Yes, for power | **Enacted 2026-09-13** (#310, #318). Low: 1 extra call per redundant scene trigger |
+| Write successful writes through to the cache | Yes, for the cache lagging our own writes | **Enacted 2026-09-13** ([ADR-026](026-write-through-control-cache.md)). Low: a silently dropped PUT stays cached until the next poll |
 | Skip dedup when cache is stale (threshold) | No — threshold becomes a scene footgun | Medium: scenes firing after idle period bypass dedup, causing bursts |
 | Force /context refresh before each command | No — adds a call per command | High: scenes fire 2× API calls minimum; slower and worse |
 | Track "last commanded" instead of cache | No — doesn't eliminate scene redundancy | Medium: complex; doesn't solve original dedup problem |
@@ -83,3 +84,4 @@ Out-of-band changes (MELCloud app, physical remote) sync to HA within 60 seconds
 - [ADR-007: Defer WebSocket Implementation](007-defer-websocket-implementation.md)
 - [ADR-011: Multi-Device-Type Architecture](011-multi-device-type-architecture.md) — introduced control client layer and dedup
 - GitHub Discussion #135 — original user report
+- [ADR-026: Write-Through Control Cache](026-write-through-control-cache.md) — closes the self-inflicted half of the stale-cache window

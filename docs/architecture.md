@@ -41,8 +41,8 @@ graph LR
         WSListener[MELCloudHomeWebSocket<br/>Real-Time Delta Listener]
 
         subgraph "Control Client Layer"
-            ControlATA[ATAControlClient<br/>Dedup, Validation & Debounce]
-            ControlATW[ATWControlClient<br/>Dedup, Validation & Debounce]
+            ControlATA[ATAControlClient<br/>Dedup, Write-through, Validation & Debounce]
+            ControlATW[ATWControlClient<br/>Dedup, Write-through, Validation & Debounce]
         end
 
         subgraph "Models Layer"
@@ -102,7 +102,7 @@ graph LR
 **Key Points:**
 
 - **Single coordinator** drives state polling and owns session recovery (`_run_with_reauth`)
-- **Control client layer** provides deduplication, HA validation, and debounced refresh; it delegates every API call through `Coord.execute_with_retry`
+- **Control client layer** provides deduplication, write-through to the cached state, HA validation, and debounced refresh; it delegates every API call through `Coord.execute_with_retry`
 - **Single API client** provides unified interface to the MELCloud mobile API, plus proactive token refresh (60s pre-expiry buffer)
 - **Shared auth** — one OAuth session (access + refresh tokens) for all endpoints
 - **UserContext** (`/context`) returns both device types in one response
@@ -272,7 +272,7 @@ sequenceDiagram
     Note over HA,Server: ATA Control (proactive token refresh + centralised re-auth)
     HA->>Coord: climate.set_temperature(ata_id, 22°C)
     Coord->>CtrlClient: control_client.async_set_temperature(ata_id, 22)
-    CtrlClient->>CtrlClient: Check if value changed
+    CtrlClient->>CtrlClient: Compare against cached value
     alt Value unchanged (dedup skip)
         CtrlClient-->>Coord: return — no API call
     else Value changed
@@ -298,6 +298,8 @@ sequenceDiagram
         Server-->>APIClient: 200 OK (empty)
         APIClient-->>Coord: Success
         Coord-->>CtrlClient: Success
+        CtrlClient->>Coord: Apply value to cached unit, then async_update_listeners()
+        Coord->>HA: Entity shows the written value now, not one poll later
         CtrlClient->>Coord: Schedule refresh (debounced — 2s quiet period, task-backed)
     end
 
@@ -310,6 +312,7 @@ sequenceDiagram
     Server-->>APIClient: 200 OK (empty)
     APIClient-->>Coord: Success
     Coord-->>CtrlClient: Success
+    CtrlClient->>Coord: Apply value to cached unit, then async_update_listeners()
 
     Note over HA,Server: Periodic State Polling (UPDATE_INTERVAL = 60s)
     loop Every 60 seconds
@@ -349,7 +352,7 @@ sequenceDiagram
 
 **Control Client Responsibilities (`control_client_{ata,atw}.py`):**
 
-- **Deduplication**: Skips API calls when the requested value already matches current device state.
+- **Deduplication**: Skips API calls when the requested value already matches the cached device state. A successful write is applied to that cache first (see [ADR-026](decisions/026-write-through-control-cache.md)), so "already matches" includes writes just made rather than only the last poll's values. Power is never deduplicated, on either device type.
 - **HA-specific validation**: Checks zone availability, temperature ranges, capability support before hitting the API.
 - **Debounced refresh**: Coalesces rapid consecutive changes into a single follow-up state fetch after a 2-second quiet period (see `control_client_base.py`).
 - **Delegation to the coordinator's retry wrapper**: Every API call is invoked through `execute_with_retry` (a callback injected from the coordinator at construction), so session recovery is owned in one place.
@@ -365,7 +368,7 @@ sequenceDiagram
 
 ## Integration Layer Architecture
 
-Shows the control client layer that sits between the coordinator and API client, providing deduplication, HA-specific validation, and debounced refresh. Session recovery lives on the coordinator (`_run_with_reauth`) — see the Device Type Control Flow sequence diagram above.
+Shows the control client layer that sits between the coordinator and API client, providing deduplication, write-through to the cached state, HA-specific validation, and debounced refresh. Session recovery lives on the coordinator (`_run_with_reauth`) — see the Device Type Control Flow sequence diagram above.
 
 ```mermaid
 graph TD
@@ -388,7 +391,7 @@ graph TD
     style APIClient fill:#e1f5ff,stroke:#039be5
 
     note0["Coordinator:<br/>- State polling (60s)<br/>- Telemetry timers (30m / 60m)<br/>- Re-auth ladder via _run_with_reauth<br/>- WebSocket listener lifecycle (default on)"]
-    note1["Control Layer:<br/>- Deduplication<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
+    note1["Control Layer:<br/>- Deduplication<br/>- Write-through to cache<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
     note2["API Layer:<br/>- HTTP/Bearer auth<br/>- Proactive token refresh<br/>- Device facades"]
 
     Coordinator -.-> note0
@@ -401,7 +404,7 @@ graph TD
 
 - **Two separate control client files**: `control_client_ata.py` and `control_client_atw.py`.
 - **Coordinator owns session recovery + retry**: the re-auth ladder is in `_run_with_reauth` on the coordinator; control clients never catch `AuthenticationError` themselves.
-- **Control clients own dedup + validation + debouncing**: they skip API calls when state already matches, validate HA-side preconditions, and coalesce rapid refreshes.
+- **Control clients own dedup + write-through + validation + debouncing**: they skip API calls when the cached state already matches, apply each successful write to that cache, validate HA-side preconditions, and coalesce rapid refreshes.
 - **API client owns HTTP/auth/facades**: Bearer injection, proactive token refresh, and the `client.ata.*` / `client.atw.*` device facades.
 - **All operations flow Coord → CtrlClient → Coord.execute_with_retry → APIClient**: control clients never call the API client directly.
 
