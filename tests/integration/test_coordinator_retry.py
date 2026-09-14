@@ -330,43 +330,6 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
 
 
 @pytest.mark.asyncio
-async def test_power_write_is_always_sent(coordinator):
-    """Asking for the power state the unit already reads still reaches the API."""
-    from custom_components.melcloudhome.api.models_ata import (
-        AirToAirCapabilities,
-        AirToAirUnit,
-    )
-
-    unit = AirToAirUnit(
-        id="unit123",
-        name="Test Unit",
-        power=True,  # already what we are about to ask for
-        operation_mode="Heat",
-        set_temperature=20.0,
-        room_temperature=18.0,
-        set_fan_speed="Auto",
-        actual_fan_speed="Two",
-        vane_vertical_direction="Auto",
-        vane_horizontal_direction="Centre",
-        in_standby_mode=False,
-        is_in_error=False,
-        error_code=None,
-        rssi=-50,
-        time_zone=None,
-        capabilities=AirToAirCapabilities(),
-    )
-    coordinator._units = {"unit123": unit}
-
-    coordinator.client.ata.set_power = AsyncMock()
-
-    # Ask for True while the copy already reads True
-    await coordinator.async_set_power("unit123", True)
-
-    # SHOULD call API
-    assert coordinator.client.ata.set_power.call_count == 1
-
-
-@pytest.mark.asyncio
 async def test_new_debounce_request_does_not_cancel_in_flight_refresh(
     coordinator, hass
 ):

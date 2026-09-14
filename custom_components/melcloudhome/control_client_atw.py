@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -13,18 +13,15 @@ from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit
 from .control_client_base import ControlClientBase
 
-if TYPE_CHECKING:
-    pass
-
 _LOGGER = logging.getLogger(__name__)
 
 
 class ATWControlClient(ControlClientBase):
     """Handles ATW device control operations with retry logic and debounced refresh.
 
-    Every successful write is applied to the cached device model, so an entity
-    shows a command as soon as the API accepts it rather than one refresh later
-    (ADR-026).
+    Every accepted write is applied to the coordinator's copy of the unit, so
+    an entity shows a command at once rather than one refresh later (ADR-026).
+    The copy is fetched after the write, not before; ATAControlClient says why.
     """
 
     def __init__(
@@ -46,7 +43,6 @@ class ATWControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_atw_device: Callable to get ATW device by ID
             async_request_refresh: Callable to request coordinator refresh
-            async_update_listeners: Callable to push cached state to entities
         """
         # Initialize base class (provides shared debouncing logic)
         super().__init__(hass, async_update_listeners)
@@ -61,7 +57,6 @@ class ATWControlClient(ControlClientBase):
         unit_id: str,
         control_name: str,
         control_fn: Callable[[AirToWaterUnit], Awaitable[None]],
-        apply: Callable[[AirToWaterUnit], None],
         pre_check: Callable[[AirToWaterUnit], None] | None = None,
     ) -> None:
         """Generic ATW control method with validation and retry.
@@ -70,7 +65,6 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             control_name: Human-readable control name for logging
             control_fn: Control function that takes unit and executes API call
-            apply: Sets the written field on the coordinator's copy of the unit
             pre_check: Optional validation function (raises HomeAssistantError if invalid)
 
         Raises:
@@ -98,13 +92,6 @@ class ATWControlClient(ControlClientBase):
             f"{control_name}({unit_id})",
         )
 
-        # A poll completing mid-write replaces every unit object, so atw_device
-        # may no longer be the one entities read. Fetching again favours our
-        # value over a poll that landed meanwhile; the next poll settles it.
-        if unit := self._get_atw_device(unit_id):
-            apply(unit)
-            self._async_update_listeners()
-
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
 
@@ -113,15 +100,15 @@ class ATWControlClient(ControlClientBase):
             power: True=ON, False=OFF
         """
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.power = power
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",
             control_fn=lambda unit: self._client.atw.set_power(unit.id, power),
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.power = power
+            self._notify_listeners()
 
     async def async_set_temperature_zone1(
         self, unit_id: str, temperature: float
@@ -133,17 +120,17 @@ class ATWControlClient(ControlClientBase):
             temperature: Target temp in Celsius (10-30°C)
         """
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.set_temperature_zone1 = temperature
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 temperature",
             control_fn=lambda unit: self._client.atw.set_temperature_zone1(
                 unit.id, temperature
             ),
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.set_temperature_zone1 = temperature
+            self._notify_listeners()
 
     async def async_set_temperature_zone2(
         self, unit_id: str, temperature: float
@@ -162,18 +149,18 @@ class ATWControlClient(ControlClientBase):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.set_temperature_zone2 = temperature
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 temperature",
             control_fn=lambda unit: self._client.atw.set_temperature_zone2(
                 unit.id, temperature
             ),
             pre_check=_check_zone2,
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.set_temperature_zone2 = temperature
+            self._notify_listeners()
 
     async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
         """Set Zone 1 heating strategy.
@@ -183,15 +170,15 @@ class ATWControlClient(ControlClientBase):
             mode: One of ATW_OPERATION_MODES_ZONE
         """
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.operation_mode_zone1 = mode
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone1(unit.id, mode),
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.operation_mode_zone1 = mode
+            self._notify_listeners()
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
         """Set Zone 2 heating strategy.
@@ -208,16 +195,16 @@ class ATWControlClient(ControlClientBase):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.operation_mode_zone2 = mode
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone2(unit.id, mode),
             pre_check=_check_zone2,
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.operation_mode_zone2 = mode
+            self._notify_listeners()
 
     async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
         """Set DHW tank target temperature.
@@ -227,17 +214,17 @@ class ATWControlClient(ControlClientBase):
             temperature: Target temp in Celsius (40-60°C)
         """
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.set_tank_water_temperature = temperature
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="DHW temperature",
             control_fn=lambda unit: self._client.atw.set_dhw_temperature(
                 unit.id, temperature
             ),
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.set_tank_water_temperature = temperature
+            self._notify_listeners()
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
         """Enable/disable forced DHW priority mode.
@@ -247,14 +234,14 @@ class ATWControlClient(ControlClientBase):
             enabled: True=DHW priority, False=normal
         """
 
-        def apply(unit: AirToWaterUnit) -> None:
-            unit.forced_hot_water_mode = enabled
-
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="forced DHW",
             control_fn=lambda unit: self._client.atw.set_forced_hot_water(
                 unit.id, enabled
             ),
-            apply=apply,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.forced_hot_water_mode = enabled
+            self._notify_listeners()

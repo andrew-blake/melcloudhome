@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 
@@ -12,18 +12,15 @@ from .api.client import MELCloudHomeClient
 from .api.models import AirToAirUnit
 from .control_client_base import ControlClientBase
 
-if TYPE_CHECKING:
-    pass
-
 _LOGGER = logging.getLogger(__name__)
 
 
 class ATAControlClient(ControlClientBase):
     """Handles ATA device control operations with retry logic and debounced refresh.
 
-    Every successful write is applied to the cached device model, so an entity
-    shows a command as soon as the API accepts it rather than one refresh later
-    (ADR-026). Fetch the device after the write, not before it: a poll
+    Every accepted write is applied to the coordinator's copy of the unit, so
+    an entity shows a command at once rather than one refresh later (ADR-026).
+    Fetch the copy after the write, not before it: a poll
     completing mid-write replaces every unit object, and a reference taken
     earlier would update one no entity reads. Fetching afterwards favours our
     value over a poll that landed meanwhile; the next poll settles it.
@@ -48,7 +45,6 @@ class ATAControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_device: Callable to get ATA device by ID
             async_request_refresh: Callable to request coordinator refresh
-            async_update_listeners: Callable to push cached state to entities
         """
         # Initialize base class (provides shared debouncing logic)
         super().__init__(hass, async_update_listeners)
@@ -63,8 +59,8 @@ class ATAControlClient(ControlClientBase):
     ) -> None:
         """Set power state and operation mode atomically in a single API call.
 
-        Used for every power-on that knows the mode, to avoid the operationMode=null window that
-        can trigger a mode-conflict fault on multi-zone outdoor units.
+        Used for every power-on that knows the mode, so the unit never sees an
+        operationMode=null window, which can fault a multi-zone outdoor unit.
         """
         _LOGGER.info(
             "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
@@ -78,7 +74,7 @@ class ATAControlClient(ControlClientBase):
         if device:
             device.power = power
             device.operation_mode = mode
-            self._async_update_listeners()
+            self._notify_listeners()
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
@@ -96,7 +92,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.power = power
-            self._async_update_listeners()
+            self._notify_listeners()
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery.
@@ -114,7 +110,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.set_temperature = temperature
-            self._async_update_listeners()
+            self._notify_listeners()
 
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery.
@@ -132,7 +128,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.set_fan_speed = fan_speed
-            self._async_update_listeners()
+            self._notify_listeners()
 
     async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """Set vertical vane position with automatic session recovery.
@@ -155,7 +151,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.vane_vertical_direction = vertical
-            self._async_update_listeners()
+            self._notify_listeners()
 
     async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
         """Set horizontal vane position with automatic session recovery.
@@ -176,4 +172,4 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.vane_horizontal_direction = horizontal
-            self._async_update_listeners()
+            self._notify_listeners()

@@ -241,3 +241,24 @@ async def test_a_dhw_setpoint_matching_current_state_is_still_sent(
         await hass.async_block_till_done()
 
     assert mock_client.atw.set_dhw_temperature.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_an_operation_mode_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """The fixture starts in eco; asking for eco twice must reach the API twice."""
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "water_heater",
+            "set_operation_mode",
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "operation_mode": STATE_ECO},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_forced_hot_water.call_count == 2

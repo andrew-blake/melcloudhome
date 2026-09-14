@@ -111,7 +111,9 @@ async def test_switch_unavailable_when_device_in_error(hass: HomeAssistant) -> N
 async def test_atw_power_is_sent_even_when_the_cache_already_agrees(
     hass: HomeAssistant,
 ) -> None:
-    """ATW power must always be forwarded, as ATA's already is (#310).
+    """ATW power must always be forwarded, as ATA's already is.
+
+    #310 asked this for ATA; ADR-026 extends it to every setter.
 
     The cache can be wrong because the cloud is wrong, and an owner has to be
     able to reassert power. Turning off a unit the cache already believes is

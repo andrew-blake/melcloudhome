@@ -47,7 +47,7 @@ _VANE_AUTO = "Auto"
 # intermediate position), each preceded by a power-on write, and nothing below
 # this entity collapses them: the control client deduplicates nothing, because
 # comparing against coordinator data dropped real commands issued inside the
-# stale window (#318, ADR-026).
+# stale window (found on #318's fan entity; ADR-026).
 #
 # No constant is safe here, and this one is not sized against the stale window:
 # the refresh is scheduled 2.0s after a write *returns* and then has its own API
@@ -61,7 +61,8 @@ _POWER_ON_GUARD_WINDOW = 3.0
 
 # How long a slider position must stand still before it is written. Overlapping
 # speed writes are applied by the server in arrival order, not issue order, so a
-# burst can land on an earlier value than the one the user released on (#318):
+# burst can land on an earlier value than the one the user released on
+# (seen while building #318's fan entity):
 # a drag ending on Three wrote Two, Three, Three, Three and settled on Two.
 # Sending only the final position makes that race impossible. The writes in that
 # production log were ~260ms apart, so the window has to be comfortably wider
@@ -368,7 +369,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         task and HA takes no per-entity lock, so a call that suspends on the
         power-on request resumes after a newer one has already run: writing the
         pending value afterwards would let the older slider position overwrite
-        the newer one and win the timer, which is exactly the #318 symptom.
+        the newer one and win the timer, the symptom seen on #318's fan entity.
         Claiming it first means the last call to *enter* this method owns the
         write, whatever order the awaits finish in.
         """

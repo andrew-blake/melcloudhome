@@ -553,7 +553,9 @@ async def test_power_off_disarms_the_power_on_guard(
 async def test_power_off_is_sent_to_a_unit_already_off(
     hass: HomeAssistant, power_off: Any
 ) -> None:
-    """An off must reach the API even when the unit already reads off (#318).
+    """An off must reach the API even when the unit already reads off.
+
+    Found on hardware while building #318's fan entity.
 
     Observed on hardware: from off, a drag up followed by a drag to zero left
     the air conditioner running while the Home app showed it off. The power-on
@@ -683,6 +685,46 @@ async def test_entity_shows_a_written_speed_before_the_next_refresh(
 
     await _set_percentage(hass, 80)
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
+    await _let_tasks_run()
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+
+
+@pytest.mark.asyncio
+async def test_a_write_landing_during_a_poll_still_shows_the_written_speed(
+    hass: HomeAssistant,
+) -> None:
+    """The copy is fetched after the write, not before.
+
+    While the speed PUT is in flight a poll completes and replaces every unit
+    object with one parsed from a response that predates the write. A copy
+    fetched before the write would be the discarded object, and the entity
+    would keep reading the poll's speed. Fetched afterwards, the written speed
+    lands on the object entities read.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    async def _poll_completes_mid_write(*_args: Any, **_kwargs: Any) -> None:
+        mock_client.get_user_context.return_value = create_mock_ata_user_context(
+            buildings=[
+                create_mock_ata_building(
+                    units=[
+                        create_mock_ata_unit(
+                            power=True, operation_mode="Heat", set_fan_speed="One"
+                        )
+                    ]
+                )
+            ]
+        )
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))
+        await _let_tasks_run()
+
+    mock_client.ata.set_fan_speed.side_effect = _poll_completes_mid_write
+
+    await _set_percentage(hass, 80)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
     await _let_tasks_run()
 
     assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80

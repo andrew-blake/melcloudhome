@@ -27,7 +27,6 @@ _CLIMATE_ENTITY = "climate.melcloudhome_a1b2_9abc_climate"
 def _configure_ata_controls(client: Any) -> None:
     client.ata = MagicMock()
     client.ata.set_power = AsyncMock()
-    client.ata.set_mode = AsyncMock()
     client.ata.set_power_and_mode = AsyncMock()
     client.ata.set_temperature = AsyncMock()
     client.ata.set_fan_speed = AsyncMock()
