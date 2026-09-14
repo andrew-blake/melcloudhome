@@ -62,12 +62,15 @@ Deduplication keeps comparing against that cache, which now includes our own
 recent writes. Entities read the same cached model, so the notify makes the
 written value visible immediately rather than one refresh later.
 
-The device is re-fetched after the write rather than reusing the reference the
-dedup check holds. A poll completing while the write is in flight runs
-`_rebuild_caches`, which replaces every cached unit, and the earlier reference
-would then be an orphan the mutation lands on and nothing reads. `RequestPacer`
+The device is looked up again after the write rather than reusing the object
+the dedup check fetched. A poll completing while the write is in flight runs
+`_rebuild_caches`, which discards every cached unit object and builds new ones
+from the fresh response. Writing the value into the discarded copy would leave
+deduplication comparing against the new object, which has never seen that value,
+so the next command would be measured against a stale one: the defect this ADR
+fixes, in a window narrow enough to be hard to reproduce. `RequestPacer`
 serialises requests with 0.5 s minimum spacing, so a write inside a scene burst
-can sit queued for seconds and the window is not negligible.
+can sit queued for seconds and that window is not negligible.
 
 `async_set_standby_mode` is the one setter without write-through: real devices
 do not enter standby while powered on even though the API accepts the request,

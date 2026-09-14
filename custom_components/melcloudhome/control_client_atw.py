@@ -101,8 +101,8 @@ class ATWControlClient(ControlClientBase):
             f"{control_name}({unit_id})",
         )
 
-        # A poll completing mid-write rebuilds the cache, so atw_device can be
-        # an orphan by now.
+        # A poll completing mid-write discards every cached unit object for
+        # freshly parsed ones, so atw_device can by now be a copy nothing reads.
         if apply and (unit := self._get_atw_device(unit_id)):
             apply(unit)
             self._notify_listeners()

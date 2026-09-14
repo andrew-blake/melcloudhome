@@ -23,9 +23,11 @@ class ATAControlClient(ControlClientBase):
 
     Every successful write is applied to the cached device model, because
     deduplication compares against that cache and a poll lags a write by
-    several seconds (ADR-026). Re-fetch the device after the write: a poll
-    completing mid-write rebuilds the cache, leaving the reference the dedup
-    check holds an orphan.
+    several seconds (ADR-026). Look the device up again after the write: a poll
+    completing mid-write discards every cached unit object for freshly parsed
+    ones, so the object the dedup check fetched can by then be a copy nothing
+    reads, and writing the value into it would leave dedup comparing against a
+    value it has never seen.
     """
 
     def __init__(
