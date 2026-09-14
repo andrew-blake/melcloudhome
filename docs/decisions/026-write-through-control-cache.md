@@ -87,34 +87,19 @@ context, carrying forward only the five outdoor-temperature fields
 (`coordinator.py:713-720`). Power, mode, temperature, fan speed and both vanes
 are overwritten by server truth on every poll.
 
-### The known exposure, stated as what it costs
+### What the cache now holds
 
-This API can return 200 and ignore the write. The response cannot be told apart
-from a successful one, so a written-through value is an assumption until the
-next poll confirms it, and on a field that also deduplicates, a repeat of that
-command is skipped for up to one poll interval. The trade on such a field is
-"ignored write, immediately retryable" becoming "ignored write, unretryable
-until the next poll".
+The cache holds what we sent, confirmed by a 200, rather than what a later poll
+reports. A write the unit does not end up applying therefore reads as applied
+until that poll.
 
-One case is confirmed against hardware: an ATW unit does not enter standby while
-powered on, though the API accepts the request (validated on ftcModel 3 via
-VCR). `async_set_standby_mode` is therefore excluded from write-through, which
-is what keeps the trade above off the only field known to need it.
-
-[Issue #100](https://github.com/andrew-blake/melcloudhome/issues/100) is worth
-naming precisely, because it is the case a reader will reach for. A unit without
-horizontal vanes ignored a vertical swing command, and the cause was our own
-payload: the integration sent both axes on every vane update and the server
-rejected the combination. Sending one axis and nulling the other, which is what
-the official app does, fixed it. That trigger is no longer produced, so it is
-not a standing exposure here.
-
-The remaining exposure is the class rather than any current instance: a
-validation rule we have not met yet would be cached as applied until the next
-poll. This is accepted because such drops are deterministic and payload-shaped
-rather than random, so they surface during development against real hardware
-rather than intermittently in the field, and because the gesture this ADR fixes
-is an ordinary change of mind on every field.
+The one documented instance of a write not taking effect was
+[issue #100](https://github.com/andrew-blake/melcloudhome/issues/100), where a
+unit without horizontal vanes ignored a vertical swing command because the
+integration sent both axes and the server rejected the combination. That was our
+payload, and sending one axis at a time fixed it. A malformed payload is a bug
+to fix wherever the cache sits, so it is not an argument against caching the
+write.
 
 ### Residual window
 
