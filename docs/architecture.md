@@ -41,8 +41,8 @@ graph LR
         WSListener[MELCloudHomeWebSocket<br/>Real-Time Delta Listener]
 
         subgraph "Control Client Layer"
-            ControlATA[ATAControlClient<br/>Optimistic Update, Validation & Debounce]
-            ControlATW[ATWControlClient<br/>Optimistic Update, Validation & Debounce]
+            ControlATA[ATAControlClient<br/>Sends every command, shows it at once<br/>Validation & Debounce]
+            ControlATW[ATWControlClient<br/>Sends every command, shows it at once<br/>Validation & Debounce]
         end
 
         subgraph "Models Layer"
@@ -346,7 +346,7 @@ sequenceDiagram
 
 **Control Client Responsibilities (`control_client_{ata,atw}.py`):**
 
-- **Optimistic update**: Applies each accepted write to the coordinator's copy of the unit and calls `async_update_listeners()`, so an entity shows a command as soon as the API accepts it rather than one refresh later. Nothing is deduplicated; `RequestPacer` (0.5s minimum spacing) is the sole rate protection (ADR-026).
+- **Immediate state update**: Applies each accepted write to the coordinator's copy of the unit and calls `async_update_listeners()`, so an entity shows a command as soon as the API accepts it rather than one refresh later. Nothing is deduplicated; `RequestPacer` (0.5s minimum spacing) is the sole rate protection (ADR-026).
 - **HA-specific validation**: Checks zone availability, temperature ranges, capability support before hitting the API.
 - **Debounced refresh**: Coalesces rapid consecutive changes into a single follow-up state fetch after a 2-second quiet period (see `control_client_base.py`).
 - **Delegation to the coordinator's retry wrapper**: Every API call is invoked through `execute_with_retry` (a callback injected from the coordinator at construction), so session recovery is owned in one place.
@@ -385,7 +385,7 @@ graph TD
     style APIClient fill:#e1f5ff,stroke:#039be5
 
     note0["Coordinator:<br/>- State polling (60s)<br/>- Telemetry timers (30m / 60m)<br/>- Re-auth ladder via _run_with_reauth<br/>- WebSocket listener lifecycle (default on)"]
-    note1["Control Layer:<br/>- Optimistic update of device state<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
+    note1["Control Layer:<br/>- Immediate state update after a write<br/>- HA validation<br/>- Debounced refresh<br/>- Delegates via execute_with_retry"]
     note2["API Layer:<br/>- HTTP/Bearer auth<br/>- Proactive token refresh<br/>- Device facades"]
 
     Coordinator -.-> note0
@@ -398,7 +398,7 @@ graph TD
 
 - **Two separate control client files**: `control_client_ata.py` and `control_client_atw.py`.
 - **Coordinator owns session recovery + retry**: the re-auth ladder is in `_run_with_reauth` on the coordinator; control clients never catch `AuthenticationError` themselves.
-- **Control clients own optimistic update + validation + debouncing**: they apply each accepted write to the coordinator's copy of the unit and notify entities, validate HA-side preconditions, and coalesce rapid refreshes. Every command reaches the API; `RequestPacer` is the only thing spacing them (ADR-026).
+- **Control clients own the immediate state update + validation + debouncing**: they apply each accepted write to the coordinator's copy of the unit and notify entities, validate HA-side preconditions, and coalesce rapid refreshes. Every command reaches the API; `RequestPacer` is the only thing spacing them (ADR-026).
 - **API client owns HTTP/auth/facades**: Bearer injection, proactive token refresh, and the `client.ata.*` / `client.atw.*` device facades.
 - **All operations flow Coord → CtrlClient → Coord.execute_with_retry → APIClient**: control clients never call the API client directly.
 

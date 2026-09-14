@@ -311,11 +311,11 @@ users nothing.
   Between a title that misinforms and a control that appears broken, the title
   is preferred, and #285 stays deferred. The running speed remains visible in
   the Actual Fan Speed sensor, which under `auto` is the only place it appears.
-- **ATA power writes are no longer deduplicated**, in either `async_set_power`
-  or `async_set_power_and_mode`. The write-deduplication compares the requested
-  value against coordinator data, which is stale for the whole window between a
+- **ATA power writes stopped being deduplicated here**, in either `async_set_power`
+  or `async_set_power_and_mode`. The write-deduplication compared the requested
+  value against coordinator data, which was stale for the whole window between a
   write and the next completed refresh, so a power-off issued inside that window
-  is compared against a cache still reading the pre-write value and dropped.
+  was compared against a cache still reading the pre-write value and dropped.
   Verified on hardware: from off, a drag up followed immediately by a drag to
   zero produced two dropped offs, 1.65s and 2.4s after the power-on, nothing
   reached the API, and the air conditioner kept running while the Home app

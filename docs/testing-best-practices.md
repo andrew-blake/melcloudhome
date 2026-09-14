@@ -160,7 +160,7 @@ Cassettes are branch-specific and live in the worktree:
 - Coordinator retry logic
 - Session expiry recovery
 - Debouncing algorithms
-- Optimistic update of device state after a write
+- Immediate state update after a write
 
 **Rules:**
 
@@ -360,7 +360,7 @@ implementation.
 # ❌ WRONG: Testing that cache is used
 assert coordinator._last_call_time is not None
 
-# ✅ CORRECT: Testing the optimistic update after a write
+# ✅ CORRECT: Testing the immediate state update after a write
 await set_temperature(20.0)
 # Verify the entity reads 20.0 before the next poll, via cassette or mock
 ```

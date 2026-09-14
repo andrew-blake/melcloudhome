@@ -91,11 +91,6 @@ fetched before it. A poll completing while the write is in flight runs
 `_rebuild_caches`, which discards every cached unit object for freshly parsed
 ones, so writing into the earlier object would update a copy no entity reads.
 
-`async_set_standby_mode` is the one setter that leaves the coordinator's copy
-untouched. Real devices
-do not enter standby while powered on even though the API accepts the request,
-so caching the requested value would record something false. Nothing reads that
-cached value before the poll, so waiting for it costs nothing.
 
 ## Consequences
 
@@ -114,12 +109,12 @@ behind writes that change nothing. The poll is delayed rather than failed: the
 Set against that: the same dedup silently dropped commands. A slow redundant
 scene is visible and explicable. A dropped command is neither.
 
-### The optimism is bounded
+### Server truth wins at the next poll
 
-`_rebuild_caches` replaces every cached unit with one parsed from the fresh
-context, carrying forward only the outdoor-temperature fields that
-`_poll_outdoor_temperature` owns. Power, mode, temperature, fan speed and both
-vanes are overwritten by server truth on every poll.
+Each poll parses fresh unit objects from the server's response; only the
+energy, telemetry and outdoor-temperature fields are re-applied from their own
+trackers. Power, mode, temperature, fan speed and both vanes therefore hold the
+server's value after every poll, whatever was applied between polls.
 
 ### What the cache holds
 
@@ -148,10 +143,8 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### Alternatives rejected
 
-**Keep dedup and apply every successful write to the cache it compares against.** This
-narrows the window rather than closing it, leaves #135 unfixed, and buys that
-with a race analysis, a standby carve-out and an orphan-reference re-fetch whose
-stakes are correctness rather than call count.
+**Keep dedup and apply every successful write to the cache it compares against.**
+This narrows the window rather than closing it, and leaves #135 unfixed.
 
 **A timer or freshness threshold.** The 6.58 s and 9.3 s measurements above put
 every candidate constant on the wrong side.

@@ -75,7 +75,7 @@ If out-of-band sync issues become a recurring complaint, the lowest-risk partial
 1. **Remove dedup from `async_set_power` only** — power is the highest-impact case (unit can't be turned on at all). A single extra set_power call in a scene doesn't create a burst. All other attributes retain dedup.
 2. **Reduce poll to 30s** — halves the window for all attributes. Requires verifying API rate-limit headroom first.
 
-Do not remove dedup broadly without resolving rate-limit exposure.
+Do not remove dedup broadly without resolving rate-limit exposure. [Measured on 2026-09-14 and removed; see ADR-026.]
 
 ## User Communication
 
