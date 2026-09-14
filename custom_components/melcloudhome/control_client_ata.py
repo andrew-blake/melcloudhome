@@ -19,7 +19,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ATAControlClient(ControlClientBase):
-    """Handles ATA device control operations with retry logic and debounced refresh."""
+    """Handles ATA device control operations with retry logic and debounced refresh.
+
+    Every successful write is applied to the cached device model, because
+    deduplication compares against that cache and a poll lags a write by
+    several seconds (ADR-026). Look the device up again after the write: a poll
+    completing mid-write discards every cached unit object for freshly parsed
+    ones, so the object the dedup check fetched can by then be detached from the
+    cache, and writing the value into it would leave dedup comparing against a
+    value it has never seen.
+    """
 
     def __init__(
         self,
@@ -30,6 +39,7 @@ class ATAControlClient(ControlClientBase):
         ],
         get_device: Callable[[str], AirToAirUnit | None],
         async_request_refresh: Callable[[], Awaitable[None]],
+        async_update_listeners: Callable[[], None],
     ) -> None:
         """Initialize ATA control client.
 
@@ -39,9 +49,10 @@ class ATAControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_device: Callable to get ATA device by ID
             async_request_refresh: Callable to request coordinator refresh
+            async_update_listeners: Callable to push cached state to entities
         """
         # Initialize base class (provides shared debouncing logic)
-        super().__init__(hass)
+        super().__init__(hass, async_update_listeners)
 
         self._client = client
         self._execute_with_retry = execute_with_retry
@@ -68,6 +79,12 @@ class ATAControlClient(ControlClientBase):
             f"set_power_and_mode({unit_id}, {power}, {mode})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.power = power
+            device.operation_mode = mode
+            self._notify_listeners()
+
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
 
@@ -90,6 +107,11 @@ class ATAControlClient(ControlClientBase):
             f"set_power({unit_id}, {power})",
         )
 
+        device = self._get_device(unit_id)
+        if device:
+            device.power = power
+            self._notify_listeners()
+
     async def async_set_mode(self, unit_id: str, mode: str) -> None:
         """Set operation mode with automatic session recovery.
 
@@ -97,19 +119,16 @@ class ATAControlClient(ControlClientBase):
             unit_id: Unit ID
             mode: Operation mode string
         """
-        # Skip if already in desired state
-        device = self._get_device(unit_id)
-        if device and device.operation_mode == mode:
-            _LOGGER.debug(
-                "Mode already %s for %s, skipping API call", mode, unit_id[-8:]
-            )
-            return
-
         _LOGGER.info("Setting mode for %s to %s", unit_id[-8:], mode)
         await self._execute_with_retry(
             lambda: self._client.ata.set_mode(unit_id, mode),
             f"set_mode({unit_id}, {mode})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.operation_mode = mode
+            self._notify_listeners()
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery.
@@ -118,21 +137,16 @@ class ATAControlClient(ControlClientBase):
             unit_id: Unit ID
             temperature: Target temperature in Celsius
         """
-        # Skip if already at desired temperature
-        device = self._get_device(unit_id)
-        if device and device.set_temperature == temperature:
-            _LOGGER.debug(
-                "Temperature already %.1f°C for %s, skipping API call",
-                temperature,
-                unit_id[-8:],
-            )
-            return
-
         _LOGGER.info("Setting temperature for %s to %.1f°C", unit_id[-8:], temperature)
         await self._execute_with_retry(
             lambda: self._client.ata.set_temperature(unit_id, temperature),
             f"set_temperature({unit_id}, {temperature})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.set_temperature = temperature
+            self._notify_listeners()
 
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery.
@@ -141,21 +155,16 @@ class ATAControlClient(ControlClientBase):
             unit_id: Unit ID
             fan_speed: Fan speed string
         """
-        # Skip if already at desired fan speed
-        device = self._get_device(unit_id)
-        if device and device.set_fan_speed == fan_speed:
-            _LOGGER.debug(
-                "Fan speed already %s for %s, skipping API call",
-                fan_speed,
-                unit_id[-8:],
-            )
-            return
-
         _LOGGER.info("Setting fan speed for %s to %s", unit_id[-8:], fan_speed)
         await self._execute_with_retry(
             lambda: self._client.ata.set_fan_speed(unit_id, fan_speed),
             f"set_fan_speed({unit_id}, {fan_speed})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.set_fan_speed = fan_speed
+            self._notify_listeners()
 
     async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """Set vertical vane position with automatic session recovery.
@@ -169,20 +178,16 @@ class ATAControlClient(ControlClientBase):
             unit_id: Unit ID
             vertical: Vertical vane position
         """
-        device = self._get_device(unit_id)
-        if device and device.vane_vertical_direction == vertical:
-            _LOGGER.debug(
-                "Vertical vane already %s for %s, skipping API call",
-                vertical,
-                unit_id[-8:],
-            )
-            return
-
         _LOGGER.info("Setting vertical vane for %s to %s", unit_id[-8:], vertical)
         await self._execute_with_retry(
             lambda: self._client.ata.set_vane_vertical(unit_id, vertical),
             f"set_vane_vertical({unit_id}, {vertical})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.vane_vertical_direction = vertical
+            self._notify_listeners()
 
     async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
         """Set horizontal vane position with automatic session recovery.
@@ -194,17 +199,13 @@ class ATAControlClient(ControlClientBase):
             unit_id: Unit ID
             horizontal: Horizontal vane position
         """
-        device = self._get_device(unit_id)
-        if device and device.vane_horizontal_direction == horizontal:
-            _LOGGER.debug(
-                "Horizontal vane already %s for %s, skipping API call",
-                horizontal,
-                unit_id[-8:],
-            )
-            return
-
         _LOGGER.info("Setting horizontal vane for %s to %s", unit_id[-8:], horizontal)
         await self._execute_with_retry(
             lambda: self._client.ata.set_vane_horizontal(unit_id, horizontal),
             f"set_vane_horizontal({unit_id}, {horizontal})",
         )
+
+        device = self._get_device(unit_id)
+        if device:
+            device.vane_horizontal_direction = horizontal
+            self._notify_listeners()

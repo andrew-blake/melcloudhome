@@ -257,7 +257,7 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
 
         # Mock ATW control client (composition pattern)
         mock_client.atw = MagicMock()
-        mock_client.atw.set_power_atw = AsyncMock()
+        mock_client.atw.set_power = AsyncMock()
         mock_client.atw.set_temperature_zone1 = AsyncMock()
         mock_client.atw.set_mode_zone1 = AsyncMock()
         mock_client.atw.set_dhw_temperature = AsyncMock()

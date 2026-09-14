@@ -411,3 +411,38 @@ async def test_atw_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
     mock_client.atw.set_mode_zone1.assert_called_once_with(
         TEST_ATW_UNIT_ID, "CoolRoomTemperature"
     )
+
+
+@pytest.mark.asyncio
+async def test_returning_a_zone1_setpoint_inside_the_refresh_window_still_writes(
+    hass: HomeAssistant,
+) -> None:
+    """Same defect as the ATA fan speed: changing your mind back must reach the API.
+
+    create_mock_atw_unit defaults set_temperature_zone1 to 21.0, so writing 22.0
+    and then 21.0 is the A -> B -> A gesture with A the value already on the
+    device. Without write-through the second call is compared against a cache
+    still reading 21.0 and dropped, and the dial springs back to 22.0.
+    """
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit()])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_temperature_zone1 = AsyncMock()
+
+    for temperature in (22.0, 21.0):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+                "temperature": temperature,
+            },
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert [c[0][1] for c in mock_client.atw.set_temperature_zone1.call_args_list] == [
+        22.0,
+        21.0,
+    ]
