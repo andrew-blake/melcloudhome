@@ -216,3 +216,28 @@ async def test_water_heater_entity_naming_includes_tank(hass: HomeAssistant) -> 
     state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
     assert state is not None
     assert "_tank" in state.entity_id
+
+
+@pytest.mark.asyncio
+async def test_a_dhw_setpoint_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """The fixture starts at 50.0; asking for 50.0 twice must reach the API twice.
+
+    A check comparing the request against the coordinator's copy would skip
+    both, so two calls is the witness for its absence on this setter.
+    """
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "water_heater",
+            "set_temperature",
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "temperature": 50.0},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_dhw_temperature.call_count == 2

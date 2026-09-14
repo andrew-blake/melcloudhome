@@ -91,7 +91,6 @@ fetched before it. A poll completing while the write is in flight runs
 `_rebuild_caches`, which discards every cached unit object for freshly parsed
 ones, so writing into the earlier object would update a copy no entity reads.
 
-
 ## Consequences
 
 ### The trade
