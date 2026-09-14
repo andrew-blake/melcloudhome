@@ -394,12 +394,11 @@ async def test_returning_a_value_inside_the_refresh_window_still_writes(
     back: Any,
     api_method: str,
 ) -> None:
-    """Every deduplicated ATA field must accept a change and a change back.
+    """Every ATA field must accept a change and a change back.
 
-    `back` is the fixture's own starting value, so the second call is the one a
-    cache frozen at that value would drop. Guards each write-through field
-    individually: one assigning the wrong attribute would leave dedup comparing
-    against a value it never saw, and re-open the defect on that field alone.
+    `back` is the fixture's own starting value, so the second call is the one
+    deduplication against the coordinator's copy used to drop (ADR-026). One
+    case per field, so a check reintroduced on one setter fails alone.
     """
     mock_context = create_mock_ata_user_context()
     _, mock_client = await setup_ata_integration_custom(

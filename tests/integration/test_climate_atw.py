@@ -421,8 +421,8 @@ async def test_returning_a_zone1_setpoint_inside_the_refresh_window_still_writes
 
     create_mock_atw_unit defaults set_temperature_zone1 to 21.0, so writing 22.0
     and then 21.0 is the A -> B -> A gesture with A the value already on the
-    device. Without write-through the second call is compared against a cache
-    still reading 21.0 and dropped, and the dial springs back to 22.0.
+    device. Deduplication against the coordinator's copy, still reading 21.0,
+    used to drop the second call and the dial sprang back to 22.0 (ADR-026).
     """
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[create_mock_atw_unit()])]

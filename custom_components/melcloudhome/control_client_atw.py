@@ -267,7 +267,7 @@ class ATWControlClient(ControlClientBase):
         API accepts the command but device state remains in_standby_mode=False.
         Validated with real ATW device (ftcModel: 3) via VCR testing.
 
-        This setter alone skips the write-through the others do: the device
+        This setter alone leaves the coordinator's copy untouched: the device
         stays out of the state the API accepts, so caching it would record
         something false. Only display reads that field, and the poll's value is
         the true one.

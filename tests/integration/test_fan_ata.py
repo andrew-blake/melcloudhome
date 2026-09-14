@@ -676,11 +676,11 @@ async def test_reversing_a_speed_inside_the_refresh_window_still_writes(
 async def test_entity_shows_a_written_speed_before_the_next_refresh(
     hass: HomeAssistant,
 ) -> None:
-    """The write-through is pushed to entities rather than waiting for a poll.
+    """The value applied to the coordinator's copy reaches entities before any poll.
 
     The refresh is deliberately left in flight. _let_the_speed_write_land would
     drain it, and because the API mock returns one UserContext object forever,
-    that refresh re-registers the very unit the write-through mutated and pushes
+    that refresh re-registers the very unit the setter mutated and pushes
     the value itself, which passes whether or not listeners were notified.
     Yielding to the loop instead lets the write land while the refresh is still
     on its debounce, so the only thing that can have updated hass.states is the

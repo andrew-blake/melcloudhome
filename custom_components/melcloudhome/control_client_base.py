@@ -37,8 +37,8 @@ class ControlClientBase:
     def _notify_listeners(self) -> None:
         """Push a written-through value to entities without waiting for a poll.
 
-        Entities read the cached model, so a write-through stays invisible until
-        listeners are told. A raising listener must not fail the service call:
+        Entities read the coordinator's copy of the unit, so a value applied to
+        it stays invisible until listeners are told. A raising listener must not fail the service call:
         the write already succeeded. HA guards this itself from 2026.5.0; the
         hacs.json floor is 2025.8.0, which does not.
         """

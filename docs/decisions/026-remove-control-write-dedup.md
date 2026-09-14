@@ -91,7 +91,8 @@ fetched before it. A poll completing while the write is in flight runs
 `_rebuild_caches`, which discards every cached unit object for freshly parsed
 ones, so writing into the earlier object would update a copy no entity reads.
 
-`async_set_standby_mode` is the one setter without write-through. Real devices
+`async_set_standby_mode` is the one setter that leaves the coordinator's copy
+untouched. Real devices
 do not enter standby while powered on even though the API accepts the request,
 so caching the requested value would record something false. Nothing reads that
 cached value before the poll, so waiting for it costs nothing.
@@ -147,7 +148,7 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### Alternatives rejected
 
-**Keep dedup and write every successful write through to the cache.** This
+**Keep dedup and apply every successful write to the cache it compares against.** This
 narrows the window rather than closing it, leaves #135 unfixed, and buys that
 with a race analysis, a standby carve-out and an orphan-reference re-fetch whose
 stakes are correctness rather than call count.
