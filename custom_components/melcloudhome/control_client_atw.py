@@ -109,10 +109,6 @@ class ATWControlClient(ControlClientBase):
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
 
-        No write here is deduplicated against cached state, which can be wrong
-        because the cloud is wrong, and an owner must always be able to reassert
-        power (#310, ADR-026).
-
         Args:
             unit_id: ATW unit ID
             power: True=ON, False=OFF
@@ -273,8 +269,8 @@ class ATWControlClient(ControlClientBase):
 
         This setter alone skips the write-through the others do: the device
         stays out of the state the API accepts, so caching it would record
-        something false. Nothing depends on the cached value, so waiting for the
-        poll costs nothing.
+        something false. Only display reads that field, and the poll's value is
+        the true one.
 
         Args:
             unit_id: ATW unit ID

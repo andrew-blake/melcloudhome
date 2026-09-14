@@ -23,10 +23,9 @@ class ATAControlClient(ControlClientBase):
 
     Every successful write is applied to the cached device model, so an entity
     shows a command as soon as the API accepts it rather than one refresh later
-    (ADR-026). Look the device up again after the write: a poll completing
-    mid-write discards every cached unit object for freshly parsed ones, so an
-    object fetched before the write can by then be detached from the cache, and
-    writing the value into it would update a copy no entity reads.
+    (ADR-026). Fetch the device after the write, not before it: a poll
+    completing mid-write replaces every cached unit object, and a reference
+    taken earlier would update an object no entity reads.
     """
 
     def __init__(
@@ -66,8 +65,6 @@ class ATAControlClient(ControlClientBase):
         Use this instead of separate async_set_power + async_set_mode when turning
         a unit on to a specific mode, to avoid the operationMode=null window that
         can trigger a mode-conflict fault on multi-zone outdoor units.
-
-        Nothing here is deduplicated against coordinator data; see ADR-026.
         """
         _LOGGER.info(
             "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
@@ -85,10 +82,6 @@ class ATAControlClient(ControlClientBase):
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
-
-        No write here is deduplicated against coordinator data, which is stale
-        for the whole window between a write and the next completed refresh and
-        dropped real power-offs issued inside it (#318, ADR-026).
 
         Args:
             unit_id: Unit ID
