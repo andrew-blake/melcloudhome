@@ -102,7 +102,7 @@ graph LR
 **Key Points:**
 
 - **Single coordinator** drives state polling and owns session recovery (`_run_with_reauth`)
-- **Control client layer** applies each successful write to the cached state and notifies entities, plus HA validation and debounced refresh; it delegates every API call through `Coord.execute_with_retry`
+- **Control client layer** applies each accepted write to the coordinator's copy of the unit and notifies entities, plus HA validation and debounced refresh; it delegates every API call through `Coord.execute_with_retry`
 - **Single API client** provides unified interface to the MELCloud mobile API, plus proactive token refresh (60s pre-expiry buffer)
 - **Shared auth** — one OAuth session (access + refresh tokens) for all endpoints
 - **UserContext** (`/context`) returns both device types in one response

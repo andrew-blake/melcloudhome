@@ -14,9 +14,11 @@ reversal)
 
 ## Context
 
-Every control write compared the requested value against the coordinator's
-cached device model and skipped the API call when the two matched. That cache
-learned a written value only at the next completed refresh.
+Nine control writes, five ATA and four ATW, compared the requested value
+against the coordinator's copy of the unit and skipped the API call when the
+two matched. The rest never had the check, and ATA power lost its own first in
+`786f5d8`. That copy learned a written value only at the next completed
+refresh.
 
 ### Two causes, one symptom
 
@@ -80,9 +82,9 @@ account's heat pumps are shared devices), or sustained load.
 ## Decision
 
 Deduplication is removed from every control write on both device types. Every
-command reaches the API. Power is no longer a special case, because no field is.
+command reaches the API. Power stopped being the exception: no field is checked.
 
-After a successful write the value is applied to the cached device model and
+After a successful write the value is applied to the coordinator's copy of the unit and
 listeners are notified, so an entity shows a command as soon as the API accepts
 it rather than one refresh later.
 
@@ -117,27 +119,33 @@ server's value after every poll, whatever was applied between polls.
 
 ### What the cache holds
 
-The cache holds what we sent, confirmed by a 200, until the poll confirms it. A
-write the unit does not end up applying reads as applied until then. The one
-documented instance of that was
+The coordinator's copy holds what we sent, confirmed by a 200, until the poll
+confirms it. A write the unit does not end up applying reads as applied until
+then. One written field is read as a physical status rather than a setpoint:
+`forced_hot_water_mode` backs the `forced_dhw_active` binary sensor (device
+class running) and the water heater's operation mode, so an automation on that
+sensor fires when the PUT is accepted rather than when the valve moves, and a
+declined command shows as a brief on/off pair in the recorder. Accepted so the
+water heater's mode does not lag its own control. The one documented instance
+of a write not applying was
 [issue #100](https://github.com/andrew-blake/melcloudhome/issues/100), where our
 own payload sent both vane axes to a unit with only one and the server rejected
 the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### Mitigations, none in scope
 
-- **(D) Coalesce near-simultaneous writes to one unit into a single
+- **1. Coalesce near-simultaneous writes to one unit into a single
   multi-field PUT.** The API body already carries every field, so a six-unit
   scene would cost about 3 s with no dependence on cached state. Sized as
   medium: error fan-out semantics across the coalesced fields, interaction with
   `fan.py`'s own debounce, and a collection window added to every command.
   Deferred until a slow scene is actually reported.
-- **(E) MELCloud's own cloud scenes**, applied server-side in one request,
+- **2. MELCloud's own cloud scenes**, applied server-side in one request,
   exposed as HA entities. Issue #174 territory.
-- **(F) The pacer's 0.5 s** is unjustified in either direction. The ceiling was
+- **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was
   deliberately not probed, since hammering an unofficial API on the maintainer's
   own account risks a soft ban that would also stall prod polling.
-- **(G) Firing only changed attributes** is `scene.apply` behaviour on the Home
+- **4. Firing only changed attributes** is `scene.apply` behaviour on the Home
   Assistant side, not the integration's.
 
 ### Alternatives rejected
@@ -154,6 +162,6 @@ every candidate constant on the wrong side.
 - [ADR-018: Out-of-Band State Sync Limitation](018-out-of-band-state-sync-limitation.md) — superseded by this record
 - [ADR-019: WebSocket Real-Time Updates](019-websocket-realtime-updates.md) — shortens the refresh window; does not change this decision
 - [ADR-025: Exposing Fan Speed and Vane to HomeKit](025-homekit-fan-entity.md) — the entity whose slider surfaced the reversal
-- GitHub issue #310 — the stale-cloud case, and the ATW power early return
-- GitHub issue #318 — the ATA power drops, fixed first on their own in `786f5d8`
+- GitHub issue #310 — the stale-cloud case, proposed for ATA power only; extending the removal to ATW and to every field is this record's own call
+- GitHub issue #318 — the HomeKit vane/swing issue whose fan entity surfaced the power drops, fixed first on their own in `786f5d8`
 - GitHub discussion #135 — the original out-of-band report
