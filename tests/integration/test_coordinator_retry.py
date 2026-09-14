@@ -330,8 +330,8 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
 
 
 @pytest.mark.asyncio
-async def test_deduplication_sends_different_value(coordinator):
-    """Test smart deduplication sends API call when value changed."""
+async def test_power_write_is_sent_regardless_of_cached_state(coordinator):
+    """Every control write reaches the API; nothing is compared against the cache."""
     from custom_components.melcloudhome.api.models_ata import (
         AirToAirCapabilities,
         AirToAirUnit,
