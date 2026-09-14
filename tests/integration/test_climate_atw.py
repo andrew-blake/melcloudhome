@@ -414,15 +414,14 @@ async def test_atw_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_returning_a_zone1_setpoint_inside_the_refresh_window_still_writes(
+async def test_a_zone1_setpoint_matching_current_state_is_still_sent(
     hass: HomeAssistant,
 ) -> None:
-    """Same defect as the ATA fan speed: changing your mind back must reach the API.
+    """The fixture starts at 21.0; asking for 21.0 twice must reach the API twice.
 
-    create_mock_atw_unit defaults set_temperature_zone1 to 21.0, so writing 22.0
-    and then 21.0 is the A -> B -> A gesture with A the value already on the
-    device. Deduplication against the coordinator's copy, still reading 21.0,
-    used to drop the second call and the dial sprang back to 22.0 (ADR-026).
+    A check comparing the request against the coordinator's copy would skip
+    both. A change-and-change-back is no witness, because the copy is updated
+    after every accepted write and never matches the next request.
     """
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[create_mock_atw_unit()])]
@@ -430,19 +429,13 @@ async def test_returning_a_zone1_setpoint_inside_the_refresh_window_still_writes
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_temperature_zone1 = AsyncMock()
 
-    for temperature in (22.0, 21.0):
+    for _ in range(2):
         await hass.services.async_call(
             "climate",
             "set_temperature",
-            {
-                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
-                "temperature": temperature,
-            },
+            {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 21.0},
             blocking=True,
         )
         await hass.async_block_till_done()
 
-    assert [c[0][1] for c in mock_client.atw.set_temperature_zone1.call_args_list] == [
-        22.0,
-        21.0,
-    ]
+    assert mock_client.atw.set_temperature_zone1.call_count == 2

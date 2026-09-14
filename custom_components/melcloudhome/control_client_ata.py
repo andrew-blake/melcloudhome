@@ -24,8 +24,9 @@ class ATAControlClient(ControlClientBase):
     Every successful write is applied to the cached device model, so an entity
     shows a command as soon as the API accepts it rather than one refresh later
     (ADR-026). Fetch the device after the write, not before it: a poll
-    completing mid-write replaces every cached unit object, and a reference
-    taken earlier would update an object no entity reads.
+    completing mid-write replaces every unit object, and a reference taken
+    earlier would update one no entity reads. Fetching afterwards favours our
+    value over a poll that landed meanwhile; the next poll settles it.
     """
 
     def __init__(
@@ -62,8 +63,7 @@ class ATAControlClient(ControlClientBase):
     ) -> None:
         """Set power state and operation mode atomically in a single API call.
 
-        Use this instead of separate async_set_power + async_set_mode when turning
-        a unit on to a specific mode, to avoid the operationMode=null window that
+        Used for every power-on that knows the mode, to avoid the operationMode=null window that
         can trigger a mode-conflict fault on multi-zone outdoor units.
         """
         _LOGGER.info(
@@ -78,7 +78,7 @@ class ATAControlClient(ControlClientBase):
         if device:
             device.power = power
             device.operation_mode = mode
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
@@ -96,25 +96,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.power = power
-            self._notify_listeners()
-
-    async def async_set_mode(self, unit_id: str, mode: str) -> None:
-        """Set operation mode with automatic session recovery.
-
-        Args:
-            unit_id: Unit ID
-            mode: Operation mode string
-        """
-        _LOGGER.info("Setting mode for %s to %s", unit_id[-8:], mode)
-        await self._execute_with_retry(
-            lambda: self._client.ata.set_mode(unit_id, mode),
-            f"set_mode({unit_id}, {mode})",
-        )
-
-        device = self._get_device(unit_id)
-        if device:
-            device.operation_mode = mode
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery.
@@ -132,7 +114,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.set_temperature = temperature
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_fan_speed(self, unit_id: str, fan_speed: str) -> None:
         """Set fan speed with automatic session recovery.
@@ -150,7 +132,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.set_fan_speed = fan_speed
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """Set vertical vane position with automatic session recovery.
@@ -173,7 +155,7 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.vane_vertical_direction = vertical
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
         """Set horizontal vane position with automatic session recovery.
@@ -194,4 +176,4 @@ class ATAControlClient(ControlClientBase):
         device = self._get_device(unit_id)
         if device:
             device.vane_horizontal_direction = horizontal
-            self._notify_listeners()
+            self._async_update_listeners()

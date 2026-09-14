@@ -97,15 +97,6 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
-    async def async_set_mode(self, unit_id: str, mode: str) -> None:
-        """Set operation mode for ATA unit.
-
-        Args:
-            unit_id: ATA unit ID
-            mode: Operation mode (e.g., "Heat", "Cool", "Dry")
-        """
-        ...
-
     async def async_set_power_and_mode(
         self, unit_id: str, power: bool, mode: str
     ) -> None:
@@ -222,16 +213,6 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
-    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode for ATW unit.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True to enable standby, False to disable
-        """
-        ...
-
-    # Refresh control
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing.
 

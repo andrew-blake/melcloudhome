@@ -34,19 +34,6 @@ class ControlClientBase:
         self._refresh_debounce_task: asyncio.Task | None = None
         self._async_update_listeners = async_update_listeners
 
-    def _notify_listeners(self) -> None:
-        """Push a written-through value to entities without waiting for a poll.
-
-        Entities read the coordinator's copy of the unit, so a value applied to
-        it stays invisible until listeners are told. A raising listener must not fail the service call:
-        the write already succeeded. HA guards this itself from 2026.5.0; the
-        hacs.json floor is 2025.8.0, which does not.
-        """
-        try:
-            self._async_update_listeners()
-        except Exception:
-            _LOGGER.exception("Listener update failed after a control write")
-
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing.
 

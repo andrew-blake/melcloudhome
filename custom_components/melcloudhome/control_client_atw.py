@@ -24,7 +24,7 @@ class ATWControlClient(ControlClientBase):
 
     Every successful write is applied to the cached device model, so an entity
     shows a command as soon as the API accepts it rather than one refresh later
-    (ADR-026). Standby is the one exception; see async_set_standby_mode.
+    (ADR-026).
     """
 
     def __init__(
@@ -61,8 +61,8 @@ class ATWControlClient(ControlClientBase):
         unit_id: str,
         control_name: str,
         control_fn: Callable[[AirToWaterUnit], Awaitable[None]],
+        apply: Callable[[AirToWaterUnit], None],
         pre_check: Callable[[AirToWaterUnit], None] | None = None,
-        apply: Callable[[AirToWaterUnit], None] | None = None,
     ) -> None:
         """Generic ATW control method with validation and retry.
 
@@ -70,10 +70,8 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             control_name: Human-readable control name for logging
             control_fn: Control function that takes unit and executes API call
+            apply: Sets the written field on the coordinator's copy of the unit
             pre_check: Optional validation function (raises HomeAssistantError if invalid)
-            apply: Optional mutation applied to the cached unit once the write
-                has succeeded, so entities see the new value before the next
-                poll (ADR-026)
 
         Raises:
             HomeAssistantError: If unit not found or pre-check fails
@@ -100,11 +98,12 @@ class ATWControlClient(ControlClientBase):
             f"{control_name}({unit_id})",
         )
 
-        # A poll completing mid-write discards every cached unit object for
-        # freshly parsed ones, so atw_device can by now be detached from the cache.
-        if apply and (unit := self._get_atw_device(unit_id)):
+        # A poll completing mid-write replaces every unit object, so atw_device
+        # may no longer be the one entities read. Fetching again favours our
+        # value over a poll that landed meanwhile; the next poll settles it.
+        if unit := self._get_atw_device(unit_id):
             apply(unit)
-            self._notify_listeners()
+            self._async_update_listeners()
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
@@ -258,26 +257,4 @@ class ATWControlClient(ControlClientBase):
                 unit.id, enabled
             ),
             apply=apply,
-        )
-
-    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode.
-
-        Note: Real devices may ignore standby=True when system is powered on.
-        API accepts the command but device state remains in_standby_mode=False.
-        Validated with real ATW device (ftcModel: 3) via VCR testing.
-
-        This setter alone leaves the coordinator's copy untouched: the device
-        stays out of the state the API accepts, so caching it would record
-        something false. Only display reads that field, and the poll's value is
-        the true one.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True=standby, False=normal
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="standby mode",
-            control_fn=lambda unit: self._client.atw.set_standby_mode(unit.id, standby),
         )

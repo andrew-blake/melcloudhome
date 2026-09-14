@@ -212,9 +212,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         """Remember the last numbered speed seen, then update entity state.
 
         The commanded speed can change from the climate entity's fan_mode
-        dropdown, the vendor's own app, or a service call -- none of which are
-        calls into this entity, so they all arrive here rather than through a
-        write this class made itself. ATAEntityBase (CoordinatorEntity) does
+        dropdown, the vendor's own app, a service call, or this entity's own
+        write once the control client applies it and notifies. Every one of
+        those arrives here. ATAEntityBase (CoordinatorEntity) does
         not override this hook, so this is the only place that sees every one
         of those paths; super() below reaches CoordinatorEntity's default
         implementation directly and still writes the state.

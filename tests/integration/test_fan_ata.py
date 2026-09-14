@@ -550,27 +550,23 @@ async def test_power_off_disarms_the_power_on_guard(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
-async def test_power_off_lands_while_the_power_on_is_still_stale(
+async def test_power_off_is_sent_to_a_unit_already_off(
     hass: HomeAssistant, power_off: Any
 ) -> None:
-    """A drag up then straight back down must switch the unit off (#318).
+    """An off must reach the API even when the unit already reads off (#318).
 
     Observed on hardware: from off, a drag up followed by a drag to zero left
     the air conditioner running while the Home app showed it off. The power-on
-    had not reached coordinator data yet -- the refresh is scheduled 2.0s after
-    the write returns and then has its own round trip -- so the off was compared
-    against a cache still reading power=False and deduplicated away. Two offs
-    were dropped that way, 1.65s and 2.4s after the power-on.
+    had not reached coordinator data yet, so the off was compared against a
+    copy still reading power=False and dropped.
 
-    The mock context keeps reporting power=False for the whole test, which is
-    exactly that stale window: the off must still reach the API.
+    The same comparison is what a reintroduced check would make, so the witness
+    is an off issued while the coordinator's copy already reads off: it has to
+    go out anyway.
     """
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
-
-    await _set_percentage(hass, 40)
-    assert mock_client.ata.set_power_and_mode.call_count == 1
 
     await power_off(hass)
 
@@ -585,8 +581,8 @@ async def test_dragging_through_zero_does_not_power_off(
     """Passing the zero detent mid-drag must not stop the unit.
 
     Only the released position counts, so a drag from low through zero and back
-    up sends one speed and no power-off. Power writes are never deduplicated,
-    so a power-off reaching the control client would reach the API too: the
+    up sends one speed and no power-off. Nothing is deduplicated, so a
+    power-off reaching the control client would reach the API too: the
     assertion below fails if the zero detent is applied mid-drag.
     """
     _, mock_client = await _setup(
@@ -647,28 +643,25 @@ async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
-async def test_reversing_a_speed_inside_the_refresh_window_still_writes(
-    hass: HomeAssistant,
-) -> None:
-    """A -> B -> A must reach the API three times.
+async def test_the_same_speed_twice_is_sent_twice(hass: HomeAssistant) -> None:
+    """A speed the unit already reads still reaches the API.
 
-    The cache only learns a written value at the next completed refresh. Frozen
-    at the fixture's One, it used to drop the second call for matching a value
-    the first had already superseded, sending Two twice and never One. Seen on
-    hardware: the slider sprang back and the unit never changed.
+    The fixture starts on One and both writes ask for One. A check comparing
+    the request against the coordinator's copy would skip both, so this is the
+    witness for its absence; a change-and-change-back is not, because the copy
+    is updated after every accepted write and never matches the next request.
     """
     _, mock_client = await _setup(
         hass, power=True, operation_mode="Heat", set_fan_speed="One"
     )
 
-    for percentage in (40, 20, 40):
-        await _set_percentage(hass, percentage)
+    for _ in range(2):
+        await _set_percentage(hass, 20)
         await _let_the_speed_write_land(hass)
 
     assert [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list] == [
-        "Two",
         "One",
-        "Two",
+        "One",
     ]
 
 

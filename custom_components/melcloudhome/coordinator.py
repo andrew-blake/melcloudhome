@@ -809,10 +809,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         """Set power state with automatic session recovery."""
         return await self.control_client_ata.async_set_power(unit_id, power)
 
-    async def async_set_mode(self, unit_id: str, mode: str) -> None:
-        """Set operation mode with automatic session recovery."""
-        return await self.control_client_ata.async_set_mode(unit_id, mode)
-
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery."""
         return await self.control_client_ata.async_set_temperature(unit_id, temperature)
@@ -874,10 +870,6 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         return await self.control_client_atw.async_set_forced_hot_water(
             unit_id, enabled
         )
-
-    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode."""
-        return await self.control_client_atw.async_set_standby_mode(unit_id, standby)
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing."""
