@@ -160,7 +160,7 @@ Cassettes are branch-specific and live in the worktree:
 - Coordinator retry logic
 - Session expiry recovery
 - Debouncing algorithms
-- Deduplication logic
+- Write-through to cached state
 
 **Rules:**
 
@@ -360,10 +360,9 @@ implementation.
 # ❌ WRONG: Testing that cache is used
 assert coordinator._last_call_time is not None
 
-# ✅ CORRECT: Testing deduplication behavior
-await set_temperature(20.0)  # First call
-await set_temperature(20.0)  # Duplicate
-# Verify API only called once via cassette or mock
+# ✅ CORRECT: Testing write-through behaviour
+await set_temperature(20.0)
+# Verify the entity reads 20.0 before the next poll, via cassette or mock
 ```
 
 ---

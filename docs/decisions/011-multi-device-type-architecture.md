@@ -81,7 +81,7 @@ custom_components/melcloudhome/
 
 **Why control layer was extracted:**
 1. **Session recovery**: Automatic re-authentication on 401 errors
-2. **State deduplication**: Skip API calls when values unchanged (70% reduction in typical scenes)
+2. **State deduplication**: Skip API calls when values unchanged (70% reduction in typical scenes) [removed, see [ADR-026](026-remove-control-write-dedup.md); the layer now writes each successful call through to the cached state instead]
 3. **Debounced refresh**: Coordinate state updates for rapid service calls
 4. **HA-specific validation**: Zone availability checks, temperature range validation
 5. **Single Responsibility**: API clients handle HTTP, control clients handle HA integration logic
