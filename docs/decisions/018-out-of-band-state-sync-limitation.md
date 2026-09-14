@@ -52,7 +52,7 @@ Until WebSocket is reliable and implemented, the stale-cache window is structura
 
 | Option | Closes window? | Risk |
 |---|---|---|
-| Remove dedup entirely | No — re-exposes rate limiting | **Enacted** ([ADR-026](026-remove-control-write-dedup.md)). This cell read "High: burst scene patterns hit API limits" and was unmeasured. Measured 2026-09-14: 48 same-value PUTs, 36 of them concurrent across six units at the pacer's 0.5 s spacing, all 200 |
+| Remove dedup entirely | Yes — measured, no rate-limit exposure | **Enacted** ([ADR-026](026-remove-control-write-dedup.md)). This cell read "High: burst scene patterns hit API limits" and was unmeasured. Measured 2026-09-14: 48 same-value PUTs, 36 of them concurrent across six units at the pacer's 0.5 s spacing, all 200 |
 | Remove dedup from power only | Yes, for power | Low: 1 extra call per redundant scene trigger. **Enacted first** (#318, `786f5d8`), then subsumed by ADR-026 |
 | Skip dedup when cache is stale (threshold) | No — threshold becomes a scene footgun | Medium: scenes firing after idle period bypass dedup, causing bursts |
 | Force /context refresh before each command | No — adds a call per command | High: scenes fire 2× API calls minimum; slower and worse |

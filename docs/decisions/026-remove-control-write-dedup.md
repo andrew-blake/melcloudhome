@@ -74,8 +74,8 @@ Probed against the real API on 2026-09-14 with dedup bypassed and the
 production `RequestPacer(min_interval=0.5)`: 48 same-value PUTs, 36 of them
 concurrent across all six ATA units on the account, one every 0.5 s, every one
 200, state unchanged. `RequestPacer` alone carries the scene-burst shape
-ADR-018 cites. The probe did not establish the ceiling, ATW, or sustained load;
-see the note for what it does and does not cover.
+ADR-018 cites. The probe did not establish the ceiling below 0.5 s, ATW (the
+account's heat pumps are shared devices), or sustained load.
 
 ## Decision
 
@@ -164,4 +164,3 @@ every candidate constant on the wrong side.
 - GitHub issue #310 — the stale-cloud case, and the ATW power early return
 - GitHub issue #318 — the ATA power drops, fixed first on their own in `786f5d8`
 - GitHub discussion #135 — the original out-of-band report
-- `_claude/reference/analysis/2026-09-14-rate-limit-probe.md` — the probe, the evidence search, and the cost the number also measures
