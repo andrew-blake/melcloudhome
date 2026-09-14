@@ -2,7 +2,7 @@
 
 This document outlines testing standards for the MELCloud Home integration, based on official Home Assistant and HACS guidelines.
 
-**Last Updated:** 2026-01-23
+**Last Updated:** 2026-09-14
 
 ---
 
@@ -365,6 +365,32 @@ await set_temperature(20.0)  # First call
 await set_temperature(20.0)  # Duplicate
 # Verify API only called once via cassette or mock
 ```
+
+### ❌ Pitfall 6: A Staleness Test Whose Reversal Never Lands on the Cached Value
+
+Control writes deduplicate against the coordinator's cached device state, and that cache only
+changes when a poll completes. A test for the window between a write and the next poll has to make
+its second write match the value the cache still holds. "Different from the previous request" is not
+the same as "different from the cache", and only the second exercises dedup.
+
+```python
+# ❌ WRONG: the cache is frozen at the fixture's 21.0, so all three values differ
+# from it and all three writes go out with or without the fix
+_, mock_client = await setup_atw_integration_custom(hass, mock_context)
+for temperature in (22.0, 23.0, 22.0):
+    await set_zone1_temperature(temperature)
+assert calls == [22.0, 23.0, 22.0]   # green before the fix too
+
+# ✅ RIGHT: the reversal returns to the value the cache holds
+for temperature in (22.0, 21.0):
+    await set_zone1_temperature(temperature)
+assert calls == [22.0, 21.0]   # the 21.0 is dropped before the fix
+```
+
+Read the fixture defaults before choosing values: `create_mock_atw_unit` sets
+`set_temperature_zone1=21.0`, and `create_mock_ata_unit` sets `set_fan_speed="Auto"`, which is not a numbered speed and so has to be overridden for a fan-speed test at all. Picking values that
+dodge the default protects the first write from being deduplicated and costs the test its power at
+the same time.
 
 ---
 
