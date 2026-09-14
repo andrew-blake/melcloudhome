@@ -45,9 +45,9 @@ _VANE_AUTO = "Auto"
 
 # HomeKit streams several set_percentage calls per slider drag (one per
 # intermediate position), each preceded by a power-on write, and nothing below
-# this entity collapses them: control_client_ata deliberately does not
-# deduplicate power writes, because comparing against coordinator data dropped
-# real power-offs issued inside the stale window (#318, ADR-018).
+# this entity collapses them: the control client deduplicates nothing, because
+# comparing against coordinator data dropped real commands issued inside the
+# stale window (#318, ADR-026).
 #
 # No constant is safe here, and this one is not sized against the stale window:
 # the refresh is scheduled 2.0s after a write *returns* and then has its own API
@@ -294,8 +294,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         The unit is powered on as well as sped up, because the HomeKit bridge
         sends Active=1 and RotationSpeed in one write when the slider is dragged
         up on an off tile, and then deliberately skips fan.turn_on on the
-        assumption that a SET_SPEED fan powers itself on. Power writes are not
-        deduplicated by the control client (#318), so on an already-running unit
+        assumption that a SET_SPEED fan powers itself on. The control client
+        deduplicates nothing (ADR-026), so on an already-running unit
         this costs one redundant power-on per drag, which the guard collapses to
         one however many intermediate positions the drag passes through. guard
         is forwarded to _async_power_on; see that method and
@@ -359,8 +359,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
 
         guard=True here (and only here): a slider drag calls this repeatedly in
         quick succession, each preceded by a power-on, and the control client
-        does not deduplicate power writes at all (#318), so nothing below this
-        entity collapses them. fan.turn_on does not set guard, so it always
+        deduplicates nothing (ADR-026), so nothing below this entity collapses
+        them. fan.turn_on does not set guard, so it always
         powers on regardless of a recent drag.
 
         The pending value and its timer are taken before the power-on is

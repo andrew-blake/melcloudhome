@@ -21,13 +21,12 @@ _LOGGER = logging.getLogger(__name__)
 class ATAControlClient(ControlClientBase):
     """Handles ATA device control operations with retry logic and debounced refresh.
 
-    Every successful write is applied to the cached device model, because
-    deduplication compares against that cache and a poll lags a write by
-    several seconds (ADR-026). Look the device up again after the write: a poll
-    completing mid-write discards every cached unit object for freshly parsed
-    ones, so the object the dedup check fetched can by then be detached from the
-    cache, and writing the value into it would leave dedup comparing against a
-    value it has never seen.
+    Every successful write is applied to the cached device model, so an entity
+    shows a command as soon as the API accepts it rather than one refresh later
+    (ADR-026). Look the device up again after the write: a poll completing
+    mid-write discards every cached unit object for freshly parsed ones, so an
+    object fetched before the write can by then be detached from the cache, and
+    writing the value into it would update a copy no entity reads.
     """
 
     def __init__(
@@ -68,8 +67,7 @@ class ATAControlClient(ControlClientBase):
         a unit on to a specific mode, to avoid the operationMode=null window that
         can trigger a mode-conflict fault on multi-zone outdoor units.
 
-        Power writes are never deduplicated against coordinator data; see
-        async_set_power.
+        Nothing here is deduplicated against coordinator data; see ADR-026.
         """
         _LOGGER.info(
             "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
@@ -88,14 +86,9 @@ class ATAControlClient(ControlClientBase):
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
 
-        Unlike every other write here, power is not deduplicated against
-        coordinator data. That data is stale for the whole window between a
-        write and the next completed refresh, so a rapid on-then-off had the
-        off compared against a cache still reading off and dropped, leaving the
-        unit running (#318). ADR-018 pre-authorised removing dedup from power
-        for exactly this reason: it is the highest-impact field, and the cost is
-        one extra call per redundant scene application, which the RequestPacer
-        absorbs. Every other field keeps its dedup.
+        No write here is deduplicated against coordinator data, which is stale
+        for the whole window between a write and the next completed refresh and
+        dropped real power-offs issued inside it (#318, ADR-026).
 
         Args:
             unit_id: Unit ID

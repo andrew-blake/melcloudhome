@@ -22,10 +22,9 @@ _LOGGER = logging.getLogger(__name__)
 class ATWControlClient(ControlClientBase):
     """Handles ATW device control operations with retry logic and debounced refresh.
 
-    Every successful write is applied to the cached device model, because
-    deduplication compares against that cache and a poll lags a write by
-    several seconds (ADR-026). Standby is the one exception; see
-    async_set_standby_mode.
+    Every successful write is applied to the cached device model, so an entity
+    shows a command as soon as the API accepts it rather than one refresh later
+    (ADR-026). Standby is the one exception; see async_set_standby_mode.
     """
 
     def __init__(
@@ -73,8 +72,8 @@ class ATWControlClient(ControlClientBase):
             control_fn: Control function that takes unit and executes API call
             pre_check: Optional validation function (raises HomeAssistantError if invalid)
             apply: Optional mutation applied to the cached unit once the write
-                has succeeded, so deduplication and entities both see the new
-                value before the next poll (ADR-026)
+                has succeeded, so entities see the new value before the next
+                poll (ADR-026)
 
         Raises:
             HomeAssistantError: If unit not found or pre-check fails
@@ -110,9 +109,9 @@ class ATWControlClient(ControlClientBase):
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set ATW heat pump power with automatic session recovery.
 
-        Power is never deduplicated against cached state. The cache can be
-        wrong because the cloud is wrong, and an owner must always be able to
-        reassert power (#310). This mirrors ATA, and ADR-018 pre-authorised it.
+        No write here is deduplicated against cached state, which can be wrong
+        because the cloud is wrong, and an owner must always be able to reassert
+        power (#310, ADR-026).
 
         Args:
             unit_id: ATW unit ID
@@ -274,7 +273,7 @@ class ATWControlClient(ControlClientBase):
 
         This setter alone skips the write-through the others do: the device
         stays out of the state the API accepts, so caching it would record
-        something false. The field has no deduplication, so waiting for the
+        something false. Nothing depends on the cached value, so waiting for the
         poll costs nothing.
 
         Args:
