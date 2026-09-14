@@ -3,8 +3,9 @@
 **Status:** Superseded by [ADR-026](026-remove-control-write-dedup.md), 2026-09-14 — deduplication
 is removed from every control write, so the second half of this limitation, a command matching
 a stale cache being dropped, no longer arises. The first half stands: an out-of-band change still
-reaches HA on the next refresh, WebSocket-accelerated where enabled. The rate-limit exposure this record weighs against
-that was measured on 2026-09-14 and is not there; see the Candidates table below and ADR-026.
+reaches HA on the next refresh, WebSocket-accelerated where enabled. The rate-limit exposure this
+record weighs against that was measured on 2026-09-14 and is not there; see the Candidates table
+below and ADR-026.
 **Date:** 2026-06-14
 
 ## Context

@@ -5,6 +5,8 @@ hass.states/hass.services only" rule): retry/backoff behavior — the
 ``retry_after`` values passed to ``UpdateFailed`` and the re-auth sequencing
 inside ``_execute_with_retry`` — is not observable through the public entity
 surface, and a black-box equivalent would mean flaky time-travel assertions.
+The post-write listener guard is here for the same reason: provoking it needs
+a listener that raises, which no entity of ours does.
 Do not cite this file as precedent for entity or coordinator-state tests.
 """
 
@@ -364,3 +366,38 @@ async def test_new_debounce_request_does_not_cancel_in_flight_refresh(
     await hass.async_block_till_done()
 
     assert coordinator.last_update_success is True
+
+
+@pytest.mark.asyncio
+async def test_a_raising_listener_does_not_fail_the_write(hass):
+    """A broken entity must not fail a write the API already accepted.
+
+    On the 2025.8.0 floor the coordinator calls listeners unguarded, and the
+    service path, unlike the poll path, has nothing scheduled ahead of the
+    notify to survive it. _notify_listeners is the guard; delete its try/except
+    and this fails.
+    """
+    from custom_components.melcloudhome.const import DOMAIN
+
+    from .conftest import create_mock_ata_user_context, setup_ata_integration_custom
+    from .test_climate_ata import _CLIMATE_ENTITY, _configure_ata_controls
+
+    entry, mock_client = await setup_ata_integration_custom(
+        hass, create_mock_ata_user_context(), configure_client=_configure_ata_controls
+    )
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    def boom() -> None:
+        raise RuntimeError("a broken entity")
+
+    coordinator.async_add_listener(boom)
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": _CLIMATE_ENTITY, "temperature": 23.0},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.ata.set_temperature.assert_called_once()

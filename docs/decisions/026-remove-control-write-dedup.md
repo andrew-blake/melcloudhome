@@ -117,7 +117,7 @@ energy, telemetry and outdoor-temperature fields are re-applied from their own
 trackers. Power, mode, temperature, fan speed and both vanes therefore hold the
 server's value after every poll, whatever was applied between polls.
 
-### What the cache holds
+### What the copy holds until the poll
 
 The coordinator's copy holds what we sent, confirmed by a 200, until the poll
 confirms it. A write the unit does not end up applying reads as applied until

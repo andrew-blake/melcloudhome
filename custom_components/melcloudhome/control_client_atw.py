@@ -43,6 +43,7 @@ class ATWControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_atw_device: Callable to get ATW device by ID
             async_request_refresh: Callable to request coordinator refresh
+            async_update_listeners: Called after each accepted write
         """
         # Initialize base class (provides shared debouncing logic)
         super().__init__(hass, async_update_listeners)
