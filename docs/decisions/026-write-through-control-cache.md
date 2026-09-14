@@ -89,21 +89,32 @@ are overwritten by server truth on every poll.
 
 ### The known exposure, stated as what it costs
 
-This API returns 200 and silently drops a PUT that fails its server-side
-validation matrix ([issue #100](https://github.com/andrew-blake/melcloudhome/issues/100),
-the cross-axis vane case).
+This API can return 200 and ignore the write. The response cannot be told apart
+from a successful one, so a written-through value is an assumption until the
+next poll confirms it, and on a field that also deduplicates, a repeat of that
+command is skipped for up to one poll interval. The trade on such a field is
+"ignored write, immediately retryable" becoming "ignored write, unretryable
+until the next poll".
 
-Today, after such a drop the cache still holds the old value, so a user
-repeating the command sends it again. After write-through the cache holds the
-dropped value, so the repeat is deduplicated for up to one poll interval. The
-trade is "dropped write, immediately retryable" becoming "dropped write,
-unretryable until the next poll".
+One case is confirmed against hardware: an ATW unit does not enter standby while
+powered on, though the API accepts the request (validated on ftcModel 3 via
+VCR). `async_set_standby_mode` is therefore excluded from write-through, which
+is what keeps the trade above off the only field known to need it.
 
-This is accepted because those drops are deterministic and payload-shaped rather
-than random, and because the gesture this ADR fixes is an ordinary change of
-mind on every field while #100 is a payload quirk on two. A reader who works the
-cost out for themselves should find it written down here rather than conclude it
-was missed.
+[Issue #100](https://github.com/andrew-blake/melcloudhome/issues/100) is worth
+naming precisely, because it is the case a reader will reach for. A unit without
+horizontal vanes ignored a vertical swing command, and the cause was our own
+payload: the integration sent both axes on every vane update and the server
+rejected the combination. Sending one axis and nulling the other, which is what
+the official app does, fixed it. That trigger is no longer produced, so it is
+not a standing exposure here.
+
+The remaining exposure is the class rather than any current instance: a
+validation rule we have not met yet would be cached as applied until the next
+poll. This is accepted because such drops are deterministic and payload-shaped
+rather than random, so they surface during development against real hardware
+rather than intermittently in the field, and because the gesture this ADR fixes
+is an ordinary change of mind on every field.
 
 ### Residual window
 
@@ -125,4 +136,4 @@ reduction ADR-018 exists to protect.
 - [ADR-019: WebSocket Real-Time Updates](019-websocket-realtime-updates.md) — shortens the refresh window but does not close it
 - GitHub issue #310 — ATW power early return, and the stale-cloud case
 - GitHub issue #318 — the ATA power drops fixed alongside this
-- GitHub issue #100 — silently dropped PUTs
+- GitHub issue #100 — the cross-axis vane payload that was silently dropped, fixed by sending one axis at a time
