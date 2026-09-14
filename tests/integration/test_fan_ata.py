@@ -652,9 +652,10 @@ async def test_reversing_a_speed_inside_the_refresh_window_still_writes(
 ) -> None:
     """A -> B -> A must reach the API three times.
 
-    The cache only learns a written value at the next completed refresh, so the
-    third call used to be compared against a stale A and dropped. Seen on
-    hardware: the slider sprang back to B and the unit never changed.
+    The cache only learns a written value at the next completed refresh. Frozen
+    at the fixture's One, it used to drop the second call for matching a value
+    the first had already superseded, sending Two twice and never One. Seen on
+    hardware: the slider sprang back and the unit never changed.
     """
     _, mock_client = await _setup(
         hass, power=True, operation_mode="Heat", set_fan_speed="One"
@@ -689,10 +690,20 @@ async def test_repeating_a_speed_is_still_deduplicated(hass: HomeAssistant) -> N
 async def test_entity_shows_a_written_speed_before_the_next_refresh(
     hass: HomeAssistant,
 ) -> None:
-    """The write-through is pushed to entities rather than waiting for a poll."""
+    """The write-through is pushed to entities rather than waiting for a poll.
+
+    The refresh is deliberately left in flight. _let_the_speed_write_land would
+    drain it, and because the API mock returns one UserContext object forever,
+    that refresh re-registers the very unit the write-through mutated and pushes
+    the value itself, which passes whether or not listeners were notified.
+    Yielding to the loop instead lets the write land while the refresh is still
+    on its debounce, so the only thing that can have updated hass.states is the
+    notify.
+    """
     await _setup(hass, power=True, operation_mode="Heat", set_fan_speed="One")
 
     await _set_percentage(hass, 80)
-    await _let_the_speed_write_land(hass)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
+    await _let_tasks_run()
 
     assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80

@@ -102,7 +102,7 @@ class ATWControlClient(ControlClientBase):
         )
 
         # A poll completing mid-write discards every cached unit object for
-        # freshly parsed ones, so atw_device can by now be a copy nothing reads.
+        # freshly parsed ones, so atw_device can by now be detached from the cache.
         if apply and (unit := self._get_atw_device(unit_id)):
             apply(unit)
             self._notify_listeners()

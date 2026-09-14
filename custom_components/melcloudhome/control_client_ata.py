@@ -25,8 +25,8 @@ class ATAControlClient(ControlClientBase):
     deduplication compares against that cache and a poll lags a write by
     several seconds (ADR-026). Look the device up again after the write: a poll
     completing mid-write discards every cached unit object for freshly parsed
-    ones, so the object the dedup check fetched can by then be a copy nothing
-    reads, and writing the value into it would leave dedup comparing against a
+    ones, so the object the dedup check fetched can by then be detached from the
+    cache, and writing the value into it would leave dedup comparing against a
     value it has never seen.
     """
 

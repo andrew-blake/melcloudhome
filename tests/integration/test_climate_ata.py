@@ -368,3 +368,51 @@ async def test_climate_vocabularies_are_unchanged(hass: HomeAssistant) -> None:
         "four",
         "five",
     ]
+
+
+@pytest.mark.parametrize(
+    ("service", "field", "there", "back", "api_method"),
+    [
+        ("set_temperature", "temperature", 23.0, 21.0, "set_temperature"),
+        ("set_swing_mode", "swing_mode", "three", "auto", "set_vane_vertical"),
+        (
+            "set_swing_horizontal_mode",
+            "swing_horizontal_mode",
+            "centre",
+            "auto",
+            "set_vane_horizontal",
+        ),
+        ("set_fan_mode", "fan_mode", "three", "auto", "set_fan_speed"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_returning_a_value_inside_the_refresh_window_still_writes(
+    hass: HomeAssistant,
+    service: str,
+    field: str,
+    there: Any,
+    back: Any,
+    api_method: str,
+) -> None:
+    """Every deduplicated ATA field must accept a change and a change back.
+
+    `back` is the fixture's own starting value, so the second call is the one a
+    cache frozen at that value would drop. Guards each write-through field
+    individually: one assigning the wrong attribute would leave dedup comparing
+    against a value it never saw, and re-open the defect on that field alone.
+    """
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    for value in (there, back):
+        await hass.services.async_call(
+            "climate",
+            service,
+            {"entity_id": _CLIMATE_ENTITY, field: value},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert getattr(mock_client.ata, api_method).call_count == 2

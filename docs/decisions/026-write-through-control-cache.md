@@ -87,7 +87,7 @@ owner must always be able to reassert power.
 
 `_rebuild_caches` replaces every cached unit with one parsed from the fresh
 context, carrying forward only the five outdoor-temperature fields
-(`coordinator.py:713-720`). Power, mode, temperature, fan speed and both vanes
+(`_poll_outdoor_temperature`). Power, mode, temperature, fan speed and both vanes
 are overwritten by server truth on every poll.
 
 ### What the cache now holds
@@ -106,11 +106,12 @@ write.
 
 ### Residual window
 
-A write landing between a poll's `get_user_context` returning and
-`_rebuild_caches` running is overwritten by a context that predates it.
-`_poll_outdoor_temperature` awaits HTTP in between, so the window is real. This
-is no worse than the previous behaviour, where the cache was always behind, and
-does not warrant a write-generation counter.
+A write landing after the server composed its `/context` response but before
+`_rebuild_caches` runs is overwritten by a context that predates it. Response
+transit alone opens that window on every poll, and `_poll_outdoor_temperature`
+widens it on the polls where a unit is due its 30-minute reading. This is no
+worse than the previous behaviour, where the cache was always behind, and does
+not warrant a write-generation counter.
 
 ### What dedup still buys
 

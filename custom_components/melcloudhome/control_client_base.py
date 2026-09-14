@@ -39,7 +39,7 @@ class ControlClientBase:
 
         Entities read the cached model, so a write-through stays invisible until
         listeners are told. A raising listener must not fail the service call:
-        the write already succeeded. HA guards this itself from 2026.7.4; the
+        the write already succeeded. HA guards this itself from 2026.5.0; the
         hacs.json floor is 2025.8.0, which does not.
         """
         try:
