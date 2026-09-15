@@ -2,8 +2,7 @@
 
 Read this before claiming a control-path change is verified on hardware, and again while reading
 the log. It says which driver can prove which property, what each run must start from, and the
-ways the log misleads. Results go in `hardware-sweeps/`, one file per date; the latest is
-[2026-09-14-control-writes.md](hardware-sweeps/2026-09-14-control-writes.md).
+ways the log misleads. Record a run's results in the PR that relies on them.
 
 ## Properties and how each is proved
 
