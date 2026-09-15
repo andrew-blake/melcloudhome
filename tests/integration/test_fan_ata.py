@@ -550,27 +550,25 @@ async def test_power_off_disarms_the_power_on_guard(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
-async def test_power_off_lands_while_the_power_on_is_still_stale(
+async def test_power_off_is_sent_to_a_unit_already_off(
     hass: HomeAssistant, power_off: Any
 ) -> None:
-    """A drag up then straight back down must switch the unit off (#318).
+    """An off must reach the API even when the unit already reads off.
+
+    Found on hardware while building #318's fan entity.
 
     Observed on hardware: from off, a drag up followed by a drag to zero left
     the air conditioner running while the Home app showed it off. The power-on
-    had not reached coordinator data yet -- the refresh is scheduled 2.0s after
-    the write returns and then has its own round trip -- so the off was compared
-    against a cache still reading power=False and deduplicated away. Two offs
-    were dropped that way, 1.65s and 2.4s after the power-on.
+    had not reached coordinator data yet, so the off was compared against a
+    copy still reading power=False and dropped.
 
-    The mock context keeps reporting power=False for the whole test, which is
-    exactly that stale window: the off must still reach the API.
+    The same comparison is what a reintroduced check would make, so the witness
+    is an off issued while the coordinator's copy already reads off: it has to
+    go out anyway.
     """
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
-
-    await _set_percentage(hass, 40)
-    assert mock_client.ata.set_power_and_mode.call_count == 1
 
     await power_off(hass)
 
@@ -585,8 +583,8 @@ async def test_dragging_through_zero_does_not_power_off(
     """Passing the zero detent mid-drag must not stop the unit.
 
     Only the released position counts, so a drag from low through zero and back
-    up sends one speed and no power-off. Power writes are never deduplicated,
-    so a power-off reaching the control client would reach the API too: the
+    up sends one speed and no power-off. Nothing is deduplicated, so a
+    power-off reaching the control client would reach the API too: the
     assertion below fails if the zero detent is applied mid-drag.
     """
     _, mock_client = await _setup(
@@ -644,3 +642,89 @@ async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     await _setup(hass, power=True, has_swing=False, has_air_direction=False)
 
     assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes
+
+
+@pytest.mark.asyncio
+async def test_the_same_speed_twice_is_sent_twice(hass: HomeAssistant) -> None:
+    """A speed the unit already reads still reaches the API.
+
+    The fixture starts on One and both writes ask for One. A check comparing
+    the request against the coordinator's copy would skip both, so this is the
+    witness for its absence; a change-and-change-back is not, because the copy
+    is updated after every accepted write and never matches the next request.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    for _ in range(2):
+        await _set_percentage(hass, 20)
+        await _let_the_speed_write_land(hass)
+
+    assert [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list] == [
+        "One",
+        "One",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_entity_shows_a_written_speed_before_the_next_refresh(
+    hass: HomeAssistant,
+) -> None:
+    """The value applied to the coordinator's copy reaches entities before any poll.
+
+    The refresh is deliberately left in flight. _let_the_speed_write_land would
+    drain it, and because the API mock returns one UserContext object forever,
+    that refresh re-registers the very unit the setter mutated and pushes
+    the value itself, which passes whether or not listeners were notified.
+    Yielding to the loop instead lets the write land while the refresh is still
+    on its debounce, so the only thing that can have updated hass.states is the
+    notify.
+    """
+    await _setup(hass, power=True, operation_mode="Heat", set_fan_speed="One")
+
+    await _set_percentage(hass, 80)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
+    await _let_tasks_run()
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+
+
+@pytest.mark.asyncio
+async def test_a_write_landing_during_a_poll_still_shows_the_written_speed(
+    hass: HomeAssistant,
+) -> None:
+    """The copy is fetched after the write, not before.
+
+    While the speed PUT is in flight a poll completes and replaces every unit
+    object with one parsed from a response that predates the write. A copy
+    fetched before the write would be the discarded object, and the entity
+    would keep reading the poll's speed. Fetched afterwards, the written speed
+    lands on the object entities read.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    async def _poll_completes_mid_write(*_args: Any, **_kwargs: Any) -> None:
+        mock_client.get_user_context.return_value = create_mock_ata_user_context(
+            buildings=[
+                create_mock_ata_building(
+                    units=[
+                        create_mock_ata_unit(
+                            power=True, operation_mode="Heat", set_fan_speed="One"
+                        )
+                    ]
+                )
+            ]
+        )
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))
+        await _let_tasks_run()
+
+    mock_client.ata.set_fan_speed.side_effect = _poll_completes_mid_write
+
+    await _set_percentage(hass, 80)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
+    await _let_tasks_run()
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80

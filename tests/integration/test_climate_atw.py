@@ -411,3 +411,59 @@ async def test_atw_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
     mock_client.atw.set_mode_zone1.assert_called_once_with(
         TEST_ATW_UNIT_ID, "CoolRoomTemperature"
     )
+
+
+@pytest.mark.asyncio
+async def test_a_zone1_setpoint_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """The fixture starts at 21.0; asking for 21.0 twice must reach the API twice.
+
+    A check comparing the request against the coordinator's copy would skip
+    both. A change-and-change-back is no witness, because the copy is updated
+    after every accepted write and never matches the next request.
+    """
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit()])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_temperature_zone1 = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 21.0},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_temperature_zone1.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh(
+    hass: HomeAssistant,
+) -> None:
+    """The ATW copy is updated and pushed to entities without waiting for a poll.
+
+    No block_till_done: it would drain the 2 s refresh, whose one-object mock
+    re-registers the very unit the setter mutated and pushes the value itself,
+    passing whether or not listeners were notified.
+    """
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit()])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_temperature_zone1 = AsyncMock()
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 22.5},
+        blocking=True,
+    )
+
+    assert (
+        hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID).attributes["temperature"] == 22.5
+    )

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,14 +18,36 @@ class ControlClientBase:
     refresh method in their __init__.
     """
 
-    def __init__(self, hass: "HomeAssistant") -> None:
+    def __init__(
+        self,
+        hass: "HomeAssistant",
+        async_update_listeners: Callable[[], None],
+    ) -> None:
         """Initialize base control client.
 
         Args:
             hass: Home Assistant instance
+            async_update_listeners: Coordinator hook that pushes its device
+                state to entities
         """
         self._hass = hass
         self._refresh_debounce_task: asyncio.Task | None = None
+        self._async_update_listeners = async_update_listeners
+
+    def _notify_listeners(self) -> None:
+        """Push the coordinator's copy of a unit to entities after a write.
+
+        A raising listener must not fail the service call or lose the 2 s
+        follow-up refresh; the write already succeeded. HA's own poll path
+        schedules its next refresh before it notifies, so a raising listener
+        there costs one update. This path has no such ordering, and the
+        2025.8.0 floor in hacs.json calls listeners unguarded (HA guards them
+        from 2026.5.0).
+        """
+        try:
+            self._async_update_listeners()
+        except Exception:
+            _LOGGER.exception("Listener update failed after a control write")
 
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing.

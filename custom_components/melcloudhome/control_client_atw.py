@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -13,14 +13,16 @@ from .api.client import MELCloudHomeClient
 from .api.models import AirToWaterUnit
 from .control_client_base import ControlClientBase
 
-if TYPE_CHECKING:
-    pass
-
 _LOGGER = logging.getLogger(__name__)
 
 
 class ATWControlClient(ControlClientBase):
-    """Handles ATW device control operations with retry logic and debounced refresh."""
+    """Handles ATW device control operations with retry logic and debounced refresh.
+
+    Every accepted write is applied to the coordinator's copy of the unit, so
+    an entity shows a command at once rather than one refresh later (ADR-026).
+    The copy is fetched after the write, not before; ATAControlClient says why.
+    """
 
     def __init__(
         self,
@@ -31,6 +33,7 @@ class ATWControlClient(ControlClientBase):
         ],
         get_atw_device: Callable[[str], AirToWaterUnit | None],
         async_request_refresh: Callable[[], Awaitable[None]],
+        async_update_listeners: Callable[[], None],
     ) -> None:
         """Initialize ATW control client.
 
@@ -40,9 +43,10 @@ class ATWControlClient(ControlClientBase):
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_atw_device: Callable to get ATW device by ID
             async_request_refresh: Callable to request coordinator refresh
+            async_update_listeners: Called after each accepted write
         """
         # Initialize base class (provides shared debouncing logic)
-        super().__init__(hass)
+        super().__init__(hass, async_update_listeners)
 
         self._client = client
         self._execute_with_retry = execute_with_retry
@@ -96,19 +100,16 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             power: True=ON, False=OFF
         """
-        # Skip if already in desired state (prevents duplicate API calls)
-        device = self._get_atw_device(unit_id)
-        if device and device.power == power:
-            _LOGGER.debug(
-                "Power already %s for ATW %s, skipping API call", power, unit_id[-8:]
-            )
-            return
 
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="power",
             control_fn=lambda unit: self._client.atw.set_power(unit.id, power),
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.power = power
+            self._notify_listeners()
 
     async def async_set_temperature_zone1(
         self, unit_id: str, temperature: float
@@ -119,23 +120,18 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (10-30°C)
         """
-        # Skip if already at desired temperature
-        device = self._get_atw_device(unit_id)
-        if device and device.set_temperature_zone1 == temperature:
-            _LOGGER.debug(
-                "Zone 1 temperature already %.1f°C for ATW %s, skipping API call",
-                temperature,
-                unit_id[-8:],
-            )
-            return
 
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 temperature",
             control_fn=lambda unit: self._client.atw.set_temperature_zone1(
                 unit.id, temperature
             ),
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.set_temperature_zone1 = temperature
+            self._notify_listeners()
 
     async def async_set_temperature_zone2(
         self, unit_id: str, temperature: float
@@ -149,21 +145,12 @@ class ATWControlClient(ControlClientBase):
         Raises:
             HomeAssistantError: If device doesn't have Zone 2
         """
-        # Skip if already at desired temperature
-        device = self._get_atw_device(unit_id)
-        if device and device.set_temperature_zone2 == temperature:
-            _LOGGER.debug(
-                "Zone 2 temperature already %.1f°C for ATW %s, skipping API call",
-                temperature,
-                unit_id[-8:],
-            )
-            return
 
         def _check_zone2(unit: AirToWaterUnit) -> None:
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 temperature",
             control_fn=lambda unit: self._client.atw.set_temperature_zone2(
@@ -172,6 +159,10 @@ class ATWControlClient(ControlClientBase):
             pre_check=_check_zone2,
         )
 
+        if unit := self._get_atw_device(unit_id):
+            unit.set_temperature_zone2 = temperature
+            self._notify_listeners()
+
     async def async_set_mode_zone1(self, unit_id: str, mode: str) -> None:
         """Set Zone 1 heating strategy.
 
@@ -179,11 +170,16 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             mode: One of ATW_OPERATION_MODES_ZONE
         """
-        return await self._execute_atw_control(
+
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 1 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone1(unit.id, mode),
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.operation_mode_zone1 = mode
+            self._notify_listeners()
 
     async def async_set_mode_zone2(self, unit_id: str, mode: str) -> None:
         """Set Zone 2 heating strategy.
@@ -200,12 +196,16 @@ class ATWControlClient(ControlClientBase):
             if not unit.capabilities.has_zone2:
                 raise HomeAssistantError(f"Device '{unit.name}' does not have Zone 2")
 
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="Zone 2 mode",
             control_fn=lambda unit: self._client.atw.set_mode_zone2(unit.id, mode),
             pre_check=_check_zone2,
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.operation_mode_zone2 = mode
+            self._notify_listeners()
 
     async def async_set_dhw_temperature(self, unit_id: str, temperature: float) -> None:
         """Set DHW tank target temperature.
@@ -214,23 +214,18 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             temperature: Target temp in Celsius (40-60°C)
         """
-        # Skip if already at desired temperature
-        device = self._get_atw_device(unit_id)
-        if device and device.set_tank_water_temperature == temperature:
-            _LOGGER.debug(
-                "DHW temperature already %.1f°C for ATW %s, skipping API call",
-                temperature,
-                unit_id[-8:],
-            )
-            return
 
-        return await self._execute_atw_control(
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="DHW temperature",
             control_fn=lambda unit: self._client.atw.set_dhw_temperature(
                 unit.id, temperature
             ),
         )
+
+        if unit := self._get_atw_device(unit_id):
+            unit.set_tank_water_temperature = temperature
+            self._notify_listeners()
 
     async def async_set_forced_hot_water(self, unit_id: str, enabled: bool) -> None:
         """Enable/disable forced DHW priority mode.
@@ -239,7 +234,8 @@ class ATWControlClient(ControlClientBase):
             unit_id: ATW unit ID
             enabled: True=DHW priority, False=normal
         """
-        return await self._execute_atw_control(
+
+        await self._execute_atw_control(
             unit_id=unit_id,
             control_name="forced DHW",
             control_fn=lambda unit: self._client.atw.set_forced_hot_water(
@@ -247,19 +243,6 @@ class ATWControlClient(ControlClientBase):
             ),
         )
 
-    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode.
-
-        Note: Real devices may ignore standby=True when system is powered on.
-        API accepts the command but device state remains in_standby_mode=False.
-        Validated with real ATW device (ftcModel: 3) via VCR testing.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True=standby, False=normal
-        """
-        return await self._execute_atw_control(
-            unit_id=unit_id,
-            control_name="standby mode",
-            control_fn=lambda unit: self._client.atw.set_standby_mode(unit.id, standby),
-        )
+        if unit := self._get_atw_device(unit_id):
+            unit.forced_hot_water_mode = enabled
+            self._notify_listeners()

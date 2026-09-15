@@ -45,9 +45,9 @@ _VANE_AUTO = "Auto"
 
 # HomeKit streams several set_percentage calls per slider drag (one per
 # intermediate position), each preceded by a power-on write, and nothing below
-# this entity collapses them: control_client_ata deliberately does not
-# deduplicate power writes, because comparing against coordinator data dropped
-# real power-offs issued inside the stale window (#318, ADR-018).
+# this entity collapses them: the control client deduplicates nothing, because
+# comparing against coordinator data dropped real commands issued inside the
+# stale window (found on #318's fan entity; ADR-026).
 #
 # No constant is safe here, and this one is not sized against the stale window:
 # the refresh is scheduled 2.0s after a write *returns* and then has its own API
@@ -61,7 +61,8 @@ _POWER_ON_GUARD_WINDOW = 3.0
 
 # How long a slider position must stand still before it is written. Overlapping
 # speed writes are applied by the server in arrival order, not issue order, so a
-# burst can land on an earlier value than the one the user released on (#318):
+# burst can land on an earlier value than the one the user released on
+# (seen while building #318's fan entity):
 # a drag ending on Three wrote Two, Three, Three, Three and settled on Two.
 # Sending only the final position makes that race impossible. The writes in that
 # production log were ~260ms apart, so the window has to be comfortably wider
@@ -212,9 +213,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         """Remember the last numbered speed seen, then update entity state.
 
         The commanded speed can change from the climate entity's fan_mode
-        dropdown, the vendor's own app, or a service call -- none of which are
-        calls into this entity, so they all arrive here rather than through a
-        write this class made itself. ATAEntityBase (CoordinatorEntity) does
+        dropdown, the vendor's own app, a service call, or this entity's own
+        write once the control client applies it and notifies. Every one of
+        those arrives here. ATAEntityBase (CoordinatorEntity) does
         not override this hook, so this is the only place that sees every one
         of those paths; super() below reaches CoordinatorEntity's default
         implementation directly and still writes the state.
@@ -294,8 +295,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         The unit is powered on as well as sped up, because the HomeKit bridge
         sends Active=1 and RotationSpeed in one write when the slider is dragged
         up on an off tile, and then deliberately skips fan.turn_on on the
-        assumption that a SET_SPEED fan powers itself on. Power writes are not
-        deduplicated by the control client (#318), so on an already-running unit
+        assumption that a SET_SPEED fan powers itself on. The control client
+        deduplicates nothing (ADR-026), so on an already-running unit
         this costs one redundant power-on per drag, which the guard collapses to
         one however many intermediate positions the drag passes through. guard
         is forwarded to _async_power_on; see that method and
@@ -359,8 +360,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
 
         guard=True here (and only here): a slider drag calls this repeatedly in
         quick succession, each preceded by a power-on, and the control client
-        does not deduplicate power writes at all (#318), so nothing below this
-        entity collapses them. fan.turn_on does not set guard, so it always
+        deduplicates nothing (ADR-026), so nothing below this entity collapses
+        them. fan.turn_on does not set guard, so it always
         powers on regardless of a recent drag.
 
         The pending value and its timer are taken before the power-on is
@@ -368,7 +369,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         task and HA takes no per-entity lock, so a call that suspends on the
         power-on request resumes after a newer one has already run: writing the
         pending value afterwards would let the older slider position overwrite
-        the newer one and win the timer, which is exactly the #318 symptom.
+        the newer one and win the timer, the symptom seen on #318's fan entity.
         Claiming it first means the last call to *enter* this method owns the
         write, whatever order the awaits finish in.
         """
