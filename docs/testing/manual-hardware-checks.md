@@ -1,63 +1,40 @@
 # Manual hardware checks for the control path
 
-What a control write has to do, and which drivers can prove each part of it.
-
-The rows below are properties of the control path. The columns are the ways of driving it. Each
-cell either says how that driver proves the property, with the log lines that are the evidence,
-or says the property is out of that driver's reach and why.
-
-This is Tier 3 of [testing-strategy.md](../testing-strategy.md), written out. The suite column
-is the part that runs in CI; the rest is a person at a keyboard, or in the room with the unit.
-
-Results of a run go in `hardware-sweeps/`, one file per sweep. The most recent is
+Read this before claiming a control-path change is verified on hardware, and again while reading
+the log. It says which driver can prove which property, what each run must start from, and the
+ways the log misleads. Results go in `hardware-sweeps/`, one file per date; the latest is
 [2026-09-14-control-writes.md](hardware-sweeps/2026-09-14-control-writes.md).
 
----
+## Properties and how each is proved
 
-## Properties
-
-- **P1. Every command reaches the API whatever the coordinator's copy holds.** A change and a
-  change back, a few seconds apart, both arrive. See
-  [ADR-026](../decisions/026-remove-control-write-dedup.md).
-- **P2. A power-off issued behind a power-on lands.** The off goes out even though the copy
-  still reads off, the shape of
-  [issue #318](https://github.com/andrew-blake/melcloudhome/issues/318).
-- **P3. The entity shows a command as soon as the API accepts it**, before the next refresh.
-- **P4. A value the unit already has still sends.** No field is compared against anything.
-- **P5. A command matching an out-of-band change still sends.** Someone moves the unit in the
-  vendor app, HA learns it at the next poll, and a command from HA for that same value still
-  reaches the API. Discussion #135.
-
-## Drivers
-
-- **Suite.** `make test-integration`, mocked at the `MELCloudHomeClient` boundary. The
-  witnesses are mutation-verified: reintroduce the skip and they fail. Runs on every push and
-  costs nothing, so it is the first place a property should live.
-- **REST (prod).** `tools/hardware_check.py` against the production HA and the real cloud, over
-  the REST API and SSH. Real hardware, no bridge, and the script sets the timing.
-- **Devserver.** `make dev-restart` against the mock server, driven over REST. The only place
-  the ATW half runs against a live HA, because the account's heat pumps are shared devices and
-  are not driven on prod. Proves client wiring and entity behaviour; proves nothing about the
-  cloud or the hardware.
-- **Home app.** A paired iPhone through the HomeKit bridge. The only driver with the real
-  gesture shapes: a drag arrives as `Active` plus a burst of `RotationSpeed`, the fan entity's
-  debounce sends only the released position, and its power-on guard decides whether a
-  `power+mode` write precedes the speed. See [ADR-025](../decisions/025-homekit-fan-entity.md)
-  and [homekit.md](../homekit.md).
-- **Vendor app.** The MELCloud Home app. It drives the unit, never the integration; its one
-  role here is as the second actor P5 needs.
-
-## The matrix
-
-| Property | Suite | REST (prod) | Devserver | Home app | Vendor app |
+| Property | Suite test | `tools/hardware_check.py` | Devserver | Home app | Vendor app |
 | --- | --- | --- | --- | --- | --- |
-| P1 every command reaches the API | proves | proves | proves (mock) | proves | source only |
-| P2 off behind on lands | proves | proves | ATW power only | proves | not a driver |
-| P3 entity shows an accepted command | proves | proves | proves (mock) | proves | not a driver |
-| P4 same value still sends | proves | proves | proves (mock) | out of reach | not a driver |
-| P5 out-of-band match still sends | mechanism only | proves | out of reach | proves | the source |
+| 1. Every command reaches the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal`, `restart-after-zero` | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
+| 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_power_off_disarms_the_power_on_guard` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
+| 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | every check reads the entity after each step | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone | no |
+| 4. A value the unit already has is still sent | one `…matching_current_state_is_still_sent` test per setter, plus `test_atw_power_is_sent_even_when_the_cache_already_agrees` | `same-value` | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
+| 5. A command matching an out-of-band change is still sent (discussion #135) | mechanism only: the mock is both the cloud and the copy | `out-of-band-match` | out of reach: nothing changes the mock out of band | vendor app first, then drag the slider to the value HA now holds | the source of the change |
 
-### The script
+Suite tests live under `tests/integration/`; each has been checked by reintroducing the old
+comparison and watching it fail. The suite proves what the integration sends and nothing about
+the cloud or the unit. The devserver mock accepts every command and never loses one, so it
+proves wiring only; it is also the only place the heat pumps are driven, because the ones on the
+test account belong to other people. The script reaches the real cloud and unit with exact timing and cannot
+reach the HomeKit bridge. The Home app is the only source of the real gesture shapes: a drag
+arrives as `Active` plus a run of `RotationSpeed` values, the fan entity's debounce sends the
+released value only, and the power-on guard decides whether `power+mode` precedes the speed.
+
+## Preconditions
+
+- **Property 1 through the Home app needs a release at each end.** A pause shorter than the
+  debounce collapses the two into one write of the released value. That tests the debounce.
+- **Property 2 starts from off.** From on, the copy already reads on and the old code would have
+  sent the off too, so the run proves only that it was sent. The 14 September sweep records one
+  run that made this mistake.
+- **Property 5 needs the change made outside Home Assistant first**, and Home Assistant must
+  have shown it before the matching command is sent.
+
+## The script
 
 ```bash
 uv run python tools/hardware_check.py [-k] [--no-debug] [--entity <fan entity id>] <check>
@@ -65,152 +42,14 @@ uv run python tools/hardware_check.py [-k] [--no-debug] [--entity <fan entity id
 
 Checks: `state`, `reversal`, `same-value`, `off-behind-on [--gap SECONDS]`,
 `restart-after-zero`, `out-of-band-match`, `drop-boundary [--gaps 0.2,0.4,0.7,1.0,1.5]`.
-Omitting `--entity` or the check lists the fan entities and exits.
-
-It reads `HA_URL`, `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and
-`MELCLOUD_USER_OWNER` / `MELCLOUD_PASSWORD_OWNER` for `out-of-band-match`, which sets the speed
-through the bundled API client, outside HA.
-
-`-k` disables TLS verification. The LAN hostname in `HA_URL` serves a certificate for a
-different name, so on the LAN it is needed. The public hostname sits behind Cloudflare Access
-and returns 403 to API tokens.
-
-Unless `--no-debug` it sets the three loggers to debug for the run and restores them after. It
-reads the log back over SSH and prints the `Setting …` lines, PUT statuses and polls for the
-unit, waits 90 s after any rapid pair for the device report, and leaves the unit in the power
-state it found.
-
----
-
-## P1. Every command reaches the API whatever the coordinator's copy holds
-
-**Suite.** `test_a_command_matching_current_state_is_still_sent` in
-`tests/integration/test_climate_ata.py`, one parametrised case per ATA field, and
-`test_the_same_speed_twice_is_sent_twice` in `test_fan_ata.py`. A change and a change back is
-not a witness here, because the copy is updated after every accepted write and so never matches
-the next request; both witnesses send the copy's own value twice instead.
-
-**REST (prod).** `hardware_check.py reversal`. Unit on at a known speed; three steps, A then B
-then A, about 3.3 s apart; entity state read after each. Evidence: three `Setting fan speed for
-<unit> to …` lines, no `Fan speed already … skipping API call` line anywhere in the run, and the
-entity reading each value in turn. `restart-after-zero` covers the power half of the same
-property: a speed, then zero, then a non-zero percentage a second later gives `Setting power …
-to False`, `Setting power+mode … power=True`, `Setting fan speed …`, and the unit restarts.
-
-**Devserver.** Same `reversal` shape over REST against `localhost:8123`, three seconds between
-steps, plus the ATW equivalents: a zone setpoint stepped 20 to 21 to 20 gives three `Setting
-Zone 1 temperature` lines. No skip lines and no `Listener update failed`. Mock only.
-
-**Home app.** Drag to A, release, pause about a second, drag to B, release. Evidence: two
-`Setting fan speed` lines and the matching WebSocket `SetFanSpeed` deltas. A pause under the
-fan entity's debounce collapses the pair into one write of the released position; that tests
-the debounce, so pause longer for this property.
-
-**Vendor app.** Not a driver. It can be the source of the second value, but the command has to
-come from HA for the property to mean anything.
-
-## P2. A power-off issued behind a power-on lands
-
-**Precondition, every driver: the run STARTS FROM OFF.** From on, the power-on is a write the
-copy already agrees with and the off is compared against a copy reading on, so a landed off
-proves only that it was sent. The 14 September sweep records one run started from on, and what
-it failed to show.
-
-**Suite.** `test_power_off_is_sent_to_a_unit_already_off` and
-`test_power_off_disarms_the_power_on_guard` in `tests/integration/test_fan_ata.py`, both
-parametrised over the two off paths, the `fan.turn_off` service and the slider's zero detent.
-`test_dragging_through_zero_does_not_power_off` is the other side: passing the zero detent
-mid-drag must stay inside the entity and never reach the control client.
-
-**REST (prod).** `hardware_check.py off-behind-on [--gap SECONDS]`. From off: set a non-zero
-percentage, then zero after the gap. Evidence: `Setting power+mode for <unit> to power=True`,
-then `Setting power for <unit> to False`, both with a 200, and the unit off. Wait for the
-device's own status report before calling it, not for the poll; below about a second of gap the
-device may act on the power-on only (see the sweep's findings). `drop-boundary
-[--gaps 0.2,0.4,0.7,1.0,1.5]` walks that gap deliberately.
-
-**Devserver.** ATW power only, and it proves wiring: the system power switch
-turned off twice gives two `Setting power for ATW unit` lines with no skip. The ATA half of this
-property needs the real cloud, since the mock accepts anything and never loses a command.
-
-**Home app.** From off, drag up and straight back to zero in one motion. Evidence:
-`Setting power+mode … power=True`, then `Setting power … to False` within a few hundred
-milliseconds, and both cloud deltas. There is no speed write, because the zero cancels the
-pending speed debounce. Confirm the unit by ear and by the next `ActualFanSpeed` delta, not by
-the poll.
-
-**Vendor app.** Not a driver.
-
-## P3. The entity shows a command as soon as the API accepts it
-
-**Suite.** `test_entity_shows_a_written_speed_before_the_next_refresh` and
-`test_a_write_landing_during_a_poll_still_shows_the_written_speed` in
-`tests/integration/test_fan_ata.py`, and
-`test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` in `test_climate_atw.py`.
-The first deliberately leaves the refresh in flight, so the only thing that can have updated
-`hass.states` is the post-write notify.
-
-**REST (prod).** Any check that writes; the script reads entity state after each step. Evidence:
-the entity reads the new value within about a second of the `Setting …` line, and before the
-next `ATA Poll` line.
-
-**Devserver.** Same, against the mock, and the only place to see it on an ATW entity: a zone
-setpoint read one second after the change.
-
-**Home app.** The bridge's `set_value: RotationSpeed to <n>` line, followed by the event pushed
-over the paired session. Needs `homeassistant.components.homekit` and `pyhap` at debug. HA's own
-state moves first; the tile follows it.
-
-**Vendor app.** Not a driver.
-
-## P4. A value the unit already has still sends
-
-**Suite.** The same-value witnesses, one per setter so that a check reintroduced on one fails
-alone: `test_a_command_matching_current_state_is_still_sent` and
-`test_set_hvac_mode_writes_even_when_already_matching` (`test_climate_ata.py`),
-`test_the_same_speed_twice_is_sent_twice` (`test_fan_ata.py`),
-`test_a_zone1_setpoint_matching_current_state_is_still_sent` (`test_climate_atw.py`),
-`test_a_zone2_setpoint_matching_current_state_is_still_sent` and
-`test_a_zone2_preset_matching_current_state_is_still_sent` (`test_climate_atw_zone2.py`),
-`test_a_dhw_setpoint_matching_current_state_is_still_sent` and
-`test_an_operation_mode_matching_current_state_is_still_sent` (`test_water_heater.py`),
-`test_atw_power_is_sent_even_when_the_cache_already_agrees` (`test_switch.py`).
-
-**REST (prod).** `hardware_check.py same-value`. Send the same percentage twice, about three
-seconds apart. Evidence: two identical `Setting fan speed for <unit> to …` lines, no skip line.
-
-**Devserver.** Same shape, and the only place the ATW setters can be driven: a zone setpoint,
-the DHW setpoint or system power sent twice at its current value gives two writes.
-
-**Home app.** Out of reach. A native slider does not send a value it already shows, so the
-gesture cannot be made. The nearest thing the app can do is P5, where the slider's own value is
-stale and the drag happens to land on the value HA holds.
-
-**Vendor app.** Not a driver.
-
-## P5. A command matching an out-of-band change still sends
-
-**Suite.** Mechanism only. The mocked client is both the cloud and the source of the
-coordinator's copy, so a genuine divergence between the two cannot be staged. What the suite
-does cover is the comparison that used to drop the command, in the same-value witnesses above.
-
-**REST (prod).** `hardware_check.py out-of-band-match`. It sets the speed through the bundled
-API client using `MELCLOUD_USER_OWNER` / `MELCLOUD_PASSWORD_OWNER`, outside HA entirely, waits
-for HA to pick the new value up, then commands that same value through HA. Evidence: the
-`Setting fan speed for <unit> to …` line for the value HA already holds, and its WebSocket
-delta.
-
-**Devserver.** Out of reach. Nothing changes the mock out of band, so there is no second actor
-to diverge from.
-
-**Home app.** Change the speed in the vendor app, wait for HA and the Home app's home-screen
-tile to show it, then drag the Home app slider to that same value. Evidence: the bridge
-receiving the drag, and a `Setting fan speed` line for a value HA already holds. This is the
-discussion #135 gesture end to end.
-
-**Vendor app.** The source. It is the only realistic way to move the unit without HA knowing.
-
----
+Without `--entity` or a check it lists the fan entities and exits. It reads `HA_URL`,
+`HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and `MELCLOUD_USER_OWNER` and
+`MELCLOUD_PASSWORD_OWNER` for `out-of-band-match`, which sets the speed through the bundled
+API client. `-k` disables TLS verification; the LAN hostname in `HA_URL` serves a certificate
+issued for another name, and the public hostname is behind Cloudflare Access and returns 403 to
+API tokens. Unless `--no-debug` is given it sets the three loggers below to debug for the run
+and restores them, reads the log back over SSH, waits 90 seconds after two commands sent close
+together for the unit's status report, and leaves the unit in the power state it found.
 
 ## Reading the log
 
@@ -219,38 +58,26 @@ ssh "$HA_SSH_HOST" "sudo docker logs --tail 400 $HA_CONTAINER 2>&1 | grep -a '<u
   | grep -aiE 'Setting|already|Poll'"
 ```
 
-`HA_SSH_HOST` and `HA_CONTAINER` are the `.env` values `tools/hardware_check.py` reads; it does
-this read-back for you.
+- **Set debug logging first.** `Setting` lines are INFO; `ATA Poll`, the WebSocket deltas and
+  `already … skipping API call` are DEBUG, and the absence of a skip line means something only if
+  one could have appeared. Set `custom_components.melcloudhome` to debug, and
+  `homeassistant.components.homekit` and `pyhap` when the Home app is the driver, through the
+  `logger.set_level` service. It reverts on restart. The production `configuration.yaml` pins
+  several child loggers and a pinned child ignores its parent, so setting the parent alone leaves
+  the lines absent.
+- **A refresh lands 2 to 12 seconds after the write.** The integration requests one two seconds
+  after a write; `DataUpdateCoordinator.async_request_refresh` has a 10 second cooldown.
+  `Debounced refresh executing` records the request; the poll is the `ATA Poll` line. ADR-026's
+  6.58 s and 9.3 s windows come from this.
+- **The unit's status report is authoritative and arrives late.** `/context` and the WebSocket
+  deltas repeat the command back before the unit has acted. The unit reports every 30 to 60
+  seconds and its report replaces the cloud's value when they disagree. A poll within a minute of
+  two commands sent close together can be wrong; wait for an `ActualFanSpeed` delta or two polls
+  a minute apart that agree.
+- **Prod log times are BST; `date -u` is UTC.**
+- **The Home app has a display cache.** On 14 September its fan detail page held a stale value
+  twice while its home-screen tile, Home Assistant and the cloud agreed. Check Home Assistant and
+  the log before recording a stale reading from the app.
 
-- **Turn debug on for the run.** `Setting …` lines are INFO, but `ATA Poll`, the WebSocket
-  deltas and the `already … skipping API call` lines are DEBUG, and the absence of a skip line
-  is only evidence if skip lines could have appeared. Set `custom_components.melcloudhome` to
-  debug, and `homeassistant.components.homekit` and `pyhap` as well when the Home app is the
-  driver. The change is made over the `logger.set_level` service and reverts on restart, so a
-  deploy undoes it. Naming the parent logger alone is not enough: prod pins several children in
-  `configuration.yaml`, and a pinned child ignores its parent, so the lines stay absent and
-  read as code that never ran.
-- **A scheduled refresh lands 2 to 12 s after the write.** HA's
-  `DataUpdateCoordinator.async_request_refresh` runs through a Debouncer whose
-  `REQUEST_REFRESH_DEFAULT_COOLDOWN` is 10 s, so the integration's 2 s debounced refresh lands
-  anywhere from 2 to 12 s after a write. `Debounced refresh executing` is the debounce firing,
-  not data arriving; wait for the `ATA Poll` line. This is the mechanism behind the 6.58 s and
-  9.3 s windows in [ADR-026](../decisions/026-remove-control-write-dedup.md).
-- **A poll inside a minute of a rapid command pair is not confirmation.** The cloud's
-  `/context` response and its WebSocket deltas reflect the command optimistically. The device's
-  own status report arrives every 30 to 60 s, and when the two disagree the device report is the
-  one that stands. Wait for an `ActualFanSpeed` delta, or for two polls a
-  minute apart agreeing, before believing either.
-- **Prod log times are BST; `date -u` is UTC.** Convert one way or the other before comparing a
-  log line against anything timed from the laptop.
-- **Entity state proves what HA believes, the log proves what was sent, and only a person in the
-  room proves what the unit did.** All three are needed for any check that touches power.
-
-## What the drivers cannot show
-
-The mock answers faster than MELCloud, never rate-limits and never silently drops a PUT, so the
-devserver proves client wiring and nothing about the cloud. REST cannot exercise the bridge at
-all, so the gesture shapes, the drag burst and the debounce are invisible to it. The Home app
-has a display cache of its own: on 14 September its fan detail page held a stale value twice
-while its home-screen tile, HA and the cloud all agreed on the new one. That is the app's own
-behaviour, so check HA and the log behind any stale reading there before recording it.
+The entity shows what Home Assistant believes, the log shows what was sent, and only a person in
+the room knows what the unit did. A check that touches power needs all three.
