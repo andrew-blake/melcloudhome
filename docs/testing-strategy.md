@@ -157,7 +157,7 @@ make deploy-watch # Deploy + live log monitoring
 Manual checks against hardware are not ad hoc: `docs/testing/manual-hardware-checks.md` is the
 matrix of control-path properties against drivers (the suite, `tools/hardware_check.py` over
 REST, the devserver mock, the Home app, the vendor app), with what each driver can and cannot
-prove. Dated results live in `docs/testing/hardware-sweeps/`.
+prove.
 
 ## Complete Testing Stack
 

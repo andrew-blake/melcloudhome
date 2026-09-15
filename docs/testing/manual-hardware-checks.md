@@ -29,8 +29,8 @@ released value only, and the power-on guard decides whether `power+mode` precede
 - **Property 1 through the Home app needs a release at each end.** A pause shorter than the
   debounce collapses the two into one write of the released value. That tests the debounce.
 - **Property 2 starts from off.** From on, the copy already reads on and the old code would have
-  sent the off too, so the run proves only that it was sent. The 14 September sweep records one
-  run that made this mistake.
+  sent the off too, so the run proves only that it was sent. A run on 14 September 2026 made
+  this mistake.
 - **Property 5 needs the change made outside Home Assistant first**, and Home Assistant must
   have shown it before the matching command is sent.
 
