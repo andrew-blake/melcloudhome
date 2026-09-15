@@ -20,10 +20,9 @@ Results of a run go in `hardware-sweeps/`, one file per sweep. The most recent i
   change back, a few seconds apart, both arrive. See
   [ADR-026](../decisions/026-remove-control-write-dedup.md).
 - **P2. A power-off issued behind a power-on lands.** The off goes out even though the copy
-  still reads off, which is the shape of
+  still reads off, the shape of
   [issue #318](https://github.com/andrew-blake/melcloudhome/issues/318).
-- **P3. The entity shows a command as soon as the API accepts it**, rather than one refresh
-  later.
+- **P3. The entity shows a command as soon as the API accepts it**, before the next refresh.
 - **P4. A value the unit already has still sends.** No field is compared against anything.
 - **P5. A command matching an out-of-band change still sends.** Someone moves the unit in the
   vendor app, HA learns it at the next poll, and a command from HA for that same value still
@@ -35,8 +34,7 @@ Results of a run go in `hardware-sweeps/`, one file per sweep. The most recent i
   witnesses are mutation-verified: reintroduce the skip and they fail. Runs on every push and
   costs nothing, so it is the first place a property should live.
 - **REST (prod).** `tools/hardware_check.py` against the production HA and the real cloud, over
-  the REST API and SSH. Real hardware, no bridge, timing under the script's control rather than
-  a thumb's.
+  the REST API and SSH. Real hardware, no bridge, and the script sets the timing.
 - **Devserver.** `make dev-restart` against the mock server, driven over REST. The only place
   the ATW half runs against a live HA, because the account's heat pumps are shared devices and
   are not driven on prod. Proves client wiring and entity behaviour; proves nothing about the
@@ -46,8 +44,8 @@ Results of a run go in `hardware-sweeps/`, one file per sweep. The most recent i
   debounce sends only the released position, and its power-on guard decides whether a
   `power+mode` write precedes the speed. See [ADR-025](../decisions/025-homekit-fan-entity.md)
   and [homekit.md](../homekit.md).
-- **Vendor app.** The MELCloud Home app. Not a driver of the integration at all. It is the
-  second actor that makes P5 real, and nothing else.
+- **Vendor app.** The MELCloud Home app. It drives the unit, never the integration; its one
+  role here is as the second actor P5 needs.
 
 ## The matrix
 
@@ -74,8 +72,8 @@ It reads `HA_URL`, `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and
 through the bundled API client, outside HA.
 
 `-k` disables TLS verification. The LAN hostname in `HA_URL` serves a certificate for a
-different name, so on the LAN it is needed; the public hostname sits behind Cloudflare Access
-and returns 403 to API tokens, so it is not an alternative.
+different name, so on the LAN it is needed. The public hostname sits behind Cloudflare Access
+and returns 403 to API tokens.
 
 Unless `--no-debug` it sets the three loggers to debug for the run and restores them after. It
 reads the log back over SSH and prints the `Setting …` lines, PUT statuses and polls for the
@@ -105,8 +103,8 @@ Zone 1 temperature` lines. No skip lines and no `Listener update failed`. Mock o
 
 **Home app.** Drag to A, release, pause about a second, drag to B, release. Evidence: two
 `Setting fan speed` lines and the matching WebSocket `SetFanSpeed` deltas. A pause under the
-fan entity's debounce collapses the pair into one write of the released position, which is the
-debounce working and is not this property.
+fan entity's debounce collapses the pair into one write of the released position; that tests
+the debounce, so pause longer for this property.
 
 **Vendor app.** Not a driver. It can be the source of the second value, but the command has to
 come from HA for the property to mean anything.
@@ -115,14 +113,14 @@ come from HA for the property to mean anything.
 
 **Precondition, every driver: the run STARTS FROM OFF.** From on, the power-on is a write the
 copy already agrees with and the off is compared against a copy reading on, so a landed off
-proves only that it was sent. A run started from on is recorded in the 14 September sweep for
-exactly this reason.
+proves only that it was sent. The 14 September sweep records one run started from on, and what
+it failed to show.
 
 **Suite.** `test_power_off_is_sent_to_a_unit_already_off` and
 `test_power_off_disarms_the_power_on_guard` in `tests/integration/test_fan_ata.py`, both
 parametrised over the two off paths, the `fan.turn_off` service and the slider's zero detent.
 `test_dragging_through_zero_does_not_power_off` is the other side: passing the zero detent
-mid-drag must not reach the control client at all.
+mid-drag must stay inside the entity and never reach the control client.
 
 **REST (prod).** `hardware_check.py off-behind-on [--gap SECONDS]`. From off: set a non-zero
 percentage, then zero after the gap. Evidence: `Setting power+mode for <unit> to power=True`,
@@ -131,7 +129,7 @@ device's own status report before calling it, not for the poll; below about a se
 device may act on the power-on only (see the sweep's findings). `drop-boundary
 [--gaps 0.2,0.4,0.7,1.0,1.5]` walks that gap deliberately.
 
-**Devserver.** ATW power only, and as wiring rather than behaviour: the system power switch
+**Devserver.** ATW power only, and it proves wiring: the system power switch
 turned off twice gives two `Setting power for ATW unit` lines with no skip. The ATA half of this
 property needs the real cloud, since the mock accepts anything and never loses a command.
 
@@ -230,9 +228,9 @@ this read-back for you.
   debug, and `homeassistant.components.homekit` and `pyhap` as well when the Home app is the
   driver. The change is made over the `logger.set_level` service and reverts on restart, so a
   deploy undoes it. Naming the parent logger alone is not enough: prod pins several children in
-  `configuration.yaml`, and a pinned child ignores its parent, which looks exactly like code
-  that never ran.
-- **A refresh is not a poll, and the window is wide.** HA's
+  `configuration.yaml`, and a pinned child ignores its parent, so the lines stay absent and
+  read as code that never ran.
+- **A scheduled refresh lands 2 to 12 s after the write.** HA's
   `DataUpdateCoordinator.async_request_refresh` runs through a Debouncer whose
   `REQUEST_REFRESH_DEFAULT_COOLDOWN` is 10 s, so the integration's 2 s debounced refresh lands
   anywhere from 2 to 12 s after a write. `Debounced refresh executing` is the debounce firing,
@@ -240,8 +238,8 @@ this read-back for you.
   9.3 s windows in [ADR-026](../decisions/026-remove-control-write-dedup.md).
 - **A poll inside a minute of a rapid command pair is not confirmation.** The cloud's
   `/context` response and its WebSocket deltas reflect the command optimistically. The device's
-  own status report arrives every 30 to 60 s and is the truth, and it overrides the cloud's
-  optimistic value when the two disagree. Wait for an `ActualFanSpeed` delta, or for two polls a
+  own status report arrives every 30 to 60 s, and when the two disagree the device report is the
+  one that stands. Wait for an `ActualFanSpeed` delta, or for two polls a
   minute apart agreeing, before believing either.
 - **Prod log times are BST; `date -u` is UTC.** Convert one way or the other before comparing a
   log line against anything timed from the laptop.
@@ -254,6 +252,5 @@ The mock answers faster than MELCloud, never rate-limits and never silently drop
 devserver proves client wiring and nothing about the cloud. REST cannot exercise the bridge at
 all, so the gesture shapes, the drag burst and the debounce are invisible to it. The Home app
 has a display cache of its own: on 14 September its fan detail page held a stale value twice
-while its home-screen tile, HA and the cloud all agreed on the new one, which is the app's
-behaviour rather than the integration's, so a stale reading there is not a result until HA and
-the log have been checked behind it.
+while its home-screen tile, HA and the cloud all agreed on the new one. That is the app's own
+behaviour, so check HA and the log behind any stale reading there before recording it.

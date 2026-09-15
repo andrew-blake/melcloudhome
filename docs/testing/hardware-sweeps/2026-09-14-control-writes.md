@@ -18,9 +18,9 @@ power only. `d08c57a` and `a7d5591` are this branch.
 | Check | Driver | Observed | Verdict |
 | --- | --- | --- | --- |
 | Drag up from off to 60% | Home app | `17:43:03.959 power+mode … power=True`; `17:43:05.717 fan speed … Three`; entity on at 60 | PASS, one write of each |
-| Drag 60 to 100 on a running unit | Home app | `17:44:09.213 power+mode … power=True`; `17:44:10.150 fan speed … Five`; entity at 100 | PASS. The power write is new with power dedup gone; exactly one per drag, not a burst |
+| Drag 60 to 100 on a running unit | Home app | `17:44:09.213 power+mode … power=True`; `17:44:10.150 fan speed … Five`; entity at 100 | PASS. The power write is new with power dedup gone, and there is one per drag |
 | Tile off then on | Home app | `17:48:00.473 power+mode … power=True`; `17:48:00.974 Fan speed already Five for ff6a76db, skipping API call` | Speed dedup present, as this commit has it. The bridge sends `Active` and `RotationSpeed` together and dedup suppresses the speed |
-| Fast up then zero, from off | Home app | `17:46:06.890 power+mode True`; `:07.667 power False`; `:08.419 power False`; `:09.518 ATA Poll Power=False`; unit ran briefly then stopped | PASS. Both offs reached the API. No speed write: the reversal fell inside the debounce, and zero means power rather than a speed |
+| Fast up then zero, from off | Home app | `17:46:06.890 power+mode True`; `:07.667 power False`; `:08.419 power False`; `:09.518 ATA Poll Power=False`; unit ran briefly then stopped | PASS. Both offs reached the API. No speed write: the reversal fell inside the debounce, and zero is a power command |
 | Slider to zero and straight back up | Home app | `17:52:34.404 power+mode True` (downward drag on a running unit); `:34.420 power False`; `:35.984 power+mode True`, +1.56 s; `:36.990 fan speed Two`; entity on at 40 | PASS. The +1.56 s power-on falls inside the guard window, so this is the first hardware run of the guard-clearing fix |
 | Tile off, then a speed one second later | REST service calls | `17:54:16.679 power False`; `:17.859 power+mode True`, +1.18 s; `:18.360 fan speed Four`; `:20.630 ATA Poll Power=True` | PASS. Exercises the entity's `async_turn_off` path, not the bridge |
 | Stepped 60, 40, 20, 40 | Home app | `18:01:00.183 fan speed Two`; `:02.402 ATA Poll`; `:05.537 fan speed One`; `:11.109 power+mode True`; `:12.119 Fan speed already Two for ff6a76db, skipping API call`; `:12.523 ATA Poll`; slider sprang back to 20 | FAIL. The copy was 6.58 s stale and the check lost the race by 0.4 s |
@@ -45,7 +45,7 @@ Deployed copy checked before the run: 0 `skipping API call` lines, 7 notify hook
 | 60, wait, 0, 1 s, 40 | REST | `power+mode … True`, `Three`; `power … False`; `power+mode … True`, `Two`; unit restarted | PASS |
 | Final 0 | REST | `power … False`; unit left off, as found | Teardown |
 | 40 then 60, brief pause at 40 | Home app | `power+mode True` 18:37:26.7; `Two` :27.7; `Three` :28.7; polls :30.99 and :41.1 both `Fan=Three` | PASS. The cloud confirmed Three 2.25 s after the write |
-| One continuous drag through 40 | Home app | `power+mode True` :43.99; `Three` :45.7 only; poll :51.3 `Fan=Three` | PASS for the debounce: one write, the released position. A pass-through never becomes a command, so this is not a reversal check |
+| One continuous drag through 40 | Home app | `power+mode True` :43.99; `Three` :45.7 only; poll :51.3 `Fan=Three` | PASS for the debounce: one write, the released position. A pass-through never becomes a command; a reversal needs a release at each end |
 | Release at 40, pause over 3 s, release at 60 | Home app | `power+mode True` 18:40:56.4; `Two` :56.9 (200, WS `SetFanSpeed` :57.05); poll :59.1 `Fan=Two`; `power+mode True` :59.6; `Three` 18:41:00.1 (200 at :00.17, WS `SetFanSpeed` :00.24). Then with no further command from HA: WS delta :07.66 and polls :09.3, :19.4, :29.5, :40.1 all `Fan=Two`; WS delta 18:42:08.9 and polls :11.1, :22.8 `Fan=Three` | PASS for both writes; both were accepted. The unit ran Two for about a minute before Three, which is Findings 1 and 2 and not deduplication |
 
 Refresh timing measured in the same run: `Debounced refresh executing` at :02.24 produced no poll
@@ -77,7 +77,7 @@ The unit was still running after the off above. Full sequence:
 20:18:34.61  power False        PUT 200 :35.17   cloud delta Power :35.19  (270 ms behind)
 20:18:36.02  poll Power=False      20:18:37.32  poll Power=False   (cloud optimistic)
 20:19:07.98  cloud delta Power, ActualFanSpeed   <- device status report
-20:19:10.22  poll Power=True  Fan=Three          <- HA now shows the truth
+20:19:10.22  poll Power=True  Fan=Three          <- HA now shows the device state
 ```
 
 Turned off over REST at 20:22:07: HA off at once, `ActualFanSpeed` `off` at 20:23:09, 62 s later
@@ -95,8 +95,8 @@ reporting off since 20:18:35, 33 s earlier. The same shape on fan speed at 18:41
 accepted Three, reported Two for about 60 s, then reported Three.
 
 **What it is.** The `/context` response and the WebSocket deltas echo the command. The device's
-own status report, which arrives every 30 to 60 s, is the truth and overrides the echo when the
-two disagree.
+own status report arrives every 30 to 60 s, and when the two disagree the device report is the
+one that stands.
 
 **What it is not.** Not a polling or WebSocket fault, and not new: HA shows the real state
 within one poll of the device report, as the old code did. Its practical consequence is that a
@@ -121,8 +121,8 @@ this branch, and not something #323 changes either way. HA sent the off and the 
 it.
 
 **Possible mitigation, deferred.** The fan entity could hold an off for about a second behind a
-just-sent power-on, the same shape as its power-on guard in the other direction. That is #319
-territory rather than this PR's. One gesture on one unit is one sample, and the gap at which the
+just-sent power-on, the same shape as its power-on guard in the other direction. That belongs
+to #319. One gesture on one unit is one sample, and the gap at which the
 device starts losing the second command is unmeasured; the 0.6 s power-on and power-off pair
 driven over REST on `d08c57a` ended off, on HA's view, so the boundary sits somewhere below a
 second.
@@ -151,7 +151,7 @@ power-off at 20:22:07.
 
 **What it is.** The unit's own behaviour, and unexplained: the same one-step change was once
 followed by an `ActualFanSpeed` delta and otherwise not. Enough to say that a one-step speed
-change cannot be confirmed by ear on an idling unit, and that silence is not a dropped command.
+change cannot be confirmed by ear on an idling unit; the log line is the evidence.
 
 **What it is not.** Not a dropped command. Both writes reached the API, and HA and the slider
 held the commanded value.
