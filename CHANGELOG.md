@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- A command that matched what Home Assistant last saw now reaches the unit. Before sending anything, the integration checked whether the unit already appeared to be at that value and skipped the request if it was. It knew the unit's state only from the last minute's poll, so for up to a minute after any change it was judging against a picture that change had already made out of date. Changing a setpoint, fan speed or vane and changing it straight back did nothing the second time; turning a unit off shortly after turning it on lost the off; and setting a value in the MELCloud app and then choosing that same value in Home Assistant sent nothing at all. Every command is now sent, whether it comes from the climate entity, the fan entity, a script, a scene, an automation or a voice assistant, and power can be reasserted on a unit whose cloud state disagrees with the hardware. (#310, #318)
+- Dials and sliders hold where you put them. An entity now shows a command as soon as MELCloud accepts it rather than springing back to the old value until the next update. It shows what was sent, so a command the unit does not end up applying reads as applied until the next update corrects it.
+- Applying a scene to units already at target now sends one request per attribute per unit, spaced half a second apart, where before it sent none. A typical scene takes 1.5 to 4 seconds to apply and a large one about 18 seconds; a manual command given during that time queues behind it and still arrives.
+
 ## [2.5.1] - 2026-09-09
 
 ### Fixed
