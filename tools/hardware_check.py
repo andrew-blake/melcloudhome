@@ -250,11 +250,12 @@ def ensure_on(unit: Unit, log: Log) -> None:
 
 def check_reversal(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     ensure_on(unit, log)
+    base = log.count("Setting fan speed")
     for pct in (60, 40, 60):
         unit.set_percentage(pct)
         wait(3, f"after {pct}%")
         print(f"    {pct}% -> {unit.snapshot()}")
-    n = log.count("Setting fan speed")
+    n = log.count("Setting fan speed") - base
     log.dump()
     verdict(
         n >= 3,
@@ -265,19 +266,26 @@ def check_reversal(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 def check_same_value(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     ensure_on(unit, log)
     pct = unit.percentage() or 40
+    base = log.count("Setting fan speed")
     for _ in range(2):
         unit.set_percentage(pct)
         wait(3, f"after {pct}% again")
-    n = log.count("Setting fan speed")
+    n = log.count("Setting fan speed") - base
     log.dump()
     verdict(n >= 2, f"{n} speed writes for the value the unit already had")
 
 
-def off_behind_on(unit: Unit, log: Log, gap: float, settle: float) -> bool:
-    """From off: on, then off after `gap` seconds. Returns whether the off held at the device."""
+def off_behind_on(unit: Unit, log: Log, gap: float, settle: float) -> tuple[bool, int]:
+    """From off: on, then off after `gap` seconds.
+
+    Returns whether the off held at the device, and the power-write count as it
+    stood once the unit was off, so a caller counts only the pair's own writes
+    and not the power-off this may have sent to reach the precondition.
+    """
     if unit.is_on():
         unit.turn_off()
         wait(5, "precondition: unit off")
+    base = log.count("Setting power")
     unit.set_percentage(60)
     time.sleep(gap)
     unit.turn_off()
@@ -286,14 +294,21 @@ def off_behind_on(unit: Unit, log: Log, gap: float, settle: float) -> bool:
     wait(settle, "the device's own status report")
     held = not unit.is_on()
     print(f"    after settle:   {unit.snapshot()}")
-    return held
+    return held, base
 
 
 def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
-    held = off_behind_on(unit, log, args.gap, args.settle)
+    held, base = off_behind_on(unit, log, args.gap, args.settle)
     log.dump()
-    sent = log.count("Setting power for") >= 1 and log.count("Setting power+mode") >= 1
-    verdict(sent, "power-on and power-off both left HA (the half that is ours)")
+    # A power-on sends power+mode when the unit reports a mode to preserve and a
+    # plain power write when it does not (fan.py _async_power_on), so counting
+    # the common prefix is what holds for either branch; requiring both strings
+    # would fail a run in which the on and the off were both sent correctly.
+    sent = log.count("Setting power") - base
+    verdict(
+        sent >= 2,
+        f"{sent} power writes for the pair: power-on and power-off both left HA (the half that is ours)",
+    )
     verdict(
         held,
         f"the off held at the device with a {args.gap:g}s gap (the half that is the cloud's and the unit's)",
@@ -302,17 +317,17 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 
 def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     ensure_on(unit, log)
+    base = log.count("Setting power")
     unit.set_percentage(0)
     wait(1, "the zero")
     unit.set_percentage(40)
     wait(4, "the restart")
     print(f"    {unit.snapshot()}")
     log.dump()
+    n = log.count("Setting power") - base
     verdict(
-        unit.is_on()
-        and log.count("Setting power for") >= 1
-        and log.count("Setting power+mode") >= 1,
-        "off, then power-on, then speed; the guard was cleared by the off",
+        unit.is_on() and n >= 2,
+        f"{n} power writes: off, then power-on, then speed; the guard was cleared by the off",
     )
 
 
@@ -363,7 +378,7 @@ def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     results = []
     for gap in [float(g) for g in args.gaps.split(",")]:
         print(f"--- gap {gap:g}s ---")
-        results.append((gap, off_behind_on(unit, log, gap, args.settle)))
+        results.append((gap, off_behind_on(unit, log, gap, args.settle)[0]))
         if unit.is_on():
             unit.turn_off()
             wait(5, "reset to off")

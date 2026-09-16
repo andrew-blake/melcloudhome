@@ -50,6 +50,11 @@ API tokens. Unless `--no-debug` is given it sets the three loggers below to debu
 and restores them, reads the log back over SSH, waits 90 seconds after two commands sent close
 together for the unit's status report, and leaves the unit in the power state it found.
 
+`--gap` is the pause between the two service calls, not the interval the cloud sees: the first
+write's own round trip adds to it, so `--gap 0.3` put the two commands 0.57 s apart in the run of
+16 September 2026. Read the interval off the two `Setting` lines rather than trusting the flag,
+which matters most for `drop-boundary`, whose whole purpose is to find the threshold.
+
 ## Reading the log
 
 ```bash
