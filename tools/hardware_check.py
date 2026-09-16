@@ -325,9 +325,15 @@ def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> 
     print(f"    {unit.snapshot()}")
     log.dump()
     n = log.count("Setting power") - base
+    # Only the sequence is claimed. Whether the zero *cleared the power-on guard*
+    # cannot be read off a run like this: the guard is three seconds on the real
+    # clock, so by the time the zero lands it has usually expired on its own and
+    # the restart proves nothing about the clearing. The integration suite owns
+    # that assertion, in test_power_off_disarms_the_power_on_guard, which widens
+    # the window to an hour so expiry cannot be what makes it pass.
     verdict(
         unit.is_on() and n >= 2,
-        f"{n} power writes: off, then power-on, then speed; the guard was cleared by the off",
+        f"{n} power writes: the zero powered the unit off and the way back up re-powered it and set the speed",
     )
 
 
@@ -383,8 +389,21 @@ def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
             unit.turn_off()
             wait(5, "reset to off")
     print("gap(s)  off held at the device?")
+    after_loss = False
     for gap, held in results:
-        print(f"  {gap:>4g}  {'held' if held else 'LOST: unit kept the power-on'}")
+        if not held:
+            print(f"  {gap:>4g}  LOST: unit kept the power-on")
+        else:
+            suspect = "   <- follows a LOST, see below" if after_loss else ""
+            print(f"  {gap:>4g}  held{suspect}")
+        after_loss = not held
+    print(
+        "\nOne sample per gap, so this is not a threshold, and the loss has been seen to be\n"
+        "non-monotonic: read it as evidence that a gap is unsafe, never that one is safe.\n"
+        "A held that follows a LOST is weaker still. The losing iteration ends with a power-off\n"
+        "and the next gap begins seconds later, so the device's report of that reset can arrive\n"
+        "inside the next settle window and read as the new iteration's off holding."
+    )
 
 
 # --- main -------------------------------------------------------------------------------

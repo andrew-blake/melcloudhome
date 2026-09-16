@@ -32,6 +32,12 @@ released value only, and the power-on guard decides whether `power+mode` precede
   this mistake.
 - **Property 5 needs the change made outside Home Assistant first**, and Home Assistant must
   have shown it before the matching command is sent.
+- **`drop-boundary` cannot establish a safe gap.** The device-side loss is not monotonic in the
+  gap: a 1.0 s gap has lost the off where 0.4 s and 0.7 s held it, so the walk is evidence that
+  a gap is unsafe and never that one is safe. It also does one pair per gap and starts each gap
+  seconds after the previous iteration's reset, whose own device report can land inside the next
+  settle window, so a held that follows a LOST is unreliable. Repeats per gap and a longer quiet
+  period after each reset are what it would take to say more.
 
 ## The script
 
