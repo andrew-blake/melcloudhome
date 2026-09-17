@@ -52,8 +52,20 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
 LOG_PATTERN = re.compile(
-    r"Setting |API Response: PUT|WebSocket delta|ATA Poll|client_update_value|Listener update failed"
+    r"Setting |API Response: PUT|WebSocket delta|ATA Poll|client_update_value"
+    r"|set_value:|Listener update failed|Request pacing"
 )
+# Lines worth printing that carry no unit id at all, so the per-unit filter can
+# never pass them: the write-through's failure path, and both directions of the
+# HomeKit bridge. Filtering these out made a dump look empty rather than
+# unmatched, which is how the bridge was wrongly read as having stopped pushing.
+UNIT_AGNOSTIC = re.compile(
+    r"Listener update failed|client_update_value|set_value:|Request pacing"
+)
+# api/pacing.py DEFAULT_MIN_REQUEST_INTERVAL. One pacer per client, the lock held
+# across each request, so two PUTs cannot leave less than this far apart however
+# close together the service calls are made.
+PACER_FLOOR = 0.5
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # Prod's configuration.yaml pins child loggers individually, and a pinned child
 # ignores its parent's level, so naming only the parent leaves the coordinator
@@ -150,7 +162,8 @@ class Unit:
                 s["entity_id"]
                 for s in states
                 if s["entity_id"].startswith("climate.")
-                and s["entity_id"].endswith(self.tail4)
+                and self.tail4 in s["entity_id"]
+                and "_zone_" not in s["entity_id"]
             ),
             None,
         )
@@ -164,6 +177,31 @@ class Unit:
             ),
             None,
         )
+
+    def display_name(self) -> str:
+        """The name the coordinator logs polls under, e.g. "Dining Room".
+
+        `ATA Poll` lines name the unit rather than carrying its id, so the log
+        filter needs this as well as the id fragment or it drops every poll.
+        """
+        friendly: str = self.ha.state(self.fan)["attributes"].get("friendly_name", "")
+        return friendly.replace(" A/C fan", "").strip()
+
+    def preset(self) -> str | None:
+        """The fan entity's preset, "auto" when the unit picks its own speed."""
+        value = self.ha.state(self.fan)["attributes"].get("preset_mode")
+        return None if value is None else str(value)
+
+    def actual_stamp(self) -> str | None:
+        """When the actual-fan-speed sensor last changed, the device's own signal.
+
+        The only reading in a run that does not come from our own write-through,
+        so it is the one thing that can confirm the device acted.
+        """
+        if not self.actual:
+            return None
+        stamp: str = self.ha.state(self.actual)["last_changed"]
+        return stamp
 
     def snapshot(self) -> str:
         fan = self.ha.state(self.fan)
@@ -200,13 +238,16 @@ class Unit:
 class Log:
     """Reads the integration's log lines for one unit back over SSH."""
 
-    def __init__(self, ssh_host: str, container: str, tail4: str) -> None:
+    def __init__(
+        self, ssh_host: str, container: str, tail4: str, name: str = ""
+    ) -> None:
         self.ssh_host, self.container, self.tail4 = ssh_host, container, tail4
+        self.tokens = [t for t in (tail4, name) if t]
         self.started = time.time()
 
     def lines(self) -> list[str]:
         since = int(time.time() - self.started) + 5
-        raw = subprocess.run(
+        result = subprocess.run(
             [
                 "ssh",
                 self.ssh_host,
@@ -215,11 +256,21 @@ class Log:
             capture_output=True,
             text=True,
             timeout=60,
-        ).stdout
+        )
+        # A failed ssh, a renamed container or a sudo prompt all return nothing,
+        # and every count then reads zero while the verdicts print as normal. An
+        # unreadable log has to stop the run, not quietly become an empty one.
+        if result.returncode != 0:
+            sys.exit(
+                f"cannot read the log (ssh exit {result.returncode}): "
+                f"{result.stderr.strip()[:200]}"
+            )
+        raw = result.stdout
         out = []
         for line in raw.splitlines():
             line = ANSI.sub("", line)
-            if self.tail4 in line and LOG_PATTERN.search(line):
+            keep = any(t in line for t in self.tokens) or UNIT_AGNOSTIC.search(line)
+            if keep and LOG_PATTERN.search(line):
                 line = re.sub(r" \(MainThread\) \[[a-z_.]+\]", "", line)
                 line = re.sub(r"Temp: [^|]*\| ", "", line)
                 line = re.sub(r" from client: .*", "", line)
@@ -275,6 +326,15 @@ def check_reversal(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 
 def check_same_value(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     ensure_on(unit, log)
+    # In the auto preset `percentage` reports the last numbered speed, not what
+    # the unit holds, so sending it back would be an ordinary different-value
+    # write and would prove nothing about the property.
+    if unit.preset() == "auto":
+        sys.exit(
+            "unit is in the auto preset: percentage reports the last numbered "
+            "speed rather than the value the unit holds, so this check would "
+            "send a value it does not have. Set a numbered speed first."
+        )
     pct = unit.percentage() or 40
     base = log.count("Setting fan speed")
     for _ in range(2):
@@ -285,30 +345,52 @@ def check_same_value(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     verdict(n >= 2, f"{n} speed writes for the value the unit already had")
 
 
-def off_behind_on(unit: Unit, log: Log, gap: float, settle: float) -> tuple[bool, int]:
+def off_behind_on(
+    unit: Unit, log: Log, gap: float, settle: float
+) -> tuple[bool, int, bool]:
     """From off: on, then off after `gap` seconds.
 
-    Returns whether the off held at the device, and the power-write count as it
-    stood once the unit was off, so a caller counts only the pair's own writes
-    and not the power-off this may have sent to reach the precondition.
+    `gap` is the pause between the two service calls. It is not the interval the
+    cloud sees and cannot be below PACER_FLOOR however small it is set, because
+    every request is serialised through one pacer. Read the delivered interval
+    off the two `API Response: PUT` lines, which are logged after dispatch; the
+    `Setting` lines are logged before the pacer is even acquired and record
+    intent only.
+
+    The power-on is `turn_on`, not a slider position: `set_percentage` also
+    queues a debounced speed write, which lands between the on and the off and
+    makes this a three-command sequence whose middle command is invisible to the
+    power-write count. A drag's real shape belongs to the Home app column.
+
+    Returns whether the off held, the power-write count as it stood once the
+    unit was off, and whether the device itself reported anything during the
+    settle. Without that third value a caller cannot tell a held off from a
+    window in which nothing was observed at all.
     """
     if unit.is_on():
         unit.turn_off()
         wait(5, "precondition: unit off")
     base = log.count("Setting power")
-    unit.set_percentage(60)
+    before = unit.actual_stamp()
+    unit.turn_on()
     time.sleep(gap)
     unit.turn_off()
     wait(4, "both PUTs and the first poll")
     print(f"    after the pair: {unit.snapshot()}")
     wait(settle, "the device's own status report")
     held = not unit.is_on()
+    reported = unit.actual_stamp() != before
     print(f"    after settle:   {unit.snapshot()}")
-    return held, base
+    return held, base, reported
 
 
 def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
-    held, base = off_behind_on(unit, log, args.gap, args.settle)
+    if args.gap < PACER_FLOOR:
+        print(
+            f"!   --gap {args.gap:g} is below the pacer's {PACER_FLOOR:g}s floor and "
+            "cannot be delivered; the two PUTs will be at least that far apart"
+        )
+    held, base, reported = off_behind_on(unit, log, args.gap, args.settle)
     log.dump()
     # A power-on sends power+mode when the unit reports a mode to preserve and a
     # plain power write when it does not (fan.py _async_power_on), so counting
@@ -319,10 +401,19 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
         sent >= 2,
         f"{sent} power writes for the pair: power-on and power-off both left HA (the half that is ours)",
     )
-    verdict(
-        held,
-        f"the off held at the device with a {args.gap:g}s gap (the half that is the cloud's and the unit's)",
-    )
+    if not reported:
+        print(
+            "==> INCONCLUSIVE: the device reported nothing during the settle, so "
+            "'off' here is only our own write-through read back. Re-run, or wait "
+            "for an actual-fan-speed change before believing either answer."
+        )
+    else:
+        verdict(
+            held,
+            f"the off held at the device, the device having reported during the "
+            f"settle (service calls {args.gap:g}s apart, delivered no closer "
+            f"than {PACER_FLOOR:g}s)",
+        )
 
 
 def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> None:
@@ -429,23 +520,32 @@ def check_same_value_sweep(unit: Unit, log: Log, args: argparse.Namespace) -> No
 
 
 def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
-    results = []
+    # None means the device reported nothing in that window, which is neither
+    # a held nor a lost off.
+    results: list[tuple[float, bool | None]] = []
     for gap in [float(g) for g in args.gaps.split(",")]:
         print(f"--- gap {gap:g}s ---")
-        results.append((gap, off_behind_on(unit, log, gap, args.settle)[0]))
+        held, _, reported = off_behind_on(unit, log, gap, args.settle)
+        results.append((gap, held if reported else None))
         if unit.is_on():
             unit.turn_off()
             wait(5, "reset to off")
-    print("gap(s)  off held at the device?")
+    print("requested gap(s)  off held at the device?")
     after_loss = False
-    for gap, held in results:
-        if not held:
+    for gap, outcome in results:
+        if outcome is None:
+            print(f"  {gap:>4g}  no device report in the window, nothing observed")
+        elif not outcome:
             print(f"  {gap:>4g}  LOST: unit kept the power-on")
         else:
             suspect = "   <- follows a LOST, see below" if after_loss else ""
             print(f"  {gap:>4g}  held{suspect}")
-        after_loss = not held
+        after_loss = outcome is False
     print(
+        f"\nThe left column is what was ASKED for between two service calls, not what the\n"
+        f"cloud received: one pacer serialises every request, so no pair is delivered closer\n"
+        f"than {PACER_FLOOR:g}s and rows below that are the same experiment under different\n"
+        "labels. Read the delivered interval off the two API Response: PUT lines.\n"
         "\nOne sample per gap, so this is not a threshold, and the loss has been seen to be\n"
         "non-monotonic: read it as evidence that a gap is unsafe, never that one is safe.\n"
         "A held that follows a LOST is weaker still. The losing iteration ends with a power-off\n"
@@ -520,7 +620,7 @@ def main() -> None:
         return
 
     unit = Unit(ha, args.entity)
-    log = Log(env["HA_SSH_HOST"], env["HA_CONTAINER"], unit.tail4)
+    log = Log(env["HA_SSH_HOST"], env["HA_CONTAINER"], unit.tail4, unit.display_name())
     was_on, was_pct = unit.is_on(), unit.percentage()
     print(f"{datetime.now(UTC):%H:%M:%S}Z  {args.check}  {unit.snapshot()}")
 

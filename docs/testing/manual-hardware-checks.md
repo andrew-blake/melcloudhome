@@ -8,7 +8,7 @@ ways the log misleads. Record a run's results in the PR that relies on them.
 
 | Property | Suite test | `tools/hardware_check.py` | Devserver | Home app | Vendor app |
 | --- | --- | --- | --- | --- | --- |
-| 1. Every command reaches the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal`, `restart-after-zero` | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
+| 1. Every command reaches the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal` (`restart-after-zero` proves a sequence, not this property: write-through updates the copy after each write, so every write it issues already differs from the copy) | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
 | 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_power_off_disarms_the_power_on_guard` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
 | 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | every check reads the entity after each step | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone | no |
 | 4. A value the unit already has is still sent | one `…matching_current_state_is_still_sent` test per setter, plus `test_atw_power_is_sent_even_when_the_cache_already_agrees` | `same-value` (fan speed), `same-value-sweep` (temperature, both vanes, fan mode) | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
@@ -38,12 +38,14 @@ released value only, and the power-on guard decides whether `power+mode` precede
   this mistake.
 - **Property 5 needs the change made outside Home Assistant first**, and Home Assistant must
   have shown it before the matching command is sent.
-- **`drop-boundary` cannot establish a safe gap.** The device-side loss is not monotonic in the
-  gap: a 1.0 s gap has lost the off where 0.4 s and 0.7 s held it, so the walk is evidence that
-  a gap is unsafe and never that one is safe. It also does one pair per gap and starts each gap
-  seconds after the previous iteration's reset, whose own device report can land inside the next
-  settle window, so a held that follows a LOST is unreliable. Repeats per gap and a longer quiet
-  period after each reset are what it would take to say more.
+- **`drop-boundary` has not yet established anything about a gap.** Its left column is the pause
+  between two service calls, which the pacer floors at 0.5 s, so it has never observed the
+  interval the cloud received and no reading of its table in either direction is supported. It
+  also does one pair per gap and starts each gap seconds after the previous iteration's reset,
+  whose own device report can land inside the next settle window, so a held that follows a LOST
+  is unreliable even once the axis is right. Timing each pair off its two `API Response: PUT`
+  lines, repeats per gap, and a longer quiet period after each reset are what it would take to
+  say anything.
 
 ## The script
 
@@ -62,10 +64,18 @@ API tokens. Unless `--no-debug` is given it sets the three loggers below to debu
 and restores them, reads the log back over SSH, waits 90 seconds after two commands sent close
 together for the unit's status report, and leaves the unit in the power state it found.
 
-`--gap` is the pause between the two service calls, not the interval the cloud sees: the first
-write's own round trip adds to it. Read the interval off the two `Setting` lines rather than
-trusting the flag, which matters most for `drop-boundary`, whose whole purpose is to find the
-threshold.
+`--gap` is the pause between the two service calls and **cannot be delivered below 0.5 s**. One
+`RequestPacer` per client serialises every request and holds its lock across the round trip, so
+the second of any pair waits out the remainder of 0.5 s and the first's response. A gap asked for
+below that floor produces the same experiment as the floor itself.
+
+Read the delivered interval off the two `API Response: PUT` lines. **Not off the `Setting` lines:
+those are logged in the control client before the pacer is acquired, so they record when a write
+was decided, not when it was sent.** Timing a pair from them understates the real interval, which
+is how a run asked for at 0.3 s was recorded as 0.3 s when it delivered 1.0 s.
+
+The coordinator's polls share that pacer, so an unrelated request can be dispatched between a
+pair and widen the delivered interval further, differently on each run.
 
 ## Reading the log
 
