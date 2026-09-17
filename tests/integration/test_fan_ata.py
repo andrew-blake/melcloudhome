@@ -728,3 +728,42 @@ async def test_a_write_landing_during_a_poll_still_shows_the_written_speed(
     await _let_tasks_run()
 
     assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+
+
+@pytest.mark.asyncio
+async def test_entity_reports_a_commanded_speed_before_its_write_lands(
+    hass: HomeAssistant,
+) -> None:
+    """The power-on publishes this entity's state before the speed write exists.
+
+    From off, set_percentage powers the unit on at once and defers the speed by
+    _SPEED_DEBOUNCE_WINDOW. That power-on writes through and notifies listeners
+    while the coordinator's copy still holds the old speed, so the entity would
+    publish that old speed first. A HomeKit controller keeps the first value it
+    is told for a characteristic and ignored the correction 0.7 s behind it,
+    leaving the tile and the home screen reading the previous speed until the
+    app was force-closed. Seen on hardware.
+    """
+    await _setup(hass, power=False, operation_mode="Cool", set_fan_speed="Three")
+
+    await _set_percentage(hass, 100)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 100
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
+async def test_a_power_off_drops_a_pending_speed(
+    hass: HomeAssistant, power_off: Any
+) -> None:
+    """Cancelling a drag voids its value, not only its timer.
+
+    Nothing reschedules a cancelled write, so a value left behind would be what
+    the entity reports from then until a restart.
+    """
+    await _setup(hass, power=False, operation_mode="Cool", set_fan_speed="Three")
+
+    await _set_percentage(hass, 100)
+    await power_off(hass)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 60

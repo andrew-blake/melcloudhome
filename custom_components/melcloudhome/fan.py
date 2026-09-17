@@ -186,7 +186,18 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         HomeKit's Manual/Auto toggle resume the speed the user was actually on
         instead of falling back to its own hard-coded 50%. None only if no
         numbered speed has ever been seen.
+
+        A speed still waiting on the debounce is reported ahead of the device,
+        because the power-on that precedes it writes through and notifies
+        listeners while the coordinator's copy still holds the old speed. A
+        HomeKit controller keeps the first value it is told for a
+        characteristic and ignored the correction that followed 0.7 s later, so
+        publishing the old speed left the tile and the home screen reading it
+        until the app was force-closed. Reporting the commanded value makes
+        both publishes agree, which is also what the entity claims to show.
         """
+        if self._pending_percentage is not None:
+            return self._pending_percentage
         device = self.get_device()
         if device is None or device.set_fan_speed is None:
             return None
@@ -315,7 +326,14 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         )
 
     def _cancel_pending_speed_write(self) -> None:
-        """Drop any speed write still waiting on the debounce timer."""
+        """Drop any speed write still waiting on the debounce timer.
+
+        The value goes with the timer. Every caller but async_set_percentage
+        cancels because the drag has been superseded by a power-off, a preset or
+        an explicit turn-on, and a value left behind would be reported by
+        `percentage` indefinitely, with nothing scheduled to clear it.
+        """
+        self._pending_percentage = None
         if self._cancel_speed_write is not None:
             self._cancel_speed_write()
             self._cancel_speed_write = None
@@ -364,8 +382,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         them. fan.turn_on does not set guard, so it always
         powers on regardless of a recent drag.
 
-        The pending value and its timer are taken before the power-on is
-        awaited. HomeKit's bridge dispatches each call as its own un-awaited
+        The pending value is claimed after the cancel, which now clears it,
+        and both happen before the power-on is awaited. HomeKit's bridge dispatches each call as its own un-awaited
         task and HA takes no per-entity lock, so a call that suspends on the
         power-on request resumes after a newer one has already run: writing the
         pending value afterwards would let the older slider position overwrite
@@ -373,8 +391,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         Claiming it first means the last call to *enter* this method owns the
         write, whatever order the awaits finish in.
         """
-        self._pending_percentage = percentage
         self._cancel_pending_speed_write()
+        self._pending_percentage = percentage
         self._cancel_speed_write = async_call_later(
             self.hass, _SPEED_DEBOUNCE_WINDOW, self._async_write_pending_percentage
         )
