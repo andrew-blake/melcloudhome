@@ -13,6 +13,8 @@ Checks:
     state               current fan, climate and actual-fan-speed state, no writes
     reversal            A -> B -> A speeds, three seconds apart: expect three speed writes
     same-value          the current speed sent twice: expect two speed writes
+    same-value-sweep    every other ATA setter sent its own current value twice, through the
+                        climate entity: temperature, both vanes and fan mode
     off-behind-on       from off, power on then off --gap seconds later, then wait --settle
                         seconds for the device report and say whether the off held
     restart-after-zero  zero, a one-second pause, then 40: expect off, on, speed
@@ -388,6 +390,44 @@ def check_out_of_band_match(
     )
 
 
+def check_same_value_sweep(unit: Unit, log: Log, args: argparse.Namespace) -> None:
+    """Send each remaining ATA setter the value it already holds, twice.
+
+    `same-value` proves property 4 for fan speed, which is one of the six setters
+    ADR-026 removed the comparison from. Temperature and the two vanes are only
+    reachable through the climate entity, so nothing else here touches them and
+    they had no hardware coverage at all. Fan mode is included because it reaches
+    the same setter as the fan entity by a different caller.
+
+    Writes no power, so it leaves an off unit off.
+    """
+    if not unit.climate:
+        sys.exit("no climate entity found for this unit")
+    fields = [
+        ("Setting temperature", "set_temperature", "temperature"),
+        ("Setting vertical vane", "set_swing_mode", "swing_mode"),
+        (
+            "Setting horizontal vane",
+            "set_swing_horizontal_mode",
+            "swing_horizontal_mode",
+        ),
+        ("Setting fan speed", "set_fan_mode", "fan_mode"),
+    ]
+    attributes = unit.ha.state(unit.climate)["attributes"]
+    for needle, service, key in fields:
+        value = attributes.get(key)
+        if value is None:
+            print(f"    {key}: not offered by this unit, skipped")
+            continue
+        base = log.count(needle)
+        for _ in range(2):
+            unit.ha.service("climate", service, entity_id=unit.climate, **{key: value})
+            wait(2, f"{key}={value} again")
+        n = log.count(needle) - base
+        verdict(n >= 2, f"{n} writes for {key} at its current value {value}")
+    log.dump()
+
+
 def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     results = []
     for gap in [float(g) for g in args.gaps.split(",")]:
@@ -449,6 +489,7 @@ def main() -> None:
             "state",
             "reversal",
             "same-value",
+            "same-value-sweep",
             "off-behind-on",
             "restart-after-zero",
             "out-of-band-match",
@@ -485,6 +526,8 @@ def main() -> None:
             check_reversal(unit, log, args)
         elif args.check == "same-value":
             check_same_value(unit, log, args)
+        elif args.check == "same-value-sweep":
+            check_same_value_sweep(unit, log, args)
         elif args.check == "off-behind-on":
             check_off_behind_on(unit, log, args)
         elif args.check == "restart-after-zero":

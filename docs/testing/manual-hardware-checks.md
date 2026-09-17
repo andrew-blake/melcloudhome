@@ -11,8 +11,14 @@ ways the log misleads. Record a run's results in the PR that relies on them.
 | 1. Every command reaches the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal`, `restart-after-zero` | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
 | 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_power_off_disarms_the_power_on_guard` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
 | 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | every check reads the entity after each step | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone | no |
-| 4. A value the unit already has is still sent | one `…matching_current_state_is_still_sent` test per setter, plus `test_atw_power_is_sent_even_when_the_cache_already_agrees` | `same-value` | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
+| 4. A value the unit already has is still sent | one `…matching_current_state_is_still_sent` test per setter, plus `test_atw_power_is_sent_even_when_the_cache_already_agrees` | `same-value` (fan speed), `same-value-sweep` (temperature, both vanes, fan mode) | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
 | 5. A command matching an out-of-band change is still sent (discussion #135) | mechanism only: the mock is both the cloud and the copy | `out-of-band-match` | out of reach: nothing changes the mock out of band | vendor app first, then drag the slider to the value HA now holds | the source of the change |
+
+**A row is a property, not a setter.** Deduplication was removed from six ATA setters and four
+ATW ones, and a driver that proves a property for one of them proves nothing about the rest: the
+script's first five checks exercise fan speed and power only, which is why `same-value-sweep`
+exists for temperature and the vanes. Before claiming a row, check which setters its driver
+actually writes.
 
 Suite tests live under `tests/integration/`; each has been checked by reintroducing the old
 comparison and watching it fail. The suite proves what the integration sends and nothing about
@@ -45,7 +51,7 @@ released value only, and the power-on guard decides whether `power+mode` precede
 uv run python tools/hardware_check.py [-k] [--no-debug] [--entity <fan entity id>] <check>
 ```
 
-Checks: `state`, `reversal`, `same-value`, `off-behind-on [--gap SECONDS]`,
+Checks: `state`, `reversal`, `same-value`, `same-value-sweep`, `off-behind-on [--gap SECONDS]`,
 `restart-after-zero`, `out-of-band-match`, `drop-boundary [--gaps 0.2,0.4,0.7,1.0,1.5]`.
 Without `--entity` or a check it lists the fan entities and exits. It reads `HA_URL`,
 `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and `MELCLOUD_USER_OWNER` and
