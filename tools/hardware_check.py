@@ -53,8 +53,16 @@ LOG_PATTERN = re.compile(
     r"Setting |API Response: PUT|WebSocket delta|ATA Poll|client_update_value|Listener update failed"
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+# Prod's configuration.yaml pins child loggers individually, and a pinned child
+# ignores its parent's level, so naming only the parent leaves the coordinator
+# and climate at info: the ATA Poll and WebSocket delta lines in LOG_PATTERN
+# then never appear and the dump looks like a poll that never ran. Loggers with
+# no pin (the control clients, fan, api.client) inherit and need no entry.
+# api.models and api.models_atw are pinned too but are parse-level noise.
 DEBUG_LOGGERS = {
     "custom_components.melcloudhome": ("debug", "info"),
+    "custom_components.melcloudhome.coordinator": ("debug", "info"),
+    "custom_components.melcloudhome.climate": ("debug", "info"),
     "homeassistant.components.homekit": ("debug", "warning"),
     "pyhap": ("debug", "warning"),
 }
