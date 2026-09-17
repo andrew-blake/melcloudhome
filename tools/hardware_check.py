@@ -187,6 +187,24 @@ class Unit:
         friendly: str = self.ha.state(self.fan)["attributes"].get("friendly_name", "")
         return friendly.replace(" A/C fan", "").strip()
 
+    def speed_steps(self) -> list[int]:
+        """The percentages this unit's slider can actually take.
+
+        percentage_step is 100 / speed_count, so a three-speed ducted unit has
+        detents at 33/67/100 and none at 40 or 60.
+        """
+        step = self.ha.state(self.fan)["attributes"].get("percentage_step")
+        if not step:
+            return []
+        count = round(100 / step)
+        return [round(100 * i / count) for i in range(1, count + 1)]
+
+    def speed_word(self, percentage: int) -> str:
+        """The API's name for a percentage, e.g. 40 -> "two" on a five-speed unit."""
+        steps = self.speed_steps()
+        words = ["one", "two", "three", "four", "five"]
+        return words[steps.index(percentage)]
+
     def preset(self) -> str | None:
         """The fan entity's preset, "auto" when the unit picks its own speed."""
         value = self.ha.state(self.fan)["attributes"].get("preset_mode")
@@ -293,6 +311,27 @@ def wait(seconds: float, why: str) -> None:
 
 def verdict(ok: bool, text: str) -> None:
     print(f"==> {'PASS' if ok else 'FAIL'}: {text}")
+
+
+def report_delivery(log: Log, issued: int) -> None:
+    """Compare writes issued against PUTs the API answered.
+
+    A `Setting …` line is logged in the control client before the pacer is even
+    acquired, so counting it proves a write was *issued*. The delivery record is
+    `API Response: PUT … [200]`. They come apart when a write runs inside a timer
+    callback rather than a service call, because then no REST response carries
+    the failure back to us: the service call has already returned 200 and only
+    the log knows. Any shortfall here means a verdict above counted an intent
+    that no API answer matches.
+    """
+    answered = log.count("API Response: PUT")
+    if answered < issued:
+        print(
+            f"!   {issued} write(s) issued but only {answered} PUT answer(s) in the "
+            "window: at least one never reached the API, or its response is missing"
+        )
+    else:
+        print(f"    {issued} issued, {answered} PUT answer(s) in the window")
 
 
 # --- checks -----------------------------------------------------------------------------
@@ -417,25 +456,47 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 
 
 def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> None:
+    """Zero, a pause, then a numbered speed: the off, the power-on and the speed.
+
+    Whether the zero *cleared the power-on guard* cannot be read off a run like
+    this: the guard is three seconds on the real clock, so by the time the zero
+    lands it has usually expired on its own. The integration suite owns that
+    assertion, in test_power_off_disarms_the_power_on_guard, which widens the
+    window to an hour so expiry cannot be what makes it pass.
+
+    The off and the power-on here are consecutive writes to one unit, which the
+    pacer spaces at its floor, so this is one of the shapes the device has been
+    seen to accept at the cloud and ignore. It therefore waits for the device's
+    own report like off-behind-on, rather than reading back its own write-through.
+    """
     ensure_on(unit, log)
-    base = log.count("Setting power")
+    base_power = log.count("Setting power")
+    base_speed = log.count("Setting fan speed")
+    before = unit.actual_stamp()
     unit.set_percentage(0)
     wait(1, "the zero")
     unit.set_percentage(40)
     wait(4, "the restart")
-    print(f"    {unit.snapshot()}")
+    print(f"    after the restart: {unit.snapshot()}")
+    wait(args.settle, "the device's own status report")
+    print(f"    after settle:      {unit.snapshot()}")
     log.dump()
-    n = log.count("Setting power") - base
-    # Only the sequence is claimed. Whether the zero *cleared the power-on guard*
-    # cannot be read off a run like this: the guard is three seconds on the real
-    # clock, so by the time the zero lands it has usually expired on its own and
-    # the restart proves nothing about the clearing. The integration suite owns
-    # that assertion, in test_power_off_disarms_the_power_on_guard, which widens
-    # the window to an hour so expiry cannot be what makes it pass.
+    powers = log.count("Setting power") - base_power
+    speeds = log.count("Setting fan speed") - base_speed
+    report_delivery(log, powers + speeds)
     verdict(
-        unit.is_on() and n >= 2,
-        f"{n} power writes: the zero powered the unit off and the way back up re-powered it and set the speed",
+        powers >= 2 and speeds >= 1,
+        f"{powers} power writes and {speeds} speed write(s): the zero powered the "
+        f"unit off, the way back up re-powered it, and a speed followed",
     )
+    if unit.actual_stamp() == before:
+        print(
+            "==> INCONCLUSIVE: the device reported nothing during the settle, so "
+            "whether it acted on the restart is unobserved. HA reading on here is "
+            "our own write-through."
+        )
+    else:
+        verdict(unit.is_on(), "the unit is running, on its own report")
 
 
 async def _out_of_band_set(env: dict[str, str], tail4: str, speed: str) -> None:
@@ -462,22 +523,50 @@ def check_out_of_band_match(
             "out-of-band-match needs MELCLOUD_USER_OWNER / MELCLOUD_PASSWORD_OWNER in .env"
         )
     ensure_on(unit, log)
-    current = unit.percentage() or 0
-    target_word, target_pct = ("two", 40) if current != 40 else ("three", 60)
+    if unit.preset() == "auto":
+        sys.exit(
+            "unit is in the auto preset, so percentage does not report what the "
+            "unit holds and the pickup cannot be detected. Set a numbered speed "
+            "first."
+        )
+    # Pick the target off the entity's own speed list rather than assuming five
+    # speeds: on a three-speed ducted unit the old 40/60 pair is unreachable, the
+    # wait always timed out, and the check then sent a value HA did not hold.
+    steps = unit.speed_steps()
+    current = unit.percentage()
+    target_pct = next((p for p in steps if p != current), None)
+    if target_pct is None:
+        sys.exit(f"cannot pick a different speed from {steps} (current {current})")
+    target_word = unit.speed_word(target_pct)
     print(f"    setting {target_word} through the MELCloud API, outside HA")
     asyncio.run(_out_of_band_set(env, unit.tail4, target_word.capitalize()))
-    for _ in range(15):
+    # The poll interval is 60s, so a pickup inside 30s needs a websocket delta.
+    # Allow longer than one poll, and make the timeout fatal: without the pickup
+    # HA still holds the old value, the "matching" command would differ from it,
+    # and the run would quietly become an ordinary different-value write.
+    picked_up = False
+    for _ in range(40):
         time.sleep(2)
         if unit.percentage() == target_pct:
+            picked_up = True
             break
     print(f"    HA now shows: {unit.snapshot()}")
+    if not picked_up:
+        sys.exit(
+            f"precondition failed: HA never showed the out-of-band {target_word} "
+            f"({target_pct}%) within 80s, so there is no matching value to send. "
+            "Nothing was written through HA."
+        )
     before = log.count("Setting fan speed")
     unit.set_percentage(target_pct)
     wait(3, "the matching command")
     log.dump()
+    issued = log.count("Setting fan speed") - before
+    report_delivery(log, issued)
     verdict(
-        log.count("Setting fan speed") > before,
-        "a command matching what HA already held reached the API (discussion #135)",
+        issued >= 1,
+        f"a command matching the {target_word} HA already held reached the API "
+        "(discussion #135)",
     )
 
 
@@ -652,7 +741,13 @@ def main() -> None:
                     unit.set_percentage(was_pct)
             elif not was_on and unit.is_on():
                 unit.turn_off()
-            print(f"    restored: {unit.snapshot()}")
+            # snapshot() would read back the pending value this restore just
+            # queued, so it can never disagree. Say what was asked for instead.
+            print(
+                f"    restore requested: power={'on' if was_on else 'off'} "
+                f"pct={was_pct}. Its writes are a close pair, so confirm against "
+                "the unit's own report rather than this line."
+            )
         if args.no_debug:
             pass
         elif args.keep_debug:
