@@ -99,6 +99,12 @@ speed it is running at that moment. The Home app has no way to show those two
 things separately, and a slider that remembers your choice is more useful than
 one that drifts about on its own.
 
+A unit that has been in Auto ever since Home Assistant first saw it has no last speed to keep,
+and the Home app shows 100% instead. Nothing chose that figure. HomeKit treats zero as off, so
+the bridge starts a fan's slider at a non-zero value and only replaces it once a numbered speed
+has been seen; until then the 100% stands whatever the unit is doing. Choose a speed once and
+the slider tracks your choice from then on.
+
 Switching back to Manual returns the unit to the speed you last chose.
 
 The speed the unit is genuinely running is in Home Assistant, in the **Actual
