@@ -468,6 +468,13 @@ def main() -> None:
         "--no-debug", action="store_true", help="leave logger levels alone"
     )
     parser.add_argument(
+        "--keep-debug",
+        action="store_true",
+        help="raise the levels but do not restore them, for a session of manual "
+        "gestures afterwards: restoring them silently hides the set_value and "
+        "poll lines a human observer is relying on",
+    )
+    parser.add_argument(
         "--entity", help="fan entity id; omitted lists the fan entities and exits"
     )
     parser.add_argument(
@@ -546,7 +553,11 @@ def main() -> None:
             elif not was_on and unit.is_on():
                 unit.turn_off()
             print(f"    restored: {unit.snapshot()}")
-        if not args.no_debug:
+        if args.no_debug:
+            pass
+        elif args.keep_debug:
+            print("    logger levels left at debug (--keep-debug)")
+        else:
             ha.set_levels(1)
             print("    logger levels restored")
 

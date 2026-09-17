@@ -105,6 +105,18 @@ The speed the unit is genuinely running is in Home Assistant, in the **Actual
 Fan Speed** sensor. That one does not reach HomeKit at all, so if you want to
 watch the unit modulating in Auto, watch it there.
 
+## Fan speed changes while the unit is off
+
+Change the fan speed in Home Assistant while the air conditioner is off and the Home app keeps
+showing the old speed. The change did happen: Home Assistant and the unit both have the new
+speed, and the Home app catches up the moment you turn the unit on.
+
+This is Home Assistant's HomeKit bridge rather than this integration. The bridge only sends a
+fan's speed to HomeKit when the fan is not off, so while the unit is off the Home app keeps
+whatever speed it was last told. Nothing here can change that, and the speed it shows is simply
+out of date rather than wrong about what will happen: turning the unit on applies the speed
+Home Assistant holds, not the one the app was displaying.
+
 ## Units that report no vane
 
 Some units report no vane to the MELCloud Home service, and those get no
