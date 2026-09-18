@@ -62,6 +62,20 @@ class ATAControlClient:
         if mode not in valid_modes:
             raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
 
+    def _validate_fan_speed(self, speed: str) -> None:
+        """Raise ValueError if speed is not a valid FAN_SPEEDS entry.
+
+        The server takes a combination of fields and has been seen to accept one
+        it cannot honour, answering 200 and silently dropping the part it did not
+        like (issue #100). A bad speed riding along with a power-on would fail
+        that way rather than being refused, so it is refused here instead.
+        """
+        valid_speeds = set(FAN_SPEEDS)
+        if speed not in valid_speeds:
+            raise ValueError(
+                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
+            )
+
     async def set_power(self, unit_id: str, power: bool) -> None:
         """
         Turn device on or off.
@@ -104,6 +118,8 @@ class ATAControlClient:
             ValueError: If mode is invalid
         """
         self._validate_mode(mode)
+        if fan_speed is not None:
+            self._validate_fan_speed(fan_speed)
 
         # Carrying the speed here is what keeps a power-on and a speed change one
         # request instead of two. Two requests to one unit are spaced by the
@@ -186,11 +202,7 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If speed is invalid
         """
-        valid_speeds = set(FAN_SPEEDS)
-        if speed not in valid_speeds:
-            raise ValueError(
-                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
-            )
+        self._validate_fan_speed(speed)
 
         payload = self._build_ata_control_payload(setFanSpeed=speed)
 
