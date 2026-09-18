@@ -102,6 +102,12 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 - Status: `200 OK`
 - Body: Empty (Content-Length: 0)
 
+**Combining fields in one request.** Several fields sent together are applied together. `power`, `operationMode` and `setFanSpeed` in one PUT is verified against hardware: the unit reported the commanded speed afterwards. The integration relies on this to power a unit on at a chosen fan speed without sending a second request (ADR-026).
+
+One combination is not honoured. `vaneVerticalDirection` and `vaneHorizontalDirection` in the same payload draw a `200 OK` on a unit without horizontal vanes, and the unit applies neither axis (issue #100). Send one axis per request, which is why `set_vane_vertical` and `set_vane_horizontal` are separate methods that null the axis they are not setting.
+
+A `200 OK` therefore confirms that the request was accepted. Whether the unit acted on every field in it is only visible in the device's own status report on the next poll.
+
 ### Device Status Endpoint
 
 **GET** `/context`
