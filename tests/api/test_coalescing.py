@@ -168,3 +168,22 @@ async def test_cancelling_one_caller_leaves_the_others_alone():
     await survivor
     assert len(sent) == 1
     assert sent[0][1]["setTemperature"] == 21.0
+
+
+@pytest.mark.asyncio
+async def test_a_zero_window_still_merges():
+    """The window is margin, not the mechanism.
+
+    Both writes are queued before the dispatch task takes its first step, so
+    the sleep is not what lets them meet. Recording that here stops anyone
+    measuring "the smallest window that merges" and believing the answer.
+    """
+    sent, send = _recorder()
+    c = WriteCoalescer(send, window=0)
+
+    await asyncio.gather(
+        c.submit("unit-1", {"power": True}),
+        c.submit("unit-1", {"setTemperature": 21.0}),
+    )
+
+    assert len(sent) == 1

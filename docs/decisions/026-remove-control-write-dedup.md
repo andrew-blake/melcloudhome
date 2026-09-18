@@ -134,10 +134,15 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### A close pair can be lost at the device
 
-Every service call issues one request, and a power-on that also sets a speed carries both in that
-request. Two writes to one unit from separate service calls are still spaced by `RequestPacer`'s
-0.5 s minimum: a scene setting several attributes, a Home app action that changes mode and
-setpoint, an on followed by an off.
+Writes to one unit that arrive in the same event-loop turn share a single request, so the pairs
+HomeKit produces are gone: a Home app action changing mode and setpoint, a power-on that also sets
+a speed, and a scene touching two entities of one unit. `WriteCoalescer` in `api/coalescing.py`
+merges them.
+
+Two writes separated by a sequential await still leave as two requests, floored 0.5 s apart by
+`RequestPacer`. One entity's own scene writes are the case: `climate/reproduce_state.py` awaits
+each service call in turn, so the second is not issued until the first has completed. A retry after
+an authentication failure is another, since `_reauth_lock` serialises the callers.
 
 A command arriving that close behind another to the same unit can be accepted by the cloud, with
 a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the
@@ -155,19 +160,17 @@ none. A command re-sent on its own is applied, which is the manual recovery, and
 is what makes possible: the comparison removed here would have skipped an off sent to a unit whose
 copy already read off. Mitigation 1 below removes the pair itself.
 
-### Mitigations, none in scope
+### Mitigations
 
 - **1. Coalesce near-simultaneous writes to one unit into a single
-  multi-field PUT.** The API body already carries every field, so writes that
-  arrive together can share one request with no dependence on cached state. What
-  arrives together is HomeKit, which dispatches each characteristic write as its
-  own un-awaited task, and a scene touching two entities of one unit, since
-  `climate/reproduce_state.py` gathers across entities. What does not is one
-  entity's own writes: that function awaits each of its service calls in turn, so
-  they are already a round trip apart. Sized as medium: error fan-out semantics
-  across the coalesced fields, interaction with `fan.py`'s own debounce, and a
-  collection window added to every command. Deferred. It removes the pairs whose
-  writes arrive together. A pair separated by a sequential await is unaffected.
+  multi-field PUT. Done.** The API body already carries every field, so writes
+  that arrive together share one request with no dependence on cached state.
+  Each caller waits on its own future, so one caller's cancellation leaves the
+  others alone, and the two vane axes are never merged because the server
+  answers 200 and drops that combination on a unit without horizontal vanes
+  (issue #100). The collection window is margin: both writes of a same-turn pair
+  are queued before the dispatch task takes its first step, so a window of zero
+  already merges them.
 - **2. MELCloud's own cloud scenes**, applied server-side in one request,
   exposed as HA entities. Issue #174 territory.
 - **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was

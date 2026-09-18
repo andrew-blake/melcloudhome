@@ -131,6 +131,19 @@ Oscillate control. There is nothing missing and nothing to configure.
 If you think one of your units has a vane but gets no Oscillate control, please
 [raise an issue](https://github.com/andrew-blake/melcloudhome/issues).
 
+## Setting a mode and a temperature in one go
+
+Changing a thermostat tile to, say, Heat at 21 sends Apple's two changes as two separate
+commands to Home Assistant, a few microseconds apart. Those now leave as a single request to
+MELCloud carrying both.
+
+This matters because the unit can accept one command and quietly ignore a second that arrives
+immediately behind it, which used to leave the tile and the unit disagreeing until the unit
+reported for itself half a minute later. One request cannot lose half of itself.
+
+The same applies to an automation that sets a mode and a temperature together, and to the hot
+water tank's mode and temperature.
+
 ## Why the thermostat tile stays a plain thermostat
 
 It would be tidier to have one tile with the temperature, the speed and the vane

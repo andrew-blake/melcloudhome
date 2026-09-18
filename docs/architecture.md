@@ -51,7 +51,7 @@ graph LR
             Context[UserContext<br/>Multi-Type Container]
         end
         subgraph "API Client Layer"
-            Client[MELCloudHomeClient<br/>Single Unified Client]
+            Client[MELCloudHomeClient<br/>Single Unified Client<br/>Merges writes arriving in one turn]
         end
 
     end

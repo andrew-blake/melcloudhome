@@ -18,9 +18,12 @@ from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
-# Long enough for a write dispatched in the same event-loop turn to reach the
-# merge point, short enough to be imperceptible on a lone command. Task 7
-# replaces this with a measured value.
+# Margin, not mechanism. A write dispatched in the same event-loop turn as
+# another is already queued before the dispatch task's first step, so a window
+# of zero merges the HomeKit case this exists for; test_a_zero_window_still_merges
+# holds that. The wait covers a caller separated by an await this reasoning does
+# not account for, and ten milliseconds is short enough to be imperceptible on a
+# lone command.
 DEFAULT_COALESCE_WINDOW = 0.01
 
 # The server answers 200 and silently drops a cross-axis vane combination on a

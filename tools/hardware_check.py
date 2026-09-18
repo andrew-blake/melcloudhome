@@ -638,6 +638,53 @@ def check_same_value_sweep(unit: Unit, log: Log, args: argparse.Namespace) -> No
     log.dump()
 
 
+def check_combined_write(unit: Unit, log: Log, args: argparse.Namespace) -> None:
+    """Set an operation mode and a temperature in one service call.
+
+    `climate.set_temperature` accepts an hvac_mode, and the entity now issues the
+    mode write and the temperature write together so the coalescer merges them.
+    The server has answered 200 to a combination it could not honour and dropped
+    the half it disliked (issue #100), so a structural test proving one request
+    left Home Assistant cannot prove the unit acted on all of it. The device's
+    own reading is the witness.
+
+    Leaves the unit's mode and temperature where it found them.
+    """
+    if not unit.climate:
+        sys.exit("no climate entity found for this unit")
+    attributes = unit.ha.state(unit.climate)["attributes"]
+    was_mode = unit.ha.state(unit.climate)["state"]
+    was_temp = attributes.get("temperature")
+    if was_temp is None:
+        sys.exit("this unit reports no target temperature")
+    target = was_temp + 1 if was_temp < 24 else was_temp - 1
+    print(f"    before: mode={was_mode} temperature={was_temp}")
+
+    base = log.count("API Response: PUT")
+    unit.ha.service(
+        "climate",
+        "set_temperature",
+        entity_id=unit.climate,
+        temperature=target,
+        hvac_mode=was_mode,
+    )
+    wait(4, "the merged request and the first poll")
+    puts = log.count("API Response: PUT") - base
+    verdict(puts == 1, f"{puts} PUT(s) left Home Assistant for mode+temperature")
+
+    wait(args.settle, "the device's own status report")
+    now = unit.ha.state(unit.climate)
+    applied = now["attributes"].get("temperature")
+    print(f"    after settle: mode={now['state']} temperature={applied}")
+    verdict(applied == target, f"the unit reports {applied}, asked for {target}")
+
+    unit.ha.service(
+        "climate", "set_temperature", entity_id=unit.climate, temperature=was_temp
+    )
+    wait(3, "restore")
+    log.dump()
+
+
 def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     # None means the device reported nothing in that window, which is neither
     # a held nor a lost off.
@@ -722,6 +769,7 @@ def main() -> None:
             "reversal",
             "same-value",
             "same-value-sweep",
+            "combined-write",
             "off-behind-on",
             "restart-after-zero",
             "out-of-band-match",
@@ -760,6 +808,8 @@ def main() -> None:
             check_same_value(unit, log, args)
         elif args.check == "same-value-sweep":
             check_same_value_sweep(unit, log, args)
+        elif args.check == "combined-write":
+            check_combined_write(unit, log, args)
         elif args.check == "off-behind-on":
             check_off_behind_on(unit, log, args)
         elif args.check == "restart-after-zero":
