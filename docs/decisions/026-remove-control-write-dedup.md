@@ -132,6 +132,26 @@ of a write not applying was
 own payload sent both vane axes to a unit with only one and the server rejected
 the combination. A malformed payload is a bug to fix wherever the cache sits.
 
+### A close pair can be lost at the device
+
+Every fan speed change from HomeKit is two writes to one unit, a power and mode write and then
+the debounced speed, and `RequestPacer` spaces them at its 0.5 s minimum. A drag to the zero
+detent is a power-on and a power-off the same distance apart.
+
+A command arriving that close behind another to the same unit can be accepted by the cloud, with
+a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the
+coordinator's copy, the cloud and the Home app all read off, until the unit's own status report
+corrects them 30 to 60 seconds later. Seen twice on hardware, both at the pacer's minimum, which
+is the closest two commands can be sent.
+
+No interval is claimed beyond that. The `Setting` log lines are written before the pacer is
+acquired, so they time intent rather than dispatch, and a poll inside a minute of a pair reports
+the cloud's optimistic copy. Only the unit's own report disagrees.
+
+A command re-sent on its own is applied, which is the manual recovery, and one this decision is
+what makes possible: the comparison removed here would have skipped an off sent to a unit whose
+copy already read off. Mitigation 1 below removes the pair itself.
+
 ### Mitigations, none in scope
 
 - **1. Coalesce near-simultaneous writes to one unit into a single
@@ -139,7 +159,8 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
   scene would cost about 3 s with no dependence on cached state. Sized as
   medium: error fan-out semantics across the coalesced fields, interaction with
   `fan.py`'s own debounce, and a collection window added to every command.
-  Deferred until a slow scene is actually reported.
+  Deferred. It is also what removes the close pair above, so it answers a correctness risk and
+  not only scene speed.
 - **2. MELCloud's own cloud scenes**, applied server-side in one request,
   exposed as HA entities. Issue #174 territory.
 - **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was
