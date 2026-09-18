@@ -159,14 +159,15 @@ copy already read off. Mitigation 1 below removes the pair itself.
 
 - **1. Coalesce near-simultaneous writes to one unit into a single
   multi-field PUT.** The API body already carries every field, so writes that
-  arrive together can share one request with no dependence on cached state. It
-  does not make a scene faster: `climate/reproduce_state.py` awaits each service
-  call for one entity in turn, so a scene's writes to one unit are already
-  separated by a round trip and never arrive together. What does arrive together
-  is HomeKit, which dispatches each characteristic write as its own un-awaited
-  task. Sized as medium: error fan-out semantics across the coalesced fields,
-  interaction with `fan.py`'s own debounce, and a collection window added to
-  every command. Deferred. It is what removes the close pair above.
+  arrive together can share one request with no dependence on cached state. What
+  arrives together is HomeKit, which dispatches each characteristic write as its
+  own un-awaited task, and a scene touching two entities of one unit, since
+  `climate/reproduce_state.py` gathers across entities. What does not is one
+  entity's own writes: that function awaits each of its service calls in turn, so
+  they are already a round trip apart. Sized as medium: error fan-out semantics
+  across the coalesced fields, interaction with `fan.py`'s own debounce, and a
+  collection window added to every command. Deferred. It removes the pairs whose
+  writes arrive together. A pair separated by a sequential await is unaffected.
 - **2. MELCloud's own cloud scenes**, applied server-side in one request,
   exposed as HA entities. Issue #174 territory.
 - **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was
