@@ -15,6 +15,8 @@ Checks:
     same-value          the current speed sent twice: expect two speed writes
     same-value-sweep    every other ATA setter sent its own current value twice, through the
                         climate entity: temperature, both vanes and fan mode
+    combined-write      a mode and a temperature in one service call: expect one PUT, and the
+                        unit reporting the temperature it was asked for
     off-behind-on       from off, power on then off --gap seconds later, then wait --settle
                         seconds for the device report and say whether the off held
     restart-after-zero  zero, a one-second pause, then 40: expect off, on, speed

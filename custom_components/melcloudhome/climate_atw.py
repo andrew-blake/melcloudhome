@@ -269,6 +269,10 @@ class ATWClimateBase(
             await self._async_set_zone_temperature(temperature)
             return
 
+        # Home Assistant validates hvac_mode for set_hvac_mode and not for this
+        # service, so an unsupported mode arrives here intact.
+        self._valid_mode_or_raise("hvac", hvac_mode, self.hvac_modes)
+
         await asyncio.gather(
             self.async_set_hvac_mode(HVACMode(hvac_mode)),
             self._async_set_zone_temperature(temperature),

@@ -33,8 +33,13 @@ async def test_same_turn_writes_share_one_request():
 
 
 @pytest.mark.asyncio
-async def test_neither_field_is_lost_to_the_other():
-    """The sparse merge must not carry a null that erases the other write."""
+async def test_a_two_field_write_merges_with_a_one_field_write():
+    """All three fields reach the request.
+
+    The sparse merge itself is proved at the client layer, by
+    test_a_merged_write_carries_no_field_as_null, which is where a built
+    payload's nulls could erase a sibling's value.
+    """
     sent, send = _recorder()
     c = WriteCoalescer(send)
 
@@ -187,3 +192,27 @@ async def test_a_zero_window_still_merges():
     )
 
     assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_eagerly_started_writes_merge():
+    """The shape Home Assistant actually produces.
+
+    The HomeKit bridge and the service registry both create their tasks with
+    eager_start, so the chain from a tile gesture into submit runs with no
+    suspension. A plain gather would also pass an implementation that merges
+    only across loop turns; this one would not.
+    """
+    sent, send = _recorder()
+    c = WriteCoalescer(send)
+
+    first = asyncio.eager_task_factory(
+        asyncio.get_running_loop(), c.submit("unit-1", {"power": True})
+    )
+    second = asyncio.eager_task_factory(
+        asyncio.get_running_loop(), c.submit("unit-1", {"setTemperature": 21.0})
+    )
+    await asyncio.gather(first, second)
+
+    assert len(sent) == 1
+    assert sent[0][1] == {"power": True, "setTemperature": 21.0}

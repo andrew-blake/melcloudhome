@@ -55,8 +55,9 @@ released value only, and that release carries the power and the speed in one req
 uv run python tools/hardware_check.py [-k] [--no-debug] [--entity <fan entity id>] <check>
 ```
 
-Checks: `state`, `reversal`, `same-value`, `same-value-sweep`, `off-behind-on [--gap SECONDS]`,
-`restart-after-zero`, `out-of-band-match`, `drop-boundary [--gaps 0.2,0.4,0.7,1.0,1.5]`.
+Checks: `state`, `reversal`, `same-value`, `same-value-sweep`, `combined-write`,
+`off-behind-on [--gap SECONDS]`, `restart-after-zero`, `out-of-band-match`,
+`drop-boundary [--gaps 0.2,0.4,0.7,1.0,1.5]`.
 Without `--entity` or a check it lists the fan entities and exits. It reads `HA_URL`,
 `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and `MELCLOUD_USER_OWNER` and
 `MELCLOUD_PASSWORD_OWNER` for `out-of-band-match`, which sets the speed through the bundled

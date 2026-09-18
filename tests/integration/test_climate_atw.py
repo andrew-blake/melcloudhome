@@ -497,3 +497,33 @@ async def test_atw_set_temperature_acts_on_the_mode_it_is_given(
     mock_client.atw.set_temperature_zone1.assert_called_once()
     mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, True)
     mock_client.atw.set_mode_zone1.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_atw_set_temperature_rejects_a_mode_the_unit_does_not_support(
+    hass: HomeAssistant,
+) -> None:
+    """An unsupported mode reaches set_temperature unvalidated by HA."""
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit(power=False)])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_power = AsyncMock()
+    mock_client.atw.set_temperature_zone1 = AsyncMock()
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {
+                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+                "temperature": 21,
+                "hvac_mode": HVACMode.DRY,
+            },
+            blocking=True,
+        )
+
+    mock_client.atw.set_temperature_zone1.assert_not_called()
+    mock_client.atw.set_power.assert_not_called()

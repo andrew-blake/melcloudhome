@@ -439,3 +439,36 @@ async def test_set_temperature_acts_on_the_mode_it_is_given(
 
     mock_client.ata.set_temperature.assert_called_once()
     mock_client.ata.set_power_and_mode.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_rejects_a_mode_the_unit_does_not_support(
+    hass: HomeAssistant,
+) -> None:
+    """Home Assistant does not validate hvac_mode on the set_temperature path.
+
+    It calls _valid_mode_or_raise for set_hvac_mode only, so an unsupported
+    mode arrives here intact and must be refused before it reaches the mode
+    map.
+    """
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {
+                "entity_id": _CLIMATE_ENTITY,
+                "temperature": 22.0,
+                "hvac_mode": HVACMode.HEAT_COOL,
+            },
+            blocking=True,
+        )
+
+    mock_client.ata.set_temperature.assert_not_called()
+    mock_client.ata.set_power_and_mode.assert_not_called()

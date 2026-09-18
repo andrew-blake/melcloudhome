@@ -233,6 +233,10 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
             await self.coordinator.async_set_temperature(self._unit_id, temperature)
             return
 
+        # Home Assistant validates hvac_mode for set_hvac_mode and not for this
+        # service, so an unsupported mode arrives here intact.
+        self._valid_mode_or_raise("hvac", hvac_mode, self.hvac_modes)
+
         await asyncio.gather(
             self.async_set_hvac_mode(HVACMode(hvac_mode)),
             self.coordinator.async_set_temperature(self._unit_id, temperature),

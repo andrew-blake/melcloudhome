@@ -18,12 +18,14 @@ from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
-# Margin, not mechanism. A write dispatched in the same event-loop turn as
-# another is already queued before the dispatch task's first step, so a window
-# of zero merges the HomeKit case this exists for; test_a_zero_window_still_merges
-# holds that. The wait covers a caller separated by an await this reasoning does
-# not account for, and ten milliseconds is short enough to be imperceptible on a
-# lone command.
+# Margin. Submitted directly, two writes in one turn are queued before the
+# dispatch task's first step, so a window of zero merges them, which
+# test_a_zero_window_still_merges holds. The production path reaches the same
+# place for a narrower reason: the HomeKit bridge and Home Assistant's service
+# registry both start their tasks eagerly, so the chain from a tile gesture into
+# submit runs with no suspension. One added await anywhere in that chain would
+# break the zero-window case silently, and nothing would fail. Ten milliseconds
+# covers that, and is short enough to be imperceptible on a lone command.
 DEFAULT_COALESCE_WINDOW = 0.01
 
 # The server answers 200 and silently drops a cross-axis vane combination on a
@@ -118,9 +120,12 @@ class WriteCoalescer:
         except BaseException as err:
             # Delivered to every waiter instead of being re-raised here: this
             # task has no awaiter, so re-raising would only be logged and the
-            # callers would hang. A CancelledError travels the same way, which
-            # cancels each waiting caller in turn; this task then completes
-            # normally, which only happens when the loop is being torn down.
+            # callers would hang. A CancelledError raised while this task is
+            # suspended travels the same way and cancels each waiting caller.
+            # A cancellation landing before the task's first step does not: the
+            # throw happens at the coroutine's entry point, this block never
+            # runs, and the waiters are left unresolved. Only a loop-wide
+            # teardown does that, and it is cancelling those callers anyway.
             entry.dispatched = True
             if self._pending.get(unit_id) is entry:
                 del self._pending[unit_id]
@@ -128,6 +133,11 @@ class WriteCoalescer:
                 if not waiter.done():
                     waiter.set_exception(err)
         else:
+            # Resolved in submission order, which is the order entry.fields was
+            # updated in. Each caller's write-through then applies its own field
+            # in that same order, so the coordinator's copy ends on the value the
+            # payload carried even when two callers wrote the same field. A set
+            # of waiters, or resolving them concurrently, would break that.
             for waiter in entry.waiters:
                 if not waiter.done():
                     waiter.set_result(None)
