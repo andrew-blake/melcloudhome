@@ -319,8 +319,28 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             self._power_on_guard_until = None
             await self.coordinator.async_set_power(self._unit_id, False)
             return
-        await self._async_power_on(guard=guard)
         speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
+        device = self.get_device()
+        if device and device.operation_mode:
+            # Power and speed in one request. Sent separately they are spaced by
+            # the pacer's minimum, and a command arriving that close behind
+            # another to the same unit can be accepted by the cloud and ignored
+            # by the device, which is how a drag left a unit running while every
+            # surface read off (ADR-026). The mode goes too, for the same reason
+            # _async_power_on sends it: a power-on with operationMode=null can
+            # fault a multi-zone outdoor unit.
+            self._power_on_guard_until = time.monotonic() + _POWER_ON_GUARD_WINDOW
+            try:
+                await self.coordinator.async_set_power_and_mode(
+                    self._unit_id, True, device.operation_mode, normalize_to_api(speed)
+                )
+            except Exception:
+                self._power_on_guard_until = None
+                raise
+            return
+        # A unit reporting no mode to preserve cannot have the two folded
+        # together, so it keeps the pair.
+        await self._async_power_on(guard=guard)
         await self.coordinator.async_set_fan_speed(
             self._unit_id, normalize_to_api(speed)
         )
@@ -396,8 +416,11 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         self._cancel_speed_write = async_call_later(
             self.hass, _SPEED_DEBOUNCE_WINDOW, self._async_write_pending_percentage
         )
-        if percentage > 0:
-            await self._async_power_on(guard=True)
+        # Publish the slider position now, without an API call. `percentage`
+        # reports the pending value, and a HomeKit controller keeps the first
+        # value it is told for a characteristic, so the entity has to say the
+        # commanded speed before the write lands rather than after.
+        self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel a pending speed write so nothing fires after removal."""
@@ -431,10 +454,19 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         """
         self._cancel_pending_speed_write()
         if preset_mode is not None:
-            await self._async_power_on()
-            await self.coordinator.async_set_fan_speed(
-                self._unit_id, normalize_to_api(preset_mode)
-            )
+            device = self.get_device()
+            if device and device.operation_mode:
+                await self.coordinator.async_set_power_and_mode(
+                    self._unit_id,
+                    True,
+                    device.operation_mode,
+                    normalize_to_api(preset_mode),
+                )
+            else:
+                await self._async_power_on()
+                await self.coordinator.async_set_fan_speed(
+                    self._unit_id, normalize_to_api(preset_mode)
+                )
         elif percentage is not None:
             await self._async_apply_percentage(percentage)
         else:

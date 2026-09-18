@@ -96,7 +96,7 @@ async def test_set_hvac_mode_writes_even_when_already_matching(
     )
 
     mock_client.ata.set_power_and_mode.assert_called_once()
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat", None)
     mock_client.ata.set_power.assert_not_called()
 
 

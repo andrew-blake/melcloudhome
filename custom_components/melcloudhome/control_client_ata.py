@@ -56,25 +56,39 @@ class ATAControlClient(ControlClientBase):
         self._async_request_refresh = async_request_refresh
 
     async def async_set_power_and_mode(
-        self, unit_id: str, power: bool, mode: str
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
     ) -> None:
-        """Set power state and operation mode atomically in a single API call.
+        """Set power, operation mode and optionally fan speed in one API call.
 
         Used for every power-on that knows the mode, so the unit never sees an
         operationMode=null window, which can fault a multi-zone outdoor unit.
+
+        `fan_speed` exists so a power-on that also sets a speed is one request.
+        Sent separately they are spaced by the pacer's minimum, and a command
+        arriving that close behind another to the same unit can be accepted by
+        the cloud and ignored by the device; ADR-026 records the observations.
         """
         _LOGGER.info(
-            "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
+            "Setting power+mode%s for %s to power=%s mode=%s%s",
+            "+speed" if fan_speed else "",
+            unit_id[-8:],
+            power,
+            mode,
+            f" speed={fan_speed}" if fan_speed else "",
         )
         await self._execute_with_retry(
-            lambda: self._client.ata.set_power_and_mode(unit_id, power, mode),
-            f"set_power_and_mode({unit_id}, {power}, {mode})",
+            lambda: self._client.ata.set_power_and_mode(
+                unit_id, power, mode, fan_speed
+            ),
+            f"set_power_and_mode({unit_id}, {power}, {mode}, {fan_speed})",
         )
 
         device = self._get_device(unit_id)
         if device:
             device.power = power
             device.operation_mode = mode
+            if fan_speed is not None:
+                device.set_fan_speed = fan_speed
             self._notify_listeners()
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:

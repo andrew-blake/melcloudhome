@@ -798,11 +798,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
     # =================================================================
 
     async def async_set_power_and_mode(
-        self, unit_id: str, power: bool, mode: str
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
     ) -> None:
-        """Set power state and operation mode atomically."""
+        """Set power, operation mode and optionally fan speed in one call."""
         return await self.control_client_ata.async_set_power_and_mode(
-            unit_id, power, mode
+            unit_id, power, mode, fan_speed
         )
 
     async def async_set_power(self, unit_id: str, power: bool) -> None:

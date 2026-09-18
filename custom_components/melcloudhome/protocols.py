@@ -98,9 +98,9 @@ class CoordinatorProtocol(Protocol):
         ...
 
     async def async_set_power_and_mode(
-        self, unit_id: str, power: bool, mode: str
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
     ) -> None:
-        """Set power state and operation mode atomically for ATA unit.
+        """Set power, operation mode and optionally fan speed for an ATA unit.
 
         Args:
             unit_id: ATA unit ID

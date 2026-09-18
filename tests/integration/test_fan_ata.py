@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -64,6 +63,24 @@ async def _let_the_speed_write_land(hass: HomeAssistant) -> None:
     """
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
     await hass.async_block_till_done()
+
+
+def _speeds_written(mock_client: Any) -> list[str]:
+    """Every speed that reached the API, whichever call carried it.
+
+    A power-on that knows the unit's mode sends the speed in the same request,
+    so most speeds arrive as set_power_and_mode's fourth argument. A unit
+    reporting no mode to preserve still sends the two separately. Asserting on
+    this rather than on one mock keeps the test about the speed reaching the API
+    rather than about which call carried it.
+    """
+    speeds = [
+        c[0][3]
+        for c in mock_client.ata.set_power_and_mode.call_args_list
+        if len(c[0]) > 3 and c[0][3] is not None
+    ]
+    speeds += [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list]
+    return speeds
 
 
 async def _let_tasks_run() -> None:
@@ -161,8 +178,7 @@ async def test_set_percentage_sends_matching_speed(hass: HomeAssistant) -> None:
     await _set_percentage(hass, 40)
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Two"
+    assert _speeds_written(mock_client) == ["Two"]
 
 
 @pytest.mark.asyncio
@@ -294,7 +310,7 @@ async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None
         "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat", None)
     mock_client.ata.set_power.assert_not_called()
 
 
@@ -319,12 +335,11 @@ async def test_turn_on_with_percentage_supersedes_a_pending_drag_write(
         blocking=True,
     )
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Five"
+    assert _speeds_written(mock_client) == ["Five"]
 
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
+    assert _speeds_written(mock_client) == ["Five"]
 
 
 @pytest.mark.asyncio
@@ -343,8 +358,11 @@ async def test_turn_on_with_percentage_sets_power_and_speed(
         blocking=True,
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Two"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Two",
+    )
 
 
 @pytest.mark.asyncio
@@ -363,8 +381,11 @@ async def test_turn_on_with_auto_preset_sets_power_and_speed(
         blocking=True,
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Auto"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Auto",
+    )
 
 
 @pytest.mark.asyncio
@@ -381,8 +402,11 @@ async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None
     await _set_percentage(hass, 60)
     await _let_the_speed_write_land(hass)
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Three",
+    )
 
 
 @pytest.mark.asyncio
@@ -409,15 +433,18 @@ async def test_set_percentage_burst_writes_only_the_final_speed(
     for percentage in (20, 40, 60):
         await _set_percentage(hass, percentage)
 
-    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert mock_client.ata.set_power_and_mode.call_count == 0
     mock_client.ata.set_fan_speed.assert_not_called()
 
     await _let_the_speed_write_land(hass)
 
     assert mock_client.ata.set_power_and_mode.call_count == 1
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Three",
+    )
+    assert _speeds_written(mock_client) == ["Three"]
 
 
 @pytest.mark.asyncio
@@ -433,24 +460,15 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
     open so they do, and the later calls arrive while the first is still in
     flight.
 
-    Two things are asserted, matching the two ordering defects this guards:
-    the pending position and its timer are claimed on entry, so the last call to
-    arrive wins whatever order the requests finish in; and the guard deadline is
-    armed before the request rather than after, so the calls arriving during it
-    are collapsed into the single power-on it exists to produce.
+    The pending position and its timer are claimed on entry, so the last call to
+    arrive wins whatever order the calls interleave in. A drag issues no request
+    at all until its timer fires, so there is no in-flight write for the later
+    calls to arrive during, and the burst collapses to one write of the released
+    position.
     """
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
-
-    gates: list[asyncio.Event] = []
-
-    async def _hold_the_power_on(*_args: Any, **_kwargs: Any) -> None:
-        gate = asyncio.Event()
-        gates.append(gate)
-        await gate.wait()
-
-    mock_client.ata.set_power_and_mode.side_effect = _hold_the_power_on
 
     tasks = []
     for percentage in (20, 40, 60):
@@ -466,19 +484,15 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
         )
         await _let_tasks_run()
 
-    # Only the first call reached the API; the rest found the guard already
-    # armed and returned without a power write of their own.
-    assert len(gates) == 1
-    assert mock_client.ata.set_power_and_mode.call_count == 1
+    # No request has gone out yet: each call replaced the previous pending
+    # position and restarted its timer.
+    assert mock_client.ata.set_power_and_mode.call_count == 0
 
-    for gate in reversed(gates):
-        gate.set()
-        await _let_tasks_run()
     await asyncio.gather(*tasks)
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert _speeds_written(mock_client) == ["Three"]
 
 
 @pytest.mark.asyncio
@@ -501,11 +515,12 @@ async def test_a_failed_power_on_does_not_suppress_the_retry(
     )
 
     mock_client.ata.set_power_and_mode.side_effect = ApiError("upstream said no")
-    with pytest.raises(HomeAssistantError):
-        await _set_percentage(hass, 40)
+    await _set_percentage(hass, 40)
+    await _let_the_speed_write_land(hass)
 
     mock_client.ata.set_power_and_mode.side_effect = None
     await _set_percentage(hass, 60)
+    await _let_the_speed_write_land(hass)
 
     assert mock_client.ata.set_power_and_mode.call_count == 2
 
@@ -544,6 +559,7 @@ async def test_power_off_disarms_the_power_on_guard(
 
     await power_off(hass)
     await _set_percentage(hass, 60)
+    await _let_the_speed_write_land(hass)
 
     assert mock_client.ata.set_power_and_mode.call_count == 2
 
@@ -596,8 +612,7 @@ async def test_dragging_through_zero_does_not_power_off(
     await _let_the_speed_write_land(hass)
 
     mock_client.ata.set_power.assert_not_called()
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Four"
+    assert _speeds_written(mock_client) == ["Four"]
 
 
 @pytest.mark.asyncio
@@ -633,7 +648,8 @@ async def test_turn_on_still_powers_on_after_a_set_percentage_burst(
         "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
     )
 
-    assert mock_client.ata.set_power_and_mode.call_count == 2
+    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert mock_client.ata.set_power_and_mode.call_args[0][1] is True
 
 
 @pytest.mark.asyncio
@@ -661,7 +677,7 @@ async def test_the_same_speed_twice_is_sent_twice(hass: HomeAssistant) -> None:
         await _set_percentage(hass, 20)
         await _let_the_speed_write_land(hass)
 
-    assert [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list] == [
+    assert _speeds_written(mock_client) == [
         "One",
         "One",
     ]

@@ -82,7 +82,9 @@ class ATAControlClient:
             json=payload,
         )
 
-    async def set_power_and_mode(self, unit_id: str, power: bool, mode: str) -> None:
+    async def set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
+    ) -> None:
         """
         Turn device on/off and set operation mode in a single atomic API call.
 
@@ -94,6 +96,7 @@ class ATAControlClient:
             unit_id: Device ID (UUID)
             power: True to turn on, False to turn off
             mode: Operation mode - "Heat", "Cool", "Automatic", "Dry", or "Fan"
+            fan_speed: Optional fan speed to set in the same request
 
         Raises:
             AuthenticationError: If not authenticated
@@ -102,7 +105,14 @@ class ATAControlClient:
         """
         self._validate_mode(mode)
 
-        payload = self._build_ata_control_payload(power=power, operationMode=mode)
+        # Carrying the speed here is what keeps a power-on and a speed change one
+        # request instead of two. Two requests to one unit are spaced by the
+        # pacer's minimum, and a command that close behind another can be
+        # accepted by the cloud and ignored by the device; see ADR-026.
+        extra = {} if fan_speed is None else {"setFanSpeed": fan_speed}
+        payload = self._build_ata_control_payload(
+            power=power, operationMode=mode, **extra
+        )
 
         await self._client._api_request(
             "PUT",
