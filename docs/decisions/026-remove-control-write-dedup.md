@@ -134,9 +134,10 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### A close pair can be lost at the device
 
-A fan speed change from HomeKit sends the power, the mode and the speed in one request, so the
-pair that this section first described is gone from that path. A unit reporting no mode to
-preserve still sends a power-on and a speed separately, spaced by `RequestPacer`'s 0.5 s minimum.
+Every service call issues one request, and a power-on that also sets a speed carries both in that
+request. Two writes to one unit from separate service calls are still spaced by `RequestPacer`'s
+0.5 s minimum: a scene setting several attributes, a Home app action that changes mode and
+setpoint, an on followed by an off.
 
 A command arriving that close behind another to the same unit can be accepted by the cloud, with
 a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the
@@ -148,19 +149,24 @@ No interval is claimed beyond that. The `Setting` log lines are written before t
 acquired, so they time intent rather than dispatch, and a poll inside a minute of a pair reports
 the cloud's optimistic copy. Only the unit's own report disagrees.
 
-A command re-sent on its own is applied, which is the manual recovery, and one this decision is
-what makes possible: the comparison removed here would have skipped an off sent to a unit whose
+Removing the comparison makes close pairs more common, since writes that would have been skipped
+now go out: a scene applied to units already at target sends a request per attribute where it sent
+none. A command re-sent on its own is applied, which is the manual recovery, and one this decision
+is what makes possible: the comparison removed here would have skipped an off sent to a unit whose
 copy already read off. Mitigation 1 below removes the pair itself.
 
 ### Mitigations, none in scope
 
 - **1. Coalesce near-simultaneous writes to one unit into a single
-  multi-field PUT.** The API body already carries every field, so a six-unit
-  scene would cost about 3 s with no dependence on cached state. Sized as
-  medium: error fan-out semantics across the coalesced fields, interaction with
-  `fan.py`'s own debounce, and a collection window added to every command.
-  Deferred. It is also what removes the close pair above, so it answers a correctness risk and
-  not only scene speed.
+  multi-field PUT.** The API body already carries every field, so writes that
+  arrive together can share one request with no dependence on cached state. It
+  does not make a scene faster: `climate/reproduce_state.py` awaits each service
+  call for one entity in turn, so a scene's writes to one unit are already
+  separated by a round trip and never arrive together. What does arrive together
+  is HomeKit, which dispatches each characteristic write as its own un-awaited
+  task. Sized as medium: error fan-out semantics across the coalesced fields,
+  interaction with `fan.py`'s own debounce, and a collection window added to
+  every command. Deferred. It is what removes the close pair above.
 - **2. MELCloud's own cloud scenes**, applied server-side in one request,
   exposed as HA entities. Issue #174 territory.
 - **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was
