@@ -262,3 +262,29 @@ async def test_an_operation_mode_matching_current_state_is_still_sent(
         await hass.async_block_till_done()
 
     assert mock_client.atw.set_forced_hot_water.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_acts_on_the_operation_mode_it_is_given(
+    hass: HomeAssistant,
+) -> None:
+    """water_heater.set_temperature accepts operation_mode; it must not be discarded."""
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_temperature",
+        {
+            "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+            "temperature": 55,
+            "operation_mode": "high_demand",
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_dhw_temperature.assert_called_once_with(TEST_ATW_UNIT_ID, 55)
+    mock_client.atw.set_forced_hot_water.assert_called_once_with(TEST_ATW_UNIT_ID, True)

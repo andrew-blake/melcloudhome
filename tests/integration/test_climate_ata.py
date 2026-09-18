@@ -413,3 +413,29 @@ async def test_a_command_matching_current_state_is_still_sent(
         await hass.async_block_till_done()
 
     assert getattr(mock_client.ata, api_method).call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_acts_on_the_mode_it_is_given(
+    hass: HomeAssistant,
+) -> None:
+    """climate.set_temperature accepts hvac_mode; it must not be discarded."""
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {
+            "entity_id": _CLIMATE_ENTITY,
+            "temperature": 22.0,
+            "hvac_mode": HVACMode.HEAT,
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.ata.set_temperature.assert_called_once()
+    mock_client.ata.set_power_and_mode.assert_called_once()

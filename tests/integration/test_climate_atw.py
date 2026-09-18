@@ -467,3 +467,33 @@ async def test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh(
     assert (
         hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID).attributes["temperature"] == 22.5
     )
+
+
+@pytest.mark.asyncio
+async def test_atw_set_temperature_acts_on_the_mode_it_is_given(
+    hass: HomeAssistant,
+) -> None:
+    """climate.set_temperature accepts hvac_mode; it must not be discarded."""
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit(power=False)])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_power = AsyncMock()
+    mock_client.atw.set_mode_zone1 = AsyncMock()
+    mock_client.atw.set_temperature_zone1 = AsyncMock()
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {
+            "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+            "temperature": 21,
+            "hvac_mode": HVACMode.HEAT,
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_temperature_zone1.assert_called_once()
+    mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+    mock_client.atw.set_mode_zone1.assert_called_once()
