@@ -182,10 +182,10 @@ speed. ADR-026 records why: two requests to one unit are spaced by
 `RequestPacer`'s minimum, and a command arriving that close behind another can
 be accepted by the cloud and ignored by the device.
 
-A unit reporting no mode to preserve cannot have them folded and still sends the
-pair. `_POWER_ON_GUARD_WINDOW` collapses repeats across those, and an explicit
-`fan.turn_on` is never suppressed: the suppression exists to tame the drag
-burst, not to make the documented service unreliable.
+That holds for a unit reporting no mode to preserve as well: the speed rides
+with the power write instead. A drag therefore issues one request however many
+positions it passes through, so there is nothing left to collapse and the
+suppression this record originally described is gone.
 
 ## Alternatives Considered
 

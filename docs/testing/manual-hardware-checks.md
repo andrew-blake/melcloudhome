@@ -9,7 +9,7 @@ ways the log misleads. Record a run's results in the PR that relies on them.
 | Property | Suite test | `tools/hardware_check.py` | Devserver | Home app | Vendor app |
 | --- | --- | --- | --- | --- | --- |
 | 1. Every command is issued to the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal` (`restart-after-zero` proves a sequence, not this property: write-through updates the copy after each write, so every write it issues already differs from the copy) | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
-| 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_power_off_disarms_the_power_on_guard` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
+| 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_a_drag_to_zero_reads_off_before_its_write_lands` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
 | 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | none: the fan entity reports a pending speed *before* the API is asked, so an entity read cannot tell what the API accepted from what was queued locally. The suite tests are this row's only driver | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone | no |
 | 4. A value the unit already has is still sent | a `…matching_current_state_is_still_sent` case per ATA setter (temperature, both vanes, fan mode) plus `test_set_hvac_mode_writes_even_when_already_matching`, `test_power_off_is_sent_to_a_unit_already_off` and `test_atw_power_is_sent_even_when_the_cache_already_agrees`: the last three do not match that name, so grepping it alone reads as two setters untested | `same-value` (fan speed), `same-value-sweep` (temperature, both vanes, fan mode) | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
 | 5. A command matching an out-of-band change is still sent (discussion #135) | mechanism only: the mock is both the cloud and the copy | `out-of-band-match` | out of reach: nothing changes the mock out of band | vendor app first, then drag the slider to the value HA now holds | the source of the change |
@@ -28,7 +28,7 @@ proves wiring only; it is also the only place the heat pumps are driven, because
 test account belong to other people. The script reaches the real cloud and unit with exact timing and cannot
 reach the HomeKit bridge. The Home app is the only source of the real gesture shapes: a drag
 arrives as `Active` plus a run of `RotationSpeed` values, the fan entity's debounce sends the
-released value only, and the power-on guard decides whether `power+mode` precedes the speed.
+released value only, and that release carries the power and the speed in one request.
 
 ## Preconditions
 

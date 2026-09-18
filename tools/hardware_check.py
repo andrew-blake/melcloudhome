@@ -494,12 +494,6 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     """Zero, a pause, then a numbered speed: the off, the power-on and the speed.
 
-    Whether the zero *cleared the power-on guard* cannot be read off a run like
-    this: the guard is three seconds on the real clock, so by the time the zero
-    lands it has usually expired on its own. The integration suite owns that
-    assertion, in test_power_off_disarms_the_power_on_guard, which widens the
-    window to an hour so expiry cannot be what makes it pass.
-
     The off and the power-on here are consecutive writes to one unit, which the
     pacer spaces at its floor, so this is one of the shapes the device has been
     seen to accept at the cloud and ignore. It therefore waits for the device's
