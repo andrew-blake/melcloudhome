@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+from .coalescing import WriteCoalescer
 from .const_ata import (
     API_CONTROL_UNIT,
     FAN_SPEEDS,
@@ -26,6 +27,7 @@ class ATAControlClient:
             base_client: Base MELCloudHomeClient instance for API requests
         """
         self._client = base_client
+        self._coalescer = WriteCoalescer(self._send_control)
 
     def _build_ata_control_payload(self, **updates: Any) -> dict[str, Any]:
         """Build ATA control payload with null defaults.
@@ -57,13 +59,16 @@ class ATAControlClient:
         return payload
 
     async def _update_ata_unit(self, unit_id: str, **updates: Any) -> None:
-        """Send a sparse control update to an ATA unit.
+        """Send a sparse control update, merged with any arriving alongside it.
 
-        Callers pass only the fields they are setting; the full payload, with
-        null for everything else, is built here. Keeping callers sparse is what
-        lets two writes arriving together be merged without one write's nulls
-        erasing the other's values.
+        Callers pass only the fields they are setting. Keeping callers sparse is
+        what lets two writes arriving together be merged without one write's
+        nulls erasing the other's values.
         """
+        await self._coalescer.submit(unit_id, updates)
+
+    async def _send_control(self, unit_id: str, updates: dict[str, Any]) -> None:
+        """Send one unit's collected fields as a single request."""
         payload = self._build_ata_control_payload(**updates)
         await self._client._api_request(
             "PUT",

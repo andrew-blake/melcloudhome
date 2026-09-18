@@ -10,14 +10,12 @@ Only run against test devices where temporary state changes are acceptable.
 """
 
 import asyncio
-from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 
 import pytest
 
+from custom_components.melcloudhome.api.client import MELCloudHomeClient
 from tests.conftest import VCR_OPERATION_DELAY, VCR_RESTORE_DELAY
-
-if TYPE_CHECKING:
-    from custom_components.melcloudhome.api.client import MELCloudHomeClient
 
 
 @pytest.mark.vcr()
@@ -283,3 +281,41 @@ async def test_multiple_controls_together(
     assert device.operation_mode == "Heat"
     assert device.set_temperature == 20.0
     assert device.set_fan_speed == "Auto"
+
+
+@pytest.mark.asyncio
+async def test_two_ata_writes_in_one_turn_send_one_put(mocker):
+    """A HomeKit gesture's mode and temperature writes share a request."""
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    await asyncio.gather(
+        client.ata.set_mode("unit-xyz", "Heat"),
+        client.ata.set_temperature("unit-xyz", 21.0),
+    )
+
+    mock_request.assert_awaited_once()
+    payload = mock_request.call_args.kwargs["json"]
+    assert payload["operationMode"] == "Heat"
+    assert payload["setTemperature"] == 21.0
+
+
+@pytest.mark.asyncio
+async def test_a_merged_write_carries_no_field_as_null(mocker):
+    """Merging full payloads would set each write's field back to null.
+
+    This is the regression test for the sparse merge: it fails against a
+    coalescer that merges built payloads rather than field dicts.
+    """
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    await asyncio.gather(
+        client.ata.set_power_and_mode("unit-xyz", True, "Heat"),
+        client.ata.set_temperature("unit-xyz", 21.0),
+    )
+
+    payload = mock_request.call_args.kwargs["json"]
+    assert payload["power"] is True
+    assert payload["operationMode"] == "Heat"
+    assert payload["setTemperature"] == 21.0

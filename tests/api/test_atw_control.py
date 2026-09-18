@@ -8,6 +8,7 @@ Contains two types of tests:
 import asyncio
 import os
 from collections.abc import AsyncIterator
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -311,3 +312,20 @@ async def test_mock_set_standby_mode(mock_client: MELCloudHomeClient) -> None:
 
     assert unit is not None
     assert unit.in_standby_mode is True
+
+
+@pytest.mark.asyncio
+async def test_two_atw_writes_in_one_turn_send_one_put(mocker):
+    """Writes to one heat pump arriving together share a request."""
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    await asyncio.gather(
+        client.atw.set_power("unit-xyz", True),
+        client.atw.set_temperature_zone1("unit-xyz", 21.0),
+    )
+
+    mock_request.assert_awaited_once()
+    payload = mock_request.call_args.kwargs["json"]
+    assert payload["power"] is True
+    assert payload["setTemperatureZone1"] == 21.0

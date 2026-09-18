@@ -67,16 +67,20 @@ class TestRateLimitingE2E:
 
     @pytest.mark.e2e
     @pytest.mark.asyncio
-    async def test_ten_concurrent_requests_succeeds(self):
+    async def test_ten_concurrent_requests_succeeds(self, mocker):
         """
-        E2E test: Stress test with 10 rapid control requests.
+        E2E test: 10 rapid control requests across three units.
 
-        Verifies RequestPacer queue handles heavy concurrent load.
+        Ten writes issued in one turn reach three units, so coalescing merges
+        them into three requests, one per unit (ADR-026). Every caller still
+        returns.
+
+        The requests are counted rather than timed. The same code took 3.05 s
+        on one run of this suite and 126 s on the next, so elapsed time cannot
+        distinguish merged writes from unmerged ones here.
 
         Requires: make dev-up (mock server with rate limiting enabled)
         """
-        from time import time
-
         client = MELCloudHomeClient(debug_mode=True)
 
         try:
@@ -92,8 +96,18 @@ class TestRateLimitingE2E:
             ata2_id = ata_devices[1].id
             atw1_id = atw_devices[0].id
 
+            # Count real requests while still reaching the mock server
+            sent: list[str] = []
+            real_request = client._api_request
+
+            async def counting_request(method, endpoint, **kwargs):
+                if method == "PUT":
+                    sent.append(endpoint)
+                return await real_request(method, endpoint, **kwargs)
+
+            mocker.patch.object(client, "_api_request", new=counting_request)
+
             # Create 10 mixed operations
-            start = time()
             results = await asyncio.gather(
                 # ATA 1 operations
                 client.ata.set_temperature(ata1_id, 22.0),
@@ -109,15 +123,11 @@ class TestRateLimitingE2E:
                 client.atw.set_dhw_temperature(atw1_id, 50.0),
                 client.atw.set_forced_hot_water(atw1_id, False),
             )
-            elapsed = time() - start
-
-            # All 10 requests should succeed
+            # Every caller returns, whether or not its write shared a request
             assert len(results) == 10
 
-            # Should take approximately 4.5 seconds (9 waits of 500ms each)
-            # Allow some tolerance for timing variance and request execution
-            assert elapsed >= 4.0, f"Expected >= 4.0s, got {elapsed:.2f}s"
-            assert elapsed < 6.0, f"Expected < 6.0s, got {elapsed:.2f}s"
+            # One PUT per unit: the writes to each unit arrived in one turn
+            assert len(sent) == 3, f"Expected 3 PUTs, got {len(sent)}: {sent}"
 
         finally:
             await client.close()
