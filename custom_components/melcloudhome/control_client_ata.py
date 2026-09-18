@@ -91,22 +91,35 @@ class ATAControlClient(ControlClientBase):
                 device.set_fan_speed = fan_speed
             self._notify_listeners()
 
-    async def async_set_power(self, unit_id: str, power: bool) -> None:
-        """Set power state with automatic session recovery.
+    async def async_set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
+        """Set power state, and optionally a fan speed, in one API call.
 
         Args:
             unit_id: Unit ID
             power: True=ON, False=OFF
+            fan_speed: Optional fan speed to set in the same request, so a
+                power-on that also sets a speed is one request rather than a
+                pair the device can drop half of (ADR-026)
         """
-        _LOGGER.info("Setting power for %s to %s", unit_id[-8:], power)
+        _LOGGER.info(
+            "Setting power%s for %s to %s%s",
+            "+speed" if fan_speed else "",
+            unit_id[-8:],
+            power,
+            f" speed={fan_speed}" if fan_speed else "",
+        )
         await self._execute_with_retry(
-            lambda: self._client.ata.set_power(unit_id, power),
-            f"set_power({unit_id}, {power})",
+            lambda: self._client.ata.set_power(unit_id, power, fan_speed),
+            f"set_power({unit_id}, {power}, {fan_speed})",
         )
 
         device = self._get_device(unit_id)
         if device:
             device.power = power
+            if fan_speed is not None:
+                device.set_fan_speed = fan_speed
             self._notify_listeners()
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:

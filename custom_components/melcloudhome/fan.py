@@ -8,7 +8,6 @@ untouched; ADR-025 records why these controls live here instead.
 from __future__ import annotations
 
 import logging
-import time
 from datetime import datetime
 from typing import Any
 
@@ -43,21 +42,6 @@ _NUMBERED_SPEEDS = ATA_FAN_SPEEDS[1:]
 _VANE_SWING = "Swing"
 _VANE_AUTO = "Auto"
 
-# A drag issues one write, when its debounce fires, and that write carries the
-# power, the mode and the speed together. This guard is what remains for the one
-# unit that cannot have them folded: one reporting no operation mode to preserve
-# still sends a power-on and a speed separately, and this collapses repeats
-# across those.
-#
-# No constant is safe here, and this one is not sized against the stale window:
-# the refresh is scheduled 2.0s after a write *returns* and then has its own API
-# round trip, and on hardware a write was still being compared against stale
-# data 2.4s after the preceding one. Three seconds is a plain guess at the span
-# of one drag. Being wrong is cheap in one direction only, which is why a guess
-# is acceptable: this guard suppresses *repeat* power-ons within a drag, so too
-# short wastes an API call the unit accepts while already running, and no
-# command is lost. It is never allowed to suppress an explicit fan.turn_on.
-_POWER_ON_GUARD_WINDOW = 3.0
 
 # How long a slider position must stand still before it is written. Overlapping
 # speed writes are applied by the server in arrival order, not issue order, so a
@@ -122,10 +106,6 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         self._entry = entry
         self._attr_unique_id = f"{unit.id}_ac_fan"
         self._attr_preset_modes = [_AUTO_PRESET]
-
-        # monotonic() deadline until which a *guarded* power-on is suppressed;
-        # see _POWER_ON_GUARD_WINDOW and _async_power_on.
-        self._power_on_guard_until: float | None = None
 
         # Pending debounced speed write; see _SPEED_DEBOUNCE_WINDOW.
         self._cancel_speed_write: CALLBACK_TYPE | None = None
@@ -270,52 +250,25 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             self._unit_id, _VANE_SWING if oscillating else _VANE_AUTO
         )
 
-    async def _async_power_on(self, *, guard: bool = False) -> None:
+    async def _async_power_on(self) -> None:
         """Power the unit on without disturbing its operation mode.
 
         A bare power write sends operationMode=null, which can trigger a
         mode-conflict fault on multi-zone outdoor units. The mode is only
         omitted when the device reports none to preserve.
 
-        guard=True suppresses the write entirely while a previous guarded (or
-        unguarded) power-on is still within _POWER_ON_GUARD_WINDOW, to collapse
-        the repeated power-on writes a HomeKit slider drag issues. It is opt-in
-        per call site rather than a blanket check inside this method, so
-        fan.turn_on -- called with guard left False -- always powers on: the
-        guard exists to tame set_percentage's drag burst, not to make the
-        documented service unreliable.
-
-        The deadline is armed before the write is awaited, not after. HomeKit's
-        bridge dispatches each service call as its own un-awaited task and HA
-        takes no per-entity lock, so calls genuinely interleave at the await
-        below; arming afterwards lets every call that arrives while the first
-        power-on is in flight past the check and issue its own. Arming first
-        would, on its own, make a *failed* power-on suppress the retry that
-        follows it, so the deadline is put back if the write raises.
+        Reached only from `fan.turn_on` with no speed to set. Every other
+        power-on carries a speed and goes out as one request instead.
         """
-        if (
-            guard
-            and self._power_on_guard_until is not None
-            and time.monotonic() < self._power_on_guard_until
-        ):
-            return
-
         device = self.get_device()
-        self._power_on_guard_until = time.monotonic() + _POWER_ON_GUARD_WINDOW
-        try:
-            if device and device.operation_mode:
-                await self.coordinator.async_set_power_and_mode(
-                    self._unit_id, True, device.operation_mode
-                )
-            else:
-                await self.coordinator.async_set_power(self._unit_id, True)
-        except Exception:
-            self._power_on_guard_until = None
-            raise
+        if device and device.operation_mode:
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, device.operation_mode
+            )
+        else:
+            await self.coordinator.async_set_power(self._unit_id, True)
 
-    async def _async_apply_percentage(
-        self, percentage: int, *, guard: bool = False
-    ) -> None:
+    async def _async_apply_percentage(self, percentage: int) -> None:
         """Apply a slider position: zero powers off, anything else sets a speed.
 
         The unit is powered on as well as sped up, because the HomeKit bridge
@@ -323,12 +276,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         up on an off tile, and then deliberately skips fan.turn_on on the
         assumption that a SET_SPEED fan powers itself on. Where the unit reports
         a mode to preserve the two travel in one request; where it does not,
-        guard is forwarded to _async_power_on for the pair that remains.
+        the speed rides with the power instead.
         """
         if percentage == 0:
-            # Dragging to the zero detent is an explicit power-off, which
-            # invalidates the guard's premise; see async_turn_off.
-            self._power_on_guard_until = None
             await self.coordinator.async_set_power(self._unit_id, False)
             return
         speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
@@ -341,20 +291,14 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             # surface read off (ADR-026). The mode goes too, for the same reason
             # _async_power_on sends it: a power-on with operationMode=null can
             # fault a multi-zone outdoor unit.
-            self._power_on_guard_until = time.monotonic() + _POWER_ON_GUARD_WINDOW
-            try:
-                await self.coordinator.async_set_power_and_mode(
-                    self._unit_id, True, device.operation_mode, normalize_to_api(speed)
-                )
-            except Exception:
-                self._power_on_guard_until = None
-                raise
+            await self.coordinator.async_set_power_and_mode(
+                self._unit_id, True, device.operation_mode, normalize_to_api(speed)
+            )
             return
-        # A unit reporting no mode to preserve cannot have the two folded
-        # together, so it keeps the pair.
-        await self._async_power_on(guard=guard)
-        await self.coordinator.async_set_fan_speed(
-            self._unit_id, normalize_to_api(speed)
+        # A unit reporting no mode to preserve sends no mode, and the speed
+        # rides with the power instead.
+        await self.coordinator.async_set_power(
+            self._unit_id, True, normalize_to_api(speed)
         )
 
     def _cancel_pending_speed_write(self) -> None:
@@ -391,7 +335,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             return
         self._pending_percentage = None
         try:
-            await self._async_apply_percentage(percentage, guard=True)
+            await self._async_apply_percentage(percentage)
         finally:
             # The pending value is gone either way, so publish again: on success
             # the write-through has already updated the copy, and on failure this
@@ -468,9 +412,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         as it does to fan.set_percentage: power off.
 
         Applied immediately, not debounced: an explicit service call is a
-        deliberate single command, not a drag. Same reasoning that has turn_on
-        bypass the power-on guard. It does supersede a pending drag write, which
-        would otherwise land afterwards and undo it.
+        deliberate single command, not a drag. It does supersede a pending drag
+        write, which would otherwise land afterwards and undo it.
         """
         self._cancel_pending_speed_write()
         if preset_mode is not None:
@@ -483,9 +426,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
                     normalize_to_api(preset_mode),
                 )
             else:
-                await self._async_power_on()
-                await self.coordinator.async_set_fan_speed(
-                    self._unit_id, normalize_to_api(preset_mode)
+                await self.coordinator.async_set_power(
+                    self._unit_id, True, normalize_to_api(preset_mode)
                 )
         elif percentage is not None:
             await self._async_apply_percentage(percentage)
@@ -500,17 +442,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         only thing off can mean. ADR-025 records that this is deliberate, and
         that HomeKit shows the button whether or not the feature is declared.
 
-        The power-on guard is dropped here. It is armed whenever a guarded
-        power-on runs, including on a unit that was already on, so a slider drag
-        on a running unit leaves it armed for three seconds having written
-        nothing the unit needed. Turning the unit off inside that window and
-        dragging the
-        slider straight back up would then hit set_percentage alone (the bridge
-        sends Active and RotationSpeed together and skips fan.turn_on), the
-        guard would suppress the power-on, and the unit would stay off with a
-        speed write landing on it. An explicit power-off invalidates the
-        premise the guard rests on, so it stops applying.
+        A pending drag is dropped with it, so a slider position released just
+        before the tile was tapped off cannot land afterwards and turn the unit
+        back on.
         """
         self._cancel_pending_speed_write()
-        self._power_on_guard_until = None
         await self.coordinator.async_set_power(self._unit_id, False)

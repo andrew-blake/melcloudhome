@@ -805,9 +805,11 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             unit_id, power, mode, fan_speed
         )
 
-    async def async_set_power(self, unit_id: str, power: bool) -> None:
-        """Set power state with automatic session recovery."""
-        return await self.control_client_ata.async_set_power(unit_id, power)
+    async def async_set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
+        """Set power state, and optionally a fan speed, in one call."""
+        return await self.control_client_ata.async_set_power(unit_id, power, fan_speed)
 
     async def async_set_temperature(self, unit_id: str, temperature: float) -> None:
         """Set target temperature with automatic session recovery."""

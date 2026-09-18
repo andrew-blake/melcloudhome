@@ -15,7 +15,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.melcloudhome import fan as fan_module
 from custom_components.melcloudhome.api.exceptions import ApiError
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -496,83 +495,28 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
 
 
 @pytest.mark.asyncio
-async def test_a_failed_power_on_does_not_suppress_the_retry(
-    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+async def test_a_failed_write_does_not_stop_the_next_one(
+    hass: HomeAssistant,
 ) -> None:
-    """Arming the guard before the request must not make a failure stick.
+    """A write that fails must leave nothing behind that blocks the retry.
 
-    The deadline goes up before the write is awaited so that a drag's
-    overlapping calls collapse into one power-on rather than one each. If that
-    write then fails the unit is still off, so the deadline has to come back
-    down and let the next call try again.
-
-    The guard window is widened out of the way for the same reason as in
-    test_power_off_disarms_the_power_on_guard: it is measured on the real clock.
+    Nothing suppresses a second write today, so this guards against something
+    being introduced that does: a latch, a deadline or a flag set on the way
+    into a write and not cleared when it raises.
     """
-    monkeypatch.setattr(fan_module, "_POWER_ON_GUARD_WINDOW", 3600.0)
-    # A unit with no mode to preserve is the only one whose power-on still goes
-    # through _async_power_on, and therefore the only one whose guard is read.
     _, mock_client = await _setup(
-        hass, power=False, operation_mode="", set_fan_speed="Auto"
+        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
 
-    mock_client.ata.set_power.side_effect = ApiError("upstream said no")
+    mock_client.ata.set_power_and_mode.side_effect = ApiError("upstream said no")
     await _set_percentage(hass, 40)
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_power.side_effect = None
+    mock_client.ata.set_power_and_mode.side_effect = None
     await _set_percentage(hass, 60)
     await _let_the_speed_write_land(hass)
 
-    assert mock_client.ata.set_power.call_count == 2
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
-async def test_power_off_disarms_the_power_on_guard(
-    hass: HomeAssistant, power_off: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Turning the unit off must not leave a drag's guard suppressing the restart.
-
-    Reachable entirely from the Home app on a running unit: dragging the slider
-    arms the guard whether or not the unit needed the power-on, and nothing
-    about that write clears it. Tap the tile off (or drag to the zero detent),
-    then drag straight
-    back up: the bridge sends Active and RotationSpeed together and deliberately
-    skips fan.turn_on, so it arrives as set_percentage alone. A surviving guard
-    would suppress the power-on and leave the unit off with a speed write landing
-    on it, contradicting docs/homekit.md.
-
-    The guard window is
-    widened out of the way because it is measured on the real clock, which
-    async_fire_time_changed does not move: at its production three seconds the
-    result would depend on how long the test itself took to run, and the only
-    thing under test here is whether the power-off disarms the guard, not when
-    it would have expired on its own.
-    """
-    monkeypatch.setattr(fan_module, "_POWER_ON_GUARD_WINDOW", 3600.0)
-    # A unit with no mode to preserve is the only one whose power-on still goes
-    # through _async_power_on, and therefore the only one whose guard is read.
-    _, mock_client = await _setup(
-        hass, power=False, operation_mode="", set_fan_speed="Auto"
-    )
-
-    def _power_on_writes() -> int:
-        # The power-off goes through set_power on this path too, so count only
-        # the writes that turn the unit on.
-        return sum(
-            1 for c in mock_client.ata.set_power.call_args_list if c[0][1] is True
-        )
-
-    await _set_percentage(hass, 40)
-    await _let_the_speed_write_land(hass)
-    assert _power_on_writes() == 1
-
-    await power_off(hass)
-    await _set_percentage(hass, 60)
-    await _let_the_speed_write_land(hass)
-
-    assert _power_on_writes() == 2
+    assert mock_client.ata.set_power_and_mode.call_count == 2
 
 
 @pytest.mark.asyncio

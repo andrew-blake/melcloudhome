@@ -88,7 +88,9 @@ class CoordinatorProtocol(Protocol):
         ...
 
     # ATA (Air-to-Air) control methods
-    async def async_set_power(self, unit_id: str, power: bool) -> None:
+    async def async_set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
         """Set power state for ATA unit.
 
         Args:

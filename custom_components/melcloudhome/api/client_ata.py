@@ -76,19 +76,32 @@ class ATAControlClient:
                 f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
             )
 
-    async def set_power(self, unit_id: str, power: bool) -> None:
+    async def set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
         """
         Turn device on or off.
 
         Args:
             unit_id: Device ID (UUID)
             power: True to turn on, False to turn off
+            fan_speed: Optional fan speed to set in the same request
 
         Raises:
             AuthenticationError: If not authenticated
             ApiError: If API request fails
+            ValueError: If fan_speed is invalid
         """
-        payload = self._build_ata_control_payload(power=power)
+        if fan_speed is not None:
+            self._validate_fan_speed(fan_speed)
+
+        # A unit reporting no mode to preserve is powered on through here rather
+        # than set_power_and_mode, and it needs the speed folded in for the same
+        # reason: two requests to one unit are spaced by the pacer's minimum, and
+        # a command that close behind another can be accepted by the cloud and
+        # ignored by the device (ADR-026).
+        extra = {} if fan_speed is None else {"setFanSpeed": fan_speed}
+        payload = self._build_ata_control_payload(power=power, **extra)
 
         await self._client._api_request(
             "PUT",

@@ -283,7 +283,9 @@ async def test_wrapper_methods_call_client(coordinator):
     coordinator.client.ata.set_power = AsyncMock()
     await coordinator.async_set_power("unit123", True)
 
-    coordinator.client.ata.set_power.assert_called_once_with("unit123", True)
+    # The third argument is the optional fan speed a power-on can carry, so a
+    # power-on that also sets a speed is one request (ADR-026). None here.
+    coordinator.client.ata.set_power.assert_called_once_with("unit123", True, None)
 
 
 @pytest.mark.asyncio
