@@ -66,6 +66,15 @@ UNIT_AGNOSTIC = re.compile(
 # across each request, so two PUTs cannot leave less than this far apart however
 # close together the service calls are made.
 PACER_FLOOR = 0.5
+
+# A contradiction arriving this soon after our command is more likely the
+# device's own report of the *previous* state, generated before our command
+# reached it and delivered afterwards, than proof the command was lost. The
+# device reports on its own clock, tens of seconds to minutes, so a report that
+# still contradicts us well beyond this had time to know better. Recorded losses
+# have contradicted at 33s, 63s and beyond; the one case at 2.7s was ambiguous
+# and is why this exists.
+LAG_SUSPECT_SECONDS = 15.0
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # Prod's configuration.yaml pins child loggers individually, and a pinned child
 # ignores its parent's level, so naming only the parent leaves the coordinator
@@ -209,6 +218,16 @@ class Unit:
         """The fan entity's preset, "auto" when the unit picks its own speed."""
         value = self.ha.state(self.fan)["attributes"].get("preset_mode")
         return None if value is None else str(value)
+
+    def state_changed_at(self) -> datetime:
+        """When the fan entity's state last changed, in UTC.
+
+        After a settle in which the device contradicted us, this is when that
+        contradiction landed, and the distance from our command is what
+        separates a lost command from a late report.
+        """
+        stamp: str = self.ha.state(self.fan)["last_changed"]
+        return datetime.fromisoformat(stamp)
 
     def actual_stamp(self) -> str | None:
         """When the actual-fan-speed sensor last changed, the device's own signal.
@@ -386,7 +405,7 @@ def check_same_value(unit: Unit, log: Log, args: argparse.Namespace) -> None:
 
 def off_behind_on(
     unit: Unit, log: Log, gap: float, settle: float
-) -> tuple[bool, int, bool]:
+) -> tuple[bool, int, bool, float | None]:
     """From off: on, then off after `gap` seconds.
 
     `gap` is the pause between the two service calls. It is not the interval the
@@ -402,9 +421,11 @@ def off_behind_on(
     power-write count. A drag's real shape belongs to the Home app column.
 
     Returns whether the off held, the power-write count as it stood once the
-    unit was off, and whether the device itself reported anything during the
-    settle. Without that third value a caller cannot tell a held off from a
-    window in which nothing was observed at all.
+    unit was off, whether the device itself reported anything during the settle,
+    and how long after the off the contradiction arrived when there was one.
+    Without the third a caller cannot tell a held off from a window in which
+    nothing was observed; without the fourth it cannot tell a lost command from
+    a report that was merely late.
     """
     if unit.is_on():
         unit.turn_off()
@@ -413,14 +434,20 @@ def off_behind_on(
     before = unit.actual_stamp()
     unit.turn_on()
     time.sleep(gap)
+    off_at = datetime.now(UTC)
     unit.turn_off()
     wait(4, "both PUTs and the first poll")
     print(f"    after the pair: {unit.snapshot()}")
     wait(settle, "the device's own status report")
     held = not unit.is_on()
     reported = unit.actual_stamp() != before
+    contradicted_after = (
+        None if held else (unit.state_changed_at() - off_at).total_seconds()
+    )
     print(f"    after settle:   {unit.snapshot()}")
-    return held, base, reported
+    if contradicted_after is not None:
+        print(f"    contradicted {contradicted_after:.0f}s after the off was sent")
+    return held, base, reported, contradicted_after
 
 
 def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
@@ -429,7 +456,9 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
             f"!   --gap {args.gap:g} is below the pacer's {PACER_FLOOR:g}s floor and "
             "cannot be delivered; the two PUTs will be at least that far apart"
         )
-    held, base, reported = off_behind_on(unit, log, args.gap, args.settle)
+    held, base, reported, contradicted_after = off_behind_on(
+        unit, log, args.gap, args.settle
+    )
     log.dump()
     # A power-on sends power+mode when the unit reports a mode to preserve and a
     # plain power write when it does not (fan.py _async_power_on), so counting
@@ -440,7 +469,14 @@ def check_off_behind_on(unit: Unit, log: Log, args: argparse.Namespace) -> None:
         sent >= 2,
         f"{sent} power writes for the pair: power-on and power-off both left HA (the half that is ours)",
     )
-    if not reported:
+    if contradicted_after is not None and contradicted_after < LAG_SUSPECT_SECONDS:
+        print(
+            f"==> INCONCLUSIVE: the unit read on again only {contradicted_after:.0f}s "
+            "after the off. That is soon enough to be the device reporting the "
+            "state it was in before the off reached it, rather than the off being "
+            "lost. Re-run and look for a contradiction tens of seconds out."
+        )
+    elif not reported:
         print(
             "==> INCONCLUSIVE: the device reported nothing during the settle, so "
             "'off' here is only our own write-through read back. Re-run, or wait "
@@ -614,8 +650,14 @@ def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     results: list[tuple[float, bool | None]] = []
     for gap in [float(g) for g in args.gaps.split(",")]:
         print(f"--- gap {gap:g}s ---")
-        held, _, reported = off_behind_on(unit, log, gap, args.settle)
-        results.append((gap, held if reported else None))
+        held, _, reported, contradicted_after = off_behind_on(
+            unit, log, gap, args.settle
+        )
+        if contradicted_after is not None and contradicted_after < LAG_SUSPECT_SECONDS:
+            outcome = None  # too soon to tell a loss from a late report
+        else:
+            outcome = held if reported else None
+        results.append((gap, outcome))
         if unit.is_on():
             unit.turn_off()
             wait(5, "reset to off")
