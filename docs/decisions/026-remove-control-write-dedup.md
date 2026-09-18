@@ -134,9 +134,9 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### A close pair can be lost at the device
 
-Every fan speed change from HomeKit is two writes to one unit, a power and mode write and then
-the debounced speed, and `RequestPacer` spaces them at its 0.5 s minimum. A drag to the zero
-detent is a power-on and a power-off the same distance apart.
+A fan speed change from HomeKit sends the power, the mode and the speed in one request, so the
+pair that this section first described is gone from that path. A unit reporting no mode to
+preserve still sends a power-on and a speed separately, spaced by `RequestPacer`'s 0.5 s minimum.
 
 A command arriving that close behind another to the same unit can be accepted by the cloud, with
 a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the

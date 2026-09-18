@@ -176,10 +176,14 @@ wider than the gap between intermediate positions, which is around a quarter of
 a second, and short enough that deliberate steps a few seconds apart are each
 treated as their own settled position rather than swallowed.
 
-The power-on is not deferred, so the unit starts the moment a drag begins. It is
-suppressed for a few seconds after one succeeds instead, because the control
-client deduplicates nothing (see Consequences), so nothing else collapses the
-repeats. An explicit
+The power, the mode and the speed travel in one request when the debounce
+fires, so a drag is a single command rather than a power-on followed by a
+speed. ADR-026 records why: two requests to one unit are spaced by
+`RequestPacer`'s minimum, and a command arriving that close behind another can
+be accepted by the cloud and ignored by the device.
+
+A unit reporting no mode to preserve cannot have them folded and still sends the
+pair. `_POWER_ON_GUARD_WINDOW` collapses repeats across those, and an explicit
 `fan.turn_on` is never suppressed: the suppression exists to tame the drag
 burst, not to make the documented service unreliable.
 
@@ -331,12 +335,10 @@ users nothing.
 - The weakness is not created by this entity: the climate entity reaches it with
   an off-then-on inside the same window. The slider changes the probability,
   because it puts on and off at two ends of one gesture.
-- The cost accepted is a power-on write the unit does not need whenever the
-  slider is dragged on an already-running unit. `_POWER_ON_GUARD_WINDOW`
-  collapses repeats within a drag, so that is roughly one extra write per drag
-  rather than one per slider position, and `RequestPacer` still spaces it. The
-  rapid set-then-reverse that this record left swallowed on every other field is
-  what ADR-026 went on to fix.
+- A drag on an already-running unit still carries a power value the unit does
+  not need, but it rides in the request that sets the speed rather than costing
+  a second one. The rapid set-then-reverse that this record left swallowed on
+  every other field is what ADR-026 went on to fix.
 - Existing automations, templates and service calls keep working unchanged,
   because every advertised list and every reported value stays as it is.
 

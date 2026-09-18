@@ -43,11 +43,11 @@ _NUMBERED_SPEEDS = ATA_FAN_SPEEDS[1:]
 _VANE_SWING = "Swing"
 _VANE_AUTO = "Auto"
 
-# HomeKit streams several set_percentage calls per slider drag (one per
-# intermediate position), each preceded by a power-on write, and nothing below
-# this entity collapses them: the control client deduplicates nothing, because
-# comparing against coordinator data dropped real commands issued inside the
-# stale window (found on #318's fan entity; ADR-026).
+# A drag issues one write, when its debounce fires, and that write carries the
+# power, the mode and the speed together. This guard is what remains for the one
+# unit that cannot have them folded: one reporting no operation mode to preserve
+# still sends a power-on and a speed separately, and this collapses repeats
+# across those.
 #
 # No constant is safe here, and this one is not sized against the stale window:
 # the refresh is scheduled 2.0s after a write *returns* and then has its own API
@@ -170,7 +170,22 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if the unit is powered on."""
+        """Return true if the unit is powered on.
+
+        A speed still waiting on the debounce is reported as on, matching
+        `percentage`, because the two are published together and have to agree.
+        HA's HomeKit bridge writes the Active characteristic on every state
+        update and only writes a speed while the state is not off, so publishing
+        a drag with the device's own power would push the tile back to off and
+        send no speed at all, which is the opposite of what the drag asked for.
+
+        A pending zero reads off, which is the whole of the drag-to-zero case:
+        the bridge then suppresses the speed write, where a published zero would
+        otherwise be turned into one step up and remembered as the speed to
+        restore on the next power-on.
+        """
+        if self._pending_percentage is not None:
+            return self._pending_percentage > 0
         device = self.get_device()
         if device is None:
             return None
@@ -188,8 +203,8 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         numbered speed has ever been seen.
 
         A speed still waiting on the debounce is reported ahead of the device,
-        because the power-on that precedes it writes through and notifies
-        listeners while the coordinator's copy still holds the old speed. A
+        because nothing is written until the debounce fires and the entity would
+        otherwise publish the old speed for that half second. A
         HomeKit controller keeps the first value it is told for a
         characteristic and ignored the correction that followed 0.7 s later, so
         publishing the old speed left the tile and the home screen reading it
@@ -306,12 +321,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         The unit is powered on as well as sped up, because the HomeKit bridge
         sends Active=1 and RotationSpeed in one write when the slider is dragged
         up on an off tile, and then deliberately skips fan.turn_on on the
-        assumption that a SET_SPEED fan powers itself on. The control client
-        deduplicates nothing (ADR-026), so on an already-running unit
-        this costs one redundant power-on per drag, which the guard collapses to
-        one however many intermediate positions the drag passes through. guard
-        is forwarded to _async_power_on; see that method and
-        async_set_percentage.
+        assumption that a SET_SPEED fan powers itself on. Where the unit reports
+        a mode to preserve the two travel in one request; where it does not,
+        guard is forwarded to _async_power_on for the pair that remains.
         """
         if percentage == 0:
             # Dragging to the zero detent is an explicit power-off, which
@@ -381,6 +393,12 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         try:
             await self._async_apply_percentage(percentage, guard=True)
         finally:
+            # The pending value is gone either way, so publish again: on success
+            # the write-through has already updated the copy, and on failure this
+            # is what drops the entity back to what the device actually holds
+            # rather than leaving it showing a position that never reached the
+            # API until the refresh lands seconds later.
+            self.async_write_ha_state()
             await self.coordinator.async_request_refresh_debounced()
 
     async def async_set_percentage(self, percentage: int) -> None:
@@ -391,16 +409,18 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         without returning, so it would power the unit down and then also send a
         speed. Zero means unit power off here, and nothing else.
 
-        Only the speed write is debounced; the power-on stays immediate so the
-        unit starts the moment a drag begins rather than half a second later.
-        Deferring zero along with the rest is deliberate: dragging *through* the
-        zero detent on the way up no longer powers the unit off en route.
+        Nothing is written here. The whole command, power and mode and speed,
+        goes out once when the debounce fires, so a drag is one request rather
+        than a pair the device can drop half of (ADR-026). Deferring zero along
+        with the rest is deliberate: dragging *through* the zero detent on the
+        way up no longer powers the unit off en route.
 
-        guard=True here (and only here): a slider drag calls this repeatedly in
-        quick succession, each preceded by a power-on, and the control client
-        deduplicates nothing (ADR-026), so nothing below this entity collapses
-        them. fan.turn_on does not set guard, so it always
-        powers on regardless of a recent drag.
+        The state is published immediately even though nothing is sent, because
+        `percentage` and `is_on` both report the pending command and HomeKit has
+        to see it at once.
+
+        Each call replaces the pending position and restarts the timer, so a
+        drag writes only what the user released on.
 
         The pending value is claimed after the cancel, which now clears it,
         and both happen before the power-on is awaited. HomeKit's bridge dispatches each call as its own un-awaited
