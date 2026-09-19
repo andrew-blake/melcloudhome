@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Fan speed and vane swing now reach HomeKit, Alexa and Google. Each air conditioning unit gains a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging. Bridged to HomeKit a unit used to appear as a bare thermostat offering only temperature and mode, because those assistants recognise fan speed and swing controls by a fixed set of names that these units do not use. The climate entity is unchanged and keeps its own fan speed and vane dropdowns, including the individual vane positions that a swing switch cannot express. The speed slider has one step for each speed the unit has. A unit with no vane gets no swing control, and turning swing on sets the vane for the next time the unit runs without starting a stopped unit. (#318)
+
 ### Fixed
 
 - A command that matched what Home Assistant last saw now reaches the unit. Before sending anything, the integration checked whether the unit already appeared to be at that value and skipped the request if it was. It judged that against its own cached copy of the unit, which a command you had just sent could already have made out of date. Changing a setpoint, fan speed or vane and changing it straight back did nothing the second time; turning a unit off shortly after turning it on lost the off; and setting a value in the MELCloud app and then choosing that same value in Home Assistant sent nothing at all. Every command is now sent, whether it comes from the climate entity, the fan entity, a script, a scene, an automation or a voice assistant, and power can be reasserted on a unit whose cloud state disagrees with the hardware. (#310, #318)
