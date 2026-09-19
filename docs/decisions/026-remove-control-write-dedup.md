@@ -165,8 +165,9 @@ copy already read off. Mitigation 1 below removes the pair itself.
 - **1. Coalesce near-simultaneous writes to one unit into a single
   multi-field PUT. Done.** The API body already carries every field, so writes
   that arrive together share one request with no dependence on cached state.
-  Each caller waits on its own future, so one caller's cancellation leaves the
-  others alone, and the two vane axes are never merged because the server
+  Each caller awaits the dispatch task through a shield, so one caller's
+  cancellation leaves the others alone, and the two vane axes are never merged
+  because the server
   answers 200 and drops that combination on a unit without horizontal vanes
   (issue #100). The collection window is margin: both writes of a same-turn pair
   are queued before the dispatch task takes its first step, so a window of zero
