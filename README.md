@@ -12,7 +12,9 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.6.0
 
-**Fan speed and vane now work from HomeKit, Alexa and Google.** Bridged to any of them, an air conditioning unit used to appear as a bare thermostat offering temperature and mode, with no way to change the fan or the vane. Those assistants recognise a fan speed control and a swing control by a fixed set of names that these units do not use, so neither control was ever built. Each air conditioning unit now gets a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging, and all three come through. The speed slider has one step for each speed the unit actually has.
+**Fan speed and vane now work from HomeKit.** Bridged to HomeKit, an air conditioning unit used to appear as a bare thermostat offering temperature and mode, with no way to change the fan or the vane. The bridge recognises a fan speed control and a swing control by a fixed set of names that these units do not use, so neither control was ever built. Each air conditioning unit now gets a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging, and all three come through. The speed slider has one step for each speed the unit actually has.
+
+The same entity is picked up automatically by Alexa and Google Home once you expose it to them. Alexa should offer both the speed and the swing, and Google Home offers the speed, because its fan has no swing control. I have tested HomeKit only.
 
 This entity is there for those ecosystems and is additive. The climate entity is unchanged and keeps its own fan speed and vane dropdowns, including the individual vane positions that a swing switch cannot express, so if you drive the integration from the Home Assistant UI alone you can ignore the new entity entirely. A unit with no vane gets no swing control, and switching swing on sets the vane for the next time the unit runs without starting a stopped unit. Reported in [#318](https://github.com/andrew-blake/melcloudhome/issues/318).
 
