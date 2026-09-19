@@ -135,14 +135,15 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 ### A close pair can be lost at the device
 
 Writes to one unit that arrive in the same event-loop turn share a single request, so the pairs
-HomeKit produces are gone: a Home app action changing mode and setpoint, a power-on that also sets
-a speed, and a scene touching two entities of one unit. `WriteCoalescer` in `api/coalescing.py`
-merges them.
+HomeKit produces are gone: a Home app action changing mode and setpoint, and a power-on that also
+sets a speed. `WriteCoalescer` in `api/coalescing.py` merges them.
 
 Two writes separated by a sequential await still leave as two requests, floored 0.5 s apart by
-`RequestPacer`. One entity's own scene writes are the case: `climate/reproduce_state.py` awaits
-each service call in turn, so the second is not issued until the first has completed. A retry after
-an authentication failure is another, since `_reauth_lock` serialises the callers.
+`RequestPacer`. A scene is the case: `climate/reproduce_state.py` awaits one entity's service
+calls in turn, and although it gathers across entities, the fan entity holds a slider position for
+its debounce window. A scene setting a unit's temperature, vane and fan speed was measured on
+hardware sending four requests over 1.6 s, the fan's landing 220 ms behind the climate's. A retry
+after an authentication failure is another, since `_reauth_lock` serialises the callers.
 
 A command arriving that close behind another to the same unit can be accepted by the cloud, with
 a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the
