@@ -209,6 +209,13 @@ Content-Length: 0
 ```
 Empty response body indicates success.
 
+**Combining fields in one request.** Several fields sent together are applied together, and the
+integration relies on it: `set_hvac_mode` issues its power write and its zone-mode write in the
+same event-loop turn, so they leave as one PUT (ADR-026). No ATW combination has been probed on
+hardware, because the test account's heat pumps are shared devices. The ATA equivalent of issue
+#100, where the server answers 200 and drops a combination it cannot honour, has no recorded ATW
+counterpart.
+
 ---
 
 ## 2. Device Status & Discovery

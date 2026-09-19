@@ -13,10 +13,11 @@ ways the log misleads. Record a run's results in the PR that relies on them.
 | 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | none: the fan entity reports a pending speed *before* the API is asked, so an entity read cannot tell what the API accepted from what was queued locally. The suite tests are this row's only driver | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone. Those lines carry no unit id, so every accessory's pushes appear in a per-unit dump: match them to the unit by timestamp against its own `Setting` line, never by proximity | no |
 | 4. A value the unit already has is still sent | a `…matching_current_state_is_still_sent` case per ATA setter (temperature, both vanes, fan mode) plus `test_set_hvac_mode_writes_even_when_already_matching`, `test_power_off_is_sent_to_a_unit_already_off` and `test_atw_power_is_sent_even_when_the_cache_already_agrees`: the last three do not match that name, so grepping it alone reads as two setters untested | `same-value` (fan speed), `same-value-sweep` (temperature, both vanes, fan mode) | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
 | 5. A command matching an out-of-band change is still sent (discussion #135) | mechanism only: the mock is both the cloud and the copy | `out-of-band-match` | out of reach: nothing changes the mock out of band | vendor app first, then drag the slider to the value HA now holds | the source of the change |
-| 6. Writes arriving in one turn share a single request ([ADR-026](../decisions/026-remove-control-write-dedup.md) mitigation 1) | `test_same_turn_writes_share_one_request`, `test_two_ata_writes_in_one_turn_send_one_put`, `test_ten_concurrent_requests_succeeds` counts the PUTs | `combined-write`: the only driver that shows the *unit* acted on every field, which a request count cannot | the e2e suite runs against it | the tile's dial and its mode picker are separate controls, so each sends one characteristic and neither produces the pair. A two-characteristic write needs Siri ("set X to cool at 22"), a HomeKit scene, or the transition out of Off, where the app often restores a mode and a setpoint together. The fan tile cannot produce it at all: `homekit/type_fans.py:180` turns Active plus RotationSpeed into one `set_percentage` call | no |
+| 6. Writes arriving in one turn share a single request ([ADR-026](../decisions/026-remove-control-write-dedup.md) mitigation 1) | `test_two_ata_writes_in_one_turn_send_one_put`, `test_two_atw_writes_in_one_turn_send_one_put`, `test_ten_concurrent_requests_succeeds` counts the PUTs | `combined-write`: the only driver that shows the *unit* acted on every field, which a request count cannot | the e2e suite runs against it | the tile's dial and its mode picker are separate controls, so each sends one characteristic and neither produces the pair. A two-characteristic write needs Siri ("set X to cool at 22"), a HomeKit scene, or the transition out of Off, where the app often restores a mode and a setpoint together. The fan tile cannot produce it at all: `homekit/type_fans.py:180` turns Active plus RotationSpeed into one `set_percentage` call | no |
 
-**A row is a property. It is not a setter.** ADR-026 counts nine checks removed, five ATA and four ATW;
-this page counts six ATA setters because ATA power lost its own check earlier, in `786f5d8`.
+**A row is a property, never a setter.** ADR-026 describes the checks removed across both device
+types; this page counts the ATA setters, which is a smaller number because ATA power lost its own
+check earlier, in `786f5d8`, and one of the setters ADR-026 covers had no caller at all.
 Either way, and a driver that proves a property for one of them proves nothing about the rest: the
 script's first five checks exercise fan speed and power only, which is why `same-value-sweep`
 exists for temperature and the vanes. Before claiming a row, check which setters its driver
@@ -87,12 +88,11 @@ pair and widen the delivered interval further, differently on each run.
 
 ```bash
 ssh "$HA_SSH_HOST" "sudo docker logs --tail 400 $HA_CONTAINER 2>&1 | grep -a '<unit id>' \
-  | grep -aiE 'Setting|already|Poll'"
+  | grep -aiE 'Setting|Poll'"
 ```
 
-- **Set debug logging first.** `Setting` lines are INFO; `ATA Poll`, the WebSocket deltas and
-  `already … skipping API call` are DEBUG, and the absence of a skip line means something only if
-  one could have appeared. Set `custom_components.melcloudhome` to debug, and
+- **Set debug logging first.** `Setting` lines are INFO; `ATA Poll` and the WebSocket deltas are
+  DEBUG. Set `custom_components.melcloudhome` to debug, and
   `homeassistant.components.homekit` and `pyhap` when the Home app is the driver, through the
   `logger.set_level` service. It reverts on restart. The production `configuration.yaml` pins
   several child loggers and a pinned child ignores its parent, so setting the parent alone leaves

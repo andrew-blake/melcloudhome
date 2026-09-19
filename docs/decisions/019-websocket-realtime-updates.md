@@ -10,8 +10,9 @@ ADR-007 deferred WebSocket support because the protocol was not understood and
 message delivery looked unreliable — with multiple devices on one account, only
 one device appeared to receive updates. ADR-018 later documented the
 consequence as structural: out-of-band changes (MELCloud app, physical remote)
-take up to 60 seconds to reach HA, and the control-client dedup can silently
-drop commands issued inside that stale window. Both ADRs named WebSocket push
+take up to 60 seconds to reach HA, and the control-client dedup could silently
+drop commands issued inside that stale window (removed in
+[ADR-026](026-remove-control-write-dedup.md)). Both ADRs named WebSocket push
 as the correct long-term fix.
 
 The investigation in issue #174 re-derived the protocol from the MELCloud Home

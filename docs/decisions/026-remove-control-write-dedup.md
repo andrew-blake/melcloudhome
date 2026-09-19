@@ -14,10 +14,11 @@ reversal)
 
 ## Context
 
-Nine control writes, five ATA and four ATW, compared the requested value
-against the coordinator's copy of the unit and skipped the API call when the
-two matched. The rest never had the check, and ATA power lost its own first in
-`786f5d8`. That copy learned a written value only at the next completed
+Control writes on both device types compared the requested value against the
+coordinator's copy of the unit and skipped the API call when the two matched.
+Not every setter had the check, ATA power lost its own first in `786f5d8`, and
+one that had it, ATA `async_set_mode`, had no caller at all and is deleted
+here. That copy learned a written value only at the next completed
 refresh.
 
 ### Two causes, one symptom
@@ -34,8 +35,10 @@ Both end in a command that never reaches the hardware.
 
 ### Evidence
 
-Measured on prod on 2026-09-13, against a 2 s debounced refresh. Stepping an ATA
-fan speed 60 → 40 → 20 → 40 through the HomeKit slider:
+Measured on prod on 2026-09-13. A refresh lands 2 to 12 s after a write: the
+integration requests one 2 s after, and `DataUpdateCoordinator.async_request_refresh`
+adds a 10 s cooldown on top. Stepping an ATA fan speed 60 → 40 → 20 → 40 through
+the HomeKit slider:
 
 ```
 18:01:05.537  Setting fan speed for ff6a76db to One          (20%, landed)
@@ -46,7 +49,8 @@ fan speed 60 → 40 → 20 → 40 through the HomeKit slider:
 
 One gesture had its power half forwarded, because `786f5d8` had already removed
 dedup from ATA power for [issue #318](https://github.com/andrew-blake/melcloudhome/issues/318),
-and its speed half dropped. The cache was holding a value **6.58 seconds** old.
+and its speed half dropped. Our own write of **6.58 seconds** earlier had still not
+reached the copy the check consulted.
 
 Driving `climate.set_fan_mode` over REST, on an entity that predates the fan
 platform and never touches the HomeKit bridge, reproduced it with a refresh
@@ -54,9 +58,10 @@ platform and never touches the HomeKit bridge, reproduced it with a refresh
 reachable by the climate dropdown, scripts, scenes, automations and voice
 assistants alike.
 
-Those two measurements rule out any timer or freshness threshold: against a 2 s
-debounce, both windows exceed any constant that would still suppress a scene
-burst, so every constant is wrong in the direction that loses commands.
+Those two measurements rule out any timer or freshness threshold: both sit
+inside that 2 to 12 s band, and both exceed any constant that would still
+suppress a scene burst, so every constant is wrong in the direction that loses
+commands.
 
 [Issue #310](https://github.com/andrew-blake/melcloudhome/issues/310) is the
 third shape, a cache wrong because the cloud is wrong, where no amount of local
@@ -99,8 +104,8 @@ ones, so writing into the earlier object would update a copy no entity reads.
 
 A scene applied to units already at target now sends one PUT per attribute per
 unit at 0.5 s spacing. A typical scene touching one or two units with three or
-four attributes costs 1.5 to 4 s. The ceiling measured on this account, six
-units and every attribute, is about 18 s.
+four attributes projects to roughly 1.5 to 4 s. The ceiling, every ATA unit on
+this account and every attribute, was measured at about 18 s.
 
 `RequestPacer` is one lock per client and serialises every request, so during
 that time a manual command and the coordinator's `/context` poll both queue
@@ -125,7 +130,8 @@ then. One written field is read as a physical status rather than a setpoint:
 `forced_hot_water_mode` backs the `forced_dhw_active` binary sensor (device
 class running) and the water heater's operation mode, so an automation on that
 sensor fires when the PUT is accepted rather than when the valve moves, and a
-declined command shows as a brief on/off pair in the recorder. Accepted so the
+declined command shows as an on/off pair in the recorder, lasting until the
+unit's own report reaches the cloud. Accepted so the
 water heater's mode does not lag its own control. The one documented instance
 of a write not applying was
 [issue #100](https://github.com/andrew-blake/melcloudhome/issues/100), where our
@@ -134,32 +140,40 @@ the combination. A malformed payload is a bug to fix wherever the cache sits.
 
 ### A close pair can be lost at the device
 
-Writes to one unit that arrive in the same event-loop turn share a single request, so the pairs
-HomeKit produces are gone: a Home app action changing mode and setpoint, and a power-on that also
-sets a speed. `WriteCoalescer` in `api/coalescing.py` merges them.
+Writes to one unit that arrive in the same event-loop turn share a single request, so the pair a
+HomeKit thermostat produces is gone: `homekit/type_thermostats.py` fires `set_hvac_mode` and then
+`set_temperature` as un-awaited tasks. Siri, a HomeKit scene and the transition out of Off reach
+it; the fan tile cannot, since `homekit/type_fans.py` turns Active plus RotationSpeed into one
+`set_percentage`. `WriteCoalescer` in `api/coalescing.py` merges the pair. A power-on that also
+sets a speed was never a pair: the fan entity passes the speed into `set_power_and_mode`, which
+builds one payload.
 
 Two writes separated by a sequential await still leave as two requests, floored 0.5 s apart by
-`RequestPacer`. A scene is the case: `climate/reproduce_state.py` awaits one entity's service
-calls in turn, and although it gathers across entities, the fan entity holds a slider position for
-its debounce window. A scene setting a unit's temperature, vane and fan speed was measured on
-hardware sending four requests over 1.6 s, the fan's landing 220 ms behind the climate's. A retry
-after an authentication failure is another, since `_reauth_lock` serialises the callers.
+`RequestPacer`. A scene is the case: `climate/reproduce_state.py` and `fan/reproduce_state.py`
+each await one entity's service calls in turn, and although the scene helper gathers across
+entities, the fan entity holds a slider position for its debounce window. A scene setting a unit's
+temperature, vane and fan speed was measured on hardware sending four requests over 1.6 s in one
+run, the fan's landing 220 ms behind the climate's. Three attributes were asked for;
+`climate/reproduce_state.py` reasserts the HVAC mode as well. Both figures are that single run. A
+retry after an authentication failure is another such pair, since `_reauth_lock` serialises the
+callers.
 
 A command arriving that close behind another to the same unit can be accepted by the cloud, with
 a 200 and a websocket delta for each, and ignored by the device. The unit keeps running while the
 coordinator's copy, the cloud and the Home app all read off, until the unit's own status report
-corrects them 30 to 60 seconds later. Seen twice on hardware, both at the pacer's minimum, which
-is the closest two commands can be sent.
+corrects them 30 to 60 seconds later. Seen three times on hardware.
 
-No interval is claimed beyond that. The `Setting` log lines are written before the pacer is
-acquired, so they time intent rather than dispatch, and a poll inside a minute of a pair reports
-the cloud's optimistic copy. Only the unit's own report disagrees.
+No interval is claimed for those three. The `Setting` log lines are written before the pacer is
+acquired, so they time intent rather than dispatch, and the `API Response: PUT` lines that would
+time dispatch were not recorded for them. A poll inside a minute of a pair reports the cloud's
+optimistic copy, so only the unit's own report disagrees.
 
 Removing the comparison makes close pairs more common, since writes that would have been skipped
 now go out: a scene applied to units already at target sends a request per attribute where it sent
 none. A command re-sent on its own is applied, which is the manual recovery, and one this decision
 is what makes possible: the comparison removed here would have skipped an off sent to a unit whose
-copy already read off. Mitigation 1 below removes the pair itself.
+copy already read off. Mitigation 1 below does not reach this pair, because it merges only
+writes that arrive in the same turn.
 
 ### Mitigations
 
@@ -174,7 +188,7 @@ copy already read off. Mitigation 1 below removes the pair itself.
   are queued before the dispatch task takes its first step, so a window of zero
   already merges them.
 - **2. MELCloud's own cloud scenes**, applied server-side in one request,
-  exposed as HA entities. Issue #174 territory.
+  exposed as HA entities. Discussed in #201.
 - **3. The pacer's 0.5 s** is unjustified in either direction. The ceiling was
   deliberately not probed, since hammering an unofficial API on the maintainer's
   own account risks a soft ban that would also stall prod polling.

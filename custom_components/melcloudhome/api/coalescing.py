@@ -7,8 +7,10 @@ ignored by the device, leaving a unit running while every surface reads off
 a single multi-field request.
 
 The HomeKit bridge is what produces them: it dispatches each characteristic
-write as its own un-awaited task, so setting a mode and a temperature on one
-tile sends two service calls microseconds apart.
+write as its own un-awaited task, so a thermostat told a mode and a temperature
+together sends two service calls microseconds apart. Siri, a HomeKit scene and
+the transition out of Off reach that path; the fan tile does not, because the
+bridge turns Active plus RotationSpeed into one call.
 """
 
 import asyncio

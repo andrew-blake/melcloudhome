@@ -393,7 +393,7 @@ def check_reversal(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     log.dump()
     verdict(
         n >= 3,
-        f"{n} speed writes for 60/40/60; the return to 60 is the one deduplication dropped",
+        f"{n} speed writes for 60/40/60; the return to 60 is the one the old comparison dropped",
     )
 
 

@@ -96,6 +96,7 @@ class CoordinatorProtocol(Protocol):
         Args:
             unit_id: ATA unit ID
             power: True to turn on, False to turn off
+            fan_speed: Speed to send in the same request, or None
         """
         ...
 
@@ -108,6 +109,7 @@ class CoordinatorProtocol(Protocol):
             unit_id: ATA unit ID
             power: True to turn on, False to turn off
             mode: Operation mode (e.g., "Heat", "Cool", "Automatic", "Dry", "Fan")
+            fan_speed: Speed to send in the same request, or None
         """
         ...
 

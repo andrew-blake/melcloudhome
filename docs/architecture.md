@@ -90,8 +90,9 @@ graph LR
     Context --> ATWModel
 
     Client --> UserContextAPI
-    Client --> ATAAPI
-    Client --> ATWAPI
+    Client -->|control writes| Coalescer
+    Coalescer --> ATAAPI
+    Coalescer --> ATWAPI
     Client --> TelemetryAPI
 
     Coordinator -->|owns, entry-scoped task| WSListener
