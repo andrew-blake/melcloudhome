@@ -21,6 +21,8 @@ Checks:
                         seconds for the device report and say whether the off held
     restart-after-zero  zero, a one-second pause, then 40: expect off, on, speed
     reset               report the state, then put it where --to-* asks and power off
+    logging-on          raise every logger this tool reads and leave them raised
+    logging-off         put them back to the levels configuration.yaml pins
     out-of-band-match   set a speed through the MELCloud API outside HA, wait for HA to
                         show it, send the same speed through HA: expect the write (#135)
 
@@ -812,6 +814,8 @@ def main() -> None:
             "restart-after-zero",
             "out-of-band-match",
             "reset",
+            "logging-on",
+            "logging-off",
         ],
     )
     args = parser.parse_args()
@@ -821,6 +825,18 @@ def main() -> None:
         if not env.get(key):
             sys.exit(f"{key} missing from .env")
     ha = HomeAssistant(env["HA_URL"], env["HA_TOKEN"], args.insecure)
+
+    # Needs no entity and no log, so it runs before the entity listing below.
+    # Children pinned in prod's configuration.yaml ignore the parent's level, so
+    # DEBUG_LOGGERS names each one: missing a child leaves it at info, which
+    # looks exactly like code that never ran.
+    if args.check in ("logging-on", "logging-off"):
+        on = args.check == "logging-on"
+        ha.set_levels(0 if on else 1)
+        for name in DEBUG_LOGGERS:
+            print(f"    {name} -> {'debug' if on else 'restored'}")
+        print("    not persistent: a restart reverts it")
+        return
 
     if not args.entity or not args.check:
         for s in ha.call("/api/states"):
