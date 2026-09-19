@@ -716,6 +716,7 @@ def check_reset(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     climate: str = unit.climate
 
     def show(label: str) -> None:
+        """Read the entity. Only trustworthy before a write; see requested()."""
         state = unit.ha.state(climate)
         attributes = state["attributes"]
         print(
@@ -749,12 +750,31 @@ def check_reset(unit: Unit, log: Log, args: argparse.Namespace) -> None:
         )
         wait(4, f"temperature={args.to_temperature}")
 
+    def requested() -> None:
+        """Say what was asked for.
+
+        A read here would come from /context, which can still hold the
+        pre-write state a minute after a PUT it answered 200 to, so it can
+        contradict writes that all succeeded. Confirm against the unit's own
+        report when that matters, as combined-write does.
+        """
+        asked = [
+            f"{name}={value}"
+            for name, value in (
+                ("mode", args.to_mode),
+                ("fan", args.to_fan),
+                ("temperature", args.to_temperature),
+            )
+            if value is not None
+        ]
+        tail = ", ".join(asked) if asked else "no changes"
+        print(f"    requested: {tail}{'' if args.leave_on else ', then off'}")
+
     if args.leave_on:
-        show("set")
+        requested()
         return
     unit.ha.service("climate", "set_hvac_mode", entity_id=climate, hvac_mode="off")
-    wait(8, "the unit to report off")
-    show("final")
+    requested()
 
 
 # Each check, by the name the CLI takes. One table drives both the argument's
@@ -807,7 +827,11 @@ def main() -> None:
     parser.add_argument(
         "--settle", type=float, default=90, help="seconds to wait for the device report"
     )
-    parser.add_argument("--to-mode", help="reset: operation mode to leave set")
+    parser.add_argument(
+        "--to-mode",
+        help="reset: operation mode to leave set. Powers the unit on: Home "
+        "Assistant has no service that sets a mode without power",
+    )
     parser.add_argument(
         "--to-temperature", type=float, help="reset: target to leave set"
     )
