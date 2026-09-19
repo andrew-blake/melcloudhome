@@ -69,6 +69,13 @@ UNIT_AGNOSTIC = re.compile(
 # close together the service calls are made.
 PACER_FLOOR = 0.5
 
+# A speed reaches the API two ways. The climate entity's fan mode writes it on
+# its own, logged as "Setting fan speed". The fan entity's percentage folds it
+# into the power write (ADR-026), logged as "Setting power+mode+speed" or
+# "Setting power+speed". Counting one shape alone reads a real write as none,
+# which is what made every fan-entity check report zero after the fold.
+SPEED_LINES = ("Setting fan speed", "+speed for")
+
 # A contradiction arriving this soon after our command is more likely the
 # device's own report of the *previous* state, generated before our command
 # reached it and delivered afterwards, than proof the command was lost. The
@@ -320,6 +327,10 @@ class Log:
     def count(self, needle: str) -> int:
         return sum(1 for line in self.lines() if needle in line)
 
+    def count_speed(self) -> int:
+        """Count speed writes however the caller's path logged them."""
+        return sum(1 for line in self.lines() if any(n in line for n in SPEED_LINES))
+
     def dump(self) -> None:
         for line in self.lines():
             print("   ", line)
@@ -371,12 +382,12 @@ def ensure_on(unit: Unit, log: Log) -> None:
 
 def check_reversal(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     ensure_on(unit, log)
-    base = log.count("Setting fan speed")
+    base = log.count_speed()
     for pct in (60, 40, 60):
         unit.set_percentage(pct)
         wait(3, f"after {pct}%")
         print(f"    {pct}% -> {unit.snapshot()}")
-    n = log.count("Setting fan speed") - base
+    n = log.count_speed() - base
     log.dump()
     verdict(
         n >= 3,
@@ -396,11 +407,11 @@ def check_same_value(unit: Unit, log: Log, args: argparse.Namespace) -> None:
             "send a value it does not have. Set a numbered speed first."
         )
     pct = unit.percentage() or 40
-    base = log.count("Setting fan speed")
+    base = log.count_speed()
     for _ in range(2):
         unit.set_percentage(pct)
         wait(3, f"after {pct}% again")
-    n = log.count("Setting fan speed") - base
+    n = log.count_speed() - base
     log.dump()
     verdict(n >= 2, f"{n} speed writes for the value the unit already had")
 
@@ -503,7 +514,7 @@ def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> 
     """
     ensure_on(unit, log)
     base_power = log.count("Setting power")
-    base_speed = log.count("Setting fan speed")
+    base_speed = log.count_speed()
     before = unit.actual_stamp()
     unit.set_percentage(0)
     wait(1, "the zero")
@@ -514,7 +525,7 @@ def check_restart_after_zero(unit: Unit, log: Log, args: argparse.Namespace) -> 
     print(f"    after settle:      {unit.snapshot()}")
     log.dump()
     powers = log.count("Setting power") - base_power
-    speeds = log.count("Setting fan speed") - base_speed
+    speeds = log.count_speed() - base_speed
     report_delivery(log, powers + speeds)
     verdict(
         powers >= 2 and speeds >= 1,
@@ -589,11 +600,11 @@ def check_out_of_band_match(
             f"({target_pct}%) within 80s, so there is no matching value to send. "
             "Nothing was written through HA."
         )
-    before = log.count("Setting fan speed")
+    before = log.count_speed()
     unit.set_percentage(target_pct)
     wait(3, "the matching command")
     log.dump()
-    issued = log.count("Setting fan speed") - before
+    issued = log.count_speed() - before
     report_delivery(log, issued)
     verdict(
         issued >= 1,
