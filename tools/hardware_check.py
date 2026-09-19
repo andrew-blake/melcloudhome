@@ -50,6 +50,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -74,8 +75,7 @@ PACER_FLOOR = 0.5
 # A speed reaches the API two ways. The climate entity's fan mode writes it on
 # its own, logged as "Setting fan speed". The fan entity's percentage folds it
 # into the power write (ADR-026), logged as "Setting power+mode+speed" or
-# "Setting power+speed". Counting one shape alone reads a real write as none,
-# which is what made every fan-entity check report zero after the fold.
+# "Setting power+speed". Counting one shape alone reads a real write as none.
 SPEED_LINES = ("Setting fan speed", "+speed for")
 
 # A contradiction arriving this soon after our command is more likely the
@@ -703,11 +703,10 @@ def check_combined_write(unit: Unit, log: Log, args: argparse.Namespace) -> None
 def check_reset(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     """Print the unit's state, then put it where the arguments ask.
 
-    Every other check restores the power state it found and its own writes, and
-    only when it completes. A run killed part way leaves its writes in place:
-    three interrupted runs on 2026-09-18 left a setpoint two degrees above where
-    it started with nothing to notice. This is that cleanup, and the way to
-    establish a baseline before a run whose precondition is a known state.
+    Every other check restores the power state it found, and only when it
+    completes, so a run killed part way leaves its writes in place. This is
+    that cleanup, and the way to set a baseline before a run whose precondition
+    is a known state.
 
     With no --to- arguments it reports and powers the unit off. Each command is
     sent on its own so nothing merges and each takes the single-write path.
@@ -758,6 +757,24 @@ def check_reset(unit: Unit, log: Log, args: argparse.Namespace) -> None:
     show("final")
 
 
+# Each check, by the name the CLI takes. One table drives both the argument's
+# choices and the dispatch, so adding a check cannot leave one of them behind.
+CHECKS: dict[str, Callable[..., None]] = {
+    "state": check_state,
+    "reversal": check_reversal,
+    "same-value": check_same_value,
+    "same-value-sweep": check_same_value_sweep,
+    "combined-write": check_combined_write,
+    "off-behind-on": check_off_behind_on,
+    "restart-after-zero": check_restart_after_zero,
+    "out-of-band-match": check_out_of_band_match,
+    "reset": check_reset,
+}
+
+# Neither writes to a unit, so both skip the teardown that restores the power
+# state a run started with. reset would otherwise undo its own work.
+NO_TEARDOWN = ("state", "reset")
+
 # --- main -------------------------------------------------------------------------------
 
 
@@ -804,19 +821,7 @@ def main() -> None:
     parser.add_argument(
         "check",
         nargs="?",
-        choices=[
-            "state",
-            "reversal",
-            "same-value",
-            "same-value-sweep",
-            "combined-write",
-            "off-behind-on",
-            "restart-after-zero",
-            "out-of-band-match",
-            "reset",
-            "logging-on",
-            "logging-off",
-        ],
+        choices=[*CHECKS, "logging-on", "logging-off"],
     )
     args = parser.parse_args()
 
@@ -854,28 +859,12 @@ def main() -> None:
     if not args.no_debug:
         ha.set_levels(0)
     try:
-        if args.check == "state":
-            check_state(unit, log, args)
-        elif args.check == "reversal":
-            check_reversal(unit, log, args)
-        elif args.check == "same-value":
-            check_same_value(unit, log, args)
-        elif args.check == "same-value-sweep":
-            check_same_value_sweep(unit, log, args)
-        elif args.check == "combined-write":
-            check_combined_write(unit, log, args)
-        elif args.check == "off-behind-on":
-            check_off_behind_on(unit, log, args)
-        elif args.check == "restart-after-zero":
-            check_restart_after_zero(unit, log, args)
-        elif args.check == "reset":
-            check_reset(unit, log, args)
-        elif args.check == "out-of-band-match":
+        if args.check == "out-of-band-match":
             check_out_of_band_match(unit, log, args, env)
+        else:
+            CHECKS[args.check](unit, log, args)
     finally:
-        # reset is excluded for the same reason as state: its job is to set the
-        # power state, and restoring the one the run started with would undo it.
-        if args.check not in ("state", "reset"):
+        if args.check not in NO_TEARDOWN:
             if was_on and not unit.is_on():
                 unit.turn_on()
                 if was_pct:

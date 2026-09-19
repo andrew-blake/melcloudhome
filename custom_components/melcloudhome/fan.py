@@ -250,23 +250,26 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             self._unit_id, _VANE_SWING if oscillating else _VANE_AUTO
         )
 
-    async def _async_power_on(self) -> None:
-        """Power the unit on without disturbing its operation mode.
+    async def _async_power_on(self, speed: str | None = None) -> None:
+        """Power the unit on, carrying a speed when one was asked for.
 
         A bare power write sends operationMode=null, which can trigger a
-        mode-conflict fault on multi-zone outdoor units. The mode is only
-        omitted when the device reports none to preserve.
+        mode-conflict fault on multi-zone outdoor units, so the mode goes with
+        the power and is omitted only when the device reports none to preserve.
 
-        Reached only from `fan.turn_on` with no speed to set. Every other
-        power-on carries a speed and goes out as one request instead.
+        The speed rides along for the same reason. Sent as its own request it
+        would be spaced from the power by the pacer's minimum, and a command
+        arriving that close behind another to the same unit can be accepted by
+        the cloud and ignored by the device, which is how a drag left a unit
+        running while every surface read off (ADR-026).
         """
         device = self.get_device()
         if device and device.operation_mode:
             await self.coordinator.async_set_power_and_mode(
-                self._unit_id, True, device.operation_mode
+                self._unit_id, True, device.operation_mode, speed
             )
         else:
-            await self.coordinator.async_set_power(self._unit_id, True)
+            await self.coordinator.async_set_power(self._unit_id, True, speed)
 
     async def _async_apply_percentage(self, percentage: int) -> None:
         """Apply a slider position: zero powers off, anything else sets a speed.
@@ -282,24 +285,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
             await self.coordinator.async_set_power(self._unit_id, False)
             return
         speed = percentage_to_ordered_list_item(self._ordered_speeds, percentage)
-        device = self.get_device()
-        if device and device.operation_mode:
-            # Power and speed in one request. Sent separately they are spaced by
-            # the pacer's minimum, and a command arriving that close behind
-            # another to the same unit can be accepted by the cloud and ignored
-            # by the device, which is how a drag left a unit running while every
-            # surface read off (ADR-026). The mode goes too, for the same reason
-            # _async_power_on sends it: a power-on with operationMode=null can
-            # fault a multi-zone outdoor unit.
-            await self.coordinator.async_set_power_and_mode(
-                self._unit_id, True, device.operation_mode, normalize_to_api(speed)
-            )
-            return
-        # A unit reporting no mode to preserve sends no mode, and the speed
-        # rides with the power instead.
-        await self.coordinator.async_set_power(
-            self._unit_id, True, normalize_to_api(speed)
-        )
+        await self._async_power_on(normalize_to_api(speed))
 
     def _cancel_pending_speed_write(self) -> None:
         """Drop any speed write still waiting on the debounce timer.
@@ -417,18 +403,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         """
         self._cancel_pending_speed_write()
         if preset_mode is not None:
-            device = self.get_device()
-            if device and device.operation_mode:
-                await self.coordinator.async_set_power_and_mode(
-                    self._unit_id,
-                    True,
-                    device.operation_mode,
-                    normalize_to_api(preset_mode),
-                )
-            else:
-                await self.coordinator.async_set_power(
-                    self._unit_id, True, normalize_to_api(preset_mode)
-                )
+            await self._async_power_on(normalize_to_api(preset_mode))
         elif percentage is not None:
             await self._async_apply_percentage(percentage)
         else:

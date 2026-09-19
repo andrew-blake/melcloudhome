@@ -37,12 +37,10 @@ class ControlClientBase:
     def _notify_listeners(self) -> None:
         """Push the coordinator's copy of a unit to entities after a write.
 
-        A raising listener must not fail the service call or lose the 2 s
-        follow-up refresh; the write already succeeded. HA's own poll path
-        schedules its next refresh before it notifies, so a raising listener
-        there costs one update. This path has no such ordering, and the
-        2025.8.0 floor in hacs.json calls listeners unguarded (HA guards them
-        from 2026.5.0).
+        The write already succeeded, so a raising listener must not fail the
+        service call or lose the 2 s follow-up refresh. The guard goes when the
+        floor in hacs.json reaches 2026.5.0, which is where HA started guarding
+        its own listener calls.
         """
         try:
             self._async_update_listeners()

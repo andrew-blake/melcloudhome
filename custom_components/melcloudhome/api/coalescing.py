@@ -18,14 +18,11 @@ from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
-# Margin. Submitted directly, two writes in one turn are queued before the
-# dispatch task's first step, so a window of zero merges them, which
-# test_a_zero_window_still_merges holds. The production path reaches the same
-# place for a narrower reason: the HomeKit bridge and Home Assistant's service
-# registry both start their tasks eagerly, so the chain from a tile gesture into
-# submit runs with no suspension. One added await anywhere in that chain would
-# break the zero-window case silently, and nothing would fail. Ten milliseconds
-# covers that, and is short enough to be imperceptible on a lone command.
+# Margin, not the mechanism: a window of zero already merges two writes made in
+# one turn, which test_a_zero_window_still_merges holds. The production path
+# relies on the HomeKit bridge and the service registry starting tasks eagerly,
+# so one added await anywhere in that chain would break it silently. Ten
+# milliseconds covers that and is imperceptible on a lone command.
 DEFAULT_COALESCE_WINDOW = 0.01
 
 # The server answers 200 and silently drops a cross-axis vane combination on a
@@ -41,7 +38,6 @@ class _Pending:
         """Start empty; fields and waiters are added as writes arrive."""
         self.fields: dict[str, Any] = {}
         self.waiters: list[asyncio.Future[None]] = []
-        self.dispatched = False
 
 
 def _may_merge(pending: dict[str, Any], incoming: dict[str, Any]) -> bool:
@@ -76,7 +72,7 @@ class WriteCoalescer:
         whatever that request raised.
         """
         entry = self._pending.get(unit_id)
-        if entry is None or entry.dispatched or not _may_merge(entry.fields, fields):
+        if entry is None or not _may_merge(entry.fields, fields):
             entry = _Pending()
             # The dispatch runs in its own task, so a caller being cancelled
             # never cancels the request other callers are waiting on. The entry
@@ -99,14 +95,9 @@ class WriteCoalescer:
         """Wait out the window, then send everything collected as one request."""
         try:
             await asyncio.sleep(self._window)
-            # Both of these happen before the request is awaited: a write
-            # arriving during the round trip has to start its own request, and
-            # merging into a payload that has already gone would lose it.
-            #
-            # Either line alone is enough to prevent that, so no test fails if
-            # one is removed. Keep both: the flag is the guard, and the removal
-            # is what stops _pending growing without bound.
-            entry.dispatched = True
+            # Before the request is awaited, so a write arriving during the
+            # round trip starts its own request rather than joining a payload
+            # that has already gone.
             if self._pending.get(unit_id) is entry:
                 del self._pending[unit_id]
             if len(entry.waiters) > 1:
@@ -116,6 +107,10 @@ class WriteCoalescer:
                     unit_id[-8:],
                     ", ".join(sorted(entry.fields)),
                 )
+            # The send waits on the pacer too, so under contention a write
+            # arriving during that wait starts its own request. Merging helps
+            # least when the pacer is busiest. Untested: pacing is off under
+            # pytest.
             await self._send(unit_id, dict(entry.fields))
         except BaseException as err:
             # Delivered to every waiter instead of being re-raised here: this
@@ -126,7 +121,6 @@ class WriteCoalescer:
             # throw happens at the coroutine's entry point, this block never
             # runs, and the waiters are left unresolved. Only a loop-wide
             # teardown does that, and it is cancelling those callers anyway.
-            entry.dispatched = True
             if self._pending.get(unit_id) is entry:
                 del self._pending[unit_id]
             for waiter in entry.waiters:

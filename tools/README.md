@@ -6,26 +6,16 @@
 
 Drives control-write checks against the production Home Assistant over REST and reads the
 integration's log back over SSH, so that what the cloud and the unit do with a command can be
-seen, which no mock reproduces. Reads `HA_URL`, `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER`
-from `.env`; the `out-of-band-match` check also needs `MELCLOUD_USER_OWNER` and
-`MELCLOUD_PASSWORD_OWNER`.
+seen, which no mock reproduces. It moves real hardware: point it only at units that are yours.
 
 ```bash
-uv run python tools/hardware_check.py -k                                   # list fan entities
-uv run python tools/hardware_check.py -k --entity fan.<unit>_a_c_fan state
-uv run python tools/hardware_check.py -k --entity fan.<unit>_a_c_fan reversal
-uv run python tools/hardware_check.py -k --entity fan.<unit>_a_c_fan off-behind-on --gap 0.3
-uv run python tools/hardware_check.py -k --entity fan.<unit>_a_c_fan out-of-band-match
-uv run python tools/hardware_check.py -k --entity fan.<unit>_a_c_fan drop-boundary
+uv run python tools/hardware_check.py -k                      # list the fan entities
+uv run python tools/hardware_check.py -k --help               # the checks and what each does
 ```
 
-`-k` disables TLS verification: the LAN hostname in `HA_URL` serves a certificate for another
-name, and the public hostname sits behind Cloudflare Access and refuses API tokens. By default
-the `melcloudhome`, `homekit` and `pyhap` loggers run at debug for the check and are restored
-after, because the polls, deltas and PUT statuses that make the `Setting` lines readable are
-DEBUG; `--no-debug` leaves them alone. Every check leaves the unit in the power state it found.
-It moves real hardware: point it only at units that are yours. The matrix these checks fill,
-and how to read the output, is `docs/testing/manual-hardware-checks.md`.
+Which check proves which property, what each run must start from, and the ways the log misleads
+are in `docs/testing/manual-hardware-checks.md`. The environment it needs and the flags it takes
+are in its own `--help`.
 
 ## Dev Dashboard Generator
 
