@@ -20,6 +20,7 @@ Checks:
     off-behind-on       from off, power on then off --gap seconds later, then wait --settle
                         seconds for the device report and say whether the off held
     restart-after-zero  zero, a one-second pause, then 40: expect off, on, speed
+    reset               report the state, then put it where --to-* asks and power off
     out-of-band-match   set a speed through the MELCloud API outside HA, wait for HA to
                         show it, send the same speed through HA: expect the write (#135)
 
@@ -686,6 +687,64 @@ def check_combined_write(unit: Unit, log: Log, args: argparse.Namespace) -> None
     log.dump()
 
 
+def check_reset(unit: Unit, log: Log, args: argparse.Namespace) -> None:
+    """Print the unit's state, then put it where the arguments ask.
+
+    Every other check restores the power state it found and its own writes, and
+    only when it completes. A run killed part way leaves its writes in place:
+    three interrupted runs on 2026-09-18 left a setpoint two degrees above where
+    it started with nothing to notice. This is that cleanup, and the way to
+    establish a baseline before a run whose precondition is a known state.
+
+    With no --to- arguments it reports and powers the unit off. Each command is
+    sent on its own so nothing merges and each takes the single-write path.
+    """
+    if not unit.climate:
+        sys.exit("no climate entity found for this unit")
+    climate: str = unit.climate
+
+    def show(label: str) -> None:
+        state = unit.ha.state(climate)
+        attributes = state["attributes"]
+        print(
+            f"    {label}: state={state['state']} "
+            f"target={attributes.get('temperature')} "
+            f"fan={attributes.get('fan_mode')}"
+        )
+
+    show("before")
+    if args.show_only:
+        return
+
+    # Mode first: it powers the unit on, which is what makes the fan and
+    # temperature writes land on a unit found off.
+    if args.to_mode:
+        unit.ha.service(
+            "climate", "set_hvac_mode", entity_id=climate, hvac_mode=args.to_mode
+        )
+        wait(4, f"mode={args.to_mode}")
+    if args.to_fan:
+        unit.ha.service(
+            "climate", "set_fan_mode", entity_id=climate, fan_mode=args.to_fan
+        )
+        wait(4, f"fan={args.to_fan}")
+    if args.to_temperature is not None:
+        unit.ha.service(
+            "climate",
+            "set_temperature",
+            entity_id=climate,
+            temperature=args.to_temperature,
+        )
+        wait(4, f"temperature={args.to_temperature}")
+
+    if args.leave_on:
+        show("set")
+        return
+    unit.ha.service("climate", "set_hvac_mode", entity_id=climate, hvac_mode="off")
+    wait(8, "the unit to report off")
+    show("final")
+
+
 # --- main -------------------------------------------------------------------------------
 
 
@@ -718,6 +777,17 @@ def main() -> None:
     parser.add_argument(
         "--settle", type=float, default=90, help="seconds to wait for the device report"
     )
+    parser.add_argument("--to-mode", help="reset: operation mode to leave set")
+    parser.add_argument(
+        "--to-temperature", type=float, help="reset: target to leave set"
+    )
+    parser.add_argument("--to-fan", help="reset: fan mode to leave set")
+    parser.add_argument(
+        "--leave-on", action="store_true", help="reset: stop before powering off"
+    )
+    parser.add_argument(
+        "--show-only", action="store_true", help="reset: report and write nothing"
+    )
     parser.add_argument(
         "check",
         nargs="?",
@@ -730,6 +800,7 @@ def main() -> None:
             "off-behind-on",
             "restart-after-zero",
             "out-of-band-match",
+            "reset",
         ],
     )
     args = parser.parse_args()
@@ -770,10 +841,14 @@ def main() -> None:
             check_off_behind_on(unit, log, args)
         elif args.check == "restart-after-zero":
             check_restart_after_zero(unit, log, args)
+        elif args.check == "reset":
+            check_reset(unit, log, args)
         elif args.check == "out-of-band-match":
             check_out_of_band_match(unit, log, args, env)
     finally:
-        if args.check != "state":
+        # reset is excluded for the same reason as state: its job is to set the
+        # power state, and restoring the one the run started with would undo it.
+        if args.check not in ("state", "reset"):
             if was_on and not unit.is_on():
                 unit.turn_on()
                 if was_pct:
