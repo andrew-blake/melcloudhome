@@ -103,7 +103,11 @@ ones, so writing into the earlier object would update a copy no entity reads.
 ### The trade
 
 A scene applied to units already at target now sends one PUT per attribute per
-unit at 0.5 s spacing. A typical scene touching one or two units with three or
+unit. `RequestPacer` has spaced every request 0.5 s apart since `27e3600`, so a
+scene that changed values always cost that and is unaffected here. What changes
+is the number of requests a redundant scene makes: one unit at target goes from
+one request to one per attribute, and the whole-account ceiling from six to
+thirty-six. A typical scene touching one or two units with three or
 four attributes projects to roughly 1.5 to 4 s. The ceiling, every ATA unit on
 this account and every attribute, was measured at about 18 s.
 
@@ -170,7 +174,7 @@ optimistic copy, so only the unit's own report disagrees.
 
 Removing the comparison makes close pairs more common, since writes that would have been skipped
 now go out: a scene applied to units already at target sends a request per attribute where it sent
-none. A command re-sent on its own is applied, which is the manual recovery, and one this decision
+only the one for `hvac_mode`, which reached `async_set_power_and_mode` and had never had the check. A command re-sent on its own is applied, which is the manual recovery, and one this decision
 is what makes possible: the comparison removed here would have skipped an off sent to a unit whose
 copy already read off. Mitigation 1 below does not reach this pair, because it merges only
 writes that arrive in the same turn.
