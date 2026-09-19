@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 from homeassistant.components.water_heater import (
+    DOMAIN as WATER_HEATER_DOMAIN,
     STATE_ECO,
     STATE_HIGH_DEMAND,
     WaterHeaterEntity,
@@ -14,6 +16,7 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.models import AirToWaterUnit, Building
@@ -157,13 +160,46 @@ class ATWWaterHeater(
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target DHW tank temperature."""
+        """Set the target temperature, and the mode if one was given.
+
+        The service schema accepts an optional mode and Home Assistant forwards
+        it without acting on it, so discarding it here carries out half of what
+        was asked for, silently.
+
+        The two writes are issued together: awaiting the first would let it
+        finish before the second began, and they would go out as a pair the
+        device can drop half of (ADR-026). Arriving in one turn, they share a
+        single request.
+        """
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
 
-        # Set DHW temperature
-        await self.coordinator.async_set_dhw_temperature(self._unit_id, temperature)
+        operation_mode = kwargs.get("operation_mode")
+        if operation_mode is None:
+            await self.coordinator.async_set_dhw_temperature(self._unit_id, temperature)
+            return
+
+        # The guard sits ahead of the gather. asyncio.gather propagates the first
+        # exception without cancelling its siblings, so a raise from inside would
+        # still let the temperature write go out. Home Assistant validates the
+        # mode for set_operation_mode and not for this service, so an unsupported
+        # one arrives here intact.
+        if operation_mode not in self.operation_list:
+            raise ServiceValidationError(
+                translation_domain=WATER_HEATER_DOMAIN,
+                translation_key="not_valid_operation_mode",
+                translation_placeholders={
+                    "entity_id": self.entity_id,
+                    "operation_mode": operation_mode,
+                    "operation_list": ", ".join(self.operation_list),
+                },
+            )
+
+        await asyncio.gather(
+            self.async_set_operation_mode(operation_mode),
+            self.coordinator.async_set_dhw_temperature(self._unit_id, temperature),
+        )
 
     @with_debounced_refresh()
     async def async_set_operation_mode(self, operation_mode: str) -> None:

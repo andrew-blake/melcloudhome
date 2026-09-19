@@ -47,3 +47,57 @@ async def test_set_vane_horizontal_sends_null_for_vertical(mocker):
     payload = kwargs["json"]
     assert payload["vaneHorizontalDirection"] == "Centre"
     assert payload["vaneVerticalDirection"] is None
+
+
+@pytest.mark.asyncio
+async def test_set_power_and_mode_carries_the_speed_and_nulls_the_rest(mocker):
+    """Power, mode and speed in one request; every other field still null.
+
+    Two requests to one unit are spaced by the pacer's minimum, and a command
+    arriving that close behind another can be accepted by the cloud and ignored
+    by the device (ADR-026), so a power-on that also sets a speed is one PUT.
+    The untouched fields stay null for the same reason the vane axes do above.
+    """
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    await client.ata.set_power_and_mode("unit-xyz", True, "Cool", "Five")
+
+    _, kwargs = mock_request.call_args
+    payload = kwargs["json"]
+    assert payload["power"] is True
+    assert payload["operationMode"] == "Cool"
+    assert payload["setFanSpeed"] == "Five"
+    assert payload["vaneVerticalDirection"] is None
+    assert payload["vaneHorizontalDirection"] is None
+    assert payload["setTemperature"] is None
+
+
+@pytest.mark.asyncio
+async def test_set_power_and_mode_omits_the_speed_when_none_is_given(mocker):
+    """The climate entity's power-on carries no speed, and must not invent one."""
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    await client.ata.set_power_and_mode("unit-xyz", True, "Cool")
+
+    _, kwargs = mock_request.call_args
+    assert kwargs["json"]["setFanSpeed"] is None
+
+
+@pytest.mark.asyncio
+async def test_set_power_and_mode_rejects_an_invalid_speed(mocker):
+    """A bad speed must be refused here rather than sent.
+
+    The server has been seen to accept a field combination it cannot honour,
+    answering 200 and silently dropping the part it did not like (issue #100).
+    A speed riding along with a power-on would fail that way rather than being
+    refused, so it is validated before the request is built.
+    """
+    client = MELCloudHomeClient()
+    mock_request = mocker.patch.object(client, "_api_request", new=AsyncMock())
+
+    with pytest.raises(ValueError, match="Invalid fan speed"):
+        await client.ata.set_power_and_mode("unit-xyz", True, "Cool", "Eleven")
+
+    mock_request.assert_not_awaited()

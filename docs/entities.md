@@ -43,8 +43,7 @@ power. It exists because Home Assistant's HomeKit bridge cannot expose either
 control from the climate entity; see ADR-025.
 
 Fan speed is settable from both this entity and the climate entity's fan mode
-dropdown. Both control the same unit and cannot disagree, since both read one
-coordinator field.
+dropdown. Both control the same unit and read one coordinator field.
 
 Turning this entity off powers the air conditioner down, because an air
 conditioner has no "fan off, unit running" state. The same should apply anywhere

@@ -88,33 +88,28 @@ class CoordinatorProtocol(Protocol):
         ...
 
     # ATA (Air-to-Air) control methods
-    async def async_set_power(self, unit_id: str, power: bool) -> None:
+    async def async_set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
         """Set power state for ATA unit.
 
         Args:
             unit_id: ATA unit ID
             power: True to turn on, False to turn off
-        """
-        ...
-
-    async def async_set_mode(self, unit_id: str, mode: str) -> None:
-        """Set operation mode for ATA unit.
-
-        Args:
-            unit_id: ATA unit ID
-            mode: Operation mode (e.g., "Heat", "Cool", "Dry")
+            fan_speed: Speed to send in the same request, or None
         """
         ...
 
     async def async_set_power_and_mode(
-        self, unit_id: str, power: bool, mode: str
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
     ) -> None:
-        """Set power state and operation mode atomically for ATA unit.
+        """Set power, operation mode and optionally fan speed for an ATA unit.
 
         Args:
             unit_id: ATA unit ID
             power: True to turn on, False to turn off
             mode: Operation mode (e.g., "Heat", "Cool", "Automatic", "Dry", "Fan")
+            fan_speed: Speed to send in the same request, or None
         """
         ...
 
@@ -222,16 +217,6 @@ class CoordinatorProtocol(Protocol):
         """
         ...
 
-    async def async_set_standby_mode(self, unit_id: str, standby: bool) -> None:
-        """Enable/disable standby mode for ATW unit.
-
-        Args:
-            unit_id: ATW unit ID
-            standby: True to enable standby, False to disable
-        """
-        ...
-
-    # Refresh control
     async def async_request_refresh_debounced(self, delay: float = 2.0) -> None:
         """Request a coordinator refresh with debouncing.
 

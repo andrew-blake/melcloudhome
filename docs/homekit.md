@@ -99,11 +99,29 @@ speed it is running at that moment. The Home app has no way to show those two
 things separately, and a slider that remembers your choice is more useful than
 one that drifts about on its own.
 
+A unit that has been in Auto ever since Home Assistant first saw it has no last speed to keep,
+and the Home app shows 100% instead. Nothing chose that figure. HomeKit treats zero as off, so
+the bridge starts a fan's slider at a non-zero value and only replaces it once a numbered speed
+has been seen; until then the 100% stands whatever the unit is doing. Choose a speed once and
+the slider tracks your choice from then on.
+
 Switching back to Manual returns the unit to the speed you last chose.
 
 The speed the unit is genuinely running is in Home Assistant, in the **Actual
 Fan Speed** sensor. That one does not reach HomeKit at all, so if you want to
 watch the unit modulating in Auto, watch it there.
+
+## Fan speed changes while the unit is off
+
+Change the fan speed in Home Assistant while the air conditioner is off and the Home app keeps
+showing the old speed. The change did happen: Home Assistant and the unit both have the new
+speed, and the Home app catches up the moment you turn the unit on.
+
+This is Home Assistant's HomeKit bridge rather than this integration. The bridge only sends a
+fan's speed to HomeKit when the fan is not off, so while the unit is off the Home app keeps
+whatever speed it was last told. Nothing here can change that, and the speed it shows is simply
+out of date rather than wrong about what will happen: turning the unit on applies the speed
+Home Assistant holds, not the one the app was displaying.
 
 ## Units that report no vane
 
@@ -112,6 +130,19 @@ Oscillate control. There is nothing missing and nothing to configure.
 
 If you think one of your units has a vane but gets no Oscillate control, please
 [raise an issue](https://github.com/andrew-blake/melcloudhome/issues).
+
+## Setting a mode and a temperature in one go
+
+Changing a thermostat tile to, say, Heat at 21 sends Apple's two changes as two separate
+commands to Home Assistant, a few microseconds apart. Those now leave as a single request to
+MELCloud carrying both.
+
+This matters because the unit can accept one command and quietly ignore a second that arrives
+immediately behind it, which used to leave the tile and the unit disagreeing until the unit
+reported for itself half a minute later. One request cannot lose half of itself.
+
+The same applies to an automation that sets a mode and a temperature together, and to the hot
+water tank's mode and temperature.
 
 ## Why the thermostat tile stays a plain thermostat
 

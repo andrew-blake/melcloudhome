@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from abc import abstractmethod
 from typing import Any
@@ -224,30 +225,58 @@ class ATWClimateBase(
             await self.coordinator.async_set_power_atw(self._unit_id, False)
             return
 
-        await self.coordinator.async_set_power_atw(self._unit_id, True)
-
         if hvac_mode == HVACMode.HEAT:
             current_preset = self.preset_mode or "room"
-            heat_mode = HA_TO_ATW_PRESET_HEAT.get(current_preset, "HeatRoomTemperature")
-            await self._async_set_zone_mode(heat_mode)
-
+            zone_mode = HA_TO_ATW_PRESET_HEAT.get(current_preset, "HeatRoomTemperature")
         elif hvac_mode == HVACMode.COOL:
             current_preset = self.preset_mode or "room"
             if current_preset == "curve":
                 current_preset = "room"
-            cool_mode = HA_TO_ATW_PRESET_COOL.get(current_preset, "CoolRoomTemperature")
-            await self._async_set_zone_mode(cool_mode)
-
+            zone_mode = HA_TO_ATW_PRESET_COOL.get(current_preset, "CoolRoomTemperature")
         else:
             _LOGGER.warning("Invalid HVAC mode %s for ATW", hvac_mode)
+            await self.coordinator.async_set_power_atw(self._unit_id, True)
+            return
+
+        # Issued together, not one after the other: awaiting the power write
+        # would let it finish before the mode write began, and the two would go
+        # out as a pair the device can drop half of (ADR-026). Arriving in one
+        # turn, they share a single request.
+        await asyncio.gather(
+            self.coordinator.async_set_power_atw(self._unit_id, True),
+            self._async_set_zone_mode(zone_mode),
+        )
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
+        """Set the target temperature, and the mode if one was given.
+
+        The service schema accepts an optional mode and Home Assistant forwards
+        it without acting on it, so discarding it here carries out half of what
+        was asked for, silently.
+
+        The two writes are issued together: awaiting the first would let it
+        finish before the second began, and they would go out as a pair the
+        device can drop half of (ADR-026). Arriving in one turn, they share a
+        single request.
+        """
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        await self._async_set_zone_temperature(temperature)
+
+        hvac_mode = kwargs.get("hvac_mode")
+        if hvac_mode is None:
+            await self._async_set_zone_temperature(temperature)
+            return
+
+        # Home Assistant validates hvac_mode for set_hvac_mode and not for this
+        # service, so an unsupported mode arrives here intact.
+        self._valid_mode_or_raise("hvac", hvac_mode, self.hvac_modes)
+
+        await asyncio.gather(
+            self.async_set_hvac_mode(HVACMode(hvac_mode)),
+            self._async_set_zone_temperature(temperature),
+        )
 
     @with_debounced_refresh()
     async def async_set_preset_mode(self, preset_mode: str) -> None:

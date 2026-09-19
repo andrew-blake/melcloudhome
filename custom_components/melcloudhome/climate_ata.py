@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -212,13 +213,34 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
 
     @with_debounced_refresh()
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
+        """Set the target temperature, and the mode if one was given.
+
+        The service schema accepts an optional mode and Home Assistant forwards
+        it without acting on it, so discarding it here carries out half of what
+        was asked for, silently.
+
+        The two writes are issued together: awaiting the first would let it
+        finish before the second began, and they would go out as a pair the
+        device can drop half of (ADR-026). Arriving in one turn, they share a
+        single request.
+        """
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
 
-        # Set temperature
-        await self.coordinator.async_set_temperature(self._unit_id, temperature)
+        hvac_mode = kwargs.get("hvac_mode")
+        if hvac_mode is None:
+            await self.coordinator.async_set_temperature(self._unit_id, temperature)
+            return
+
+        # Home Assistant validates hvac_mode for set_hvac_mode and not for this
+        # service, so an unsupported mode arrives here intact.
+        self._valid_mode_or_raise("hvac", hvac_mode, self.hvac_modes)
+
+        await asyncio.gather(
+            self.async_set_hvac_mode(HVACMode(hvac_mode)),
+            self.coordinator.async_set_temperature(self._unit_id, temperature),
+        )
 
     @with_debounced_refresh()
     async def async_set_fan_mode(self, fan_mode: str) -> None:

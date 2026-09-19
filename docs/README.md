@@ -21,7 +21,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-015: Skip ATW Energy Monitoring](decisions/015-skip-atw-energy-monitoring.md) - Initial decision to skip energy (SUPERSEDED by ADR-016)
 - [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
 - [ADR-017: Migrate to Mobile BFF API](decisions/017-migrate-to-mobile-bff.md) - Move from the legacy web API to the mobile API (`mobile.bff.melcloudhome.com`), with OAuth 2.0 + PKCE at `auth.melcloudhome.com` (supersedes ADR-002)
-- [ADR-018: Out-of-Band State Sync Limitation](decisions/018-out-of-band-state-sync-limitation.md) - The ≤60s stale window for changes made outside HA (resolved by ADR-019's WebSocket, default on)
+- [ADR-018: Out-of-Band State Sync Limitation](decisions/018-out-of-band-state-sync-limitation.md) - The ≤60s stale window for changes made outside HA (SUPERSEDED by ADR-026)
 - [ADR-019: Real-Time WebSocket Updates](decisions/019-websocket-realtime-updates.md) - Receive-only WebSocket deltas trigger debounced REST refresh; default on, opt-out toggle (supersedes ADR-007)
 - [ADR-020: Report `unknown`, Not `unavailable`, for Missing Readings](decisions/020-unknown-for-missing-readings.md) - `available_fn` removed from all entity descriptions (amends ADR-006, ADR-008)
 - [ADR-021: Deferred Startup Fetch](decisions/021-deferred-startup-fetch.md) - The first energy/telemetry fetch runs in a background task instead of blocking entity creation
@@ -29,6 +29,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-023: ATW Water Temperatures Come From the Internal Temperatures Report](decisions/023-atw-water-temperatures-from-report.md) - flow and return temperatures read from the report endpoint rather than the device payload
 - [ADR-024: Energy Storage Is Scoped Per Account](decisions/024-entry-scoped-energy-storage.md) - energy totals keyed by config entry so two accounts cannot overwrite each other
 - [ADR-025: Exposing Fan Speed and Vane to HomeKit](decisions/025-homekit-fan-entity.md) - a `fan` entity per ATA unit, because the HomeKit bridge cannot expose either control from the climate entity
+- [ADR-026: Remove Control-Write Deduplication](decisions/026-remove-control-write-dedup.md) - every control command reaches the API; an accepted write is applied to the coordinator's copy at once, and writes arriving in one turn share a request (supersedes ADR-018)
 
 ## Architecture
 

@@ -105,3 +105,32 @@ async def test_switch_unavailable_when_device_in_error(hass: HomeAssistant) -> N
     state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
     assert state is not None
     assert state.state == "unavailable"
+
+
+@pytest.mark.asyncio
+async def test_atw_power_is_sent_even_when_the_cache_already_agrees(
+    hass: HomeAssistant,
+) -> None:
+    """ATW power must always be forwarded, as ATA's already is.
+
+    #310 asked this for ATA; ADR-026 extends it to every setter.
+
+    The cache can be wrong because the cloud is wrong, and an owner has to be
+    able to reassert power. Turning off a unit the cache already believes is
+    off must still reach the API.
+    """
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit(power=False)])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_power = AsyncMock()
+
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        "turn_off",
+        {"entity_id": TEST_SWITCH_SYSTEM_POWER},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_power.assert_called_once_with(TEST_ATW_UNIT_ID, False)

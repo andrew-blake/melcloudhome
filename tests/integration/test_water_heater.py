@@ -216,3 +216,108 @@ async def test_water_heater_entity_naming_includes_tank(hass: HomeAssistant) -> 
     state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
     assert state is not None
     assert "_tank" in state.entity_id
+
+
+@pytest.mark.asyncio
+async def test_a_dhw_setpoint_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """The fixture starts at 50.0; asking for 50.0 twice must reach the API twice.
+
+    A check comparing the request against the coordinator's copy would skip
+    both, so two calls is the witness for its absence on this setter.
+    """
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "water_heater",
+            "set_temperature",
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "temperature": 50.0},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_dhw_temperature.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_an_operation_mode_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """The fixture starts in eco; asking for eco twice must reach the API twice."""
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "water_heater",
+            "set_operation_mode",
+            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "operation_mode": STATE_ECO},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_forced_hot_water.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_acts_on_the_operation_mode_it_is_given(
+    hass: HomeAssistant,
+) -> None:
+    """water_heater.set_temperature accepts operation_mode; it must not be discarded."""
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    await hass.services.async_call(
+        "water_heater",
+        "set_temperature",
+        {
+            "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+            "temperature": 55,
+            "operation_mode": "high_demand",
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_dhw_temperature.assert_called_once_with(TEST_ATW_UNIT_ID, 55)
+    mock_client.atw.set_forced_hot_water.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_refuses_an_unsupported_operation_mode(
+    hass: HomeAssistant,
+) -> None:
+    """An unsupported mode reaches set_temperature unvalidated by HA.
+
+    The temperature must not go out on its own: sending half of what was asked
+    for, silently, is the failure this service was changed to stop.
+    """
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "water_heater",
+            "set_temperature",
+            {
+                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+                "temperature": 55,
+                "operation_mode": "boost",
+            },
+            blocking=True,
+        )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_dhw_temperature.assert_not_called()
+    mock_client.atw.set_forced_hot_water.assert_not_called()

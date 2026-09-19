@@ -27,7 +27,6 @@ _CLIMATE_ENTITY = "climate.melcloudhome_a1b2_9abc_climate"
 def _configure_ata_controls(client: Any) -> None:
     client.ata = MagicMock()
     client.ata.set_power = AsyncMock()
-    client.ata.set_mode = AsyncMock()
     client.ata.set_power_and_mode = AsyncMock()
     client.ata.set_temperature = AsyncMock()
     client.ata.set_fan_speed = AsyncMock()
@@ -97,7 +96,7 @@ async def test_set_hvac_mode_writes_even_when_already_matching(
     )
 
     mock_client.ata.set_power_and_mode.assert_called_once()
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat", None)
     mock_client.ata.set_power.assert_not_called()
 
 
@@ -368,3 +367,108 @@ async def test_climate_vocabularies_are_unchanged(hass: HomeAssistant) -> None:
         "four",
         "five",
     ]
+
+
+@pytest.mark.parametrize(
+    ("service", "field", "value", "api_method"),
+    [
+        ("set_temperature", "temperature", 21.0, "set_temperature"),
+        ("set_swing_mode", "swing_mode", "auto", "set_vane_vertical"),
+        (
+            "set_swing_horizontal_mode",
+            "swing_horizontal_mode",
+            "auto",
+            "set_vane_horizontal",
+        ),
+        ("set_fan_mode", "fan_mode", "auto", "set_fan_speed"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_command_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+    service: str,
+    field: str,
+    value: Any,
+    api_method: str,
+) -> None:
+    """Every ATA field reaches the API when the unit already reads that value.
+
+    `value` is the fixture's own starting value, sent twice. A check comparing
+    the request against the coordinator's copy would skip both calls, so two
+    calls is the witness for its absence, one case per field so a check
+    reintroduced on one setter fails alone.
+    """
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "climate",
+            service,
+            {"entity_id": _CLIMATE_ENTITY, field: value},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert getattr(mock_client.ata, api_method).call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_acts_on_the_mode_it_is_given(
+    hass: HomeAssistant,
+) -> None:
+    """climate.set_temperature accepts hvac_mode; it must not be discarded."""
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    await hass.services.async_call(
+        "climate",
+        "set_temperature",
+        {
+            "entity_id": _CLIMATE_ENTITY,
+            "temperature": 22.0,
+            "hvac_mode": HVACMode.HEAT,
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_client.ata.set_temperature.assert_called_once()
+    mock_client.ata.set_power_and_mode.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_rejects_a_mode_the_unit_does_not_support(
+    hass: HomeAssistant,
+) -> None:
+    """Home Assistant does not validate hvac_mode on the set_temperature path.
+
+    It calls _valid_mode_or_raise for set_hvac_mode only, so an unsupported
+    mode arrives here intact and must be refused before it reaches the mode
+    map.
+    """
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_context = create_mock_ata_user_context()
+    _, mock_client = await setup_ata_integration_custom(
+        hass, mock_context, configure_client=_configure_ata_controls
+    )
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {
+                "entity_id": _CLIMATE_ENTITY,
+                "temperature": 22.0,
+                "hvac_mode": HVACMode.HEAT_COOL,
+            },
+            blocking=True,
+        )
+
+    mock_client.ata.set_temperature.assert_not_called()
+    mock_client.ata.set_power_and_mode.assert_not_called()

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Fan speed and vane swing now reach HomeKit. Each air conditioning unit gains a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging. Bridged to HomeKit a unit used to appear as a bare thermostat offering only temperature and mode, because the bridge recognises fan speed and swing controls by a fixed set of names that these units do not use. The same entity is picked up automatically by Alexa and Google Home once you expose it to them. Alexa should offer both the speed and the swing, and Google Home offers the speed, because its fan has no swing control. I have tested HomeKit only. The new entity is there for those ecosystems and is additive: the climate entity is unchanged and keeps its own fan speed and vane dropdowns, including the individual vane positions that a swing switch cannot express, so if you drive the integration from the Home Assistant UI alone you can ignore it. The speed slider has one step for each speed the unit has. A unit with no vane gets no swing control, and turning swing on sets the vane for the next time the unit runs without starting a stopped unit. (#318)
+
+### Fixed
+
+- A command that matched what Home Assistant last saw now reaches the unit. Before sending anything, the integration checked whether the unit already appeared to be at that value and skipped the request if it was. It judged that against its own cached copy of the unit, which a command you had just sent could already have made out of date. Changing a setpoint, fan speed or vane and changing it straight back did nothing the second time; turning a unit off shortly after turning it on lost the off; and setting a value in the MELCloud app and then choosing that same value in Home Assistant sent nothing at all. Every command is now sent, whether it comes from the climate entity, the fan entity, a script, a scene, an automation or a voice assistant, and power can be reasserted on a unit whose cloud state disagrees with the hardware. (#310, #318)
+- Dials and sliders hold where you put them. A setting you change now shows the new value straight away, where before it stayed on the old one until Home Assistant next heard from MELCloud. What you see is the command that was sent, so if a unit does not act on one, Home Assistant corrects itself within a minute.
+- Setting a mode and a temperature in one step now sets both. The `climate.set_temperature` and `water_heater.set_temperature` services accept a mode alongside the temperature, and the integration read only the temperature and discarded the mode, so an automation saying "heat to 21" set the target and left a unit that was off still off. **If you have an automation that passes a mode it does not want applied, remove it from the call.** A mode the unit does not support is now refused with an error, where before it was ignored.
+- A mode and a temperature set together, or a fan powered on at a chosen speed, now leave as a single request to MELCloud. A unit can accept one command and ignore a second arriving immediately behind it, and sending one request removes that possibility for these cases.
+- Applying a scene to units already at target now sends one request per attribute per unit, spaced half a second apart, where before it sent only the one that set the mode. A typical scene takes a few seconds to apply and a large one about 18 seconds; a manual command given during that time queues behind it and still arrives.
+
 ## [2.5.1] - 2026-09-09
 
 ### Fixed

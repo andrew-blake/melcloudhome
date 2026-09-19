@@ -12,11 +12,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.melcloudhome import fan as fan_module
 from custom_components.melcloudhome.api.exceptions import ApiError
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -64,6 +62,24 @@ async def _let_the_speed_write_land(hass: HomeAssistant) -> None:
     """
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
     await hass.async_block_till_done()
+
+
+def _speeds_written(mock_client: Any) -> list[str]:
+    """Every speed that reached the API, whichever call carried it.
+
+    A power-on that knows the unit's mode sends the speed in the same request,
+    so most speeds arrive as set_power_and_mode's fourth argument. A unit
+    reporting no mode to preserve still sends the two separately. Asserting on
+    this rather than on one mock keeps the test about the speed reaching the API
+    rather than about which call carried it.
+    """
+    speeds = [
+        c[0][3]
+        for c in mock_client.ata.set_power_and_mode.call_args_list
+        if len(c[0]) > 3 and c[0][3] is not None
+    ]
+    speeds += [c[0][1] for c in mock_client.ata.set_fan_speed.call_args_list]
+    return speeds
 
 
 async def _let_tasks_run() -> None:
@@ -161,8 +177,7 @@ async def test_set_percentage_sends_matching_speed(hass: HomeAssistant) -> None:
     await _set_percentage(hass, 40)
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Two"
+    assert _speeds_written(mock_client) == ["Two"]
 
 
 @pytest.mark.asyncio
@@ -294,7 +309,7 @@ async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None
         "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat", None)
     mock_client.ata.set_power.assert_not_called()
 
 
@@ -319,12 +334,11 @@ async def test_turn_on_with_percentage_supersedes_a_pending_drag_write(
         blocking=True,
     )
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Five"
+    assert _speeds_written(mock_client) == ["Five"]
 
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
+    assert _speeds_written(mock_client) == ["Five"]
 
 
 @pytest.mark.asyncio
@@ -343,8 +357,11 @@ async def test_turn_on_with_percentage_sets_power_and_speed(
         blocking=True,
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Two"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Two",
+    )
 
 
 @pytest.mark.asyncio
@@ -363,8 +380,11 @@ async def test_turn_on_with_auto_preset_sets_power_and_speed(
         blocking=True,
     )
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Auto"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Auto",
+    )
 
 
 @pytest.mark.asyncio
@@ -381,8 +401,11 @@ async def test_set_percentage_powers_on_an_off_unit(hass: HomeAssistant) -> None
     await _set_percentage(hass, 60)
     await _let_the_speed_write_land(hass)
 
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Three",
+    )
 
 
 @pytest.mark.asyncio
@@ -409,15 +432,18 @@ async def test_set_percentage_burst_writes_only_the_final_speed(
     for percentage in (20, 40, 60):
         await _set_percentage(hass, percentage)
 
-    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert mock_client.ata.set_power_and_mode.call_count == 0
     mock_client.ata.set_fan_speed.assert_not_called()
 
     await _let_the_speed_write_land(hass)
 
     assert mock_client.ata.set_power_and_mode.call_count == 1
-    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat")
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (
+        True,
+        "Heat",
+        "Three",
+    )
+    assert _speeds_written(mock_client) == ["Three"]
 
 
 @pytest.mark.asyncio
@@ -433,24 +459,15 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
     open so they do, and the later calls arrive while the first is still in
     flight.
 
-    Two things are asserted, matching the two ordering defects this guards:
-    the pending position and its timer are claimed on entry, so the last call to
-    arrive wins whatever order the requests finish in; and the guard deadline is
-    armed before the request rather than after, so the calls arriving during it
-    are collapsed into the single power-on it exists to produce.
+    The pending position and its timer are claimed on entry, so the last call to
+    arrive wins whatever order the calls interleave in. A drag issues no request
+    at all until its timer fires, so there is no in-flight write for the later
+    calls to arrive during, and the burst collapses to one write of the released
+    position.
     """
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
-
-    gates: list[asyncio.Event] = []
-
-    async def _hold_the_power_on(*_args: Any, **_kwargs: Any) -> None:
-        gate = asyncio.Event()
-        gates.append(gate)
-        await gate.wait()
-
-    mock_client.ata.set_power_and_mode.side_effect = _hold_the_power_on
 
     tasks = []
     for percentage in (20, 40, 60):
@@ -466,111 +483,63 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
         )
         await _let_tasks_run()
 
-    # Only the first call reached the API; the rest found the guard already
-    # armed and returned without a power write of their own.
-    assert len(gates) == 1
-    assert mock_client.ata.set_power_and_mode.call_count == 1
+    # No request has gone out yet: each call replaced the previous pending
+    # position and restarted its timer.
+    assert mock_client.ata.set_power_and_mode.call_count == 0
 
-    for gate in reversed(gates):
-        gate.set()
-        await _let_tasks_run()
     await asyncio.gather(*tasks)
     await _let_the_speed_write_land(hass)
 
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Three"
+    assert mock_client.ata.set_power_and_mode.call_count == 1
+    assert _speeds_written(mock_client) == ["Three"]
 
 
 @pytest.mark.asyncio
-async def test_a_failed_power_on_does_not_suppress_the_retry(
-    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+async def test_a_failed_write_does_not_stop_the_next_one(
+    hass: HomeAssistant,
 ) -> None:
-    """Arming the guard before the request must not make a failure stick.
+    """A write that fails must leave nothing behind that blocks the retry.
 
-    The deadline goes up before the write is awaited so that a drag's
-    overlapping calls collapse into one power-on rather than one each. If that
-    write then fails the unit is still off, so the deadline has to come back
-    down and let the next call try again.
-
-    The guard window is widened out of the way for the same reason as in
-    test_power_off_disarms_the_power_on_guard: it is measured on the real clock.
+    Nothing suppresses a second write today, so this guards against something
+    being introduced that does: a latch, a deadline or a flag set on the way
+    into a write and not cleared when it raises.
     """
-    monkeypatch.setattr(fan_module, "_POWER_ON_GUARD_WINDOW", 3600.0)
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
 
     mock_client.ata.set_power_and_mode.side_effect = ApiError("upstream said no")
-    with pytest.raises(HomeAssistantError):
-        await _set_percentage(hass, 40)
+    await _set_percentage(hass, 40)
+    await _let_the_speed_write_land(hass)
 
     mock_client.ata.set_power_and_mode.side_effect = None
     await _set_percentage(hass, 60)
-
-    assert mock_client.ata.set_power_and_mode.call_count == 2
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
-async def test_power_off_disarms_the_power_on_guard(
-    hass: HomeAssistant, power_off: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Turning the unit off must not leave a drag's guard suppressing the restart.
-
-    Reachable entirely from the Home app on a running unit: dragging the slider
-    arms the guard whether or not the unit needed the power-on, and nothing
-    about that write clears it. Tap the tile off (or drag to the zero detent),
-    then drag straight
-    back up: the bridge sends Active and RotationSpeed together and deliberately
-    skips fan.turn_on, so it arrives as set_percentage alone. A surviving guard
-    would suppress the power-on and leave the unit off with a speed write landing
-    on it, contradicting docs/homekit.md.
-
-    The guard window is
-    widened out of the way because it is measured on the real clock, which
-    async_fire_time_changed does not move: at its production three seconds the
-    result would depend on how long the test itself took to run, and the only
-    thing under test here is whether the power-off disarms the guard, not when
-    it would have expired on its own.
-    """
-    monkeypatch.setattr(fan_module, "_POWER_ON_GUARD_WINDOW", 3600.0)
-    _, mock_client = await _setup(
-        hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
-    )
-
-    await _set_percentage(hass, 40)
     await _let_the_speed_write_land(hass)
-    assert mock_client.ata.set_power_and_mode.call_count == 1
-
-    await power_off(hass)
-    await _set_percentage(hass, 60)
 
     assert mock_client.ata.set_power_and_mode.call_count == 2
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
-async def test_power_off_lands_while_the_power_on_is_still_stale(
+async def test_power_off_is_sent_to_a_unit_already_off(
     hass: HomeAssistant, power_off: Any
 ) -> None:
-    """A drag up then straight back down must switch the unit off (#318).
+    """An off must reach the API even when the unit already reads off.
+
+    Found on hardware while building #318's fan entity.
 
     Observed on hardware: from off, a drag up followed by a drag to zero left
     the air conditioner running while the Home app showed it off. The power-on
-    had not reached coordinator data yet -- the refresh is scheduled 2.0s after
-    the write returns and then has its own round trip -- so the off was compared
-    against a cache still reading power=False and deduplicated away. Two offs
-    were dropped that way, 1.65s and 2.4s after the power-on.
+    had not reached coordinator data yet, so the off was compared against a
+    copy still reading power=False and dropped.
 
-    The mock context keeps reporting power=False for the whole test, which is
-    exactly that stale window: the off must still reach the API.
+    The same comparison is what a reintroduced check would make, so the witness
+    is an off issued while the coordinator's copy already reads off: it has to
+    go out anyway.
     """
     _, mock_client = await _setup(
         hass, power=False, operation_mode="Heat", set_fan_speed="Auto"
     )
-
-    await _set_percentage(hass, 40)
-    assert mock_client.ata.set_power_and_mode.call_count == 1
 
     await power_off(hass)
 
@@ -585,8 +554,8 @@ async def test_dragging_through_zero_does_not_power_off(
     """Passing the zero detent mid-drag must not stop the unit.
 
     Only the released position counts, so a drag from low through zero and back
-    up sends one speed and no power-off. Power writes are never deduplicated,
-    so a power-off reaching the control client would reach the API too: the
+    up sends one speed and no power-off. Nothing is deduplicated, so a
+    power-off reaching the control client would reach the API too: the
     assertion below fails if the zero detent is applied mid-drag.
     """
     _, mock_client = await _setup(
@@ -598,8 +567,7 @@ async def test_dragging_through_zero_does_not_power_off(
     await _let_the_speed_write_land(hass)
 
     mock_client.ata.set_power.assert_not_called()
-    mock_client.ata.set_fan_speed.assert_called_once()
-    assert mock_client.ata.set_fan_speed.call_args[0][1] == "Four"
+    assert _speeds_written(mock_client) == ["Four"]
 
 
 @pytest.mark.asyncio
@@ -631,11 +599,13 @@ async def test_turn_on_still_powers_on_after_a_set_percentage_burst(
     )
 
     await _set_percentage(hass, 20)
+    await _let_the_speed_write_land(hass)
     await hass.services.async_call(
         "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
     )
 
     assert mock_client.ata.set_power_and_mode.call_count == 2
+    assert mock_client.ata.set_power_and_mode.call_args[0][1] is True
 
 
 @pytest.mark.asyncio
@@ -644,3 +614,214 @@ async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     await _setup(hass, power=True, has_swing=False, has_air_direction=False)
 
     assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes
+
+
+@pytest.mark.asyncio
+async def test_the_same_speed_twice_is_sent_twice(hass: HomeAssistant) -> None:
+    """A speed the unit already reads still reaches the API.
+
+    The fixture starts on One and both writes ask for One. A check comparing
+    the request against the coordinator's copy would skip both, so this is the
+    witness for its absence; a change-and-change-back is not, because the copy
+    is updated after every accepted write and never matches the next request.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    for _ in range(2):
+        await _set_percentage(hass, 20)
+        await _let_the_speed_write_land(hass)
+
+    assert _speeds_written(mock_client) == [
+        "One",
+        "One",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_entity_shows_a_written_speed_before_the_next_refresh(
+    hass: HomeAssistant,
+) -> None:
+    """The value applied to the coordinator's copy reaches entities before any poll.
+
+    The refresh is deliberately left in flight. _let_the_speed_write_land would
+    drain it, and because the API mock returns one UserContext object forever,
+    that refresh re-registers the very unit the setter mutated and pushes
+    the value itself, which passes whether or not listeners were notified.
+    Yielding to the loop instead lets the write land while the refresh is still
+    on its debounce, so the only thing that can have updated hass.states is the
+    notify.
+    """
+    await _setup(hass, power=True, operation_mode="Heat", set_fan_speed="One")
+
+    await _set_percentage(hass, 80)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
+    await _let_tasks_run()
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+
+
+@pytest.mark.asyncio
+async def test_a_write_landing_during_a_poll_still_shows_the_written_speed(
+    hass: HomeAssistant,
+) -> None:
+    """The copy is fetched after the write, not before.
+
+    While the speed PUT is in flight a poll completes and replaces every unit
+    object with one parsed from a response that predates the write. A copy
+    fetched before the write would be the discarded object, and the entity
+    would keep reading the poll's speed. Fetched afterwards, the written speed
+    lands on the object entities read.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    async def _poll_completes_mid_write(*_args: Any, **_kwargs: Any) -> None:
+        mock_client.get_user_context.return_value = create_mock_ata_user_context(
+            buildings=[
+                create_mock_ata_building(
+                    units=[
+                        create_mock_ata_unit(
+                            power=True, operation_mode="Heat", set_fan_speed="One"
+                        )
+                    ]
+                )
+            ]
+        )
+        async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))
+        await _let_tasks_run()
+
+    mock_client.ata.set_fan_speed.side_effect = _poll_completes_mid_write
+
+    await _set_percentage(hass, 80)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
+    await _let_tasks_run()
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+
+
+@pytest.mark.asyncio
+async def test_entity_reports_a_commanded_speed_before_its_write_lands(
+    hass: HomeAssistant,
+) -> None:
+    """The power-on publishes this entity's state before the speed write exists.
+
+    From off, set_percentage powers the unit on at once and defers the speed by
+    _SPEED_DEBOUNCE_WINDOW. That power-on writes through and notifies listeners
+    while the coordinator's copy still holds the old speed, so the entity would
+    publish that old speed first. A HomeKit controller keeps the first value it
+    is told for a characteristic and ignored the correction 0.7 s behind it,
+    leaving the tile and the home screen reading the previous speed until the
+    app was force-closed. Seen on hardware.
+    """
+    await _setup(hass, power=False, operation_mode="Cool", set_fan_speed="Three")
+
+    await _set_percentage(hass, 100)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 100
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("power_off", [_power_off_via_service, _power_off_via_slider])
+async def test_a_power_off_drops_a_pending_speed(
+    hass: HomeAssistant, power_off: Any
+) -> None:
+    """Cancelling a drag voids its value, not only its timer.
+
+    Nothing reschedules a cancelled write, so a value left behind would be what
+    the entity reports from then until a restart.
+    """
+    await _setup(hass, power=False, operation_mode="Cool", set_fan_speed="Three")
+
+    await _set_percentage(hass, 100)
+    await power_off(hass)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 60
+
+
+@pytest.mark.asyncio
+async def test_a_drag_from_off_reads_on_before_its_write_lands(
+    hass: HomeAssistant,
+) -> None:
+    """The entity has to publish the commanded power, not the device's.
+
+    HA's HomeKit bridge writes the Active characteristic on every state update
+    and writes a speed only while the state is not off. Publishing a drag with
+    the device's own power would therefore push the tile back to off and send no
+    speed at all, which is the opposite of what the drag asked for.
+    """
+    await _setup(hass, power=False, operation_mode="Heat", set_fan_speed="Auto")
+
+    await _set_percentage(hass, 100)
+
+    state = hass.states.get(_FAN_ENTITY)
+    assert state.state == "on"
+    assert state.attributes["percentage"] == 100
+
+
+@pytest.mark.asyncio
+async def test_a_drag_to_zero_reads_off_before_its_write_lands(
+    hass: HomeAssistant,
+) -> None:
+    """A published zero is worse than no publish at all.
+
+    The bridge turns a zero on a running fan into one step up and keeps it as
+    the speed to restore on the next power-on, so dragging a unit from its top
+    speed down to off would leave the app remembering the lowest one. Reading
+    off instead makes the bridge suppress the speed write entirely.
+    """
+    await _setup(hass, power=True, operation_mode="Heat", set_fan_speed="Five")
+
+    await _set_percentage(hass, 0)
+
+    assert hass.states.get(_FAN_ENTITY).state == "off"
+
+
+@pytest.mark.asyncio
+async def test_a_failed_write_drops_the_entity_back_to_the_device(
+    hass: HomeAssistant,
+) -> None:
+    """A position that never reached the API must not be left on the entity.
+
+    Nothing raises to the caller: the write runs on the debounce timer, after
+    the service call has returned, so a failure reaches the log and nobody else.
+
+    This pins the end state only. `_async_write_pending_percentage` republishes
+    in its `finally` so the correction is immediate, but the refresh that
+    follows it is instant here and would republish anyway, so this test passes
+    with or without that line. The difference is only visible on a real
+    coordinator, whose debounced refresh lands seconds later, and it is that
+    window the republish exists for.
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+    mock_client.ata.set_power_and_mode.side_effect = ApiError("upstream said no")
+
+    await _set_percentage(hass, 100)
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 100
+
+    await _let_the_speed_write_land(hass)
+
+    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 20
+
+
+@pytest.mark.asyncio
+async def test_a_speed_change_is_one_request_not_two(hass: HomeAssistant) -> None:
+    """The point of carrying the speed: no second command to arrive late.
+
+    Two requests to one unit are spaced by the pacer's minimum, and a command
+    that close behind another can be accepted by the cloud and ignored by the
+    device (ADR-026).
+    """
+    _, mock_client = await _setup(
+        hass, power=True, operation_mode="Heat", set_fan_speed="One"
+    )
+
+    await _set_percentage(hass, 100)
+    await _let_the_speed_write_land(hass)
+
+    mock_client.ata.set_fan_speed.assert_not_called()
+    assert mock_client.ata.set_power_and_mode.call_count == 1

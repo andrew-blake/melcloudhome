@@ -312,6 +312,9 @@ async def test_atw_zone2_set_cooling_mode(hass: HomeAssistant) -> None:
     )
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_mode_zone2 = AsyncMock()
+    # Selecting a mode powers the system on first, and ATW power is no longer
+    # deduplicated against the cache (#310), so this call is now made.
+    mock_client.atw.set_power = AsyncMock()
 
     await hass.services.async_call(
         "climate",
@@ -346,3 +349,56 @@ async def test_atw_zone2_cooling_preset_modes(hass: HomeAssistant) -> None:
     assert "room" in preset_modes
     assert "flow" in preset_modes
     assert "curve" not in preset_modes
+
+
+@pytest.mark.asyncio
+async def test_a_zone2_setpoint_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """Zone 2 starts at 21.0; asking for 21.0 twice must reach the API twice.
+
+    A check comparing the request against the coordinator's copy would skip
+    both, so two calls is the witness for its absence on this setter.
+    """
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[create_mock_atw_unit(has_zone2=True)])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_temperature_zone2 = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "climate",
+            "set_temperature",
+            {"entity_id": TEST_CLIMATE_ZONE2_ENTITY_ID, "temperature": 21.0},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_temperature_zone2.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_a_zone2_preset_matching_current_state_is_still_sent(
+    hass: HomeAssistant,
+) -> None:
+    """Zone 2 starts in room mode; asking for room twice must reach the API twice."""
+    mock_unit = create_mock_atw_unit(
+        has_zone2=True, operation_mode_zone2="HeatRoomTemperature"
+    )
+    mock_context = create_mock_atw_user_context(
+        [create_mock_atw_building(units=[mock_unit])]
+    )
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_mode_zone2 = AsyncMock()
+
+    for _ in range(2):
+        await hass.services.async_call(
+            "climate",
+            "set_preset_mode",
+            {"entity_id": TEST_CLIMATE_ZONE2_ENTITY_ID, "preset_mode": "room"},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    assert mock_client.atw.set_mode_zone2.call_count == 2

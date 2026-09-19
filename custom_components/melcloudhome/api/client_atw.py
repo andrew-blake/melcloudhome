@@ -3,6 +3,7 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
+from .coalescing import WriteCoalescer
 from .const_atw import (
     API_ATW_CONTROL_UNIT,
     ATW_OPERATION_MODES_ZONE,
@@ -29,9 +30,24 @@ class ATWControlClient:
             base_client: Base MELCloudHomeClient instance for API requests
         """
         self._client = base_client
+        self._coalescer = WriteCoalescer(self._send_control)
 
     async def _update_atw_unit(self, unit_id: str, payload: dict[str, Any]) -> None:
-        """Send sparse update to ATW unit.
+        """Send a sparse update, merged with any arriving alongside it.
+
+        Two requests to one unit are floored 0.5 s apart by the pacer, and a
+        command that close behind another can be accepted by the cloud and
+        ignored by the device (ADR-026). Writes arriving in the same event-loop
+        turn therefore share one request.
+
+        Args:
+            unit_id: ATW unit ID
+            payload: Fields to update (others will be set to None)
+        """
+        await self._coalescer.submit(unit_id, payload)
+
+    async def _send_control(self, unit_id: str, payload: dict[str, Any]) -> None:
+        """Send one unit's collected fields as a single request.
 
         Args:
             unit_id: ATW unit ID

@@ -1,5 +1,22 @@
 # Custom Component Development Tools
 
+## Hardware Checks
+
+### `hardware_check.py`
+
+Drives control-write checks against the production Home Assistant over REST and reads the
+integration's log back over SSH, so that what the cloud and the unit do with a command can be
+seen, which no mock reproduces. It moves real hardware: point it only at units that are yours.
+
+```bash
+uv run python tools/hardware_check.py -k                      # list the fan entities
+uv run python tools/hardware_check.py -k --help               # the checks and what each does
+```
+
+Which check proves which property, what each run must start from, and the ways the log misleads
+are in `docs/testing/manual-hardware-checks.md`. The environment it needs and the flags it takes
+are in its own `--help`.
+
 ## Dev Dashboard Generator
 
 ### `build_dev_dashboard.py`

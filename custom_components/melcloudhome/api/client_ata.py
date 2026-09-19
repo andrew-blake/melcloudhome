@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+from .coalescing import WriteCoalescer
 from .const_ata import (
     API_CONTROL_UNIT,
     FAN_SPEEDS,
@@ -26,6 +27,7 @@ class ATAControlClient:
             base_client: Base MELCloudHomeClient instance for API requests
         """
         self._client = base_client
+        self._coalescer = WriteCoalescer(self._send_control)
 
     def _build_ata_control_payload(self, **updates: Any) -> dict[str, Any]:
         """Build ATA control payload with null defaults.
@@ -56,33 +58,74 @@ class ATAControlClient:
         payload.update(updates)
         return payload
 
-    def _validate_mode(self, mode: str) -> None:
-        """Raise ValueError if mode is not a valid OPERATION_MODES entry."""
-        valid_modes = set(OPERATION_MODES)
-        if mode not in valid_modes:
-            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+    async def _update_ata_unit(self, unit_id: str, **updates: Any) -> None:
+        """Send a sparse control update, merged with any arriving alongside it.
 
-    async def set_power(self, unit_id: str, power: bool) -> None:
+        Callers pass only the fields they are setting. Keeping callers sparse is
+        what lets two writes arriving together be merged without one write's
+        nulls erasing the other's values.
         """
-        Turn device on or off.
+        await self._coalescer.submit(unit_id, updates)
 
-        Args:
-            unit_id: Device ID (UUID)
-            power: True to turn on, False to turn off
-
-        Raises:
-            AuthenticationError: If not authenticated
-            ApiError: If API request fails
-        """
-        payload = self._build_ata_control_payload(power=power)
-
+    async def _send_control(self, unit_id: str, updates: dict[str, Any]) -> None:
+        """Send one unit's collected fields as a single request."""
+        payload = self._build_ata_control_payload(**updates)
         await self._client._api_request(
             "PUT",
             API_CONTROL_UNIT.format(unit_id=unit_id),
             json=payload,
         )
 
-    async def set_power_and_mode(self, unit_id: str, power: bool, mode: str) -> None:
+    def _validate_mode(self, mode: str) -> None:
+        """Raise ValueError if mode is not a valid OPERATION_MODES entry."""
+        valid_modes = set(OPERATION_MODES)
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
+
+    def _validate_fan_speed(self, speed: str) -> None:
+        """Raise ValueError if speed is not a valid FAN_SPEEDS entry.
+
+        The server takes a combination of fields and has been seen to accept one
+        it cannot honour, answering 200 and silently dropping the part it did not
+        like (issue #100). A bad speed riding along with a power-on would fail
+        that way rather than being refused, so it is refused here instead.
+        """
+        valid_speeds = set(FAN_SPEEDS)
+        if speed not in valid_speeds:
+            raise ValueError(
+                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
+            )
+
+    async def set_power(
+        self, unit_id: str, power: bool, fan_speed: str | None = None
+    ) -> None:
+        """
+        Turn device on or off.
+
+        Args:
+            unit_id: Device ID (UUID)
+            power: True to turn on, False to turn off
+            fan_speed: Optional fan speed to set in the same request
+
+        Raises:
+            AuthenticationError: If not authenticated
+            ApiError: If API request fails
+            ValueError: If fan_speed is invalid
+        """
+        if fan_speed is not None:
+            self._validate_fan_speed(fan_speed)
+
+        # A unit reporting no mode to preserve is powered on through here rather
+        # than set_power_and_mode, and it needs the speed folded in for the same
+        # reason: two requests to one unit are spaced by the pacer's minimum, and
+        # a command that close behind another can be accepted by the cloud and
+        # ignored by the device (ADR-026).
+        extra = {} if fan_speed is None else {"setFanSpeed": fan_speed}
+        await self._update_ata_unit(unit_id, power=power, **extra)
+
+    async def set_power_and_mode(
+        self, unit_id: str, power: bool, mode: str, fan_speed: str | None = None
+    ) -> None:
         """
         Turn device on/off and set operation mode in a single atomic API call.
 
@@ -94,6 +137,7 @@ class ATAControlClient:
             unit_id: Device ID (UUID)
             power: True to turn on, False to turn off
             mode: Operation mode - "Heat", "Cool", "Automatic", "Dry", or "Fan"
+            fan_speed: Optional fan speed to set in the same request
 
         Raises:
             AuthenticationError: If not authenticated
@@ -101,14 +145,15 @@ class ATAControlClient:
             ValueError: If mode is invalid
         """
         self._validate_mode(mode)
+        if fan_speed is not None:
+            self._validate_fan_speed(fan_speed)
 
-        payload = self._build_ata_control_payload(power=power, operationMode=mode)
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        # Carrying the speed here is what keeps a power-on and a speed change one
+        # request instead of two. Two requests to one unit are spaced by the
+        # pacer's minimum, and a command that close behind another can be
+        # accepted by the cloud and ignored by the device; see ADR-026.
+        extra = {} if fan_speed is None else {"setFanSpeed": fan_speed}
+        await self._update_ata_unit(unit_id, power=power, operationMode=mode, **extra)
 
     async def set_temperature(self, unit_id: str, temperature: float) -> None:
         """
@@ -132,13 +177,7 @@ class ATAControlClient:
                 f"Temperature must be between {TEMP_MIN_HEAT} and {TEMP_MAX_HEAT}°C"
             )
 
-        payload = self._build_ata_control_payload(setTemperature=temperature)
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        await self._update_ata_unit(unit_id, setTemperature=temperature)
 
     async def set_mode(self, unit_id: str, mode: str) -> None:
         """
@@ -155,13 +194,7 @@ class ATAControlClient:
         """
         self._validate_mode(mode)
 
-        payload = self._build_ata_control_payload(operationMode=mode)
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        await self._update_ata_unit(unit_id, operationMode=mode)
 
     async def set_fan_speed(self, unit_id: str, speed: str) -> None:
         """
@@ -176,19 +209,9 @@ class ATAControlClient:
             ApiError: If API request fails
             ValueError: If speed is invalid
         """
-        valid_speeds = set(FAN_SPEEDS)
-        if speed not in valid_speeds:
-            raise ValueError(
-                f"Invalid fan speed: {speed}. Must be one of {valid_speeds}"
-            )
+        self._validate_fan_speed(speed)
 
-        payload = self._build_ata_control_payload(setFanSpeed=speed)
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        await self._update_ata_unit(unit_id, setFanSpeed=speed)
 
     async def set_vane_vertical(self, unit_id: str, vertical: str) -> None:
         """
@@ -214,15 +237,7 @@ class ATAControlClient:
                 f"Must be one of {set(VANE_VERTICAL_DIRECTIONS)}"
             )
 
-        payload = self._build_ata_control_payload(
-            vaneVerticalDirection=vertical,
-        )
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        await self._update_ata_unit(unit_id, vaneVerticalDirection=vertical)
 
     async def set_vane_horizontal(self, unit_id: str, horizontal: str) -> None:
         """
@@ -246,12 +261,4 @@ class ATAControlClient:
                 f"Must be one of {set(VANE_HORIZONTAL_DIRECTIONS)}"
             )
 
-        payload = self._build_ata_control_payload(
-            vaneHorizontalDirection=horizontal,
-        )
-
-        await self._client._api_request(
-            "PUT",
-            API_CONTROL_UNIT.format(unit_id=unit_id),
-            json=payload,
-        )
+        await self._update_ata_unit(unit_id, vaneHorizontalDirection=horizontal)

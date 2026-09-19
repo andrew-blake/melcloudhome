@@ -1,6 +1,11 @@
 # ADR-018: Out-of-Band State Sync Limitation and Deduplication Trade-off
 
-**Status:** Accepted (limitation documented) — resolved by [ADR-019](019-websocket-realtime-updates.md)'s default-on WebSocket accelerator; still applies when the WebSocket toggle is turned off
+**Status:** Superseded by [ADR-026](026-remove-control-write-dedup.md), 2026-09-14 — deduplication
+is removed from every control write, so the second half of this limitation, a command matching
+a stale cache being dropped, no longer arises. The first half stands: an out-of-band change still
+reaches HA on the next refresh, WebSocket-accelerated where enabled. The rate-limit exposure this
+record weighs against that was measured on 2026-09-14 and is not there; see the Candidates table
+below and ADR-026.
 **Date:** 2026-06-14
 
 ## Context
@@ -49,8 +54,8 @@ Until WebSocket is reliable and implemented, the stale-cache window is structura
 
 | Option | Closes window? | Risk |
 |---|---|---|
-| Remove dedup entirely | No — re-exposes rate limiting | High: burst scene patterns hit API limits |
-| Remove dedup from power only | Yes, for power | Low: 1 extra call per redundant scene trigger |
+| Remove dedup entirely | Yes — measured, no rate-limit exposure | **Enacted** ([ADR-026](026-remove-control-write-dedup.md)). This cell read "High: burst scene patterns hit API limits" and was unmeasured. Measured 2026-09-14: 48 same-value PUTs, 36 of them concurrent across six units at the pacer's 0.5 s spacing, all 200 |
+| Remove dedup from power only | Yes, for power | Low: 1 extra call per redundant scene trigger. **Enacted first** (#318, `786f5d8`), then subsumed by ADR-026 |
 | Skip dedup when cache is stale (threshold) | No — threshold becomes a scene footgun | Medium: scenes firing after idle period bypass dedup, causing bursts |
 | Force /context refresh before each command | No — adds a call per command | High: scenes fire 2× API calls minimum; slower and worse |
 | Track "last commanded" instead of cache | No — doesn't eliminate scene redundancy | Medium: complex; doesn't solve original dedup problem |
@@ -72,7 +77,7 @@ If out-of-band sync issues become a recurring complaint, the lowest-risk partial
 1. **Remove dedup from `async_set_power` only** — power is the highest-impact case (unit can't be turned on at all). A single extra set_power call in a scene doesn't create a burst. All other attributes retain dedup.
 2. **Reduce poll to 30s** — halves the window for all attributes. Requires verifying API rate-limit headroom first.
 
-Do not remove dedup broadly without resolving rate-limit exposure.
+Do not remove dedup broadly without resolving rate-limit exposure. [Measured on 2026-09-14 and removed; see ADR-026.]
 
 ## User Communication
 
@@ -82,4 +87,5 @@ Out-of-band changes (MELCloud app, physical remote) sync to HA within 60 seconds
 
 - [ADR-007: Defer WebSocket Implementation](007-defer-websocket-implementation.md)
 - [ADR-011: Multi-Device-Type Architecture](011-multi-device-type-architecture.md) — introduced control client layer and dedup
+- [ADR-026: Remove Control-Write Deduplication](026-remove-control-write-dedup.md) — supersedes this record
 - GitHub Discussion #135 — original user report
