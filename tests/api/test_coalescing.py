@@ -63,10 +63,10 @@ async def test_a_write_arriving_mid_request_is_not_lost():
 async def test_cancelling_one_caller_leaves_the_others_alone():
     """The survivor completes, and the cancelled caller's fields still go.
 
-    Each caller waits on its own future, so cancelling one leaves the request
-    the others are waiting on untouched. The second assertion documents a real
-    consequence: a caller cancelled after joining has already contributed its
-    fields, so a cancelled service call still reaches the device.
+    Each caller awaits the dispatch task through a shield, so cancelling one
+    leaves the request the others are waiting on untouched. The second assertion
+    documents a real consequence: a caller cancelled after joining has already
+    contributed its fields, so a cancelled service call still reaches the device.
     """
     sent, send = _recorder()
     c = WriteCoalescer(send, window=0.05)
