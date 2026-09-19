@@ -56,17 +56,10 @@ class ATAControlClient(ControlClientBase):
         Use this instead of separate async_set_power + async_set_mode when turning
         a unit on to a specific mode, to avoid the operationMode=null window that
         can trigger a mode-conflict fault on multi-zone outdoor units.
-        """
-        device = self._get_device(unit_id)
-        if device and device.power == power and device.operation_mode == mode:
-            _LOGGER.debug(
-                "Power already %s and mode already %s for %s, skipping API call",
-                power,
-                mode,
-                unit_id[-8:],
-            )
-            return
 
+        Power writes are never deduplicated against coordinator data; see
+        async_set_power.
+        """
         _LOGGER.info(
             "Setting power+mode for %s to power=%s mode=%s", unit_id[-8:], power, mode
         )
@@ -78,18 +71,19 @@ class ATAControlClient(ControlClientBase):
     async def async_set_power(self, unit_id: str, power: bool) -> None:
         """Set power state with automatic session recovery.
 
+        Unlike every other write here, power is not deduplicated against
+        coordinator data. That data is stale for the whole window between a
+        write and the next completed refresh, so a rapid on-then-off had the
+        off compared against a cache still reading off and dropped, leaving the
+        unit running (#318). ADR-018 pre-authorised removing dedup from power
+        for exactly this reason: it is the highest-impact field, and the cost is
+        one extra call per redundant scene application, which the RequestPacer
+        absorbs. Every other field keeps its dedup.
+
         Args:
             unit_id: Unit ID
             power: True=ON, False=OFF
         """
-        # Skip if already in desired state (prevents duplicate API calls)
-        device = self._get_device(unit_id)
-        if device and device.power == power:
-            _LOGGER.debug(
-                "Power already %s for %s, skipping API call", power, unit_id[-8:]
-            )
-            return
-
         _LOGGER.info("Setting power for %s to %s", unit_id[-8:], power)
         await self._execute_with_retry(
             lambda: self._client.ata.set_power(unit_id, power),

@@ -331,7 +331,12 @@ async def test_debounced_refresh_coalesces_calls(coordinator, hass):
 
 @pytest.mark.asyncio
 async def test_deduplication_skips_same_value(coordinator):
-    """Test smart deduplication skips API call when value unchanged."""
+    """Test smart deduplication skips API call when value unchanged.
+
+    Temperature rather than power: power writes are deliberately not
+    deduplicated (#318, ADR-018), so they are no longer a witness for the
+    mechanism this test exists to guard.
+    """
     from custom_components.melcloudhome.api.models_ata import (
         AirToAirCapabilities,
         AirToAirUnit,
@@ -358,13 +363,13 @@ async def test_deduplication_skips_same_value(coordinator):
     )
     coordinator._units = {"unit123": unit}
 
-    coordinator.client.ata.set_power = AsyncMock()
+    coordinator.client.ata.set_temperature = AsyncMock()
 
-    # Try to set power to True (already True)
-    await coordinator.async_set_power("unit123", True)
+    # Try to set temperature to 20.0 (already 20.0)
+    await coordinator.async_set_temperature("unit123", 20.0)
 
     # Should NOT call API
-    assert coordinator.client.ata.set_power.call_count == 0
+    assert coordinator.client.ata.set_temperature.call_count == 0
 
 
 @pytest.mark.asyncio

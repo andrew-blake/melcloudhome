@@ -209,6 +209,17 @@
       "holiday_mode": {
         "name": "โหมดวันหยุด"
       }
+    },
+    "fan": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "อัตโนมัติ"
+            }
+          }
+        }
+      }
     }
   },
   "services": {

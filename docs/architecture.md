@@ -210,6 +210,7 @@ All entities use UUID-based device names for stable entity IDs (format: `melclou
 **ATA (Air-to-Air) Entities:**
 
 - `climate.melcloudhome_{short_id}_climate` - Main climate control
+- `fan.melcloudhome_{short_id}_a_c_fan` - Fan speed, vane oscillation and unit power ([ADR-025](decisions/025-homekit-fan-entity.md))
 - `sensor.melcloudhome_{short_id}_room_temperature` - Current temperature
 - `sensor.melcloudhome_{short_id}_energy_*` - Energy consumption (daily/weekly/monthly)
 - `binary_sensor.melcloudhome_{short_id}_error` - Error state

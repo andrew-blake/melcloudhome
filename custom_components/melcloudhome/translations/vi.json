@@ -209,6 +209,17 @@
       "holiday_mode": {
         "name": "Chế độ nghỉ lễ"
       }
+    },
+    "fan": {
+      "melcloudhome": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "Tự động"
+            }
+          }
+        }
+      }
     }
   },
   "services": {
