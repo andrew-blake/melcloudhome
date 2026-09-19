@@ -9,7 +9,7 @@ ways the log misleads. Record a run's results in the PR that relies on them.
 | Property | Suite test | `tools/hardware_check.py` | Devserver | Home app | Vendor app |
 | --- | --- | --- | --- | --- | --- |
 | 1. Every command is issued to the API, whatever the coordinator's copy holds ([ADR-026](../decisions/026-remove-control-write-dedup.md)) | `test_a_command_matching_current_state_is_still_sent`, `test_the_same_speed_twice_is_sent_twice` | `reversal` (`restart-after-zero` proves a sequence, not this property: write-through updates the copy after each write, so every write it issues already differs from the copy) | same shape over REST; zone setpoint 20, 21, 20 gives three writes | release at A, pause a second, release at B: two writes | source of a change only |
-| 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_a_drag_to_zero_reads_off_before_its_write_lands` | `off-behind-on [--gap S]`, `drop-boundary` | ATW power only, as wiring | from off, drag up and straight to zero | no |
+| 2. A power-off issued behind a power-on reaches the API ([#318](https://github.com/andrew-blake/melcloudhome/issues/318)) | `test_power_off_is_sent_to_a_unit_already_off`, `test_a_drag_to_zero_reads_off_before_its_write_lands` | `off-behind-on [--gap S]` | ATW power only, as wiring | from off, drag up and straight to zero | no |
 | 3. The entity shows a command as soon as the API accepts it | `test_entity_shows_a_written_speed_before_the_next_refresh`, `test_a_write_landing_during_a_poll_still_shows_the_written_speed`, `test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh` | none: the fan entity reports a pending speed *before* the API is asked, so an entity read cannot tell what the API accepted from what was queued locally. The suite tests are this row's only driver | only place to see it on a heat-pump entity | `set_value: RotationSpeed` in the bridge log, then the push to the phone | no |
 | 4. A value the unit already has is still sent | a `…matching_current_state_is_still_sent` case per ATA setter (temperature, both vanes, fan mode) plus `test_set_hvac_mode_writes_even_when_already_matching`, `test_power_off_is_sent_to_a_unit_already_off` and `test_atw_power_is_sent_even_when_the_cache_already_agrees`: the last three do not match that name, so grepping it alone reads as two setters untested | `same-value` (fan speed), `same-value-sweep` (temperature, both vanes, fan mode) | only place the heat-pump setters can be driven | out of reach: a slider does not send a value it already shows | no |
 | 5. A command matching an out-of-band change is still sent (discussion #135) | mechanism only: the mock is both the cloud and the copy | `out-of-band-match` | out of reach: nothing changes the mock out of band | vendor app first, then drag the slider to the value HA now holds | the source of the change |
@@ -40,14 +40,13 @@ released value only, and that release carries the power and the speed in one req
   this mistake.
 - **Property 5 needs the change made outside Home Assistant first**, and Home Assistant must
   have shown it before the matching command is sent.
-- **`drop-boundary` has not yet established anything about a gap.** Its left column is the pause
-  between two service calls, which the pacer floors at 0.5 s, so it has never observed the
-  interval the cloud received and no reading of its table in either direction is supported. It
-  also does one pair per gap and starts each gap seconds after the previous iteration's reset,
-  whose own device report can land inside the next settle window, so a held that follows a LOST
-  is unreliable even once the axis is right. Timing each pair off its two `API Response: PUT`
-  lines, repeats per gap, and a longer quiet period after each reset are what it would take to
-  say anything.
+- **Walking a range of gaps needs a check that does not exist.** `drop-boundary` did this and was
+  removed: its left column was the pause between two service calls, which the pacer floors at
+  0.5 s, so it never observed the interval the cloud received and no reading of its table in
+  either direction was supported. Conclusions drawn from it have been retracted. Building one
+  that says something means timing each pair off its two `API Response: PUT` lines, repeating per
+  gap, and leaving a quiet period after each reset long enough that the previous iteration's
+  device report cannot land inside the next settle window.
 
 ## The script
 
@@ -56,8 +55,7 @@ uv run python tools/hardware_check.py [-k] [--no-debug] [--entity <fan entity id
 ```
 
 Checks: `state`, `reversal`, `same-value`, `same-value-sweep`, `combined-write`,
-`off-behind-on [--gap SECONDS]`, `restart-after-zero`, `out-of-band-match`,
-`drop-boundary [--gaps 0.2,0.4,0.7,1.0,1.5]`.
+`off-behind-on [--gap SECONDS]`, `restart-after-zero` and `out-of-band-match`.
 Without `--entity` or a check it lists the fan entities and exits. It reads `HA_URL`,
 `HA_TOKEN`, `HA_SSH_HOST` and `HA_CONTAINER` from `.env`, and `MELCLOUD_USER_OWNER` and
 `MELCLOUD_PASSWORD_OWNER` for `out-of-band-match`, which sets the speed through the bundled

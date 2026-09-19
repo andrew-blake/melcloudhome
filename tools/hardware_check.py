@@ -22,7 +22,6 @@ Checks:
     restart-after-zero  zero, a one-second pause, then 40: expect off, on, speed
     out-of-band-match   set a speed through the MELCloud API outside HA, wait for HA to
                         show it, send the same speed through HA: expect the write (#135)
-    drop-boundary       off-behind-on across --gaps, reporting which gaps held
 
 Reads HA_URL, HA_TOKEN, HA_SSH_HOST and HA_CONTAINER from the repo .env; out-of-band-match
 also needs MELCLOUD_USER_OWNER and MELCLOUD_PASSWORD_OWNER. -k disables TLS verification:
@@ -687,47 +686,6 @@ def check_combined_write(unit: Unit, log: Log, args: argparse.Namespace) -> None
     log.dump()
 
 
-def check_drop_boundary(unit: Unit, log: Log, args: argparse.Namespace) -> None:
-    # None means the device reported nothing in that window, which is neither
-    # a held nor a lost off.
-    results: list[tuple[float, bool | None]] = []
-    for gap in [float(g) for g in args.gaps.split(",")]:
-        print(f"--- gap {gap:g}s ---")
-        held, _, reported, contradicted_after = off_behind_on(
-            unit, log, gap, args.settle
-        )
-        if contradicted_after is not None and contradicted_after < LAG_SUSPECT_SECONDS:
-            outcome = None  # too soon to tell a loss from a late report
-        else:
-            outcome = held if reported else None
-        results.append((gap, outcome))
-        if unit.is_on():
-            unit.turn_off()
-            wait(5, "reset to off")
-    print("requested gap(s)  off held at the device?")
-    after_loss = False
-    for gap, outcome in results:
-        if outcome is None:
-            print(f"  {gap:>4g}  no device report in the window, nothing observed")
-        elif not outcome:
-            print(f"  {gap:>4g}  LOST: unit kept the power-on")
-        else:
-            suspect = "   <- follows a LOST, see below" if after_loss else ""
-            print(f"  {gap:>4g}  held{suspect}")
-        after_loss = outcome is False
-    print(
-        f"\nThe left column is what was ASKED for between two service calls, not what the\n"
-        f"cloud received: one pacer serialises every request, so no pair is delivered closer\n"
-        f"than {PACER_FLOOR:g}s and rows below that are the same experiment under different\n"
-        "labels. Read the delivered interval off the two API Response: PUT lines.\n"
-        "\nOne sample per gap, so this is not a threshold, and the loss has been seen to be\n"
-        "non-monotonic: read it as evidence that a gap is unsafe, never that one is safe.\n"
-        "A held that follows a LOST is weaker still. The losing iteration ends with a power-off\n"
-        "and the next gap begins seconds later, so the device's report of that reset can arrive\n"
-        "inside the next settle window and read as the new iteration's off holding."
-    )
-
-
 # --- main -------------------------------------------------------------------------------
 
 
@@ -761,9 +719,6 @@ def main() -> None:
         "--settle", type=float, default=90, help="seconds to wait for the device report"
     )
     parser.add_argument(
-        "--gaps", default="0.2,0.4,0.7,1.0,1.5", help="drop-boundary: gaps to walk"
-    )
-    parser.add_argument(
         "check",
         nargs="?",
         choices=[
@@ -775,7 +730,6 @@ def main() -> None:
             "off-behind-on",
             "restart-after-zero",
             "out-of-band-match",
-            "drop-boundary",
         ],
     )
     args = parser.parse_args()
@@ -818,8 +772,6 @@ def main() -> None:
             check_restart_after_zero(unit, log, args)
         elif args.check == "out-of-band-match":
             check_out_of_band_match(unit, log, args, env)
-        elif args.check == "drop-boundary":
-            check_drop_boundary(unit, log, args)
     finally:
         if args.check != "state":
             if was_on and not unit.is_on():
