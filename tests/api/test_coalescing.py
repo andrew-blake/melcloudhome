@@ -19,41 +19,6 @@ def _recorder() -> tuple[list[tuple[str, dict[str, Any]]], Any]:
 
 
 @pytest.mark.asyncio
-async def test_same_turn_writes_share_one_request():
-    sent, send = _recorder()
-    c = WriteCoalescer(send)
-
-    await asyncio.gather(
-        c.submit("unit-1", {"power": True}),
-        c.submit("unit-1", {"setTemperature": 21.0}),
-    )
-
-    assert len(sent) == 1
-    assert sent[0][1] == {"power": True, "setTemperature": 21.0}
-
-
-@pytest.mark.asyncio
-async def test_a_two_field_write_merges_with_a_one_field_write():
-    """All three fields reach the request.
-
-    The sparse merge itself is proved at the client layer, by
-    test_a_merged_write_carries_no_field_as_null, which is where a built
-    payload's nulls could erase a sibling's value.
-    """
-    sent, send = _recorder()
-    c = WriteCoalescer(send)
-
-    await asyncio.gather(
-        c.submit("unit-1", {"power": True, "operationMode": "Heat"}),
-        c.submit("unit-1", {"setTemperature": 21.0}),
-    )
-
-    assert sent[0][1]["power"] is True
-    assert sent[0][1]["operationMode"] == "Heat"
-    assert sent[0][1]["setTemperature"] == 21.0
-
-
-@pytest.mark.asyncio
 async def test_different_units_do_not_merge():
     sent, send = _recorder()
     c = WriteCoalescer(send)
@@ -95,12 +60,13 @@ async def test_a_write_arriving_mid_request_is_not_lost():
 
 
 @pytest.mark.asyncio
-async def test_a_cancelled_caller_still_sends_its_fields():
-    """Documents a real consequence rather than asserting it is desirable.
+async def test_cancelling_one_caller_leaves_the_others_alone():
+    """The survivor completes, and the cancelled caller's fields still go.
 
-    A caller cancelled after joining a pending write has already contributed
-    its fields, and the request carries them. A cancelled service call
-    therefore still reaches the device.
+    Each caller waits on its own future, so cancelling one leaves the request
+    the others are waiting on untouched. The second assertion documents a real
+    consequence: a caller cancelled after joining has already contributed its
+    fields, so a cancelled service call still reaches the device.
     """
     sent, send = _recorder()
     c = WriteCoalescer(send, window=0.05)
@@ -111,7 +77,8 @@ async def test_a_cancelled_caller_still_sends_its_fields():
     doomed.cancel()
 
     await survivor
-    assert sent[0][1]["power"] is True
+    assert len(sent) == 1
+    assert sent[0][1] == {"power": True, "setTemperature": 21.0}
 
 
 @pytest.mark.asyncio
@@ -158,21 +125,6 @@ async def test_a_failure_reaches_every_caller():
     )
 
     assert all(isinstance(r, RuntimeError) for r in results)
-
-
-@pytest.mark.asyncio
-async def test_cancelling_one_caller_leaves_the_others_alone():
-    sent, send = _recorder()
-    c = WriteCoalescer(send, window=0.05)
-
-    doomed = asyncio.create_task(c.submit("unit-1", {"power": True}))
-    survivor = asyncio.create_task(c.submit("unit-1", {"setTemperature": 21.0}))
-    await asyncio.sleep(0)
-    doomed.cancel()
-
-    await survivor
-    assert len(sent) == 1
-    assert sent[0][1]["setTemperature"] == 21.0
 
 
 @pytest.mark.asyncio

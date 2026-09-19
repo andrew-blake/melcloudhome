@@ -32,12 +32,13 @@ _NEVER_TOGETHER = frozenset({"vaneVerticalDirection", "vaneHorizontalDirection"}
 
 
 class _Pending:
-    """One request being assembled, and everyone waiting on its outcome."""
+    """One request being assembled, and the task that will send it."""
 
     def __init__(self) -> None:
-        """Start empty; fields and waiters are added as writes arrive."""
+        """Start empty; fields are added as writes arrive."""
         self.fields: dict[str, Any] = {}
-        self.waiters: list[asyncio.Future[None]] = []
+        self.callers = 0
+        self.task: asyncio.Task[None]
 
 
 def _may_merge(pending: dict[str, Any], incoming: dict[str, Any]) -> bool:
@@ -79,59 +80,41 @@ class WriteCoalescer:
             # is published only once that task exists: a create_task that raises
             # on a closing loop would otherwise leave an entry with no
             # dispatcher, and the next write would merge into it and hang.
-            task = asyncio.create_task(self._dispatch(unit_id, entry))
-            self._tasks.add(task)
-            task.add_done_callback(self._tasks.discard)
+            entry.task = asyncio.create_task(self._dispatch(unit_id, entry))
+            self._tasks.add(entry.task)
+            entry.task.add_done_callback(self._tasks.discard)
             self._pending[unit_id] = entry
 
         # Nothing awaits between reading the entry and joining it, so a
         # dispatch cannot begin in the gap and leave these fields unsent.
         entry.fields.update(fields)
-        waiter: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        entry.waiters.append(waiter)
-        await waiter
+        entry.callers += 1
+        # Shielded, so cancelling this caller leaves the request the others are
+        # waiting on alone. Callers resume in the order they began awaiting,
+        # which is the order entry.fields was updated in, so each write-through
+        # applies its field in the order the payload carried them.
+        await asyncio.shield(entry.task)
 
     async def _dispatch(self, unit_id: str, entry: _Pending) -> None:
-        """Wait out the window, then send everything collected as one request."""
-        try:
-            await asyncio.sleep(self._window)
-            # Before the request is awaited, so a write arriving during the
-            # round trip starts its own request rather than joining a payload
-            # that has already gone.
-            if self._pending.get(unit_id) is entry:
-                del self._pending[unit_id]
-            if len(entry.waiters) > 1:
-                _LOGGER.debug(
-                    "Coalesced %d writes for %s into one request: %s",
-                    len(entry.waiters),
-                    unit_id[-8:],
-                    ", ".join(sorted(entry.fields)),
-                )
-            # The send waits on the pacer too, so under contention a write
-            # arriving during that wait starts its own request. Merging helps
-            # least when the pacer is busiest. Untested: pacing is off under
-            # pytest.
-            await self._send(unit_id, dict(entry.fields))
-        except BaseException as err:
-            # Delivered to every waiter instead of being re-raised here: this
-            # task has no awaiter, so re-raising would only be logged and the
-            # callers would hang. A CancelledError raised while this task is
-            # suspended travels the same way and cancels each waiting caller.
-            # A cancellation landing before the task's first step does not: the
-            # throw happens at the coroutine's entry point, this block never
-            # runs, and the waiters are left unresolved. Only a loop-wide
-            # teardown does that, and it is cancelling those callers anyway.
-            if self._pending.get(unit_id) is entry:
-                del self._pending[unit_id]
-            for waiter in entry.waiters:
-                if not waiter.done():
-                    waiter.set_exception(err)
-        else:
-            # Resolved in submission order, which is the order entry.fields was
-            # updated in. Each caller's write-through then applies its own field
-            # in that same order, so the coordinator's copy ends on the value the
-            # payload carried even when two callers wrote the same field. A set
-            # of waiters, or resolving them concurrently, would break that.
-            for waiter in entry.waiters:
-                if not waiter.done():
-                    waiter.set_result(None)
+        """Wait out the window, then send everything collected as one request.
+
+        Whatever this raises reaches every caller, because each awaits this task
+        through a shield.
+        """
+        await asyncio.sleep(self._window)
+        # Before the request is awaited, so a write arriving during the round
+        # trip starts its own request rather than joining a payload that has
+        # already gone.
+        if self._pending.get(unit_id) is entry:
+            del self._pending[unit_id]
+        if entry.callers > 1:
+            _LOGGER.debug(
+                "Coalesced %d writes for %s into one request: %s",
+                entry.callers,
+                unit_id[-8:],
+                ", ".join(sorted(entry.fields)),
+            )
+        # The send waits on the pacer too, so under contention a write arriving
+        # during that wait starts its own request. Merging helps least when the
+        # pacer is busiest. Untested: pacing is off under pytest.
+        await self._send(unit_id, dict(entry.fields))
