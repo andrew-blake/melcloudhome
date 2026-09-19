@@ -5,7 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+
+## [2.6.0] - 2026-09-19
 
 ### Added
 
@@ -18,11 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Setting a mode and a temperature in one step now sets both. The `climate.set_temperature` and `water_heater.set_temperature` services accept a mode alongside the temperature, and the integration read only the temperature and discarded the mode, so an automation saying "heat to 21" set the target and left a unit that was off still off. **If you have an automation that passes a mode it does not want applied, remove it from the call.** A mode the unit does not support is now refused with an error, where before it was ignored.
 - A mode and a temperature set together, or a fan powered on at a chosen speed, now leave as a single request to MELCloud. A unit can accept one command and ignore a second arriving immediately behind it, and sending one request removes that possibility for these cases.
 - Applying a scene to units already at target now sends one request per attribute per unit, spaced half a second apart, where before it sent only the one that set the mode. A typical scene takes a few seconds to apply and a large one about 18 seconds; a manual command given during that time queues behind it and still arrives.
-
-## [2.5.1] - 2026-09-09
-
-### Fixed
-
 - One or two failed requests to MELCloud no longer make every entity "unavailable" for a minute or two. Once a minute the integration asks MELCloud for the current state of all devices, and when that request timed out, dropped, or got a server error, every sensor and climate entity went unavailable until the next request succeeded. The integration now keeps the last known values across up to two consecutive failed requests of any kind and logs a warning each time; the third failure in a row marks entities unavailable, so a real outage still shows and server errors still back off as before once that happens. The 30 second request timeout is unchanged. (#309)
 - A change arriving from the MELCloud app or remote control while Home Assistant was already fetching the previous one could silently abort that fetch. The log then showed "Fetching melcloudhome data recovered" with nothing to recover from, and any entity that happened to update in the next few seconds briefly read unavailable. The fetch now always runs to completion; a new change only restarts the short wait before it.
 
