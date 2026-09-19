@@ -288,3 +288,36 @@ async def test_set_temperature_acts_on_the_operation_mode_it_is_given(
 
     mock_client.atw.set_dhw_temperature.assert_called_once_with(TEST_ATW_UNIT_ID, 55)
     mock_client.atw.set_forced_hot_water.assert_called_once_with(TEST_ATW_UNIT_ID, True)
+
+
+@pytest.mark.asyncio
+async def test_set_temperature_refuses_an_unsupported_operation_mode(
+    hass: HomeAssistant,
+) -> None:
+    """An unsupported mode reaches set_temperature unvalidated by HA.
+
+    The temperature must not go out on its own: sending half of what was asked
+    for, silently, is the failure this service was changed to stop.
+    """
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_context = create_mock_atw_user_context()
+    _, mock_client = await setup_atw_integration_custom(hass, mock_context)
+    mock_client.atw.set_dhw_temperature = AsyncMock()
+    mock_client.atw.set_forced_hot_water = AsyncMock()
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "water_heater",
+            "set_temperature",
+            {
+                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+                "temperature": 55,
+                "operation_mode": "boost",
+            },
+            blocking=True,
+        )
+    await hass.async_block_till_done()
+
+    mock_client.atw.set_dhw_temperature.assert_not_called()
+    mock_client.atw.set_forced_hot_water.assert_not_called()
