@@ -18,9 +18,7 @@ The fan tile is the new one. It carries the fan speed, the vane and the unit's
 power.
 
 Both tiles are the same air conditioner, so a change made on one shows up on the
-other. Both show the last command Home Assistant sent, which is almost always
-what the unit is doing. On the rare occasion a unit does not act on a command,
-the tiles catch up when it next reports for itself, a minute or two later.
+other.
 
 The fan tile takes its name from the unit, so a unit called Living Room gives
 you a tile called "Living Room A-C fan". Inside Home Assistant the same entity
