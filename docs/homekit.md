@@ -78,10 +78,6 @@ power button in that view: the slider is the power control, and setting it to
 anything above zero starts the unit. **Oscillate** and **Fan Mode** (Manual or
 Auto) are one level further in, behind the cog icon in the corner.
 
-Nothing on the slider view hints that there is more behind the cog. Apple
-decides which fan controls sit on the tile and which sit on the settings page,
-and the integration has no say in it.
-
 ## Turning the fan off turns the air conditioner off
 
 An air conditioner has no "fan off, unit still running" state. The fan is the
@@ -103,7 +99,7 @@ leave the fan on.
 
 Switching Oscillate on sets the vertical vane sweeping. It does not power the
 unit on. If the unit is off, nothing visible happens straight away and the
-setting applies the next time it runs. That is deliberate, not a fault.
+setting applies the next time it runs.
 
 Switching Oscillate off returns the vane to Auto, which is a fixed angle the
 unit chooses to suit what it is doing. It does not go back to a numbered vane
@@ -116,8 +112,8 @@ unit chooses it, and will change it by itself as the room warms or cools.
 
 While you are in Auto, the speed slider keeps the last speed you chose. So the
 percentage at the top of the page is the speed the unit will return to when you
-switch back to Manual. It is not a live reading of the current speed. The Home
-app has no way to show both, and it keeps your choice.
+switch back to Manual. It is not a live reading of the current speed, and the
+Home app has no way to show both.
 
 A unit that has been in Auto ever since Home Assistant first saw it has no last speed to keep,
 and the Home app shows 100% instead. Nothing chose that figure. HomeKit treats zero as off, so
