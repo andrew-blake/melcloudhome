@@ -9,27 +9,26 @@ things about them that catch people out.
 
 ## What you will see
 
-Almost every air conditioning unit gives you two tiles in the Home app. A unit
-that reports no fan speeds gets no fan tile, and there is nothing to configure.
-The second one may need a restart before it shows up; see the next section.
+Each air conditioning unit gives you two tiles in the Home app.
 
 The thermostat tile is the one you already have. It carries the temperature and
 the heating or cooling mode.
 
 The fan tile is the new one. It carries the fan speed, the vane and the unit's
-power. It takes its name from the unit, so a unit called Living Room gives you a
-tile called "Living Room A-C fan". Inside Home Assistant the same entity is
-called **A/C fan**, which is the name to look for when you add it to the bridge.
-The bridge swaps the slash for a hyphen on its way to HomeKit, hence the two
-spellings.
+power.
 
 Both tiles are the same air conditioner, so a change made on one shows up on the
 other. Both show the last command Home Assistant sent, which is almost always
 what the unit is doing. On the rare occasion a unit does not act on a command,
-the tiles catch up when it next reports for itself, which takes a minute or
-two.
+the tiles catch up when it next reports for itself, a minute or two later.
 
-Heat pumps are unaffected. This applies to air conditioning units only.
+The fan tile takes its name from the unit, so a unit called Living Room gives
+you a tile called "Living Room A-C fan". Inside Home Assistant the same entity
+is called **A/C fan**. The bridge swaps the slash for a hyphen on its way to
+HomeKit, which is why there are two spellings.
+
+One exception: a unit that reports no fan speeds gets no fan tile. Heat pumps are
+not affected by any of this and never had one.
 
 ## Getting the fan tile
 
