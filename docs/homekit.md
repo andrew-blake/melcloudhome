@@ -17,7 +17,9 @@ the heating or cooling mode.
 
 The fan tile is the new one. It carries the fan speed, the vane and the unit's
 power. It takes its name from the unit, so a unit called Living Room gives you a
-tile called "Living Room A-C fan".
+tile called "Living Room A-C fan". Inside Home Assistant the same entity is
+called **A/C fan**, which is the name to look for when you add it to the bridge.
+HomeKit will not accept a slash in a name, hence the two spellings.
 
 Both tiles are the same air conditioner, so a change made on one shows up on the
 other. Both show the last command Home Assistant sent, which is almost always
@@ -29,22 +31,30 @@ Heat pumps are unaffected. This applies to air conditioning units only.
 ## Adding the fan to your bridge
 
 The fan is a new entity, so your HomeKit Bridge will not pick it up on its own.
-In Home Assistant go to **Settings** → **Devices & Services** → **HomeKit
-Bridge** → **Configure**, and add the fan entities you want to the list the
-bridge exposes.
 
-If your bridge is filtered to climate entities only, for example with
-`include_domains: [climate]`, add `fan` to the filter as well. Without it the
-fan entities are not offered to HomeKit at all, so the new tile will not show
-up.
+In Home Assistant go to **Settings**, then **Devices & Services**, then
+**HomeKit Bridge**, and click the cog on your bridge entry. The entry carries
+the bridge's own name, so it reads something like "HASS Bridge:21064" rather
+than "HomeKit Bridge".
 
-Take care at the entity selection step: leaving the fan selection empty means
-the whole domain, so every unit in your home gets bridged. Pick the ones you
-want explicitly if you only want some of them.
+That opens a wizard of three screens.
 
-Home Assistant rebuilds the bridge when you save, so the new tile appears
-without restarting anything. It arrives in whichever room the Home app chooses
-by default, so you may want to move it into the right room afterwards.
+1. **Select mode and domains.** Leave HomeKit mode on **bridge**. If Inclusion
+   mode is **include**, then **Domains to include** must list **Fan** alongside
+   **Climate**, or the fans are never offered to HomeKit and no tile appears.
+   This is a dropdown on this screen. There is nothing to edit in
+   `configuration.yaml`.
+2. **Select the entities to be included.** Your units appear here as **A/C
+   fan**, one per unit, with the device and area beneath each. Pick the ones you
+   want. Leaving a domain's selection empty includes that whole domain, which
+   the screen says in as many words, so every unit in the house gets bridged.
+3. **Bridged device triggers.** Leave this empty unless you want HomeKit
+   programmable switches for device triggers.
+
+Saving reloads the bridge, so the new tile appears without restarting Home
+Assistant, and the tiles you already had keep their names and rooms. The new
+tile arrives in whichever room the Home app chooses by default, so you may want
+to move it into the right room afterwards.
 
 ## Tapping the icon and tapping the label
 
