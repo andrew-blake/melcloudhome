@@ -3,13 +3,14 @@
 How your air conditioning units appear in the Apple Home app, and the handful of
 things about them that catch people out.
 
-**Last Updated:** 2026-09-12
+**Last Updated:** 2026-09-20
 
 ---
 
 ## What you will see
 
-Each air conditioning unit gives you two tiles in the Home app rather than one.
+Each air conditioning unit gives you two tiles in the Home app. You add the
+second of them to your bridge yourself; see the next section.
 
 The thermostat tile is the one you already have. It carries the temperature and
 the heating or cooling mode.
@@ -18,8 +19,10 @@ The fan tile is the new one. It carries the fan speed, the vane and the unit's
 power. It takes its name from the unit, so a unit called Living Room gives you a
 tile called "Living Room A-C fan".
 
-Both tiles are the same air conditioner. A change made on one shows up on the
-other, and neither can get out of step with the unit itself.
+Both tiles are the same air conditioner, so a change made on one shows up on the
+other. Both show the last command Home Assistant sent, which is almost always
+what the unit is doing. On the rare occasion a unit does not act on a command,
+the tiles catch up when it next reports for itself, within about a minute.
 
 Heat pumps are unaffected. This applies to air conditioning units only.
 
@@ -70,13 +73,15 @@ air conditioner. So turning the fan tile off, or dragging its speed slider down
 to zero, switches the whole unit off. Turning it back on starts the air
 conditioner again, in the mode it was last using.
 
-We have only checked this through HomeKit. The entity is an ordinary Home
-Assistant fan though, so if you also expose your entities to Google Home or
-Alexa it will appear there as a fan too, and asking either of them to turn that
-fan off should stop the air conditioning in the same way.
+I have only checked this through HomeKit. The entity is an ordinary Home
+Assistant fan, so if you also expose your entities to Google Home or Alexa it
+appears there as a fan too, and asking either of them to turn that fan off
+should stop the air conditioning the same way. Alexa should also offer the speed
+and the swing. Google Home offers the speed alone, because a Google fan has no
+swing control.
 
-If what you actually want is the unit running quietly, set the lowest speed
-rather than turning the fan off.
+If what you actually want is the unit running quietly, set the lowest speed and
+leave the fan on.
 
 ## Oscillate does not start the unit
 
@@ -94,10 +99,9 @@ Fan Mode has two settings. On **Manual** you choose the speed. On **Auto** the
 unit chooses it, and will change it by itself as the room warms or cools.
 
 While you are in Auto, the speed slider keeps the last speed you chose. So the
-percentage at the top of the page is the speed the unit will go back to, not the
-speed it is running at that moment. The Home app has no way to show those two
-things separately, and a slider that remembers your choice is more useful than
-one that drifts about on its own.
+percentage at the top of the page is the speed the unit will return to when you
+switch back to Manual. It is not a live reading of the current speed. The Home
+app has no way to show both, and it keeps your choice.
 
 A unit that has been in Auto ever since Home Assistant first saw it has no last speed to keep,
 and the Home app shows 100% instead. Nothing chose that figure. HomeKit treats zero as off, so
@@ -117,11 +121,10 @@ Change the fan speed in Home Assistant while the air conditioner is off and the 
 showing the old speed. The change did happen: Home Assistant and the unit both have the new
 speed, and the Home app catches up the moment you turn the unit on.
 
-This is Home Assistant's HomeKit bridge rather than this integration. The bridge only sends a
-fan's speed to HomeKit when the fan is not off, so while the unit is off the Home app keeps
-whatever speed it was last told. Nothing here can change that, and the speed it shows is simply
-out of date rather than wrong about what will happen: turning the unit on applies the speed
-Home Assistant holds, not the one the app was displaying.
+This comes from Home Assistant's HomeKit bridge, and no part of it is this integration's to
+change. The bridge only sends a fan's speed to HomeKit while the fan is on, so with the unit off
+the Home app keeps whatever speed it was last told. That displayed speed is simply out of date.
+Turning the unit on applies the speed Home Assistant holds.
 
 ## Units that report no vane
 
@@ -149,9 +152,9 @@ water tank's mode and temperature.
 It would be tidier to have one tile with the temperature, the speed and the vane
 all on it. Apple does have an accessory type that does exactly that, but a unit
 only qualifies for it if its fan speeds carry Apple's own names, which would
-mean renaming five numbered speeds onto low, medium and high. That would reach
-three of your five speeds instead of all five, and it would break existing
-automations and templates that refer to the current names.
+mean renaming five numbered speeds onto low, medium and high. That would leave
+three of your five speeds reachable, and it would break existing automations and
+templates that refer to the current names.
 
 A separate fan tile keeps every speed reachable and changes nothing you already
 have. [ADR-025](decisions/025-homekit-fan-entity.md) records the full reasoning
