@@ -36,12 +36,14 @@ in whichever room the Home app chooses by default, so you may want to move it.
 
 ### If the tile does not appear
 
-Your bridge is probably set to expose named entities one by one, so it needs
-telling about the new one.
+Either your bridge does not cover the Fan domain, or it is set to expose named
+entities one by one. The screens below deal with both.
 
 Go to **Settings**, then **Devices & Services**, then **HomeKit Bridge**, and
 open the options for your bridge entry. The entry carries the bridge's own name,
-so it reads something like "HASS Bridge:21064".
+so it reads something like "HASS Bridge:21064". If the dialog tells you the
+entry is controlled via YAML, add `fan` to the filter in your
+`configuration.yaml` instead.
 
 On the first screen, leave HomeKit mode on **bridge** and make sure **Domains to
 include** lists **Fan** alongside **Climate**. Without it no fan reaches HomeKit,
@@ -53,11 +55,13 @@ The next screen is one of two:
 - **Select the entities to be included.** Tick the **A/C fan** entities you
   want.
 - **Select the entities to be excluded.** Leave your A/C fans **unticked**.
-  Ticking one here is what keeps it out of HomeKit.
+  Ticking one here is what keeps it out of HomeKit. Adding the Fan domain
+  exposes every fan you have, so tick any others you would rather not see.
 
-If **Advanced Mode** is on in your Home Assistant profile there is one more
-screen, offering programmable switches for device triggers. Leave it empty
-unless you want them.
+If your bridge covers cameras you will also get a Camera configuration screen.
+Leave it as it is. And if **Advanced Mode** is on in your Home Assistant
+profile there is one more, offering programmable switches for device triggers.
+Leave that empty unless you want them.
 
 Saving reloads the bridge, so the tile appears without restarting Home
 Assistant, and the tiles you already had keep their names and rooms.
@@ -126,6 +130,12 @@ Switching back to Manual returns the unit to the speed you last chose.
 The speed the unit is genuinely running is in Home Assistant, in the **Actual
 Fan Speed** sensor. That one does not reach HomeKit at all, so if you want to
 watch the unit modulating in Auto, watch it there.
+
+## Fan speed changes while the unit is off
+
+Change the fan speed in Home Assistant while the air conditioner is off and the
+Home app keeps showing the old speed. Home Assistant's bridge only sends a speed
+while the fan is on, so the app catches up when the unit next starts.
 
 ## Units that report no vane
 
