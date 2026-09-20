@@ -12,7 +12,7 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.6.0
 
-**Fan speed and vane now work from HomeKit.** Bridged to HomeKit, an air conditioning unit used to appear as a bare thermostat offering temperature and mode, with no way to change the fan or the vane. The bridge recognises a fan speed control and a swing control by a fixed set of names that these units do not use, so neither control was ever built. Each air conditioning unit now gets a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging, and all three come through. The speed slider has one step for each speed the unit actually has.
+**Fan speed and vane now work from HomeKit.** Bridged to HomeKit, an air conditioning unit used to appear as a bare thermostat offering temperature and mode, with no way to change the fan or the vane. The bridge recognises a fan speed control and a swing control by a fixed set of names that these units do not use, so neither control was ever built. Each air conditioning unit now gets a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging, and all three come through. The speed slider has one step for each speed the unit actually has. The fan is a new entity, so your HomeKit Bridge will not pick it up on its own: add the fan entities through **HomeKit Bridge**, then **Configure**. See [docs/homekit.md](docs/homekit.md).
 
 The same entity is picked up automatically by Alexa and Google Home once you expose it to them. Alexa should offer both the speed and the swing, and Google Home offers the speed, because its fan has no swing control. I have tested HomeKit only.
 
