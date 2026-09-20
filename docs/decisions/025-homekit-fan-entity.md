@@ -218,7 +218,7 @@ names, and `midea` shows it need not cost HA anything, keeping five speeds by
 using standard names in the middle and custom `silent` and `full` at the
 extremes. It is rejected because of the read-back gate, which would force the
 reported `fan_mode` from `"three"` to `"medium"` and silently break templates,
-because HomeKit would reach only three of five speeds, and because the same
+because HomeKit would reach only four of five speeds, and because the same
 renaming has already been tried on this hardware and rejected by its users.
 
 `geoffdavis/esphome-mitsubishiheatpump` drives the same hardware through a library
@@ -236,7 +236,7 @@ Putting speed on the `HeaterCooler` accessory would be the tidiest outcome of
 all, but it is unreachable without this rename and so falls with it. Note that
 it would not have been the better outcome for resolution: `HeaterCooler` derives
 its slider step from `100 / len(ordered_fan_speeds)` exactly as the Thermostat's
-linked fan service does, so it too would reach three of five speeds. The fan
+linked fan service does, so it too would reach four of five speeds. The fan
 entity gives five.
 
 **Documenting a template recipe instead of shipping a platform** would work, and

@@ -9,8 +9,10 @@ things about them that catch people out.
 
 ## What you will see
 
-Each air conditioning unit gives you two tiles in the Home app. You add the
-second of them to your bridge yourself; see the next section.
+Almost every air conditioning unit gives you two tiles in the Home app. A unit
+that reports no fan speeds gets no fan tile, and there is nothing to configure.
+Whether the second tile appears on its own depends on how your bridge is set up;
+see the next section.
 
 The thermostat tile is the one you already have. It carries the temperature and
 the heating or cooling mode.
@@ -19,37 +21,50 @@ The fan tile is the new one. It carries the fan speed, the vane and the unit's
 power. It takes its name from the unit, so a unit called Living Room gives you a
 tile called "Living Room A-C fan". Inside Home Assistant the same entity is
 called **A/C fan**, which is the name to look for when you add it to the bridge.
-HomeKit will not accept a slash in a name, hence the two spellings.
+The bridge swaps the slash for a hyphen on its way to HomeKit, hence the two
+spellings.
 
 Both tiles are the same air conditioner, so a change made on one shows up on the
 other. Both show the last command Home Assistant sent, which is almost always
 what the unit is doing. On the rare occasion a unit does not act on a command,
-the tiles catch up when it next reports for itself, within about a minute.
+the tiles catch up when it next reports for itself, which takes a minute or
+two.
 
 Heat pumps are unaffected. This applies to air conditioning units only.
 
 ## Adding the fan to your bridge
 
-The fan is a new entity, so your HomeKit Bridge will not pick it up on its own.
+Whether you have to do anything depends on how your bridge was set up.
 
-In Home Assistant go to **Settings**, then **Devices & Services**, then
-**HomeKit Bridge**, and click the cog on your bridge entry. The entry carries
-the bridge's own name, so it reads something like "HASS Bridge:21064" rather
-than "HomeKit Bridge".
+The bridge builds its list of accessories when it starts, and nothing adds a
+brand new entity to a bridge that is already running. If your bridge covers the
+whole Fan domain, the fan therefore appears the next time the bridge reloads or
+Home Assistant restarts. If you picked your entities one by one, you need to add
+the fan yourself.
 
-That opens a wizard of three screens.
+To check, go to **Settings**, then **Devices & Services**, then **HomeKit
+Bridge**, and open the options for your bridge entry. The entry carries the
+bridge's own name, so it reads something like "HASS Bridge:21064". If you set
+your bridge up in `configuration.yaml`, the dialog says so and there is nothing
+to do here: add `fan` to the filter in your YAML instead.
 
-1. **Select mode and domains.** Leave HomeKit mode on **bridge**. If Inclusion
-   mode is **include**, then **Domains to include** must list **Fan** alongside
-   **Climate**, or the fans are never offered to HomeKit and no tile appears.
-   This is a dropdown on this screen. There is nothing to edit in
-   `configuration.yaml`.
-2. **Select the entities to be included.** Your units appear here as **A/C
-   fan**, one per unit, with the device and area beneath each. Pick the ones you
-   want. Leaving a domain's selection empty includes that whole domain, which
-   the screen says in as many words, so every unit in the house gets bridged.
-3. **Bridged device triggers.** Leave this empty unless you want HomeKit
-   programmable switches for device triggers.
+Otherwise you get a wizard of two screens, or three if **Advanced Mode** is
+switched on in your Home Assistant profile.
+
+1. **Select mode and domains.** Leave HomeKit mode on **bridge**. **Domains to
+   include** must list **Fan** alongside **Climate**, whichever Inclusion mode
+   you use. Without it, no fan reaches HomeKit and no tile appears. This is a
+   dropdown on this screen, not a setting in `configuration.yaml`.
+2. **The entity screen**, which is one of two depending on the Inclusion mode
+   you just saw:
+   - **include**: the screen reads "Select the entities to be included". Tick
+     the **A/C fan** entities you want. Leaving a domain's selection empty
+     includes that whole domain, which the screen says in as many words.
+   - **exclude**: the screen reads "Select the entities to be excluded". Leave
+     your A/C fans **unticked**. The Fan domain already covers them, and ticking
+     one here is what keeps it out of HomeKit.
+3. **Programmable switches for device triggers**, which only appears with
+   Advanced Mode on. Leave it empty unless you want them.
 
 Saving reloads the bridge, so the new tile appears without restarting Home
 Assistant, and the tiles you already had keep their names and rooms. The new
@@ -133,8 +148,12 @@ speed, and the Home app catches up the moment you turn the unit on.
 
 This comes from Home Assistant's HomeKit bridge, and no part of it is this integration's to
 change. The bridge only sends a fan's speed to HomeKit while the fan is on, so with the unit off
-the Home app keeps whatever speed it was last told. That displayed speed is simply out of date.
-Turning the unit on applies the speed Home Assistant holds.
+the Home app keeps whatever speed it was last told.
+
+Turn the unit back on from Home Assistant and it runs at the speed Home Assistant holds. Turn it
+on from the Home app instead and the app may send the speed it was still showing along with the
+power, which would put that older speed back on the unit. If you turn a unit on from the Home app
+after changing its speed elsewhere, check the speed afterwards.
 
 ## Units that report no vane
 
@@ -152,7 +171,8 @@ MELCloud carrying both.
 
 This matters because the unit can accept one command and quietly ignore a second that arrives
 immediately behind it, which used to leave the tile and the unit disagreeing until the unit
-reported for itself half a minute later. One request cannot lose half of itself.
+reported for itself a minute or two later. A single request cannot be half-applied the way two
+requests in quick succession can.
 
 The same applies to an automation that sets a mode and a temperature together, and to the hot
 water tank's mode and temperature.
@@ -162,9 +182,9 @@ water tank's mode and temperature.
 It would be tidier to have one tile with the temperature, the speed and the vane
 all on it. Apple does have an accessory type that does exactly that, but a unit
 only qualifies for it if its fan speeds carry Apple's own names, which would
-mean renaming five numbered speeds onto low, medium and high. That would leave
-three of your five speeds reachable, and it would break existing automations and
-templates that refer to the current names.
+mean renaming five numbered speeds onto the four the bridge recognises. That
+would leave four of your five speeds reachable, and it would break existing
+automations and templates that refer to the current names.
 
 A separate fan tile keeps every speed reachable and changes nothing you already
 have. [ADR-025](decisions/025-homekit-fan-entity.md) records the full reasoning
