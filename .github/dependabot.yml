@@ -16,6 +16,12 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    # codeql-action/init and /analyze must stay on the same version or the
+    # analyze step fails with a configuration error - bump them together
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     cooldown:
       default-days: 7
 
