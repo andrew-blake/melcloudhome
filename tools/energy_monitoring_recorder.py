@@ -16,7 +16,7 @@ Usage:
     # Start new recording session
     python energy_monitoring_recorder.py
 
-    # Resume existing session (appends to log file)
+    # Resume existing session (appends to the JSON Lines log file)
     python energy_monitoring_recorder.py --resume
 
     # Custom interval (default 10 minutes)
@@ -104,7 +104,7 @@ class EnergyRecorder:
         """Initialize recorder.
 
         Args:
-            log_file: Path to JSON log file
+            log_file: Path to JSON Lines log file
             interval_minutes: Minutes between polls
             duration_minutes: Total recording duration in minutes
             unit_filter: Optional unit ID to focus on (records all if None)
@@ -116,17 +116,15 @@ class EnergyRecorder:
         self.unit_filter = unit_filter
         self.resume = resume
 
-        # Load existing data if resuming
-        self.entries: list[dict[str, Any]] = []
+        # JSON Lines: one entry per line, appended as it is recorded, so a
+        # crash can only lose a partial last line, never the whole recording.
+        self.entry_count = 0
         if resume and log_file.exists():
-            try:
-                with open(log_file) as f:
-                    self.entries = json.load(f)
-                print(f"📂 Resuming from existing log with {len(self.entries)} entries")
-            except json.JSONDecodeError as e:
-                print(f"⚠️  Warning: Could not parse existing log: {e}")
-                print("   Starting fresh recording")
-                self.entries = []
+            with open(log_file) as f:
+                self.entry_count = sum(1 for _ in f)
+            print(f"📂 Resuming from existing log with {self.entry_count} entries")
+        else:
+            log_file.write_text("")
 
     async def record_session(self, email: str, password: str) -> None:
         """Run recording session.
@@ -215,9 +213,6 @@ class EnergyRecorder:
                             to_time,
                         )
 
-                # Save after each poll
-                self._save_log()
-
                 # Calculate next poll time
                 next_poll = poll_time + self.interval
                 if next_poll >= end_time:
@@ -234,7 +229,7 @@ class EnergyRecorder:
             print("\n" + "=" * 80)
             print("✓ Recording complete")
             print(f"  Total polls: {poll_count}")
-            print(f"  Total entries: {len(self.entries)}")
+            print(f"  Total entries: {self.entry_count}")
             print(f"  Log file: {self.log_file}")
             print("=" * 80)
 
@@ -330,15 +325,16 @@ class EnergyRecorder:
         except Exception as e:
             print(f"❌ Error: {e}")
             entry["error"] = str(e)
-        self.entries.append(entry)
+        self._append(entry)
 
-    def _save_log(self) -> None:
-        """Save entries to log file."""
+    def _append(self, entry: dict[str, Any]) -> None:
+        """Append one entry as a JSON line."""
         try:
-            with open(self.log_file, "w") as f:
-                json.dump(self.entries, f, indent=2)
+            with open(self.log_file, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+            self.entry_count += 1
         except Exception as e:
-            print(f"⚠️  Warning: Failed to save log: {e}")
+            print(f"⚠️  Warning: Failed to save entry: {e}")
 
 
 def ha_credentials(config_entries: Path) -> tuple[str, str]:
@@ -379,8 +375,8 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("energy_recording.json"),
-        help="Output JSON log file (default: energy_recording.json)",
+        default=Path("energy_recording.jsonl"),
+        help="Output JSON Lines log file (default: energy_recording.jsonl)",
     )
     parser.add_argument(
         "--ha-config",
