@@ -287,6 +287,7 @@ class MELCloudHomeAuth:
                 f"?client_id={OAUTH_CLIENT_ID}&request_uri={request_uri}"
             )
             auth_code: str | None = None
+            callback_qs: str | None = None
             async with self._request_pacer:
                 try:
                     async with session.get(
@@ -334,12 +335,7 @@ class MELCloudHomeAuth:
                                     r"/connect/authorize/callback\?([^\"' ]+)", body
                                 )
                                 if callback_match:
-                                    auth_code = await self._follow_callback_for_code(
-                                        session, callback_match.group(1)
-                                    )
-                                    _LOGGER.info(
-                                        "Existing session: followed callback for code"
-                                    )
+                                    callback_qs = callback_match.group(1)
                                 else:
                                     raise AuthenticationError(
                                         f"Unexpected auth response: {final_url}"
@@ -357,6 +353,14 @@ class MELCloudHomeAuth:
                         raise AuthenticationError(
                             f"Unexpected redirect: {err}"
                         ) from err
+
+            # Follow the callback only after the pacer block above has exited:
+            # _follow_callback_for_code takes the pacer itself, and the pacer's
+            # asyncio.Lock is not reentrant, so calling it from inside that
+            # block deadlocks every later API request until HA restarts.
+            if callback_qs:
+                auth_code = await self._follow_callback_for_code(session, callback_qs)
+                _LOGGER.info("Existing session: followed callback for code")
 
             # Skip credential submission if we already have a code
             if auth_code:
