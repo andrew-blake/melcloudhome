@@ -331,8 +331,9 @@ class EnergyRecorder:
             entry["api_response"] = data
             print(summarize(endpoint, data))
         except Exception as e:
-            print(f"❌ Error: {e}")
-            entry["error"] = str(e)
+            # Timeouts stringify to "", so keep the type
+            entry["error"] = f"{type(e).__name__}: {e}"
+            print(f"❌ Error: {entry['error']}")
         self._append(entry)
 
     def _append(self, entry: dict[str, Any]) -> None:
