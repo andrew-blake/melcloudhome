@@ -9,6 +9,7 @@ Records full API responses at regular intervals to characterize API behavior:
 Each poll records, per unit:
 - the telemetry energy endpoint over the integration's own request window
   (ATA: consumed; ATW: consumed and produced)
+- ATW only: the same telemetry request with "to" at the next hour boundary
 - ATW only: /report/v1/combined-energy over the unit's local day, the
   report the MELCloud Home web app draws its energy chart from (issue #333)
 
@@ -246,9 +247,16 @@ class EnergyRecorder:
             return [("telemetry", "consumed", from_time, to_time)]
         # combined-energy is ATW-only: ATA units get HTTP 500 (2026-09-23)
         day_from, day_to = local_day(poll_time, unit_info["time_zone"])
+        # Same window but "to" at the next hour boundary, fetched right after
+        # its to=now pair: does to=now hold back the in-progress hour? (#333)
+        next_hour = poll_time.replace(minute=0, second=0, microsecond=0) + timedelta(
+            hours=1
+        )
         return [
             ("telemetry", "consumed", from_time, to_time),
+            ("telemetry-next-hour", "consumed", from_time, next_hour),
             ("telemetry", "produced", from_time, to_time),
+            ("telemetry-next-hour", "produced", from_time, next_hour),
             ("combined-energy", "both", day_from, day_to),
         ]
 
