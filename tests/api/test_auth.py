@@ -4,6 +4,7 @@ Tests the OAuth 2.0 PKCE authentication flow, token management,
 and session handling. All tests use mocked HTTP (not VCR).
 """
 
+import asyncio
 import contextlib
 import time
 from collections.abc import AsyncIterator
@@ -17,6 +18,7 @@ from custom_components.melcloudhome.api.exceptions import (
     AuthenticationError,
     ServiceUnavailableError,
 )
+from custom_components.melcloudhome.api.pacing import RequestPacer
 
 
 @pytest_asyncio.fixture
@@ -425,11 +427,15 @@ class TestExistingSessionLogin:
     """
 
     @pytest.mark.asyncio
-    async def test_login_with_existing_session_redirect_page(
-        self, request_pacer
-    ) -> None:
-        """Auth server returns Redirect page with callback URL in body."""
-        auth = MELCloudHomeAuth(request_pacer=request_pacer)
+    async def test_login_with_existing_session_redirect_page(self) -> None:
+        """Auth server returns Redirect page with callback URL in body.
+
+        Runs with a real RequestPacer, not the no-op fixture: following the
+        callback while still holding the pacer lock deadlocked login forever
+        (a plain asyncio.Lock is not reentrant), and a lock-free pacer hides
+        that. The timeout turns a deadlock into a failure instead of a hang.
+        """
+        auth = MELCloudHomeAuth(request_pacer=RequestPacer())
 
         # Step 1: PAR response
         par_response = MagicMock()
@@ -478,7 +484,9 @@ class TestExistingSessionLogin:
 
         try:
             with patch.object(auth, "_ensure_session", return_value=mock_session):
-                result = await auth.login("test@example.com", "password")
+                result = await asyncio.wait_for(
+                    auth.login("test@example.com", "password"), timeout=5
+                )
 
             assert result is True
             assert auth.is_authenticated
