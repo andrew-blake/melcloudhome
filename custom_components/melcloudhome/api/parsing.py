@@ -5,8 +5,12 @@ The API returns many values as strings (e.g., "True", "20.5") that need
 proper type conversion.
 """
 
-from datetime import UTC, datetime, tzinfo
-from typing import NamedTuple
+import logging
+from datetime import UTC, datetime, timedelta, tzinfo
+from itertools import pairwise
+from typing import Any, NamedTuple
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def parse_bool(value: str | bool | None) -> bool:
@@ -88,6 +92,67 @@ def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=tz).astimezone(UTC)
     return parsed.astimezone(UTC)
+
+
+_ENERGY_DATASETS = {
+    "interval_energy_consumed": "consumed",
+    "interval_energy_produced": "produced",
+}
+# Byte-identical to the telemetry endpoint's hour labels, so stored hour_values
+# stay valid whichever endpoint produced them (ADR-027).
+_ENERGY_HOUR_KEY_FORMAT = "%Y-%m-%d %H:%M:%S.000000000"
+
+
+def energy_report_windows(now: datetime, tz: tzinfo) -> list[tuple[datetime, datetime]]:
+    """Return yesterday's and today's local days in `tz` as UTC [from, to) bounds.
+
+    Built by wall-clock arithmetic, so a clock-change day is 25 or 23 hours.
+    Never widen a window past one local day: a two-day combined-energy
+    request adds a fake point at the internal local midnight (ADR-027).
+    """
+    today = now.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    days = (today - timedelta(days=1), today, today + timedelta(days=1))
+    return list(pairwise(d.astimezone(UTC) for d in days))
+
+
+def parse_energy_report(
+    response: Any, tz: tzinfo, from_utc: datetime, to_utc: datetime
+) -> dict[str, list[dict[str, str]]]:
+    """Turn a combined-energy response into telemetry-shaped hour values.
+
+    Labels are the unit's local hour starts (ADR-022); each becomes the UTC key
+    the telemetry endpoint used for the same hour, so the base tracker's stored
+    hour_values carry on unchanged (ADR-027). Points outside [from_utc, to_utc)
+    are dropped as boundary artefacts, and a malformed point is skipped rather
+    than costing the whole day.
+    """
+    result: dict[str, list[dict[str, str]]] = {"consumed": [], "produced": []}
+    report = response[0] if isinstance(response, list) and response else response
+    if not isinstance(report, dict):
+        return result
+    for dataset in report.get("datasets") or []:
+        measure = (
+            _ENERGY_DATASETS.get(dataset.get("id") or "")
+            if isinstance(dataset, dict)
+            else None
+        )
+        if measure is None:
+            continue
+        for point in dataset.get("data") or []:
+            try:
+                hour = parse_api_timestamp(str(point["x"]), tz)
+                value = float(point["y"])
+            except (KeyError, TypeError, ValueError, OverflowError):
+                _LOGGER.debug("Skipping malformed energy report point: %r", point)
+                continue
+            if from_utc <= hour < to_utc:
+                result[measure].append(
+                    {
+                        "time": hour.strftime(_ENERGY_HOUR_KEY_FORMAT),
+                        "value": str(value),
+                    }
+                )
+    return result
 
 
 def strip_line_breaks(value: object) -> str:
