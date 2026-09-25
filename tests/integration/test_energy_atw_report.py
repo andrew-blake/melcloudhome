@@ -83,17 +83,27 @@ def _report_side_effect(
     *,
     fake_point_for_multi_day: bool = False,
     fail_yesterday: bool = False,
+    fail_today_once: bool = False,
 ):
     """get_energy_report stand-in: true-zone labels, real parser, tracker's tz."""
+    today_failures_left = 1 if fail_today_once else 0
 
     async def side_effect(
         unit_id: str, from_utc: datetime, to_utc: datetime, tz: Any
     ) -> dict:
+        nonlocal today_failures_left
         label_tz = ZoneInfo(zones[unit_id])
-        if fail_yesterday and to_utc <= datetime.now(UTC).astimezone(label_tz).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).astimezone(UTC):
+        today_start = (
+            datetime.now(UTC)
+            .astimezone(label_tz)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .astimezone(UTC)
+        )
+        if fail_yesterday and to_utc <= today_start:
             raise RuntimeError("simulated failure for yesterday's window")
+        if today_failures_left and to_utc > today_start:
+            today_failures_left -= 1
+            raise RuntimeError("simulated failure for today's window, first call only")
         raw = _raw_report(energy, label_tz)
         if fake_point_for_multi_day and to_utc - from_utc > timedelta(hours=25):
             # The real API's carry-forward artefact at the internal local midnight.
@@ -108,41 +118,6 @@ def _report_side_effect(
         return parse_energy_report(raw, tz, from_utc, to_utc)
 
     return side_effect
-
-
-def _fail_today_once_side_effect(
-    energy: dict[datetime, tuple[float, float]], zones: dict[str, str]
-):
-    """Like _report_side_effect, but today's window raises on its first call only."""
-    today_calls = 0
-
-    async def side_effect(
-        unit_id: str, from_utc: datetime, to_utc: datetime, tz: Any
-    ) -> dict:
-        nonlocal today_calls
-        label_tz = ZoneInfo(zones[unit_id])
-        midnight_utc = (
-            datetime.now(UTC)
-            .astimezone(label_tz)
-            .replace(hour=0, minute=0, second=0, microsecond=0)
-            .astimezone(UTC)
-        )
-        if to_utc > midnight_utc:  # today's window
-            today_calls += 1
-            if today_calls == 1:
-                raise RuntimeError(
-                    "simulated failure for today's window, first call only"
-                )
-        raw = _raw_report(energy, label_tz)
-        return parse_energy_report(raw, tz, from_utc, to_utc)
-
-    return side_effect
-
-
-async def _always_fail_side_effect(
-    unit_id: str, from_utc: datetime, to_utc: datetime, tz: Any
-) -> dict:
-    raise RuntimeError("simulated failure for every window")
 
 
 def _storage(
@@ -428,7 +403,9 @@ async def test_first_init_defers_until_both_days_fetch_succeed(
     await _setup(
         hass,
         [_unit()],
-        _fail_today_once_side_effect(energy, {TEST_ATW_UNIT_ID: STOCKHOLM}),
+        _report_side_effect(
+            energy, {TEST_ATW_UNIT_ID: STOCKHOLM}, fail_today_once=True
+        ),
         None,
     )
     await _poll(hass)
@@ -440,7 +417,9 @@ async def test_first_init_defers_until_both_days_fetch_succeed(
 @freeze_time(FROZEN_NOW, real_asyncio=True)
 @pytest.mark.asyncio
 async def test_all_windows_failing_leaves_energy_unknown(hass: HomeAssistant) -> None:
-    await _setup(hass, [_unit()], _always_fail_side_effect, None)
+    await _setup(
+        hass, [_unit()], RuntimeError("simulated failure for every window"), None
+    )
     await _poll(hass)
 
     assert hass.states.get(TEST_SENSOR_ENERGY_CONSUMED).state == "unknown"

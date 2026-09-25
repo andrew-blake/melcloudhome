@@ -124,9 +124,9 @@ class ATWEnergyTracker(EnergyTrackerBase):
         """
         tz = await self._resolve_zone(unit, now)
         combined: dict[str, list[dict[str, str]]] = {"consumed": [], "produced": []}
-        any_fetch_succeeded = False
-        all_fetches_succeeded = True
-        for from_utc, to_utc in energy_report_windows(now, tz):
+        windows = energy_report_windows(now, tz)
+        failed_days = 0
+        for from_utc, to_utc in windows:
             try:
                 day = await self._execute_with_retry(
                     partial(
@@ -144,14 +144,13 @@ class ATWEnergyTracker(EnergyTrackerBase):
                     to_utc.isoformat(),
                     err,
                 )
-                all_fetches_succeeded = False
+                failed_days += 1
                 continue
-            any_fetch_succeeded = True  # a None/empty result still counts as fetched
-            if day:
+            if day:  # a None/empty result still counts as fetched
                 for measure, values in combined.items():
                     values.extend(day.get(measure, []))
 
-        if not any_fetch_succeeded:
+        if failed_days == len(windows):
             return
 
         for measure, values in combined.items():
@@ -161,7 +160,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
                 )
                 continue
             if self._is_first_initialization(unit.id, measure):
-                if not all_fetches_succeeded:
+                if failed_days:
                     _LOGGER.debug(
                         "Deferring first-init %s energy tracking for %s until "
                         "both report days are fetched successfully",
