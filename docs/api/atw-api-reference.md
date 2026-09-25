@@ -809,7 +809,7 @@ The integration requests one local day per call, as UTC bounds with a trailing `
 - Requests return at most about 91 days of history (one probe, 2026-09-25).
 - ATA units get HTTP 500; ATA energy stays on the telemetry endpoint (see `melcloudhome-telemetry-endpoints.md`).
 
-The telemetry endpoint `/telemetry/telemetry/energy/{unitId}?measure=interval_energy_consumed|produced` also serves ATW energy, labelled in UTC, but it withholds the in-progress hour until the hour closes, so the integration no longer uses it for ATW (ADR-027).
+The telemetry endpoint `/telemetry/telemetry/energy/{unitId}?measure=interval_energy_consumed|produced` also serves ATW energy, labelled in UTC, but it often withholds the in-progress hour until the hour closes, so the integration no longer uses it for ATW (ADR-027).
 
 **Capability Detection:**
 
