@@ -1,6 +1,7 @@
 """Air-to-Water (Heat Pump) control client for MELCloud Home API."""
 
 import logging
+from datetime import datetime, tzinfo
 from typing import TYPE_CHECKING, Any
 
 from .coalescing import WriteCoalescer
@@ -12,7 +13,8 @@ from .const_atw import (
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
 )
-from .const_shared import API_TELEMETRY_ENERGY
+from .const_shared import API_REPORT_COMBINED_ENERGY, REPORT_TIMESTAMP_FORMAT
+from .parsing import parse_energy_report
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -258,97 +260,47 @@ class ATWControlClient:
     # Energy Monitoring
     # ==========================================================================
 
-    async def get_energy_consumed(
+    async def get_energy_report(
         self,
         unit_id: str,
-        from_time: Any,  # datetime
-        to_time: Any,  # datetime
-        interval: str = "Hour",
-    ) -> dict[str, Any] | None:
-        """Get energy consumed data for ATW unit.
+        from_utc: datetime,
+        to_utc: datetime,
+        tz: tzinfo,
+    ) -> dict[str, list[dict[str, str]]] | None:
+        """Get one local day of ATW energy from the combined-energy report.
+
+        The window must be a single local day (see parsing.energy_report_windows):
+        a longer one adds a fake point at the internal midnight (ADR-027).
 
         Args:
             unit_id: Unit UUID
-            from_time: Start time (UTC-aware datetime)
-            to_time: End time (UTC-aware datetime)
-            interval: Aggregation interval - "Hour", "Day", "Week", or "Month"
+            from_utc: Window start, the unit's local midnight in UTC
+            to_utc: Window end, the next local midnight in UTC
+            tz: The unit's zone, used to turn local labels into UTC hour keys
 
         Returns:
-            Energy telemetry data, or None if no data available (304)
+            Telemetry-shaped hour values per measure, or None if the API
+            returned no content.
 
         Raises:
             AuthenticationError: If session expired
             ApiError: If API request fails
         """
-        return await self._get_energy_data(
-            unit_id, from_time, to_time, interval, "interval_energy_consumed"
-        )
-
-    async def get_energy_produced(
-        self,
-        unit_id: str,
-        from_time: Any,  # datetime
-        to_time: Any,  # datetime
-        interval: str = "Hour",
-    ) -> dict[str, Any] | None:
-        """Get energy produced data for ATW unit.
-
-        Args:
-            unit_id: Unit UUID
-            from_time: Start time (UTC-aware datetime)
-            to_time: End time (UTC-aware datetime)
-            interval: Aggregation interval - "Hour", "Day", "Week", or "Month"
-
-        Returns:
-            Energy telemetry data, or None if no data available (304)
-
-        Raises:
-            AuthenticationError: If session expired
-            ApiError: If API request fails
-        """
-        return await self._get_energy_data(
-            unit_id, from_time, to_time, interval, "interval_energy_produced"
-        )
-
-    async def _get_energy_data(
-        self,
-        unit_id: str,
-        from_time: Any,  # datetime
-        to_time: Any,  # datetime
-        interval: str,
-        measure: str,
-    ) -> dict[str, Any] | None:
-        """Shared method to fetch energy data from telemetry API.
-
-        Args:
-            unit_id: Unit UUID
-            from_time: Start time (UTC-aware datetime)
-            to_time: End time (UTC-aware datetime)
-            interval: Aggregation interval
-            measure: Measure name (interval_energy_consumed or interval_energy_produced)
-
-        Returns:
-            Energy telemetry data, or None if no data available (304)
-
-        Raises:
-            AuthenticationError: If session expired
-            ApiError: If API request fails
-        """
-        endpoint = API_TELEMETRY_ENERGY.format(unit_id=unit_id)
         params = {
-            "from": from_time.strftime("%Y-%m-%d %H:%M"),
-            "to": to_time.strftime("%Y-%m-%d %H:%M"),
-            "interval": interval,
-            "measure": measure,
+            "unitId": unit_id,
+            "period": "Daily",
+            "from": from_utc.strftime(REPORT_TIMESTAMP_FORMAT),
+            "to": to_utc.strftime(REPORT_TIMESTAMP_FORMAT),
         }
-
         _LOGGER.debug(
-            "Fetching ATW energy data: unit=%s, measure=%s, from=%s, to=%s, interval=%s",
+            "Fetching ATW energy report: unit=%s, from=%s, to=%s",
             unit_id,
-            measure,
-            from_time,
-            to_time,
-            interval,
+            params["from"],
+            params["to"],
         )
-
-        return await self._client._api_request("GET", endpoint, params=params)
+        response = await self._client._api_request(
+            "GET", API_REPORT_COMBINED_ENERGY, params=params
+        )
+        if response is None:
+            return None
+        return parse_energy_report(response, tz, from_utc, to_utc)
