@@ -1113,10 +1113,8 @@ class MockMELCloudServer:
     async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
         """GET /telemetry/telemetry/energy/{unit_id} - Get energy telemetry data.
 
-        Returns hourly energy data for ATW devices.
-        Supports interval_energy_consumed and interval_energy_produced measures.
-
-        Format: ATW uses measureData array format (different from ATA)
+        Returns hourly energy data for ATA devices only. ATW energy is served
+        by get_combined_energy (ADR-027); ATW no longer calls this route.
         """
         from datetime import UTC, datetime, timedelta
 

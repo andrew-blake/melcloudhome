@@ -116,12 +116,16 @@ class ATWEnergyTracker(EnergyTrackerBase):
         the base tracker's delta tracking. A failed day is skipped for this poll
         only: both days are fetched again next time. If every window's fetch
         raised, the unit's energy is left untouched for this poll (stays
-        "unknown" until a fetch first succeeds, as before ADR-027) rather than
-        finalizing a fake 0.0 from an untouched cumulative total.
+        "unknown" until a fetch first succeeds) rather than finalizing a fake
+        0.0 from an untouched cumulative total. First initialization additionally
+        waits for both days to succeed in the same poll, so a lone successful
+        day never seeds the baseline while the other day's pre-install hours
+        are still unseen.
         """
         tz = await self._resolve_zone(unit, now)
         combined: dict[str, list[dict[str, str]]] = {"consumed": [], "produced": []}
         any_fetch_succeeded = False
+        all_fetches_succeeded = True
         for from_utc, to_utc in energy_report_windows(now, tz):
             try:
                 day = await self._execute_with_retry(
@@ -131,7 +135,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
                     f"get_energy_report({unit.name})",
                 )
             except ConfigEntryAuthFailed:
-                raise  # not a per-day failure; let the caller handle it as before
+                raise  # the caller (async_update_energy_data) logs it and moves on to the next unit
             except Exception as err:
                 _LOGGER.warning(
                     "Energy report for ATW unit %s (%s to %s) failed, skipping that day this poll: %s",
@@ -140,6 +144,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
                     to_utc.isoformat(),
                     err,
                 )
+                all_fetches_succeeded = False
                 continue
             any_fetch_succeeded = True  # a None/empty result still counts as fetched
             if day:
@@ -156,6 +161,14 @@ class ATWEnergyTracker(EnergyTrackerBase):
                 )
                 continue
             if self._is_first_initialization(unit.id, measure):
+                if not all_fetches_succeeded:
+                    _LOGGER.debug(
+                        "Deferring first-init %s energy tracking for %s until "
+                        "both report days are fetched successfully",
+                        measure,
+                        unit.name,
+                    )
+                    continue
                 self._initialize_unit_tracking(
                     unit.id, unit.name, measure, values, values_in_kwh=True
                 )
@@ -187,8 +200,10 @@ class ATWEnergyTracker(EnergyTrackerBase):
         ) and unit.id not in self._zone_warned:
             self._zone_warned.add(unit.id)
             _LOGGER.warning(
-                "ATW unit %s has no usable time zone for energy (timeZone=%r); "
-                "energy hours are assumed to be UTC and may be off by the unit's offset",
+                "ATW unit %s has no usable time zone for energy (timeZone=%r): "
+                "either none was resolved, so UTC is assumed, or its offset "
+                "isn't a whole number of hours; energy hour keys may not "
+                "match earlier readings",
                 unit.name,
                 unit.time_zone,
             )

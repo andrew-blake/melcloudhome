@@ -110,6 +110,41 @@ def _report_side_effect(
     return side_effect
 
 
+def _fail_today_once_side_effect(
+    energy: dict[datetime, tuple[float, float]], zones: dict[str, str]
+):
+    """Like _report_side_effect, but today's window raises on its first call only."""
+    today_calls = 0
+
+    async def side_effect(
+        unit_id: str, from_utc: datetime, to_utc: datetime, tz: Any
+    ) -> dict:
+        nonlocal today_calls
+        label_tz = ZoneInfo(zones[unit_id])
+        midnight_utc = (
+            datetime.now(UTC)
+            .astimezone(label_tz)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .astimezone(UTC)
+        )
+        if to_utc > midnight_utc:  # today's window
+            today_calls += 1
+            if today_calls == 1:
+                raise RuntimeError(
+                    "simulated failure for today's window, first call only"
+                )
+        raw = _raw_report(energy, label_tz)
+        return parse_energy_report(raw, tz, from_utc, to_utc)
+
+    return side_effect
+
+
+async def _always_fail_side_effect(
+    unit_id: str, from_utc: datetime, to_utc: datetime, tz: Any
+) -> dict:
+    raise RuntimeError("simulated failure for every window")
+
+
 def _storage(
     hours: dict[str, tuple[float, float]], consumed_total: float, produced_total: float
 ) -> dict:
@@ -379,3 +414,34 @@ async def test_only_a_non_whole_hour_offset_warns(
 
     warnings = [r for r in caplog.records if "no usable time zone" in r.getMessage()]
     assert len(warnings) == expected_warnings
+
+
+@freeze_time(FROZEN_NOW, real_asyncio=True)
+@pytest.mark.asyncio
+async def test_first_init_defers_until_both_days_fetch_succeed(
+    hass: HomeAssistant,
+) -> None:
+    # Fresh install: yesterday succeeds first poll, today fails first poll
+    # (only its first call), so first-init must wait for a poll where both
+    # succeed rather than seeding the baseline from yesterday alone.
+    energy = {_hour(30): (0.4, 1.2), _hour(1): (0.5, 1.5), _hour(0): (0.1, 0.3)}
+    await _setup(
+        hass,
+        [_unit()],
+        _fail_today_once_side_effect(energy, {TEST_ATW_UNIT_ID: STOCKHOLM}),
+        None,
+    )
+    await _poll(hass)
+
+    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == 0.0
+    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == 0.0
+
+
+@freeze_time(FROZEN_NOW, real_asyncio=True)
+@pytest.mark.asyncio
+async def test_all_windows_failing_leaves_energy_unknown(hass: HomeAssistant) -> None:
+    await _setup(hass, [_unit()], _always_fail_side_effect, None)
+    await _poll(hass)
+
+    assert hass.states.get(TEST_SENSOR_ENERGY_CONSUMED).state == "unknown"
+    assert hass.states.get(TEST_SENSOR_ENERGY_PRODUCED).state == "unknown"
