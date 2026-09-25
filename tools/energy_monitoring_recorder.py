@@ -51,10 +51,12 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from custom_components.melcloudhome.api.client import MELCloudHomeClient
+from custom_components.melcloudhome.api.const_shared import (
+    API_TELEMETRY_ENERGY,
+    REPORT_TIMESTAMP_FORMAT,
+)
 from custom_components.melcloudhome.api.exceptions import AuthenticationError
 from custom_components.melcloudhome.const import DATA_LOOKBACK_HOURS_ENERGY
-
-REPORT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.0000000Z"
 
 
 def energy_window(now: datetime) -> tuple[datetime, datetime]:
@@ -277,13 +279,23 @@ class EnergyRecorder:
                 params={
                     "unitId": unit_info["id"],
                     "period": "Daily",
-                    "from": from_time.strftime(REPORT_TIME_FORMAT),
-                    "to": to_time.strftime(REPORT_TIME_FORMAT),
+                    "from": from_time.strftime(REPORT_TIMESTAMP_FORMAT),
+                    "to": to_time.strftime(REPORT_TIMESTAMP_FORMAT),
                 },
             )
         if unit_info["type"] == "atw":
-            fetch = getattr(client.atw, f"get_energy_{measure}")
-            return await fetch(unit_info["id"], from_time, to_time, "Hour")
+            # The integration no longer reads ATW telemetry energy (ADR-027);
+            # the recorder still does, to compare it with combined-energy.
+            return await client._api_request(
+                "GET",
+                API_TELEMETRY_ENERGY.format(unit_id=unit_info["id"]),
+                params={
+                    "from": from_time.strftime("%Y-%m-%d %H:%M"),
+                    "to": to_time.strftime("%Y-%m-%d %H:%M"),
+                    "interval": "Hour",
+                    "measure": f"interval_energy_{measure}",
+                },
+            )
         return await client.get_energy_data(unit_info["id"], from_time, to_time, "Hour")
 
     async def _record(

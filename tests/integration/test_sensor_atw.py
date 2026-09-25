@@ -18,7 +18,7 @@ from .conftest import (
     TEST_SENSOR_ENERGY_CONSUMED,
     TEST_SENSOR_ENERGY_PRODUCED,
     create_mock_atw_building,
-    create_mock_atw_energy_response,
+    create_mock_atw_energy_report,
     create_mock_atw_unit,
     create_mock_atw_user_context,
     setup_atw_integration_custom,
@@ -136,13 +136,11 @@ async def test_atw_energy_sensors_created_when_capability_present(
         [create_mock_atw_building(units=[mock_unit])]
     )
 
-    mock_consumed = create_mock_atw_energy_response(10000.0, "intervalEnergyConsumed")
-    mock_produced = create_mock_atw_energy_response(40000.0, "intervalEnergyProduced")
+    mock_report = create_mock_atw_energy_report(10.0, 40.0)
 
     def configure(client: Any) -> None:
         client.atw = AsyncMock()
-        client.atw.get_energy_consumed = AsyncMock(return_value=mock_consumed)
-        client.atw.get_energy_produced = AsyncMock(return_value=mock_produced)
+        client.atw.get_energy_report = AsyncMock(return_value=mock_report)
 
     with patch(MOCK_STORE_PATH) as mock_store_class:
         mock_store = mock_store_class.return_value
@@ -226,13 +224,11 @@ async def test_atw_cop_calculation_correct(hass: HomeAssistant) -> None:
         [create_mock_atw_building(units=[mock_unit])]
     )
 
-    mock_consumed = create_mock_atw_energy_response(1000.0, "intervalEnergyConsumed")
-    mock_produced = create_mock_atw_energy_response(4000.0, "intervalEnergyProduced")
+    mock_report = create_mock_atw_energy_report(1.0, 4.0)
 
     def configure(client: Any) -> None:
         client.atw = AsyncMock()
-        client.atw.get_energy_consumed = AsyncMock(return_value=mock_consumed)
-        client.atw.get_energy_produced = AsyncMock(return_value=mock_produced)
+        client.atw.get_energy_report = AsyncMock(return_value=mock_report)
 
     with patch(MOCK_STORE_PATH) as mock_store_class:
         mock_store = mock_store_class.return_value
@@ -268,13 +264,11 @@ async def test_atw_energy_sensors_have_correct_device_class(
         [create_mock_atw_building(units=[mock_unit])]
     )
 
-    mock_consumed = create_mock_atw_energy_response(10000.0, "intervalEnergyConsumed")
-    mock_produced = create_mock_atw_energy_response(40000.0, "intervalEnergyProduced")
+    mock_report = create_mock_atw_energy_report(10.0, 40.0)
 
     def configure(client: Any) -> None:
         client.atw = AsyncMock()
-        client.atw.get_energy_consumed = AsyncMock(return_value=mock_consumed)
-        client.atw.get_energy_produced = AsyncMock(return_value=mock_produced)
+        client.atw.get_energy_report = AsyncMock(return_value=mock_report)
 
     with patch(MOCK_STORE_PATH) as mock_store_class:
         mock_store = mock_store_class.return_value

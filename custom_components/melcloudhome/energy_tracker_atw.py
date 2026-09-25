@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, tzinfo
 from functools import partial
 from typing import TYPE_CHECKING, Any
+
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .api.client_atw import ATWControlClient
 from .api.models import UserContext
 from .api.models_atw import AirToWaterUnit
+from .api.parsing import energy_report_windows
 from .energy_tracker_base import EnergyTrackerBase
+from .helpers import resolve_unit_timezone
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -29,8 +33,8 @@ class ATWEnergyTracker(EnergyTrackerBase):
 
     Extends EnergyTrackerBase with ATW-specific API integration.
     Tracks two measures:
-    - "consumed" (interval_energy_consumed)
-    - "produced" (interval_energy_produced)
+    - "consumed" (combined-energy interval_energy_consumed)
+    - "produced" (combined-energy interval_energy_produced)
 
     Also calculates COP (Coefficient of Performance) from produced/consumed ratio.
     """
@@ -49,7 +53,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
 
         Args:
             hass: Home Assistant instance
-            client: ATW control client with energy API methods
+            client: ATW control client with the energy report method
             execute_with_retry: Coordinator's retry wrapper for API calls
             get_coordinator_data: Callable to get current coordinator data
             account_suffix: Per-account storage suffix (account_storage_suffix)
@@ -64,11 +68,12 @@ class ATWEnergyTracker(EnergyTrackerBase):
         self._energy_produced: dict[str, float | None] = {}
         self._cop: dict[str, float | None] = {}
 
-    async def async_update_energy_data(self, now: datetime | None = None) -> None:
-        """Update energy data for all ATW units (called every 30 minutes).
+        # Units already warned about an unusable zone (once per unit per run).
+        self._zone_warned: set[str] = set()
 
-        Fetches interval_energy_consumed and interval_energy_produced for each
-        ATW unit and accumulates deltas into cumulative totals. Calculates COP.
+    async def async_update_energy_data(self, now: datetime | None = None) -> None:
+        """Fetches yesterday's and today's combined-energy report for each ATW
+        unit and accumulates deltas into cumulative totals. Calculates COP.
 
         Args:
             now: Optional current time (for testing)
@@ -88,7 +93,7 @@ class ATWEnergyTracker(EnergyTrackerBase):
                         continue
 
                     try:
-                        await self._update_unit_energy(unit)
+                        await self._update_unit_energy(unit, now or datetime.now(UTC))
                     except Exception as err:
                         # Log but continue with other units
                         _LOGGER.error(
@@ -103,85 +108,112 @@ class ATWEnergyTracker(EnergyTrackerBase):
         except Exception as err:
             _LOGGER.error("Error updating ATW energy data: %s", err)
 
-    async def _update_unit_energy(self, unit: AirToWaterUnit) -> None:
-        """Update energy data for a single ATW unit.
+    async def _update_unit_energy(self, unit: AirToWaterUnit, now: datetime) -> None:
+        """Update energy data for a single ATW unit from combined-energy.
 
-        Fetches both consumed and produced measures, uses base class delta
-        tracking, and calculates COP.
-
-        Args:
-            unit: AirToWaterUnit to update energy data for
-
-        Raises:
-            ConfigEntryAuthFailed: Re-raised for repair UI
-            Exception: Logged but not raised for non-critical errors
+        Fetches yesterday's and today's local days (never one multi-day window,
+        ADR-027), drops hours from before tracking began, and hands the rest to
+        the base tracker's delta tracking. A failed day is skipped for this poll
+        only: both days are fetched again next time.
         """
-        _LOGGER.debug(
-            "Fetching energy data for ATW unit %s (%s)",
-            unit.name,
-            unit.id,
-        )
+        tz = await self._resolve_zone(unit, now)
+        combined: dict[str, list[dict[str, str]]] = {"consumed": [], "produced": []}
+        for from_utc, to_utc in energy_report_windows(now, tz):
+            try:
+                day = await self._execute_with_retry(
+                    partial(
+                        self._client.get_energy_report, unit.id, from_utc, to_utc, tz
+                    ),
+                    f"get_energy_report({unit.name})",
+                )
+            except ConfigEntryAuthFailed:
+                raise  # not a per-day failure; let the caller handle it as before
+            except Exception as err:
+                _LOGGER.warning(
+                    "Energy report for ATW unit %s (%s to %s) failed, skipping that day this poll: %s",
+                    unit.name,
+                    from_utc.isoformat(),
+                    to_utc.isoformat(),
+                    err,
+                )
+                continue
+            if day:
+                for measure, values in combined.items():
+                    values.extend(day.get(measure, []))
 
-        # Setup time range for energy data fetch
-        from_time, to_time = self._energy_window(datetime.now(UTC))
+        for measure, values in combined.items():
+            if not values:
+                _LOGGER.debug(
+                    "No %s energy data available for unit %s", measure, unit.name
+                )
+                continue
+            if self._is_first_initialization(unit.id, measure):
+                self._initialize_unit_tracking(
+                    unit.id, unit.name, measure, values, values_in_kwh=True
+                )
+            else:
+                self._update_cumulative_values(
+                    unit.id,
+                    unit.name,
+                    measure,
+                    self._drop_pre_tracking_hours(unit.id, measure, values),
+                    values_in_kwh=True,
+                )
 
-        # Fetch both consumed and produced
-        await self._update_measure(unit, "consumed", from_time, to_time)
-        await self._update_measure(unit, "produced", from_time, to_time)
-
-        # Update caches from cumulative data (defaultdict guarantees structure exists)
         self._energy_consumed[unit.id] = self._energy_cumulative[unit.id]["consumed"]
         self._energy_produced[unit.id] = self._energy_cumulative[unit.id]["produced"]
-
-        # Calculate COP from both measures
         self._calculate_cop(unit)
 
-    async def _update_measure(
-        self,
-        unit: AirToWaterUnit,
-        measure: str,
-        from_time: datetime,
-        to_time: datetime,
-    ) -> None:
-        """Update a single energy measure for a unit.
+    async def _resolve_zone(self, unit: AirToWaterUnit, now: datetime) -> tzinfo:
+        """The unit's zone, warning once per unit if it can't give correct keys.
 
-        Args:
-            unit: Unit to update
-            measure: "consumed" or "produced"
-            from_time: Start time
-            to_time: End time
+        resolve_unit_timezone returns the datetime.UTC object only when it had
+        to fall back (a real zone, even "UTC", comes back as a ZoneInfo). Both
+        a fallback and a non-whole-hour offset produce hour keys that won't
+        match stored telemetry keys; the unit is processed anyway (ADR-027).
         """
-        # Choose API method based on measure using dynamic dispatch
-        method_name = f"get_energy_{measure}"
-        api_method = getattr(self._client, method_name, None)
-        if not api_method:
-            raise ValueError(f"Unknown energy measure: {measure}")
+        tz = await resolve_unit_timezone(self._hass, unit.time_zone)
+        offset = tz.utcoffset(now) or timedelta(0)
+        if (
+            tz is UTC or offset % timedelta(hours=1)
+        ) and unit.id not in self._zone_warned:
+            self._zone_warned.add(unit.id)
+            _LOGGER.warning(
+                "ATW unit %s has no usable time zone for energy (timeZone=%r); "
+                "energy hours are assumed to be UTC and may be off by the unit's offset",
+                unit.name,
+                unit.time_zone,
+            )
+        return tz
 
-        # Wrap with retry for automatic session recovery
-        data = await self._execute_with_retry(
-            partial(api_method, unit.id, from_time, to_time, "Hour"),
-            f"get_energy_{measure}({unit.name})",
+    def _drop_pre_tracking_hours(
+        self, unit_id: str, measure: str, values: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
+        """Drop hours older than the oldest stored hour for this unit and measure.
+
+        Yesterday's window reaches further back than telemetry's 23 hours did,
+        so on a young install it can hold hours from before tracking began.
+        Compares parsed times, not key strings, because migrated keys may differ
+        in format. Older hours are only ever pre-tracking: pruning keeps the
+        newest stored key, so storage always reaches back past an outage.
+        """
+        stored: dict[str, float] = (
+            self._energy_hour_values[unit_id][measure]
+            if unit_id in self._energy_hour_values
+            and measure in self._energy_hour_values[unit_id]
+            else {}
         )
-
-        if not data or not data.get("measureData"):
-            _LOGGER.debug("No %s energy data available for unit %s", measure, unit.name)
-            return
-
-        # Process all hourly values
-        values = data["measureData"][0].get("values", [])
-        if not values:
-            return
-
-        # Use base class methods for delta tracking
-        # ATW energy API returns kWh, not Wh (unlike ATA)
-        if self._is_first_initialization(unit.id, measure):
-            self._initialize_unit_tracking(
-                unit.id, unit.name, measure, values, values_in_kwh=True
-            )
-        else:
-            self._update_cumulative_values(
-                unit.id, unit.name, measure, values, values_in_kwh=True
-            )
+        stored_times = [
+            t for key in stored if (t := self._parse_hour_timestamp(key)) is not None
+        ]
+        if not stored_times:
+            return values
+        floor = min(stored_times)
+        return [
+            v
+            for v in values
+            if (t := self._parse_hour_timestamp(v["time"])) is not None and t >= floor
+        ]
 
     def _calculate_cop(self, unit: AirToWaterUnit) -> None:
         """Calculate COP (Coefficient of Performance) for a unit.

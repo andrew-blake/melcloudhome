@@ -28,7 +28,7 @@ These only GET data — no risk to real devices:
 source .env
 uv run pytest tests/api/test_client_read.py -v
 uv run pytest tests/api/test_energy.py -v
-uv run pytest tests/api/test_energy_atw.py -v
+uv run pytest tests/api/test_energy_report_vcr.py -v
 uv run pytest tests/api/test_telemetry.py -v
 uv run pytest tests/api/test_outdoor_temperature_vcr.py -v
 uv run pytest tests/api/test_multi_building.py -v
@@ -123,9 +123,9 @@ The VCR test account is a beta tester with **guest** access. Devices appear unde
 
 The deterministic PKCE fixture may not be active. Ensure `tests/api/conftest.py` exists and contains the `deterministic_pkce` fixture.
 
-### Empty `measureData` in energy tests
+### Missing datasets in energy tests
 
-Some devices don't report all energy measures. The test account's ATW device reports `interval_energy_produced` but not `interval_energy_consumed`. Energy tests use `@freeze_time` to fix the time window — update the frozen date if data has aged out.
+Some devices don't report all energy measures. A combined-energy response's `datasets` array can be missing the `interval_energy_consumed` or `interval_energy_produced` dataset entirely for a device that doesn't meter that measure. Energy tests use `@freeze_time` or a fixed `RECORD_DAY` to fix the time window — update the frozen date if data has aged out.
 
 ### Control test left device in wrong state
 
