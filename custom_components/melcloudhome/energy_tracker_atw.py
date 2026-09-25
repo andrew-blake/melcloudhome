@@ -114,10 +114,14 @@ class ATWEnergyTracker(EnergyTrackerBase):
         Fetches yesterday's and today's local days (never one multi-day window,
         ADR-027), drops hours from before tracking began, and hands the rest to
         the base tracker's delta tracking. A failed day is skipped for this poll
-        only: both days are fetched again next time.
+        only: both days are fetched again next time. If every window's fetch
+        raised, the unit's energy is left untouched for this poll (stays
+        "unknown" until a fetch first succeeds, as before ADR-027) rather than
+        finalizing a fake 0.0 from an untouched cumulative total.
         """
         tz = await self._resolve_zone(unit, now)
         combined: dict[str, list[dict[str, str]]] = {"consumed": [], "produced": []}
+        any_fetch_succeeded = False
         for from_utc, to_utc in energy_report_windows(now, tz):
             try:
                 day = await self._execute_with_retry(
@@ -137,9 +141,13 @@ class ATWEnergyTracker(EnergyTrackerBase):
                     err,
                 )
                 continue
+            any_fetch_succeeded = True  # a None/empty result still counts as fetched
             if day:
                 for measure, values in combined.items():
                     values.extend(day.get(measure, []))
+
+        if not any_fetch_succeeded:
+            return
 
         for measure, values in combined.items():
             if not values:
