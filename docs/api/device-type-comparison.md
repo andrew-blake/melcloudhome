@@ -31,7 +31,7 @@ Quick reference guide comparing Air-to-Air (A/C) and Air-to-Water (Heat Pump) de
 | **Schedule Delete** | `DELETE /monitor/cloudschedule/{id}/{scheduleId}` | `DELETE /monitor/atwcloudschedule/{id}/{scheduleId}` | ❌ Different prefix |
 | **Schedule Enable** | `PUT /monitor/cloudschedule/{id}/enabled` | `PUT /monitor/atwcloudschedule/{id}/enabled` | ❌ Different prefix |
 | **Telemetry** | `GET /telemetry/telemetry/actual`<br/>(unitId as query param, **not called** — ATA live state comes from `/context`) | `GET /report/v1/internaltemperatures`<br/>(unitId as query param, all water temps in one response) | ⚠️ **Different endpoint** — ATW moved off per-measure telemetry in [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) |
-| **Energy** | `GET /telemetry/telemetry/energy/{id}` | `GET /telemetry/telemetry/energy/{id}` | ✅ **Identical** |
+| **Energy** | `GET /telemetry/telemetry/energy/{id}` (`cumulative_energy_consumed_since_last_upload`) | `GET /report/v1/combined-energy` (one local day, ADR-027) | ⚠️ **Different endpoint** |
 | **Error Log** | `GET /monitor/ataunit/{id}/errorlog` | `GET /monitor/atwunit/{id}/errorlog` | ⚠️ Same pattern, different prefix |
 | **Holiday Mode** | `POST /api/holidaymode` | `POST /api/holidaymode` | ✅ **Same endpoint** — confirmed for ATA 2026-07-20, corrects earlier "ATW exclusive" claim; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
 | **Frost Protection** | `POST /api/protection/frost` | `POST /api/protection/frost` | ✅ **Same endpoint** — confirmed for ATA 2026-07-20, corrects earlier "ATW exclusive" claim; see [ata-api-reference.md](ata-api-reference.md#protection-modes--holiday-mode) |
@@ -255,9 +255,9 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 **Connection:**
 - `rssi` - WiFi signal
 
-**Energy (if available):**
-- `interval_energy_consumed` - Energy used (intervals)
-- `interval_energy_produced` - Energy generated (intervals)
+**Energy (if available):** from `/report/v1/combined-energy`, not this endpoint:
+- `interval_energy_consumed` - Energy used (hourly)
+- `interval_energy_produced` - Energy generated (hourly)
 
 ### Query Pattern Difference
 

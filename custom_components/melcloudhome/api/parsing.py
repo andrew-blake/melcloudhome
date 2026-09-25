@@ -84,7 +84,9 @@ def parse_api_timestamp(value: str, tz: tzinfo = UTC) -> datetime:
 
     ponytail: a naive stamp inside a DST autumn fold is ambiguous and resolves
     to fold=0, so one hour twice a year can be an hour out. Disambiguating
-    needs the neighbouring points' ordering; not worth it for a reading age.
+    needs the neighbouring points' ordering; not worth it for a reading age,
+    and accepted for ATW energy keys too (at most about one hour a year lost,
+    never double-counted, ADR-027).
 
     Raises ValueError on an unparsable value, same as fromisoformat.
     """

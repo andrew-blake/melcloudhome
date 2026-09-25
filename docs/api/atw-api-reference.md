@@ -779,51 +779,37 @@ costs every measure for that cycle rather than one.
 ### Energy Consumption & Production
 
 ```
-GET /telemetry/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:00&interval=Hour&measure=interval_energy_consumed
+GET /report/v1/combined-energy?unitId={unitId}&period=Daily&from=2026-09-23T22:00:00.0000000Z&to=2026-09-24T22:00:00.0000000Z
 ```
 
-**Supported Measures:**
-- `interval_energy_consumed` - Electrical energy consumed by heat pump (Wh per interval)
-- `interval_energy_produced` - Thermal energy produced by heat pump (Wh per interval)
+The integration requests one local day per call, as UTC bounds with a trailing `Z`, and fetches yesterday and today each poll. Both vendor apps use this endpoint for every ATW energy view (Day, Week, Month); the vendor's apps send local wall-clock bounds without `Z`, which the server also accepts.
 
-**Intervals:**
-- `Hour` - Hourly energy data (recommended for 24-48 hour windows)
-- `Day` - Daily energy totals
-- `Month` - Monthly energy totals
-
-**Response Format:**
+**Response (abridged, a one-element list):**
 ```json
-{
-  "cumulative": 0,
-  "hourValues": {
-    "2026-01-18 19:00:00": 3245,
-    "2026-01-18 18:00:00": 2890,
-    "2026-01-18 17:00:00": 3150
-  }
-}
+[{
+  "reportPeriod": 1,
+  "datasets": [
+    {"id": "interval_energy_consumed", "data": [{"x": "2026-09-24T06:00:00", "y": 0.1333}]},
+    {"id": "interval_energy_produced", "data": [{"x": "2026-09-24T06:00:00", "y": 1.25}]},
+    {"id": "outside_temperature", "data": [{"x": "2026-09-24T06:00:00", "y": 11.5}]}
+  ],
+  "totalConsumedEnergyForPeriod": 1.7,
+  "totalProducedEnergyForPeriod": 9.2,
+  "scop": 5.4,
+  "from": "2026-09-24T00:00:00",
+  "to": "2026-09-24T23:59:59"
+}]
 ```
 
-**Data Characteristics:**
-- Values are in **kWh** (kilowatt-hours) - **NO conversion needed**
-- ⚠️ **CRITICAL:** Unlike ATA energy API (which returns Wh), ATW returns kWh directly
-- Response structure uses `measureData` format (not `hourValues` as shown above)
-- `cumulative` field is unused (always 0)
-- Data available up to ~48 hours historical
+**Data characteristics (measured 2026-09-24 on one unit, Europe/Stockholm):**
+- Labels are the unit's **local** hour starts, with no zone marker. Values are kWh.
+- The in-progress hour is present and updates every minute. A completed hour's value equals the telemetry endpoint's final value exactly, from the first fetch after the hour closes.
+- Idle hours are omitted.
+- A window longer than one local day adds a fake point at the internal local midnight, carrying the previous real point's value. Request single days only.
+- Requests return at most about 91 days of history (one probe, 2026-09-25).
+- ATA units get HTTP 500; ATA energy stays on the telemetry endpoint (see `melcloudhome-telemetry-endpoints.md`).
 
-**Actual Response Format** (from VCR cassette):
-```json
-{
-  "deviceId": "aaaaaaaa-aaaa-aaaa-aaaa-a3f61c8e9b24",
-  "measureData": [{
-    "type": "intervalEnergyConsumed",
-    "values": [
-      {"time": "2026-01-17 10:00:00.000000000", "value": "0.567"},  // 0.567 kWh
-      {"time": "2026-01-17 11:00:00.000000000", "value": "0.867"},  // 0.867 kWh
-      {"time": "2026-01-17 12:00:00.000000000", "value": "1.133"}   // 1.133 kWh
-    ]
-  }]
-}
-```
+The telemetry endpoint `/telemetry/telemetry/energy/{unitId}?measure=interval_energy_consumed|produced` also serves ATW energy, labelled in UTC, but it withholds the in-progress hour until the hour closes, so the integration no longer uses it for ATW (ADR-027).
 
 **Capability Detection:**
 
@@ -852,7 +838,7 @@ GET /telemetry/telemetry/energy/{unitId}?from=2026-01-16+20:00&to=2026-01-18+20:
 **Integration Pattern:**
 1. Check both capabilities before creating energy sensors
 2. Only create sensors if BOTH are true
-3. Poll every 30-60 minutes for energy data
+3. Poll every 30 minutes, fetching yesterday's and today's combined-energy report
 4. Calculate COP from ratio: `produced / consumed`
 
 **Note:** Energy data is **estimated** by the controller, not measured by hardware meters. Accuracy depends on installation and controller calibration.
@@ -1011,7 +997,7 @@ Based on analysis of 110 API calls over testing session:
 
 **On-demand only:**
 - `/monitor/atwunit/{unitId}/errorlog`: 2 calls (manual refresh)
-- `/telemetry/telemetry/energy/{unitId}`: 8 calls (view changes)
+- `/telemetry/telemetry/energy/{unitId}`: 8 calls (view changes, January 2026; the energy page has since moved to `/report/v1/combined-energy`)
 
 ### Recommendations for Home Assistant Integration
 

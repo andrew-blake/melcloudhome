@@ -1,7 +1,7 @@
 # ADR-016: Implement ATW Energy Monitoring
 
 **Date:** 2026-01-18
-**Status:** Accepted
+**Status:** Accepted, data source superseded by [ADR-027](027-atw-energy-from-combined-energy.md): ATW energy now comes from the combined-energy report
 **Supersedes:** [ADR-015: Skip ATW Energy Monitoring](015-skip-atw-energy-monitoring.md)
 **Decision Makers:** @andrew-blake
 

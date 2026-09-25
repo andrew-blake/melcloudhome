@@ -162,6 +162,8 @@ GET /telemetry/telemetry/operationmode/aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825?from
 
 ### 3. Energy Consumption ✅ (Implemented)
 
+> **ATA only for energy.** ATW energy comes from `/report/v1/combined-energy` (ADR-027), because this endpoint withholds the in-progress ATW hour.
+
 **GET** `/telemetry/telemetry/energy/{unit_id}`
 
 Retrieves energy consumption data over a specified time range.
