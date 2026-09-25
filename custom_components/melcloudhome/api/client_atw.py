@@ -1,6 +1,7 @@
 """Air-to-Water (Heat Pump) control client for MELCloud Home API."""
 
 import logging
+from datetime import datetime, tzinfo
 from typing import TYPE_CHECKING, Any
 
 from .coalescing import WriteCoalescer
@@ -12,7 +13,12 @@ from .const_atw import (
     ATW_TEMP_MIN_DHW,
     ATW_TEMP_MIN_ZONE,
 )
-from .const_shared import API_TELEMETRY_ENERGY
+from .const_shared import (
+    API_REPORT_COMBINED_ENERGY,
+    API_TELEMETRY_ENERGY,
+    REPORT_TIMESTAMP_FORMAT,
+)
+from .parsing import parse_energy_report
 
 if TYPE_CHECKING:
     from .client import MELCloudHomeClient
@@ -352,3 +358,48 @@ class ATWControlClient:
         )
 
         return await self._client._api_request("GET", endpoint, params=params)
+
+    async def get_energy_report(
+        self,
+        unit_id: str,
+        from_utc: datetime,
+        to_utc: datetime,
+        tz: tzinfo,
+    ) -> dict[str, list[dict[str, str]]] | None:
+        """Get one local day of ATW energy from the combined-energy report.
+
+        The window must be a single local day (see parsing.energy_report_windows):
+        a longer one adds a fake point at the internal midnight (ADR-027).
+
+        Args:
+            unit_id: Unit UUID
+            from_utc: Window start, the unit's local midnight in UTC
+            to_utc: Window end, the next local midnight in UTC
+            tz: The unit's zone, used to turn local labels into UTC hour keys
+
+        Returns:
+            Telemetry-shaped hour values per measure, or None if the API
+            returned no content.
+
+        Raises:
+            AuthenticationError: If session expired
+            ApiError: If API request fails
+        """
+        params = {
+            "unitId": unit_id,
+            "period": "Daily",
+            "from": from_utc.strftime(REPORT_TIMESTAMP_FORMAT),
+            "to": to_utc.strftime(REPORT_TIMESTAMP_FORMAT),
+        }
+        _LOGGER.debug(
+            "Fetching ATW energy report: unit=%s, from=%s, to=%s",
+            unit_id,
+            params["from"],
+            params["to"],
+        )
+        response = await self._client._api_request(
+            "GET", API_REPORT_COMBINED_ENERGY, params=params
+        )
+        if response is None:
+            return None
+        return parse_energy_report(response, tz, from_utc, to_utc)
