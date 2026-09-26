@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import functools
+import hashlib
 import inspect
 import logging
 from collections.abc import Awaitable, Callable, Iterable, Mapping
@@ -13,7 +14,10 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import (
+    async_track_time_interval,
+    async_track_utc_time_change,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api.client import MELCloudHomeClient
@@ -27,7 +31,6 @@ from .const import (
     DOMAIN,
     MAX_TOLERATED_POLL_FAILURES,
     UPDATE_INTERVAL,
-    UPDATE_INTERVAL_ENERGY,
     UPDATE_INTERVAL_OUTDOOR_TEMP,
     UPDATE_INTERVAL_TELEMETRY,
 )
@@ -50,6 +53,19 @@ _LOGGER = logging.getLogger(__name__)
 _UPDATE_FAILED_HAS_RETRY_AFTER = (
     "retry_after" in inspect.signature(UpdateFailed.__init__).parameters
 )
+
+
+def energy_poll_slot(entry_id: str) -> tuple[int, int]:
+    """Minute (20-27) and second of an install's half-hourly energy poll.
+
+    Polls run at :MM:SS and 30 minutes later, late in each half hour so that
+    little of an hour's energy is published after the hour ends: HA's Energy
+    dashboard books a rise into the hour it is seen, not the hour it was used.
+    The spread, stable per config entry, keeps every install from polling
+    MELCloud in the same second (ADR-027).
+    """
+    h = int(hashlib.sha256(entry_id.encode()).hexdigest(), 16)
+    return 20 + h % 8, h // 8 % 60
 
 
 class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
@@ -397,7 +413,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         await self.energy_tracker.async_setup()
         await self.energy_tracker_atw.async_setup()
 
-        # Schedule periodic energy updates (30 minutes)
+        # Schedule energy updates at this install's half-hourly slots
         async def _update_energy_with_listeners(now):
             """Update energy and notify listeners."""
             # Update both trackers in parallel for efficiency
@@ -412,12 +428,20 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             )
             self.async_update_listeners()
 
-        self._cancel_energy_updates = async_track_time_interval(
+        minute, second = energy_poll_slot(self._config_entry.entry_id)
+        self._cancel_energy_updates = async_track_utc_time_change(
             self.hass,
             _update_energy_with_listeners,
-            UPDATE_INTERVAL_ENERGY,
+            minute=(minute, minute + 30),
+            second=second,
         )
-        _LOGGER.info("Energy polling scheduled (every 30 minutes)")
+        _LOGGER.info(
+            "Energy polling scheduled at :%02d:%02d and :%02d:%02d past each hour",
+            minute,
+            second,
+            minute + 30,
+            second,
+        )
 
         # Setup telemetry tracker
         await self.telemetry_tracker.async_setup()

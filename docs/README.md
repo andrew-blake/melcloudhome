@@ -30,6 +30,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-024: Energy Storage Is Scoped Per Account](decisions/024-entry-scoped-energy-storage.md) - energy totals keyed by config entry so two accounts cannot overwrite each other
 - [ADR-025: Exposing Fan Speed and Vane to HomeKit](decisions/025-homekit-fan-entity.md) - a `fan` entity per ATA unit, because the HomeKit bridge cannot expose either control from the climate entity
 - [ADR-026: Remove Control-Write Deduplication](decisions/026-remove-control-write-dedup.md) - every control command reaches the API; an accepted write is applied to the coordinator's copy at once, and writes arriving in one turn share a request (supersedes ADR-018)
+- [ADR-027: ATW Energy from the combined-energy Report](decisions/027-atw-energy-from-combined-energy.md) - heat pump energy from `/report/v1/combined-energy`, which has the hour in progress; ATA stays on telemetry; energy polls at a fixed per-install minute near the end of each half hour
 
 ## Architecture
 
