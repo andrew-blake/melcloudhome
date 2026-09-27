@@ -22,6 +22,8 @@ This entity is there for those ecosystems and is additive. The climate entity is
 
 **Entities no longer go "unavailable" when MELCloud has a bad moment.** A single request that timed out, dropped, or came back with a server error used to turn every sensor and climate entity unavailable until the next request succeeded. It now keeps the last known values through up to two failed requests in a row. A third in a row still shows as unavailable, because at that point something is genuinely wrong. Reported in [#309](https://github.com/andrew-blake/melcloudhome/issues/309).
 
+**Heat pump energy during the hour.** Heat pump energy consumed and produced now update during the hour instead of an hour late. Reported in [#333](https://github.com/andrew-blake/melcloudhome/issues/333).
+
 **If you have an automation that passes a mode to `climate.set_temperature` or `water_heater.set_temperature` without wanting it applied, remove it from the call.** The integration used to read the temperature and discard the mode. It now sets both.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
