@@ -30,7 +30,8 @@ Home Assistant's Energy dashboard books a rise in an energy sensor into the hour
 ## Consequences
 
 - ATW energy sensors rise during the hour, at the next poll.
-- Only energy used after an install's `:50`-`:57` poll, the last 3 to 10 minutes of an hour, appears in the next hour's bar on the Energy dashboard, and at midnight in the next day's. The slots are UTC minutes; Home Assistant compiles long-term statistics in hours starting on UTC hour boundaries, so this holds in every time zone.
+- For ATW, only energy used after an install's `:50`-`:57` poll, the last 3 to 10 minutes of an hour, appears in the next hour's bar on the Energy dashboard, and at midnight in the next day's. The slots are UTC minutes; Home Assistant compiles long-term statistics in hours starting on UTC hour boundaries, so this holds in every time zone.
+- ATA gains nothing from the fixed minutes: ATA telemetry usually releases an hour only after it closes (in prod logs, about 5% of ATA energy was available within its own hour), so ATA energy lands in the next hour's bar whatever the poll time, as it did before.
 - Every install's energy requests fall in two 8-minute bands per hour instead of spreading over the whole half hour, roughly a 4× higher peak for MELCloud. Its rate limits are unknown and no real HTTP 429 has been observed; if one appears, widen the band at the cost of more energy moving to the next hour.
 - Two requests per ATW unit per poll, the same as telemetry used.
 - If the vendor changes combined-energy, ATW energy sensors stop moving; both vendor apps depend on it today.
