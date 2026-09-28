@@ -30,6 +30,7 @@ from .const_shared import (
     MOCK_BASE_URL,
     MOCK_WS_HASH_URL,
     MOCK_WS_HOST,
+    REPORT_TIMESTAMP_FORMAT,
     USER_AGENT,
     WS_HASH_URL,
     WS_HOST,
@@ -457,10 +458,8 @@ class MELCloudHomeClient:
         return {
             "unitId": unit_id,
             "period": "Hourly",
-            # 7 decimals for nanoseconds, then an explicit UTC marker:
-            # 2026-01-12T20:00:00.0000000Z ("Z" is a literal, not a directive)
-            "from": (now - lookback).strftime("%Y-%m-%dT%H:%M:%S.0000000Z"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%S.0000000Z"),
+            "from": (now - lookback).strftime(REPORT_TIMESTAMP_FORMAT),
+            "to": now.strftime(REPORT_TIMESTAMP_FORMAT),
         }
 
     async def _get_report_outdoor_temperature(

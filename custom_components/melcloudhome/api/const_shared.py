@@ -20,6 +20,11 @@ API_TELEMETRY_ENERGY = "/telemetry/telemetry/energy/{unit_id}"
 API_REPORT_TRENDSUMMARY = "/report/v1/trendsummary"
 API_REPORT_COMFORT_GRAPH = "/report/v1/comfort-graph"
 API_REPORT_INTERNAL_TEMPERATURES = "/report/v1/internaltemperatures"
+API_REPORT_COMBINED_ENERGY = "/report/v1/combined-energy"
+
+# Report requests carry an explicit "Z" so the server converts instead of
+# reading the value as the unit's local time (ADR-022).
+REPORT_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.0000000Z"
 
 # API Response Field Names (used in parsing responses - shared across device types)
 API_FIELD_MEASURE_DATA = "measureData"
@@ -57,6 +62,7 @@ __all__ = [
     "API_FIELD_MEASURE_DATA",
     "API_FIELD_VALUE",
     "API_FIELD_VALUES",
+    "API_REPORT_COMBINED_ENERGY",
     "API_REPORT_COMFORT_GRAPH",
     "API_REPORT_INTERNAL_TEMPERATURES",
     "API_REPORT_TRENDSUMMARY",
@@ -72,6 +78,7 @@ __all__ = [
     "OAUTH_CLIENT_ID",
     "OAUTH_REDIRECT_URI",
     "OAUTH_SCOPES",
+    "REPORT_TIMESTAMP_FORMAT",
     "USER_AGENT",
     "WS_HASH_URL",
     "WS_HOST",

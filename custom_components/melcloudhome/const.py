@@ -30,8 +30,6 @@ CONF_DEBUG_MODE = "debug_mode"
 CONF_ENABLE_WEBSOCKET = "enable_websocket"
 DEFAULT_ENABLE_WEBSOCKET = True
 
-# Energy polling configuration
-UPDATE_INTERVAL_ENERGY = timedelta(minutes=30)
 # The endpoint truncates its response 24 hours after "from" and drops the rest,
 # with no error and no marker, so a wider window silently loses the newest hours
 # and the cumulative total stops growing. 23 rather than 24 because "from" is
@@ -108,7 +106,6 @@ __all__ = [
     "MAX_PLAUSIBLE_HOURLY_ENERGY_KWH",
     "MAX_TOLERATED_POLL_FAILURES",
     "UPDATE_INTERVAL",
-    "UPDATE_INTERVAL_ENERGY",
     "UPDATE_INTERVAL_OUTDOOR_TEMP",
     "UPDATE_INTERVAL_TELEMETRY",
     "DeviceUnit",

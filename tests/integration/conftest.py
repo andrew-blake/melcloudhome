@@ -208,23 +208,12 @@ def create_mock_atw_user_context(buildings: list | None = None) -> "UserContext"
     return UserContext(buildings=buildings)
 
 
-def create_mock_atw_energy_response(wh_value: float, measure_type: str) -> dict:
-    """Create a mock ATW energy API response.
-
-    Args:
-        wh_value: Energy value in watt-hours
-        measure_type: Measure type (intervalEnergyConsumed or intervalEnergyProduced)
-
-    Returns:
-        Mock API response matching MELCloud ATW format
-    """
+def create_mock_atw_energy_report(consumed_kwh: float, produced_kwh: float) -> dict:
+    """A parsed get_energy_report result holding one hour of ATW energy."""
+    hour = "2026-01-18 10:00:00.000000000"
     return {
-        "measureData": [
-            {
-                "type": measure_type,
-                "values": [{"time": "2026-01-18T10:00:00Z", "value": wh_value}],
-            }
-        ]
+        "consumed": [{"time": hour, "value": str(consumed_kwh)}],
+        "produced": [{"time": hour, "value": str(produced_kwh)}],
     }
 
 

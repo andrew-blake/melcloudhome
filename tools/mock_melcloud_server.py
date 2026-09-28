@@ -26,6 +26,7 @@ Reference:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import random
@@ -468,6 +469,9 @@ class MockMELCloudServer:
         internal_temps_route = app.router.add_get(
             "/report/v1/internaltemperatures", self.get_internal_temperatures
         )
+        combined_energy_route = app.router.add_get(
+            "/report/v1/combined-energy", self.get_combined_energy
+        )
 
         # WebSocket endpoints (not added to CORS — native ws handshake, no CORS preflight)
         app.router.add_get("/ws/token", self.handle_ws_token)
@@ -493,6 +497,7 @@ class MockMELCloudServer:
             trendsummary_route,
             comfort_graph_route,
             internal_temps_route,
+            combined_energy_route,
         ]:
             cors.add(route)
 
@@ -1108,10 +1113,8 @@ class MockMELCloudServer:
     async def handle_telemetry_energy(self, request: web.Request) -> web.Response:
         """GET /telemetry/telemetry/energy/{unit_id} - Get energy telemetry data.
 
-        Returns hourly energy data for ATW devices.
-        Supports interval_energy_consumed and interval_energy_produced measures.
-
-        Format: ATW uses measureData array format (different from ATA)
+        Returns hourly energy data for ATA devices only. ATW energy is served
+        by get_combined_energy (ADR-027); ATW no longer calls this route.
         """
         from datetime import UTC, datetime, timedelta
 
@@ -1435,6 +1438,56 @@ class MockMELCloudServer:
             text=json.dumps([{"datasets": datasets, "annotations": []}]),
             content_type="text/plain",
             charset="utf-8",
+        )
+
+    async def get_combined_energy(self, request: web.Request) -> web.Response:
+        """GET /report/v1/combined-energy - ATW hourly energy for one local day.
+
+        Mirrors the real server as measured 2026-09-24 (ADR-027): labels are the
+        unit's naive local hour starts, idle hours are omitted, the in-progress
+        hour grows through the hour, and a completed hour's value never changes.
+        ATA units get HTTP 500, as on the real server. Values are derived from a
+        hash of unit and hour, so repeated requests agree and the integration's
+        delta tracking isn't fed random revisions.
+        """
+        unit_id = request.query.get("unitId")
+        if not unit_id:
+            return web.json_response({"error": "unitId required"}, status=400)
+        if unit_id in self.ata_states:
+            return web.json_response({"error": "not supported for ATA"}, status=500)
+        if unit_id not in self.atw_states:
+            return web.json_response({"error": "unit not found"}, status=404)
+
+        from_local, to_local = self._parse_report_window(request, unit_id)
+        now_local = (
+            datetime.now(UTC)
+            .astimezone(ZoneInfo(self._unit_timezone(unit_id)))
+            .replace(tzinfo=None)
+        )
+        consumed, produced = [], []
+        hour = from_local.replace(minute=0, second=0, microsecond=0)
+        while hour < to_local and hour <= now_local:
+            digest = hashlib.sha256(f"{unit_id}|{hour.isoformat()}".encode()).digest()
+            if digest[0] % 5:  # about one hour in five is idle and omitted
+                full = 0.1 + digest[1] / 255 * 0.9  # 0.1 to 1.0 kWh consumed
+                fraction = min(1.0, (now_local - hour).total_seconds() / 3600)
+                used = round(full * fraction, 4)
+                consumed.append({"x": hour.isoformat(), "y": used})
+                produced.append({"x": hour.isoformat(), "y": round(used * 3.2, 4)})
+            hour += timedelta(hours=1)
+
+        report = {
+            "reportPeriod": 1,
+            "datasets": [
+                {"id": "interval_energy_consumed", "data": consumed},
+                {"id": "interval_energy_produced", "data": produced},
+                {"id": "outside_temperature", "data": []},
+            ],
+            "from": from_local.isoformat(),
+            "to": to_local.isoformat(),
+        }
+        return web.Response(
+            text=json.dumps([report]), content_type="text/plain", charset="utf-8"
         )
 
     def _snake_to_camel(self, snake_str: str) -> str:
