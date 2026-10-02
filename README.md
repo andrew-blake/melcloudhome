@@ -12,19 +12,17 @@ Home Assistant custom integration for **MELCloud Home**.
 
 ## What's New in v2.6.0
 
-**Fan speed and vane now work from HomeKit.** Bridged to HomeKit, an air conditioning unit used to appear as a bare thermostat offering temperature and mode, with no way to change the fan or the vane. The bridge recognises a fan speed control and a swing control by a fixed set of names that these units do not use, so neither control was ever built. Each air conditioning unit now gets a fan entity alongside its climate entity, carrying the unit's power, its fan speed and whether the vane is swinging, and all three come through. The speed slider has one step for each speed the unit actually has. The fan is a new entity, so restart Home Assistant to pick it up. See [docs/homekit.md](docs/homekit.md) if the tile does not appear, and for the handful of behaviours that catch people out.
+**Fan speed and vane now work from HomeKit.** Air conditioning units used to appear in HomeKit as a thermostat with only temperature and mode. Each unit now also gets a fan entity with its power, fan speed and vane swing. See [docs/homekit.md](docs/homekit.md) if the tile does not appear. The climate entity is unchanged, so if you only use the Home Assistant UI you can ignore the fan entity. Requested in [#318](https://github.com/andrew-blake/melcloudhome/issues/318).
 
-The same entity is picked up automatically by Alexa and Google Home once you expose it to them. Alexa should offer both the speed and the swing, and Google Home offers the speed, because its fan has no swing control. I have tested HomeKit only.
+**Every command is now sent to your unit.** Changing a setting and changing it straight back, or choosing a value you had just set in the MELCloud app, used to send nothing the second time. Reported in [#310](https://github.com/andrew-blake/melcloudhome/issues/310) and [discussion #135](https://github.com/andrew-blake/melcloudhome/discussions/135).
 
-This entity is there for those ecosystems and is additive. The climate entity is unchanged and keeps its own fan speed and vane dropdowns, including the individual vane positions that a swing switch cannot express, so if you drive the integration from the Home Assistant UI alone you can ignore the new entity entirely. A unit with no vane gets no swing control, and switching swing on sets the vane for the next time the unit runs without starting a stopped unit. Reported in [#318](https://github.com/andrew-blake/melcloudhome/issues/318).
+**Entities no longer go "unavailable" when MELCloud has a bad moment.** One or two failed requests in a row used to make every entity unavailable. They now keep their last values, and a third failure in a row still shows as unavailable. Reported in [#309](https://github.com/andrew-blake/melcloudhome/issues/309).
 
-**Every command now reaches your unit.** The integration used to check whether a unit already looked like it was at the value you asked for and skip sending anything if it was. That check ran against its own copy of the unit, which a command you had just sent could already have made out of date, so changing a value and changing it straight back did nothing the second time, and choosing a value in Home Assistant that you had just set in the MELCloud app sent nothing at all. Reported in [#310](https://github.com/andrew-blake/melcloudhome/issues/310) and [discussion #135](https://github.com/andrew-blake/melcloudhome/discussions/135).
+**Heat pump energy during the hour.** Heat pump energy consumed, energy produced and COP now update during the hour instead of up to about 90 minutes late. Reported in [#333](https://github.com/andrew-blake/melcloudhome/issues/333).
 
-**Entities no longer go "unavailable" when MELCloud has a bad moment.** A single request that timed out, dropped, or came back with a server error used to turn every sensor and climate entity unavailable until the next request succeeded. It now keeps the last known values through up to two failed requests in a row. A third in a row still shows as unavailable, because at that point something is genuinely wrong. Reported in [#309](https://github.com/andrew-blake/melcloudhome/issues/309).
+**No more silent freezes after signing in again.** The integration could stop updating until it was reloaded or Home Assistant restarted. Reported in [#336](https://github.com/andrew-blake/melcloudhome/issues/336).
 
-**Heat pump energy during the hour.** Heat pump energy consumed and produced now update during the hour instead of an hour late. Reported in [#333](https://github.com/andrew-blake/melcloudhome/issues/333).
-
-**If you have an automation that passes a mode to `climate.set_temperature` or `water_heater.set_temperature` without wanting it applied, remove it from the call.** The integration used to read the temperature and discard the mode. It now sets both.
+**Check automations that pass a mode to `climate.set_temperature` or `water_heater.set_temperature`.** The mode used to be ignored and is now applied, so remove it if you don't want it.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
@@ -131,7 +129,7 @@ The integration creates the following entities for each device:
 **Air-to-Air (ATA) Systems:**
 
 - Climate control (HVAC modes, temperature, fan speeds, swing)
-- Fan (fan speed, vane oscillation, unit power — gives HomeKit a speed slider and swing switch)
+- Fan (fan speed, vane oscillation, unit power; gives HomeKit a speed slider and swing switch)
 - Sensors (room temperature, outdoor temperature, WiFi signal, energy consumption)
 - Binary sensors (error state, connection status)
 

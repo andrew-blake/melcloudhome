@@ -89,12 +89,8 @@ air conditioner. So turning the fan tile off, or dragging its speed slider down
 to zero, switches the whole unit off. Turning it back on starts the air
 conditioner again, in the mode it was last using.
 
-I have only checked this through HomeKit. The entity is an ordinary Home
-Assistant fan, so if you also expose your entities to Google Home or Alexa it
-appears there as a fan too, and asking either of them to turn that fan off
-should stop the air conditioning the same way. Alexa should also offer the speed
-and the swing. Google Home offers the speed alone, because a Google fan has no
-swing control.
+Only HomeKit has been tested. Anywhere else the fan entity is exposed, turning
+it off should switch the air conditioner off the same way.
 
 If what you actually want is the unit running quietly, set the lowest speed and
 leave the fan on.
