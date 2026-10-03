@@ -1,14 +1,4 @@
-# OSV Scanner ignore list
+# OSV Scanner ignore list, read by .github/workflows/dep-audit.yml.
 #
-# When to review this file:
-#   When vcrpy releases a version that supports aiohttp >=3.14, merge
-#   dependabot PR #123 (or its successor) and REMOVE the two entries below.
-#   Issue tracking this: https://github.com/andrew-blake/melcloudhome/issues/124
-
-[[IgnoredVulns]]
-id = "GHSA-hg6j-4rv6-33pg"
-reason = "aiohttp CVE fixed in 3.14.0. Upgrade blocked on vcrpy incompatibility with aiohttp 3.14 (see issue #124). Dev/CI dep only — end users get HA-bundled aiohttp."
-
-[[IgnoredVulns]]
-id = "GHSA-jg22-mg44-37j8"
-reason = "aiohttp CVE fixed in 3.14.0. Upgrade blocked on vcrpy incompatibility with aiohttp 3.14 (see issue #124). Dev/CI dep only — end users get HA-bundled aiohttp."
+# Add an [[IgnoredVulns]] entry (id + reason) only when an upgrade is blocked,
+# and remove it once the blocker clears: osv-scanner reports unused ignores.
