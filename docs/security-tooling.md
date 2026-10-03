@@ -53,15 +53,15 @@ GitHub's semantic code analysis engine, configured with `queries: security-and-q
 Known CodeQL gotcha: the `py/log-injection` query only recognizes a sanitizer function as a barrier if *every* return path in that function is unconditional. A sanitizer with branching logic (e.g. `if cond: return x; return y`) won't be recognized as sanitizing, even if both branches are safe — CodeQL flags call sites as still-tainted. Restructure to a single unconditional return/expression if you need the query to recognize it.
 
 ### `dep-audit.yml` (https://github.com/andrew-blake/melcloudhome/blob/main/.github/workflows/dep-audit.yml) — OSV Scanner
-Runs `google/osv-scanner-action` against the exported `uv.lock` (converted to `requirements.txt` format for scanning) on a weekly schedule and whenever `uv.lock`/`pyproject.toml` change in a PR. Checks Python dependencies against the [OSV (Open Source Vulnerabilities) database](https://osv.dev/).
+Runs `google/osv-scanner-action` against the exported `uv.lock` (converted to `requirements.txt` format for scanning) on a weekly schedule and whenever `uv.lock`/`pyproject.toml` change in a PR. Checks Python dependencies against the [OSV (Open Source Vulnerabilities) database](https://osv.dev/). The scan passes `--no-resolve`: the export already pins every transitive dependency, and osv-scanner's resolver ignores environment markers, so a package with different requirements per Python version can otherwise fail the scan with an impossible "requirements conflict".
 
-Ignored findings (with required justification) live in `osv-scanner.toml` (https://github.com/andrew-blake/melcloudhome/blob/main/osv-scanner.toml) at the repo root, e.g.:
+Ignored findings (with required justification) live in `osv-scanner.toml` (https://github.com/andrew-blake/melcloudhome/blob/main/osv-scanner.toml) at the repo root:
 ```toml
 [[IgnoredVulns]]
-id = "GHSA-hg6j-4rv6-33pg"
-reason = "aiohttp CVE fixed in 3.14.0. Upgrade blocked on vcrpy incompatibility with aiohttp 3.14 (see issue #124). Dev/CI dep only — end users get HA-bundled aiohttp."
+id = "GHSA-xxxx-xxxx-xxxx"
+reason = "Fixed in <version>. Upgrade blocked by <what>. Dev/CI dep only; end users get the HA-bundled package."
 ```
-Each ignore entry must explain *why* it can't be fixed yet and what would unblock it — these are revisited, not permanent.
+Each ignore entry must explain why it can't be fixed yet and what would unblock it. Remove it once the blocker clears: osv-scanner reports unused ignores on every run.
 
 Note: `pip-audit` was tried first but is unusable on at least one maintainer's machine (uv-managed Python's `ensurepip` SIGABRTs) — `osv-scanner` was adopted instead and has been reliable.
 
