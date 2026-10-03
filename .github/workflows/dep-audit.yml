@@ -26,9 +26,14 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Export lockfile
         run: uv export --format requirements-txt --no-hashes --no-emit-project > "$GITHUB_WORKSPACE/requirements.txt"
+      # --no-resolve: the export already pins every transitive dependency, and
+      # osv-scanner's resolver ignores environment markers, so it merges a
+      # package's per-Python-version requirements into an impossible range
+      # (virtualenv's filelock pins for <3.10 and >=3.10) and exits 127.
       - uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
         with:
           scan-args: |-
             -r
+            --no-resolve
             --config=/github/workspace/osv-scanner.toml
             --lockfile=/github/workspace/requirements.txt
