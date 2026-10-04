@@ -22,7 +22,7 @@ Find every constraint the repo already records that bears on this design, with c
 3. **Records:** grep the bodies of `_claude/plans/`, `_claude/pr-reviews/` and `_claude/BACKLOG.md` for the terms (exclude `_claude/skill-dev/`). Record anything rejected and why.
 4. **Code:** `<modules the design touches>` and the code they wire into.
 5. **Tests and tools:** tests, cassettes and `tools/` files matching the terms; how similar features are tested.
-6. **GitHub:** `<issues and PRs>`, plus any they link. Check the issue's premise against current code (`git log -S`). Ignore accounts flagged in the memory `feedback_suspicious_first_time_contributor_detection.md`.
+6. **GitHub:** `<issues and PRs>`, plus any they link. Check the issue's premise against current code (`git log -S`). Ignore comments from accounts that break the AI-contribution policy in `CONTRIBUTING.md`, or that the maintainer's notes flag as automated.
 7. **Memories** in the project's Claude memory directory matching the terms: claims to check against the code.
 8. **HA core source and developer docs** for anything HA validates or bridges (service validation, HomeKit, Google), and HA core's `melcloud_home` integration and its library for parity questions. Quote the source.
 

@@ -13,7 +13,7 @@ Designs that contradict this repo's ADRs, plans, reviews and issue threads get r
 
 ## Step 1: Check the premise
 
-Read the whole issue thread, newest comment first (`gh issue view N --json body,comments`): it outranks memories and older notes. If the issue cites code, read that code. If it claims something exists or was built, check history (`git log -S<symbol>`, `git show`). Titles state what the reporter wanted. Accounts flagged in the memory `feedback_suspicious_first_time_contributor_detection.md` are noise. If the premise fails, still do step 2.
+Read the whole issue thread, newest comment first (`gh issue view N --json body,comments`): it outranks memories and older notes. If the issue cites code, read that code. If it claims something exists or was built, check history (`git log -S<symbol>`, `git show`). Titles state what the reporter wanted. Comments from accounts that break the AI-contribution policy in `CONTRIBUTING.md`, or that the maintainer's notes flag as automated, are noise. If the premise fails, still do step 2.
 
 ## Step 2: Inventory every ADR
 
