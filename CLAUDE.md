@@ -56,6 +56,7 @@ make test                        # All tests with coverage
 - **Architecture overview:** `docs/architecture.md` - System architecture, multi-device patterns, 3-way valve behavior
 - **Entity reference:** `docs/entities.md` - All entities, entity ID convention, capabilities
 - **Architecture decisions:** `docs/decisions/` - ADRs documenting key technical decisions
+- **Before proposing or reviewing a design:** the `grounding-a-design` skill in `.claude/skills/grounding-a-design/` - inventory every ADR and record the design touches before writing any design text
 - **Code structure:** Browse `custom_components/melcloudhome/` - Multi-device architecture with ATA/ATW separation
 
 **Key patterns:**
