@@ -63,10 +63,10 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 | `operationModeZone2` | string | null | Zone 2 mode (if hasZone2=true) |
 | `setTankWaterTemperature` | number | 40-60 | DHW tank target |
 | `forcedHotWaterMode` | boolean | `true`, `false`, `null` | DHW priority mode |
-| `setHeatFlowTemperatureZone1` | number | null | Advanced: Direct flow control |
-| `setCoolFlowTemperatureZone1` | number | null | Not used (heat-only systems) |
-| `setHeatFlowTemperatureZone2` | number | null | Zone 2 flow control |
-| `setCoolFlowTemperatureZone2` | number | null | Not used |
+| `setHeatFlowTemperatureZone1` | number | null | No observed effect. The iOS app never sends it, neither the app nor the web UI shows a flow target, and nothing reports one back. A write in room mode returned 200 and left the FTC panel and `/context` unchanged; flow mode is untested ([#351](https://github.com/andrew-blake/melcloudhome/issues/351)). The flow target is set on the FTC panel |
+| `setCoolFlowTemperatureZone1` | number | null | Untested. Always sent as null |
+| `setHeatFlowTemperatureZone2` | number | null | Untested. Always sent as null |
+| `setCoolFlowTemperatureZone2` | number | null | Untested. Always sent as null |
 
 ### Status Fields (GET /context)
 
@@ -179,7 +179,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 
 **Mode Descriptions:**
 - **HeatRoomTemperature:** Thermostat mode - maintains room at target temperature
-- **HeatFlowTemperature:** Direct flow control - sets heating water temperature
+- **HeatFlowTemperature:** Flow temperature mode - heats water to the flow target set on the FTC panel
 - **HeatCurve:** Weather compensation - adjusts based on outdoor temperature
 
 #### Forced Hot Water Mode
@@ -376,7 +376,7 @@ It indicates what the 3-way valve is currently doing:
 | Mode | Description | Control Parameter |
 |------|-------------|-------------------|
 | `CoolRoomTemperature` | Cool based on room thermostat<br/>Target: Room temperature | `setTemperatureZone1` (10-30°C) |
-| `CoolFlowTemperature` | Cool based on flow temperature<br/>Target: Water flow temperature | `setCoolFlowTemperatureZone1` |
+| `CoolFlowTemperature` | Cool based on flow temperature<br/>Target: Water flow temperature | None tested (`setCoolFlowTemperatureZone1` untested) |
 
 **Note:** `CoolCurve` mode does NOT exist (only `HeatCurve` exists for heating).
 
