@@ -375,7 +375,7 @@ uv run python tools/ws_frame_logger.py --hours 2 --out <existing.jsonl>    # app
 uv run python tools/ws_frame_logger.py --summary <file.jsonl>
 ```
 
-The output holds unit IDs, so it defaults to the gitignored `_claude/ws-logs/`. The connection URL is never written: its `?hash=` is a live credential. The logger opens a second socket on the account. During a 3-hour run the integration's own socket dropped once, during the same outage as the logger's.
+The output holds unit IDs, so it defaults to the gitignored `_claude/ws-logs/`. The connection URL is never written: its `?hash=` is a live credential. The logger opens a second socket on the account.
 
 ### `dump_sensor_readings.py`
 
