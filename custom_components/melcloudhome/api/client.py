@@ -24,6 +24,7 @@ from .const_shared import (
     API_REPORT_COMFORT_GRAPH,
     API_REPORT_INTERNAL_TEMPERATURES,
     API_REPORT_TRENDSUMMARY,
+    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
@@ -614,6 +615,63 @@ class MELCloudHomeClient:
             if reading is not None:
                 readings[dataset_id] = reading
         return readings
+
+    async def get_wifi_signal(self, unit_id: str) -> Reading | None:
+        """Get a unit's newest Wi-Fi signal reading (dBm), for ATA and ATW alike.
+
+        /context's top-level rssi stopped updating in September 2026 (#350), so
+        this reads the series the vendor app charts. Measured in a 24 h soak
+        (ADR-028):
+
+        - from/to and the response stamps are UTC, unlike /report/v1/*. Never
+          pass a unit timezone here.
+        - The response covers about one hour from "from", whatever "to" is, so
+          a wider window returns older data. Keep it at one hour.
+        - Every non-empty response starts with the last reading before "from",
+          carried forward with its own stamp, so one hour is enough even for a
+          unit that uploads only when the value changes.
+        - Values are integer strings and can be null. A genuine reading can
+          land on second 0, so the report endpoints' synthetic-point rule must
+          not be applied.
+
+        The newest point is chosen by its own timestamp (ADR-022), and a bad
+        point costs that point only.
+
+        Returns:
+            Reading with an int value, or None when the response held no usable
+            point (including a 304). Raises on a failed request, so a failure
+            stays distinct from an empty response.
+        """
+        now = datetime.now(UTC)
+        response = await self._api_request(
+            "GET",
+            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
+            params={
+                "from": (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M"),
+                "to": now.strftime("%Y-%m-%d %H:%M"),
+                "measure": "rssi",
+            },
+        )
+
+        stamped: list[tuple[datetime, int]] = []
+        for measure in (response or {}).get(API_FIELD_MEASURE_DATA) or []:
+            for point in measure.get(API_FIELD_VALUES) or []:
+                try:
+                    stamped.append(
+                        (
+                            parse_api_timestamp(str(point["time"])),
+                            round(float(point[API_FIELD_VALUE])),
+                        )
+                    )
+                except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
+                    # repr escapes control characters, so a hostile value
+                    # cannot forge a log line.
+                    _LOGGER.debug("Skipping unparsable rssi point: %r", point)
+
+        if not stamped:
+            return None
+        recorded_at, value = max(stamped)  # tuples sort by time first
+        return Reading(value, recorded_at)
 
     def parse_energy_response(self, data: dict[str, Any] | None) -> float | None:
         """

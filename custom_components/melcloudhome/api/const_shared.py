@@ -16,6 +16,7 @@ USER_AGENT = "MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.
 
 # Shared API Endpoints (mobile BFF paths)
 API_USER_CONTEXT = "/context"
+API_TELEMETRY_ACTUAL = "/telemetry/telemetry/actual/{unit_id}"
 API_TELEMETRY_ENERGY = "/telemetry/telemetry/energy/{unit_id}"
 API_REPORT_TRENDSUMMARY = "/report/v1/trendsummary"
 API_REPORT_COMFORT_GRAPH = "/report/v1/comfort-graph"
@@ -66,6 +67,7 @@ __all__ = [
     "API_REPORT_COMFORT_GRAPH",
     "API_REPORT_INTERNAL_TEMPERATURES",
     "API_REPORT_TRENDSUMMARY",
+    "API_TELEMETRY_ACTUAL",
     "API_TELEMETRY_ENERGY",
     "API_USER_CONTEXT",
     "AUTH_BASE_URL",
