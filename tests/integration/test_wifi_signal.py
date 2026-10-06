@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -248,6 +249,19 @@ async def test_a_failing_unit_warns_once_and_again_on_recovery(
 
     await _advance(hass, 93)  # healthy again: the recovery must not repeat
     assert wifi_warnings("working again") == 2
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_login_stops_the_batch(hass: HomeAssistant) -> None:
+    """After a password change, one rejected login ends the cycle.
+
+    Without the stop, every remaining unit attempts its own full login on
+    every tick until the user re-authenticates.
+    """
+    get_wifi_signal = AsyncMock(side_effect=ConfigEntryAuthFailed("auth"))
+    await _setup(hass, get_wifi_signal)  # two units: ATA, then ATW
+
+    assert get_wifi_signal.await_count == 1
 
 
 @pytest.mark.asyncio

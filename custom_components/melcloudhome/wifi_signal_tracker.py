@@ -14,6 +14,8 @@ from datetime import UTC, datetime
 from functools import partial
 from typing import Any
 
+from homeassistant.exceptions import ConfigEntryAuthFailed
+
 from .api.client import MELCloudHomeClient
 from .api.models import AirToAirUnit, AirToWaterUnit
 from .api.parsing import Reading
@@ -65,7 +67,8 @@ class WifiSignalTracker:
         A unit's failure costs that unit only and never raises from here.
         A failed fetch and an empty response both keep the previous reading:
         on this endpoint an empty response is the server withholding data it
-        has already served (ADR-028's carve-out from ADR-020).
+        has already served (ADR-028's carve-out from ADR-020). A rejected
+        login (ConfigEntryAuthFailed) stops the batch.
 
         Logs one WARNING when a unit starts failing and one when it recovers.
         _execute_with_retry still logs each 5xx and ApiError itself, as it
@@ -82,6 +85,12 @@ class WifiSignalTracker:
                     partial(self._client.get_wifi_signal, unit.id),
                     f"get_wifi_signal({unit.name})",
                 )
+            except ConfigEntryAuthFailed:
+                # Credentials were rejected and the /context poll has started
+                # the reauth flow. Stop the batch rather than attempt a full
+                # login for every remaining unit.
+                _LOGGER.debug("Wi-Fi signal batch stopped: re-authentication needed")
+                break
             except Exception as err:
                 failed_at = datetime.now(UTC)
                 was_failing = state.last_error is not None
