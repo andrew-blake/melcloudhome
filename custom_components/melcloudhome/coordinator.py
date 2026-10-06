@@ -33,6 +33,7 @@ from .const import (
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_OUTDOOR_TEMP,
     UPDATE_INTERVAL_TELEMETRY,
+    UPDATE_INTERVAL_WIFI_SIGNAL,
 )
 from .control_client_ata import ATAControlClient
 from .control_client_atw import ATWControlClient
@@ -41,6 +42,7 @@ from .energy_tracker_atw import ATWEnergyTracker
 from .energy_tracker_base import account_storage_suffix
 from .helpers import resolve_unit_timezone
 from .telemetry_tracker import TelemetryTracker
+from .wifi_signal_tracker import WifiSignalTracker
 
 if TYPE_CHECKING:
     from homeassistant.helpers.event import CALLBACK_TYPE
@@ -100,6 +102,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._cancel_energy_updates: CALLBACK_TYPE | None = None
         # SPIKE: Telemetry tracking cancellation callback
         self._cancel_telemetry_updates: CALLBACK_TYPE | None = None
+        self._cancel_wifi_signal_updates: CALLBACK_TYPE | None = None
         # First energy/telemetry fetch runs off the setup path (ADR-021)
         self._startup_fetch_task: asyncio.Task[None] | None = None
         # Real-time WebSocket listener (default-on accelerator — issue #174)
@@ -137,6 +140,15 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             client=client,
             execute_with_retry=self._execute_with_retry,
             get_coordinator_data=lambda: self.data,
+        )
+
+        # Wi-Fi signal for both device types from the telemetry rssi series
+        # (ADR-028). It reads the caches, which _rebuild_caches refills on
+        # every poll, so it always applies to the current unit objects.
+        self.wifi_signal_tracker = WifiSignalTracker(
+            client=client,
+            execute_with_retry=self._execute_with_retry,
+            get_units=lambda: [*self._units.values(), *self._atw_units.values()],
         )
 
         # Persist tokens when client refreshes proactively
@@ -362,6 +374,9 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         # Update telemetry data for ATW units using telemetry tracker
         self.telemetry_tracker.update_unit_telemetry_data(self._atw_units)
 
+        # Re-apply the Wi-Fi signal onto the new unit objects
+        self.wifi_signal_tracker.apply()
+
     async def _update_single_energy_tracker(
         self,
         tracker: Any,
@@ -460,6 +475,20 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         )
         _LOGGER.info("Telemetry polling scheduled (every 60 minutes)")
 
+        # Wi-Fi signal: one request per unit every 30 minutes (ADR-028).
+        # Restart-anchored like telemetry; ADR-021 found that spreads installs.
+        async def _update_wifi_signal_with_listeners(now):
+            """Update Wi-Fi signal and notify listeners."""
+            await self.wifi_signal_tracker.async_update()
+            self.async_update_listeners()
+
+        self._cancel_wifi_signal_updates = async_track_time_interval(
+            self.hass,
+            _update_wifi_signal_with_listeners,
+            UPDATE_INTERVAL_WIFI_SIGNAL,
+        )
+        _LOGGER.info("Wi-Fi signal polling scheduled (every 30 minutes)")
+
         # Deferred off the setup path — see _run_startup_fetch (ADR-021).
         self._startup_fetch_task = self._config_entry.async_create_background_task(
             self.hass, self._run_startup_fetch(), name=f"{DOMAIN}-startup-fetch"
@@ -469,7 +498,7 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
         self._async_setup_websocket()
 
     async def _run_startup_fetch(self) -> None:
-        """Run the first energy + telemetry fetch off the setup path.
+        """Run the first energy, telemetry and Wi-Fi signal fetch off the setup path.
 
         Deferred out of async_setup (ADR-021) so ~22 sequential paced
         requests don't block entity creation on every restart. The periodic
@@ -497,6 +526,10 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self.telemetry_tracker.update_unit_telemetry_data,
             self._atw_units,
         )
+        # Last: the least important fetch here, and it never raises (a unit's
+        # failure costs that unit only).
+        await self.wifi_signal_tracker.async_update()
+        _LOGGER.info("Initial Wi-Fi signal fetch completed")
         # One notification once everything has settled, rather than two
         # progressive refreshes the user can't act on differently.
         self.async_update_listeners()
@@ -584,6 +617,8 @@ class MELCloudHomeCoordinator(DataUpdateCoordinator[UserContext]):
             self._cancel_energy_updates()
         if self._cancel_telemetry_updates:
             self._cancel_telemetry_updates()
+        if self._cancel_wifi_signal_updates:
+            self._cancel_wifi_signal_updates()
         if self._websocket is not None:
             # The entry-scoped background task is cancelled by HA on entry
             # unload; stop() just makes the run loop exit cleanly if the

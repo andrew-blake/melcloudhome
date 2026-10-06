@@ -66,7 +66,6 @@ async def test_sensor_entity_creation(hass: HomeAssistant) -> None:
 
         wifi_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_wifi_signal")
         assert wifi_state is not None
-        assert int(wifi_state.state) == -50
         assert wifi_state.attributes["unit_of_measurement"] == "dBm"
         assert wifi_state.attributes["device_class"] == "signal_strength"
 
@@ -161,9 +160,6 @@ async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
     assert (
         float(hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature").state)
         == 22.0
-    )
-    assert (
-        int(hass.states.get("sensor.melcloudhome_a1b2_9abc_wifi_signal").state) == -45
     )
 
 

@@ -242,6 +242,10 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        # Unconfigured, the MagicMock raises inside the Wi-Fi tracker, and its
+        # warning matches the outdoor-temperature tests' "keep its previous
+        # value" filter. Tests that need a reading set it.
+        mock_client.get_wifi_signal = AsyncMock(return_value=None)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         # Mock ATW control client (composition pattern)
@@ -281,6 +285,10 @@ async def _setup_integration_custom(
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        # Unconfigured, the MagicMock raises inside the Wi-Fi tracker, and its
+        # warning matches the outdoor-temperature tests' "keep its previous
+        # value" filter. Tests that need a reading set it.
+        mock_client.get_wifi_signal = AsyncMock(return_value=None)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         if configure_client is not None:
