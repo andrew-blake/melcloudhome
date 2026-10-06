@@ -458,6 +458,9 @@ class MockMELCloudServer:
         energy_route = app.router.add_get(
             "/telemetry/telemetry/energy/{unit_id}", self.handle_telemetry_energy
         )
+        actual_route = app.router.add_get(
+            "/telemetry/telemetry/actual/{unit_id}", self.handle_telemetry_actual
+        )
 
         # Report endpoints (mobile BFF path)
         trendsummary_route = app.router.add_get(
@@ -494,6 +497,7 @@ class MockMELCloudServer:
             schedule_enabled_get,
             schedule_enabled_put,
             energy_route,
+            actual_route,
             trendsummary_route,
             comfort_graph_route,
             internal_temps_route,
@@ -1173,6 +1177,62 @@ class MockMELCloudServer:
                             "type": self._snake_to_camel(measure),
                             "values": values,
                         }
+                    ],
+                }
+            ),
+            content_type="text/plain",
+            charset="utf-8",
+        )
+
+    async def handle_telemetry_actual(self, request: web.Request) -> web.Response:
+        """GET /telemetry/telemetry/actual/{unit_id}?measure=rssi - Wi-Fi signal.
+
+        Shaped like the real endpoint (measured, ADR-028): the first point is
+        the last reading before "from", carried forward with its own stamp, then
+        readings up to one hour after "from". Values are integer dBm strings and
+        stamps are UTC. Only measure=rssi is modelled.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        unit_id = request.match_info.get("unit_id", "")
+        if request.rel_url.query.get("measure") != "rssi":
+            return web.Response(
+                text=json.dumps({"measureData": []}),
+                content_type="text/plain",
+                charset="utf-8",
+            )
+
+        now = datetime.now(UTC)
+        try:
+            start = datetime.strptime(
+                request.rel_url.query.get("from", ""), "%Y-%m-%d %H:%M"
+            ).replace(tzinfo=UTC)
+        except ValueError:
+            start = now - timedelta(hours=1)
+        end = min(start + timedelta(hours=1), now)
+
+        base = -50 - sum(map(ord, unit_id)) % 20  # stable per unit, -50..-69
+        values = []
+        stamp = start - timedelta(minutes=3, seconds=17)  # the carry-forward point
+        while stamp <= end:
+            values.append(
+                {
+                    "time": stamp.strftime("%Y-%m-%d %H:%M:%S.000000000"),
+                    "value": str(base - stamp.minute % 3),
+                }
+            )
+            stamp += timedelta(minutes=10)
+
+        logger.info(
+            "📶 rssi telemetry request: unit=%s, %d points",
+            _safe_log(unit_id),
+            len(values),
+        )
+        return web.Response(
+            text=json.dumps(
+                {
+                    "measureData": [
+                        {"deviceId": unit_id, "type": "rssi", "values": values}
                     ],
                 }
             ),
