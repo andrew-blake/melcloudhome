@@ -181,7 +181,6 @@ class AirToWaterUnit:
     # Device Status
     is_in_error: bool
     error_code: str | None
-    rssi: int | None  # WiFi signal strength
     time_zone: str | None  # IANA name from /context, e.g. "Europe/Stockholm"
 
     # Device Info
@@ -315,7 +314,6 @@ class AirToWaterUnit:
             # Status
             is_in_error=_parse_bool(settings.get("IsInError")),
             error_code=error_code,
-            rssi=data.get("rssi"),
             time_zone=data.get("timeZone"),
             # Device Info
             ftc_model=int(settings.get("FTCModel", "3")),

@@ -131,11 +131,11 @@ async def test_energy_sensor_conditional_creation(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
     """Test that sensor values update when coordinator refreshes."""
-    initial_unit = create_mock_ata_unit(room_temperature=20.0, rssi=-50)
+    initial_unit = create_mock_ata_unit(room_temperature=20.0)
     initial_context = create_mock_ata_user_context(
         [create_mock_ata_building(units=[initial_unit])]
     )
-    updated_unit = create_mock_ata_unit(room_temperature=22.0, rssi=-45)
+    updated_unit = create_mock_ata_unit(room_temperature=22.0)
     updated_context = create_mock_ata_user_context(
         [create_mock_ata_building(units=[updated_unit])]
     )
@@ -294,7 +294,7 @@ async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) 
     permanently lost those entities until the integration was reloaded. A missing
     value must read as `unknown`, never suppress creation.
     """
-    unit = create_mock_ata_unit(room_temperature=None, rssi=None)
+    unit = create_mock_ata_unit(room_temperature=None)
     mock_context = create_mock_ata_user_context(
         [create_mock_ata_building(units=[unit])]
     )

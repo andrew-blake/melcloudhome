@@ -239,7 +239,7 @@ def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
     unit.vane_horizontal_direction = "Auto"
     unit.in_standby_mode = False
     unit.is_in_error = False
-    unit.rssi = -50
+    unit.wifi_signal_reading = None
     unit.energy_consumed = None
     # Add capabilities mock
     capabilities = MagicMock()
@@ -268,7 +268,7 @@ def _create_mock_atw_unit(unit_id: str, name: str) -> MagicMock:
     unit.forced_hot_water_mode = False
     unit.is_in_error = False
     unit.error_code = None
-    unit.rssi = -50
+    unit.wifi_signal_reading = None
     unit.ftc_model = 3
     # Add capabilities mock
     capabilities = MagicMock()
