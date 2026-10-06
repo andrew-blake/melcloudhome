@@ -31,3 +31,31 @@ def serialize_outdoor_temp_fields(
             else None
         ),
     }
+
+
+def serialize_wifi_signal_fields(
+    unit: AirToAirUnit | AirToWaterUnit,
+) -> dict[str, Any]:
+    """Serialize the Wi-Fi signal fields shared by ATA and ATW units (ADR-028).
+
+    An old recorded_at with a recent last_poll_at is a quiet unit; a set
+    last_error is a failing fetch.
+    """
+    reading = unit.wifi_signal_reading
+    return {
+        "wifi_signal": reading.value if reading else None,
+        "wifi_signal_recorded_at": (
+            reading.recorded_at.isoformat() if reading else None
+        ),
+        "wifi_signal_last_poll_at": (
+            unit.wifi_signal_last_poll_at.isoformat()
+            if unit.wifi_signal_last_poll_at
+            else None
+        ),
+        "wifi_signal_last_error": unit.wifi_signal_last_error,
+        "wifi_signal_last_error_at": (
+            unit.wifi_signal_last_error_at.isoformat()
+            if unit.wifi_signal_last_error_at
+            else None
+        ),
+    }
