@@ -36,7 +36,7 @@ A failed request also keeps the previous reading. The poll logs one warning when
 - The sensor shows a real signal again, from the same series the vendor app charts.
 - `wifi_signal` gains a `last_reading` attribute. On a unit that uploads only on change, an old `last_reading` with an unchanged value can mean a steady signal or a failing fetch. The diagnostics fields tell them apart.
 - After a restart the sensor reads `unknown` until the startup fetch reaches it. Before this change it had a value from the first `/context` poll.
-- Each cycle adds one request per unit to the shared request pacer. The soak's requests were about 3.4 seconds apart, so eight units occupy the pacer for about 24 seconds every 30 minutes, and a command that arrives then waits.
+- Each cycle adds one request per unit to the shared request pacer. The soak's requests were about 3.4 seconds apart, so eight units take about 24 seconds every 30 minutes. The pacer serves requests in arrival order, so a command that arrives during the batch waits for the one request in flight, a few seconds.
 - The WebSocket offers no alternative source. About 29 hours of frames carried no Wi-Fi signal message and no `rssi` value.
 
 **What would revisit it:** a failure rate on this endpoint approaching ADR-023's, empty responses that stop being transient, or MELCloud updating `/context` `rssi` again.
