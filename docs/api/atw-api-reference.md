@@ -580,9 +580,8 @@ called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` ins
 - RSSI values are integers (dBm, e.g., "-55")
 
 **Polling Recommendations:**
-- **Temperature measures:** Poll every 60 minutes (changes slowly)
+- **Temperature measures:** Poll every 60 minutes (changes slowly). The earlier recommendation was a 4-hour lookback window. Whether the one-hour cap measured on `rssi` also applies to them is untested.
 - **RSSI:** The integration polls this endpoint with `measure=rssi` every 30 minutes, with a one-hour window ending now. The response covers about one hour from `from` and starts with the last reading before it (ADR-028).
-- **Temperature measures:** the earlier recommendation was a 4-hour lookback window. Whether the one-hour cap measured on `rssi` also applies to them is untested.
 
 ### Internal Temperatures Report — the endpoint the integration uses
 
