@@ -19,6 +19,10 @@ Pass no narrative. Test counts and soak results are facts and belong in the
 list; the story of obtaining them is what stays behind. If a fact cannot be
 stated without its story, it belongs in the ADR.
 
+The brief carries no exceptions to the skill's public-text rules. When a brief
+and the skill disagree on a name or a count, the writer follows the skill and
+reports the conflict in its hand-back.
+
 **Facts you can establish, establish.** Run `make test-api`,
 `make test-integration`, `make test-e2e`, `make pre-commit`, and grep the diff
 for what it shows. A suite you ran beats a suite someone told you about, and it
@@ -90,6 +94,22 @@ separately: a summary saying the claims hold, when two of them were never
 reachable, is the same defect in your own report that you were checking the body
 for.
 
+**Then cut.** Read the body once more as its first reviewer:
+
+1. Every claim the writer reported as inferred or unverified: remove it, or turn
+   it into an unchecked Testing box. Passing it to the author as a question
+   ships it if they are busy.
+2. Each bullet and sentence in `Summary`, `Key changes` and
+   `What changes for users`: keep it when a reviewer would check something
+   different, or a user would do something different, without it. Cut a
+   sentence that repeats one in another section.
+3. Each `Risks accepted` bullet: keep it when the risk is one the merger
+   inherits. Cut any way back other than reverting the PR or a tracked
+   follow-up.
+
+`Testing` and the disclosure boxes are exempt: their length tracks what was
+verified. Report the word count before and after the cut.
+
 ## Write it to a file
 
 Write to `_claude/pr-bodies/<branch>.md`, with slashes in the branch name
@@ -134,7 +154,12 @@ Before handing it over, format it and check it:
 ```bash
 npx --yes prettier@3 --prose-wrap never --write _claude/pr-bodies/<name>.md
 grep -n '—' _claude/pr-bodies/<name>.md   # em dashes: rewrite, see SKILL.md
+uv run python tools/prose_check.py _claude/pr-bodies/<name>.md
 ```
+
+Read every `prose_check.py` finding. Fix it, or keep it when the template
+requires the wording (the AI Disclosure box, the attribution line) or the hit is
+a count ("2 fetches instead of 1") or a date ("since 2026-09-15").
 
 `--prose-wrap never` is deliberate: it joins every paragraph, bullet and
 checkbox back onto one line, which is the convention GitHub expects. GitHub

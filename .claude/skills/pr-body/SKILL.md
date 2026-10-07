@@ -101,10 +101,13 @@ Then, in order:
    automation that has to adapt. One section, one bullet each, with the remedy.
    Internal changes nobody outside the repo can observe do not belong here.
 4. `## Risks accepted`: **when merging accepts a known risk**, such as an
-   assumption shipped without evidence, a downside taken deliberately. Say what
-   the risk is, what it costs if it turns out wrong, how it would be detected,
-   and how it would be undone. This is what a maintainer hunts for months later
-   when the risk lands.
+   assumption shipped without evidence, a downside taken deliberately. Each
+   bullet says what the risk is, what it costs if it lands, and how it would
+   show up. A way back is named only when it exists today: reverting this PR, or
+   a follow-up that is tracked, written as "tracked" with the issue linked when
+   there is one. A code change nobody has designed or tracked is a follow-up
+   that does not exist yet, so it stays out of the body. This is what a
+   maintainer hunts for months later when the risk lands.
 5. `## AI Disclosure`: **required.** Reproduce the template's two boxes and
    leave **both unchecked**. The second reads "I reviewed and ran the change
    myself", a claim about the human author that nobody else can make for them.
@@ -151,9 +154,11 @@ State why a fact matters. Never restate the fact.
 | for real devices the prefix is the building name | one of them is a street address |
 | the cassette carries account identifiers         | the account is `<address>`      |
 | the log names a shared device                    | the device is `<name>`          |
+| measured on a real account                       | a real account with 8 units     |
 
 A body is public the moment the PR opens. Applies to device names, building
-names, addresses, account identifiers and UUIDs.
+names, addresses, account identifiers, UUIDs, and counts of a person's units or
+accounts.
 
 ## Evidence lives in the record
 
@@ -208,6 +213,10 @@ in front of them.
 | Explaining why a card, flag or graph exists                                                                 | Put it in the docstring                                                                                                        |
 | Arguing for the method instead of reporting what ran                                                        | Say what ran and what it showed. A Testing preamble that defends the approach is commentary                                    |
 | An em dash                                                                                                  | A colon where it introduces an elaboration, commas or brackets where it wraps an aside. A body full of them reads as generated |
+| A sentence that defers to a source ("`docs/entities.md` says so")                                           | State the fact, or link the source; a source cited this way vouches for more than it says                                      |
+| `since` meaning "because"                                                                                   | `because`, or two sentences                                                                                                    |
+| A trailing reassurance after a cost ("it shows only as log noise")                                          | End the bullet at the cost                                                                                                     |
+| A cause, cost or remedy that neither the brief nor the diff holds                                           | Leave it out of the body and list it in the hand-back                                                                          |
 | Hard-wrapping paragraphs or bullets                                                                         | One line each; GitHub renders the wrap as line breaks                                                                          |
 | Every box checked when verification is partial                                                              | Leave the box unchecked and say why                                                                                            |
 | Overwriting a body that was handed over for editing                                                         | Read it first, keep the author's wording, report the change                                                                    |
