@@ -1190,26 +1190,16 @@ class MockMELCloudServer:
         Shaped like the real endpoint (measured, ADR-028): the first point is
         the last reading before "from", carried forward with its own stamp, then
         readings up to one hour after "from". Values are integer dBm strings and
-        stamps are UTC. Only measure=rssi is modelled.
+        stamps are UTC. Only the integration's own request is modelled: any
+        measure is answered as rssi, and a missing "from" is a 500.
         """
         from datetime import UTC, datetime, timedelta
 
         unit_id = request.match_info.get("unit_id", "")
-        if request.rel_url.query.get("measure") != "rssi":
-            return web.Response(
-                text=json.dumps({"measureData": []}),
-                content_type="text/plain",
-                charset="utf-8",
-            )
-
-        now = datetime.now(UTC)
-        try:
-            start = datetime.strptime(
-                request.rel_url.query.get("from", ""), "%Y-%m-%d %H:%M"
-            ).replace(tzinfo=UTC)
-        except ValueError:
-            start = now - timedelta(hours=1)
-        end = min(start + timedelta(hours=1), now)
+        start = datetime.strptime(
+            request.rel_url.query["from"], "%Y-%m-%d %H:%M"
+        ).replace(tzinfo=UTC)
+        end = min(start + timedelta(hours=1), datetime.now(UTC))
 
         base = -50 - sum(map(ord, unit_id)) % 20  # stable per unit, -50..-69
         values = []
