@@ -252,16 +252,28 @@ async def test_a_failing_unit_warns_once_and_again_on_recovery(
 
 
 @pytest.mark.asyncio
-async def test_a_rejected_login_stops_the_batch(hass: HomeAssistant) -> None:
-    """After a password change, one rejected login ends the cycle.
+async def test_a_rejected_login_stops_the_batch_and_says_so(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """After a password change, one rejected login ends the cycle, visibly.
 
     Without the stop, every remaining unit attempts its own full login on
-    every tick until the user re-authenticates.
+    every tick until the user re-authenticates. The failure is still logged,
+    because a 401 on this endpoint alone would start no reauth flow.
     """
+    caplog.set_level(logging.WARNING)
     get_wifi_signal = AsyncMock(side_effect=ConfigEntryAuthFailed("auth"))
     await _setup(hass, get_wifi_signal)  # two units: ATA, then ATW
 
     assert get_wifi_signal.await_count == 1
+    assert [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno == logging.WARNING and "Wi-Fi signal" in record.getMessage()
+    ] == [
+        "Wi-Fi signal for Test Unit failed and the sensor will keep its previous "
+        "value until a fetch succeeds: ConfigEntryAuthFailed: auth"
+    ]
 
 
 @pytest.mark.asyncio

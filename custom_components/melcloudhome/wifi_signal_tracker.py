@@ -67,30 +67,25 @@ class WifiSignalTracker:
         A unit's failure costs that unit only and never raises from here.
         A failed fetch and an empty response both keep the previous reading:
         on this endpoint an empty response is the server withholding data it
-        has already served (ADR-028's carve-out from ADR-020). A rejected
-        login (ConfigEntryAuthFailed) stops the batch.
+        has already served (ADR-028's carve-out from ADR-020). An auth failure
+        (ConfigEntryAuthFailed) is recorded like any other, then stops the
+        batch: each remaining unit would attempt its own full login.
 
         Logs one WARNING when a unit starts failing and one when it recovers.
-        _execute_with_retry still logs each 5xx and ApiError itself, as it
-        does for outdoor temperature.
+        _execute_with_retry still logs each 5xx (WARNING) and ApiError (ERROR)
+        itself, every cycle, as it does for outdoor temperature.
 
         ponytail: state for a unit that leaves the account is kept, bounded by
         the units ever seen. If it returns, its reading and streak resume,
         which matches keep-previous. Prune here if accounts churn units.
         """
-        for unit in list(self._get_units()):
+        for unit in self._get_units():
             state = self._state.setdefault(unit.id, _UnitWifiSignal())
             try:
                 reading = await self._execute_with_retry(
                     partial(self._client.get_wifi_signal, unit.id),
                     f"get_wifi_signal({unit.name})",
                 )
-            except ConfigEntryAuthFailed:
-                # Credentials were rejected and the /context poll has started
-                # the reauth flow. Stop the batch: each remaining unit would
-                # otherwise attempt its own full login.
-                _LOGGER.debug("Wi-Fi signal batch stopped: re-authentication needed")
-                break
             except Exception as err:
                 failed_at = datetime.now(UTC)
                 was_failing = state.last_error is not None
@@ -107,6 +102,8 @@ class WifiSignalTracker:
                         unit.name,
                         state.last_error,
                     )
+                if isinstance(err, ConfigEntryAuthFailed):
+                    break
                 continue
 
             if state.last_error is not None:
