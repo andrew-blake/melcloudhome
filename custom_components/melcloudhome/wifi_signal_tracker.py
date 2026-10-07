@@ -87,8 +87,8 @@ class WifiSignalTracker:
                 )
             except ConfigEntryAuthFailed:
                 # Credentials were rejected and the /context poll has started
-                # the reauth flow. Stop the batch rather than attempt a full
-                # login for every remaining unit.
+                # the reauth flow. Stop the batch: each remaining unit would
+                # otherwise attempt its own full login.
                 _LOGGER.debug("Wi-Fi signal batch stopped: re-authentication needed")
                 break
             except Exception as err:
@@ -110,8 +110,8 @@ class WifiSignalTracker:
                 continue
 
             if state.last_error is not None:
-                # Warning, not info: at WARNING the failure would otherwise
-                # read as never closing.
+                # Logged at WARNING so the recovery shows wherever the
+                # failure did.
                 _LOGGER.warning("Wi-Fi signal for %s is working again", unit.name)
             state.last_poll_at = datetime.now(UTC)
             state.last_error = None
