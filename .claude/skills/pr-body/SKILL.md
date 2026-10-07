@@ -113,7 +113,13 @@ Then, in order:
    myself", a claim about the human author that nobody else can make for them.
    They tick one before opening the PR.
 6. `## Testing`: **required.** What ran and what it showed. An unchecked box for
-   anything a reviewer would otherwise assume was covered.
+   anything a reviewer would otherwise assume was covered. Each box is one claim
+   on one line: what ran and its result. A suite's result is "passed" and the
+   environment it ran in (the HA version); CI shows the counts at the head. The
+   evidence behind a claim (each mutation tried, timings, value comparisons,
+   what a scrub left) lives in the record. Refer to the head as "the head",
+   without a commit hash: the branch's hashes disappear when the PR is
+   squash-merged.
 
 A checked box asserts the claim holds at the current tip. Something verified
 before later commits landed is unverified again, so a box can age out of true
