@@ -12,7 +12,7 @@
 > temperatures come from `report/v1/internaltemperatures` instead — see
 > [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) and Section 8 of
 > [atw-api-reference.md](atw-api-reference.md). The vendor endpoint still exists and this document
-> still describes it accurately; treat the "how we use it" notes below as historical.
+> still describes it accurately. Except for `measure=rssi`, treat the "how we use it" notes below as historical.
 
 This is a **complete API reference** documenting all read-only (GET) telemetry and reporting endpoints available in the MELCloud Home API.
 
@@ -25,7 +25,7 @@ This is a **complete API reference** documenting all read-only (GET) telemetry a
 - Wi-Fi signal (RSSI) for ATA and ATW devices, from `/telemetry/telemetry/actual` with `measure=rssi` (ADR-028)
 
 **Reference Only (Not Implemented):**
-- Actual telemetry data polling (Section 1) - Flow/return temps for ATW
+- Actual telemetry data polling (Section 1) for measures other than `rssi` - Flow/return temps for ATW
 - Operation mode history (Section 4) - Historical operation tracking
 - Error log endpoint (Section 2) - Device error history
 - Report types (Section 5) - Historical reporting features

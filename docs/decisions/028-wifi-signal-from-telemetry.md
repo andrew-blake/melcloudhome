@@ -29,7 +29,7 @@ The vendor app's Wi-Fi screen charts `GET /telemetry/telemetry/actual/{unit_id}?
 
 **An empty response keeps the previous reading.** This amends ADR-020 for this sensor, as ADR-023 requires of any divergence. On this endpoint an empty response cannot mean "no current value", because every non-empty response carries the last reading forward. The server intermittently withholds data it has already served. A unit that has never reported reads `unknown` either way.
 
-A failed request also keeps the previous reading. The poll logs one warning when a unit starts failing and one when it recovers. The shared request wrapper still logs each server error itself, as it does for outdoor temperature.
+A failed request also keeps the previous reading. The poll logs one warning when a unit starts failing and one when it recovers. The shared request wrapper still logs each failed request itself on every cycle, as it does for outdoor temperature: a warning for a server error and an error for any other failure.
 
 ## Consequences
 

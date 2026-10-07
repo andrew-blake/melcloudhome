@@ -575,14 +575,14 @@ called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` ins
 
 **Data Characteristics:**
 - Sparse data: 0-4 datapoints per hour (not minute-level)
-- Time window: Typically 4 hours of historical data
+- Time window: for `measure=rssi` the response covers about one hour from `from`, whatever window is requested (ADR-028). Other measures are untested on this point.
 - Values are strings (convert to float)
 - RSSI values are integers (dBm, e.g., "-55")
 
 **Polling Recommendations:**
 - **Temperature measures:** Poll every 60 minutes (changes slowly)
 - **RSSI:** The integration polls this endpoint with `measure=rssi` every 30 minutes, with a one-hour window ending now. The response covers about one hour from `from` and starts with the last reading before it (ADR-028).
-- Use 4-hour lookback window for recent data
+- **Temperature measures:** the earlier recommendation was a 4-hour lookback window. Whether the one-hour cap measured on `rssi` also applies to them is untested.
 
 ### Internal Temperatures Report — the endpoint the integration uses
 
