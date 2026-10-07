@@ -121,14 +121,18 @@ Then, in order:
    without a commit hash: the branch's hashes disappear when the PR is
    squash-merged.
 
-A checked box asserts the claim holds at the current tip. Something verified
-before later commits landed is unverified again, so a box can age out of true
-without anyone editing it.
+**Every ticked box holds at the head.** A check that ran before later commits
+is re-run at the head when it is cheap (lint, type-check, the suites, the
+security review). Evidence too costly to repeat, such as a devserver or
+production run, is ticked with its scope in the claim: "on code that differs
+from the head only in comments", which a diff can confirm. A later code change
+makes that claim false, which is the signal to earn the box again.
 
 **Word every box as the claim it asserts, never as a negation.** Ticking is what
 makes the claim true, so `- [ ] No prod soak` inverts its own meaning the moment
 someone ticks it. Write the claim, `- [ ] Prod deployment and soak`, and put why
-it is unticked after it, as a note that gets deleted when the box is earned.
+it is unticked after it. Only a box that will not be earned in this PR carries
+such a note; a box waiting on a re-run gets the re-run.
 
 An unticked box says what **you** did not verify. It does not assert that nobody
 did: other sessions, other machines and runs that left no artefact in the repo

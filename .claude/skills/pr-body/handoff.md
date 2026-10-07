@@ -38,6 +38,11 @@ source of evidence a repo-only search never finds.
 the diff needs no checkout. Anything you _run_ reads the working tree, so a
 suite executed on another branch reports another branch's result.
 
+**Run them at the head.** For each fact the brief lists, say which commit it
+was verified at. When that is not the head, re-run it at the head if it is
+cheap; otherwise state what the later commits change (`git diff <commit>..HEAD`)
+so the writer can scope the claim.
+
 Compare `git branch --show-current` to the target before running anything. If
 they differ, add a worktree rather than moving the shared tree:
 
