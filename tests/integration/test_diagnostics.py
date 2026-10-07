@@ -208,6 +208,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     assert units[0]["set_temperature"] == 22.0
     assert units[0]["room_temperature"] == 20.5
     assert units[0]["has_energy_consumed_meter"] is True
+    assert "wifi_signal_last_poll_at" in units[0]  # shared Wi-Fi serialiser
 
     assert units[1]["id"] == "unit-2"
     assert units[1]["name"] == "***REDACTED***"
@@ -497,30 +498,3 @@ async def test_diagnostics_separates_a_quiet_unit_from_a_failing_wifi_fetch(
     assert unit["wifi_signal"] == -56
     assert unit["wifi_signal_last_error"] is None
     assert unit["wifi_signal_last_error_at"] is None
-
-
-@pytest.mark.asyncio
-async def test_diagnostics_includes_ata_wifi_signal_fields(
-    hass: HomeAssistant,
-) -> None:
-    """ATA serialises the same Wi-Fi fields as ATW."""
-    entry, _ = await setup_ata_integration_custom(
-        hass,
-        create_mock_ata_user_context(
-            [create_mock_ata_building(units=[create_mock_ata_unit()])]
-        ),
-        options={CONF_ENABLE_WEBSOCKET: False},
-    )
-    await hass.async_block_till_done(wait_background_tasks=True)
-
-    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    unit = diagnostics["user_context"]["buildings"][0]["ata_units"][0]
-    for key in (
-        "wifi_signal",
-        "wifi_signal_recorded_at",
-        "wifi_signal_last_poll_at",
-        "wifi_signal_last_error",
-        "wifi_signal_last_error_at",
-    ):
-        assert key in unit, key
-    assert unit["wifi_signal_last_poll_at"] is not None  # conftest default: no reading

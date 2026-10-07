@@ -60,7 +60,7 @@ async def _setup(hass: HomeAssistant, get_wifi_signal: AsyncMock) -> tuple[Any, 
     """Set up the mixed context and let the startup fetch finish."""
 
     def configure(client: Any) -> None:
-        client.get_user_context = AsyncMock(side_effect=lambda: _context())
+        client.get_user_context = AsyncMock(side_effect=_context)
         client.get_wifi_signal = get_wifi_signal
 
     entry, mock_client = await setup_ata_integration_custom(
@@ -129,34 +129,26 @@ async def test_the_timer_fetches_again_after_30_minutes_and_not_before(
     assert state.attributes["last_reading"] == newer.recorded_at.isoformat()
 
 
+@pytest.mark.parametrize(
+    "outcome",
+    [{"side_effect": TimeoutError()}, {"return_value": None}],
+    ids=["failed", "empty"],
+)
 @pytest.mark.asyncio
-async def test_failed_fetch_keeps_the_value_and_its_stamp(hass: HomeAssistant) -> None:
-    """The stamp standing still is how a user sees the fetch failing."""
-    get_wifi_signal = AsyncMock(return_value=Reading(-56, STAMP))
-    await _setup(hass, get_wifi_signal)
-
-    get_wifi_signal.side_effect = TimeoutError()
-    await _advance(hass, 31)
-
-    state = hass.states.get(ATA_WIFI)
-    assert state.state == "-56"
-    assert state.attributes["last_reading"] == STAMP.isoformat()
-
-
-@pytest.mark.asyncio
-async def test_empty_response_keeps_the_value_and_its_stamp(
-    hass: HomeAssistant,
+async def test_failed_or_empty_fetch_keeps_the_value_and_its_stamp(
+    hass: HomeAssistant, outcome: dict[str, Any]
 ) -> None:
-    """ADR-028's carve-out from ADR-020.
+    """The stamp standing still is how a user sees a fetch failing.
 
-    Measured: the server intermittently withholds a reading it has already
-    served, about one response in twenty. Clearing on that would blank the
-    sensor several times a day on a healthy unit.
+    Empty is ADR-028's carve-out from ADR-020. Measured: the server
+    intermittently withholds a reading it has already served, about one
+    response in twenty, so clearing on it would blank a healthy sensor
+    several times a day.
     """
     get_wifi_signal = AsyncMock(return_value=Reading(-56, STAMP))
     await _setup(hass, get_wifi_signal)
 
-    get_wifi_signal.return_value = None
+    get_wifi_signal.configure_mock(**outcome)
     await _advance(hass, 31)
 
     state = hass.states.get(ATA_WIFI)
