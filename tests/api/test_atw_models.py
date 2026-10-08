@@ -148,7 +148,6 @@ class TestAirToWaterUnit:
 
         # Device info
         assert unit.ftc_model == 3
-        assert unit.rssi == -45
 
         # Status
         assert unit.power is True

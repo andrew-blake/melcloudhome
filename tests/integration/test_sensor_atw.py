@@ -310,8 +310,11 @@ async def test_atw_energy_sensors_have_correct_device_class(
 
 
 @pytest.mark.asyncio
-async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
-    """Test ATW WiFi signal sensor uses RSSI from the current unit context."""
+async def test_atw_wifi_signal_sensor_created(hass: HomeAssistant) -> None:
+    """The ATW Wi-Fi signal sensor exists with its unit and device class.
+
+    Its value comes from the telemetry series (test_wifi_signal.py).
+    """
     mock_unit = create_mock_atw_unit()
     mock_context = create_mock_atw_user_context(
         [create_mock_atw_building(units=[mock_unit])]
@@ -320,7 +323,6 @@ async def test_atw_rssi_sensor_created(hass: HomeAssistant) -> None:
 
     wifi_state = hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal")
     assert wifi_state is not None
-    assert wifi_state.state == "-50"
     assert wifi_state.attributes["unit_of_measurement"] == "dBm"
     assert wifi_state.attributes["device_class"] == "signal_strength"
 

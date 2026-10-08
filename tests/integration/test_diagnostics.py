@@ -8,7 +8,7 @@ Run with: make test-integration
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -19,10 +19,14 @@ from homeassistant.helpers import (
     device_registry as dr,
     entity_registry as er,
 )
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.melcloudhome.api.parsing import Reading
-from custom_components.melcloudhome.const import DOMAIN
+from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
 from custom_components.melcloudhome.diagnostics import (
     async_get_config_entry_diagnostics,
 )
@@ -204,6 +208,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     assert units[0]["set_temperature"] == 22.0
     assert units[0]["room_temperature"] == 20.5
     assert units[0]["has_energy_consumed_meter"] is True
+    assert "wifi_signal_last_poll_at" in units[0]  # shared Wi-Fi serialiser
 
     assert units[1]["id"] == "unit-2"
     assert units[1]["name"] == "***REDACTED***"
@@ -441,3 +446,55 @@ async def test_diagnostics_single_device_type_entity_ids_unaffected(
     assert "climate.melcloudhome_a1b2_9abc_climate" in entities
     assert "sensor.melcloudhome_a1b2_9abc_room_temperature" in entities
     assert not any("redacted_device_" in key for key in entities)
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_separates_a_quiet_unit_from_a_failing_wifi_fetch(
+    hass: HomeAssistant,
+) -> None:
+    """ADR-028: last_reading alone can't tell a steady signal from a failing fetch."""
+    stamp = datetime(2026, 10, 5, 10, 41, 24, tzinfo=UTC)
+    get_wifi_signal = AsyncMock(return_value=Reading(-56, stamp))
+
+    def configure(client):
+        client.get_wifi_signal = get_wifi_signal
+
+    entry, _ = await setup_atw_integration_custom(
+        hass,
+        create_mock_atw_user_context(
+            [create_mock_atw_building(units=[create_mock_atw_unit()])]
+        ),
+        configure_client=configure,
+        options={CONF_ENABLE_WEBSOCKET: False},
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+    assert unit["wifi_signal"] == -56
+    assert unit["wifi_signal_recorded_at"] == "2026-10-05T10:41:24+00:00"
+    assert unit["wifi_signal_last_poll_at"] is not None
+    assert unit["wifi_signal_last_error"] is None
+    assert unit["wifi_signal_last_error_at"] is None
+
+    get_wifi_signal.side_effect = TimeoutError("timed out")
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+    assert unit["wifi_signal"] == -56
+    assert unit["wifi_signal_last_error"] == "TimeoutError: timed out"
+    assert unit["wifi_signal_last_error_at"] is not None
+    # A failed poll is still a poll: last_poll_at moves with the error
+    assert unit["wifi_signal_last_poll_at"] == unit["wifi_signal_last_error_at"]
+
+    get_wifi_signal.side_effect = None
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=62))
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+    assert unit["wifi_signal"] == -56
+    assert unit["wifi_signal_last_error"] is None
+    assert unit["wifi_signal_last_error_at"] is None
