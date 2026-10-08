@@ -202,9 +202,9 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         reading_fn=lambda unit: unit.telemetry.get("return_temperature_boiler"),
         should_create_fn=lambda unit: unit.capabilities.has_boiler,
     ),
-    # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
-    # Shows received signal strength indication (RSSI) in dBm
-    # Typical range: -30 (excellent) to -90 (poor)
+    # WiFi signal strength - diagnostic sensor for connectivity troubleshooting.
+    # dBm from the telemetry rssi series, polled every 30 minutes (ADR-028);
+    # last_reading is the unit's own upload time.
     ATWSensorEntityDescription(
         key="wifi_signal",
         translation_key="wifi_signal",
@@ -212,7 +212,7 @@ ATW_SENSOR_TYPES: tuple[ATWSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda unit: unit.rssi,
+        reading_fn=lambda unit: unit.wifi_signal_reading,
     ),
     # Energy monitoring sensors
     # Created if device has energy capability (measured or estimated), even if no initial data

@@ -84,9 +84,9 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
             unit.actual_fan_speed.lower() if unit.actual_fan_speed else None
         ),
     ),
-    # WiFi signal strength - diagnostic sensor for connectivity troubleshooting
-    # Shows received signal strength indication (RSSI) in dBm
-    # Typical range: -30 (excellent) to -90 (poor)
+    # WiFi signal strength - diagnostic sensor for connectivity troubleshooting.
+    # dBm from the telemetry rssi series, polled every 30 minutes (ADR-028);
+    # last_reading is the unit's own upload time.
     ATASensorEntityDescription(
         key="wifi_signal",
         translation_key="wifi_signal",
@@ -94,7 +94,7 @@ ATA_SENSOR_TYPES: tuple[ATASensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda unit: unit.rssi,
+        reading_fn=lambda unit: unit.wifi_signal_reading,
     ),
     # Energy consumption sensor
     # Created if device has energy meter capability, even if no initial data

@@ -24,6 +24,7 @@ from .const_shared import (
     API_REPORT_COMFORT_GRAPH,
     API_REPORT_INTERNAL_TEMPERATURES,
     API_REPORT_TRENDSUMMARY,
+    API_TELEMETRY_ACTUAL,
     API_TELEMETRY_ENERGY,
     API_USER_CONTEXT,
     BASE_URL,
@@ -614,6 +615,56 @@ class MELCloudHomeClient:
             if reading is not None:
                 readings[dataset_id] = reading
         return readings
+
+    async def get_wifi_signal(self, unit_id: str) -> Reading | None:
+        """Get a unit's newest Wi-Fi signal reading (dBm), for ATA and ATW alike.
+
+        Three measured rules hold this together (ADR-028):
+
+        - from/to and the response stamps are UTC. Never pass a unit timezone
+          here.
+        - Keep the window at one hour. The response covers about one hour from
+          "from" whatever "to" is, and starts with the last reading before
+          "from", so a wider window only returns older data.
+        - A genuine reading can land on second 0, so the report endpoints'
+          synthetic-point rule must not be applied.
+
+        Returns:
+            Reading with an int value, the newest by its own timestamp
+            (ADR-022), or None when the response held no usable point
+            (including a 304). A bad point costs that point only. Raises on a
+            failed request, so a failure stays distinct from an empty response.
+        """
+        now = datetime.now(UTC)
+        response = await self._api_request(
+            "GET",
+            API_TELEMETRY_ACTUAL.format(unit_id=unit_id),
+            params={
+                "from": (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M"),
+                "to": now.strftime("%Y-%m-%d %H:%M"),
+                "measure": "rssi",
+            },
+        )
+
+        stamped: list[tuple[datetime, int]] = []
+        for measure in (response or {}).get(API_FIELD_MEASURE_DATA) or []:
+            for point in measure.get(API_FIELD_VALUES) or []:
+                try:
+                    stamped.append(
+                        (
+                            parse_api_timestamp(str(point["time"])),
+                            round(float(point[API_FIELD_VALUE])),
+                        )
+                    )
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    # repr escapes control characters, so a hostile value
+                    # cannot forge a log line.
+                    _LOGGER.debug("Skipping unparsable rssi point: %r", point)
+
+        if not stamped:
+            return None
+        recorded_at, value = max(stamped)  # tuples sort by time first
+        return Reading(value, recorded_at)
 
     def parse_energy_response(self, data: dict[str, Any] | None) -> float | None:
         """

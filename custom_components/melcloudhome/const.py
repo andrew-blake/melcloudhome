@@ -59,6 +59,9 @@ UPDATE_INTERVAL_TELEMETRY = timedelta(minutes=60)  # Hourly (temps change slowly
 # Outdoor temperature polling configuration (ATA devices)
 UPDATE_INTERVAL_OUTDOOR_TEMP = timedelta(minutes=30)
 
+# Wi-Fi signal polling (ATA and ATW, telemetry rssi series, ADR-028)
+UPDATE_INTERVAL_WIFI_SIGNAL = timedelta(minutes=30)
+
 # ATW telemetry measures
 ATW_TELEMETRY_MEASURES = [
     "flow_temperature",
@@ -108,5 +111,6 @@ __all__ = [
     "UPDATE_INTERVAL",
     "UPDATE_INTERVAL_OUTDOOR_TEMP",
     "UPDATE_INTERVAL_TELEMETRY",
+    "UPDATE_INTERVAL_WIFI_SIGNAL",
     "DeviceUnit",
 ]

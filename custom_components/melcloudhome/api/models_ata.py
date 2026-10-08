@@ -170,7 +170,6 @@ class AirToAirUnit:
     in_standby_mode: bool
     is_in_error: bool
     error_code: str | None
-    rssi: int | None
     time_zone: str | None  # IANA name from /context, e.g. "Europe/Stockholm"
     capabilities: AirToAirCapabilities
     # Energy monitoring (set by coordinator, not from main API)
@@ -188,6 +187,16 @@ class AirToAirUnit:
     # When a poll last completed, whatever it found (UTC-aware). Separates a
     # stale endpoint from a stalled poll when read against recorded_at.
     outdoor_temp_last_poll_at: datetime | None = None
+    # Wi-Fi signal (dBm) from the telemetry rssi series, set by the
+    # coordinator's WifiSignalTracker (ADR-028). recorded_at is the unit's own
+    # upload time; units that upload only on change can leave it hours old.
+    wifi_signal_reading: Reading | None = None
+    # Poll bookkeeping for diagnostics, as for outdoor temperature: a recent
+    # last_poll_at with an old recorded_at means a quiet unit, and a set
+    # last_error means the fetch itself is failing.
+    wifi_signal_last_poll_at: datetime | None = None  # UTC-aware
+    wifi_signal_last_error: str | None = None
+    wifi_signal_last_error_at: datetime | None = None  # UTC-aware
     # Protection modes (from GET /context; null until ever configured on this unit)
     frost_protection: ProtectionModeState | None = None
     overheat_protection: ProtectionModeState | None = None
@@ -270,7 +279,6 @@ class AirToAirUnit:
             in_standby_mode=_parse_bool(settings.get("InStandbyMode")),
             is_in_error=_parse_bool(settings.get("IsInError")),
             error_code=error_code,
-            rssi=data.get("rssi"),
             time_zone=data.get("timeZone"),
             capabilities=capabilities,
             frost_protection=ProtectionModeState.from_dict(data.get("frostProtection")),

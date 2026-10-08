@@ -66,7 +66,7 @@ surprises people.
 - **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
 - **Actual Fan Speed**: `sensor.melcloudhome_{short_id}_actual_fan_speed` (`off`, `one`…`five`, never `auto`) — the speed the unit is running, as opposed to the climate entity's `fan_mode`, which is the requested one. Under `Auto` this is the only place the running speed is visible. Reported by the indoor unit, so it can be a few minutes behind after switching on or off, and it follows the fan rather than the compressor — a low speed does not mean cooling has stopped
 - **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
-- **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
+- **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic, dBm, polled every 30 minutes, with a `last_reading` attribute; see the WiFi Signal Sensor section below)
 - **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
 - **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_minimum` / `_maximum` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
 - **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_minimum` / `_maximum` (°C, diagnostic; only created once ever configured)
@@ -249,11 +249,14 @@ on state changes of these entities will fire on those polls; trigger on the valu
 **Note:** Boiler temps are not created at all unless the device reports a boiler. They used
 to be created for every heat pump, where they read a constant 25 °C on devices without one.
 
-**WiFi Signal Sensor:**
+**WiFi Signal Sensor (air conditioners and heat pumps):**
 
 - **WiFi Signal (RSSI)**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
-  - WiFi signal strength in dBm (values: -40 to -90, lower = weaker signal)
-  - Update frequency: Every 60 minutes
+  - Signal strength in dBm (roughly -30 to -90; lower is weaker)
+  - Update frequency: every 30 minutes
+  - `last_reading`: the time the unit itself recorded the value. Some units upload a new value every few minutes. Others upload only when the value changes, and on those a steady signal can leave `last_reading` hours old while everything is working. The integration's diagnostics download shows `wifi_signal_last_poll_at` and `wifi_signal_last_error`: a recent poll with no error means the unit is quiet, and an error means the fetch is failing.
+  - A failed or empty fetch leaves the previous value in place.
+  - Each newer `last_reading` registers a state change even when the value is the same, as for the water-temperature sensors above. Automations that trigger on this entity's state changes fire on those polls.
 
 **Energy Sensors (devices with energy capabilities):**
 
