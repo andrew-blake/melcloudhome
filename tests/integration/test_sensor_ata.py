@@ -14,6 +14,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.melcloudhome.api.models_ata import ProtectionModeState
+from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 
 from .conftest import (
     create_mock_ata_building,
@@ -191,6 +192,54 @@ async def test_energy_sensor_availability(hass: HomeAssistant) -> None:
         temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
         assert temp_state is not None
         assert float(temp_state.state) == 20.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "empty_response",
+    [
+        pytest.param(None, id="304-none"),
+        pytest.param({}, id="empty-body"),
+        pytest.param({"measureData": []}, id="no-measure-data"),
+        pytest.param({"measureData": [{"values": []}]}, id="no-values"),
+    ],
+)
+async def test_idle_unit_shows_its_stored_total_after_a_restart(
+    hass: HomeAssistant, empty_response: dict | None
+) -> None:
+    """An idle unit's stored total shows after a restart, not unknown (#343).
+
+    MELCloud returns no hours for a unit that used no energy in the window.
+    Every empty shape counts: no capture shows which one an idle unit gets.
+    """
+    unit = create_mock_ata_unit(has_energy_meter=True)
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[unit])]
+    )
+    # A total with no hour_values: a gate on hour_values (first-init) would
+    # keep this unit unknown, so the test pins the membership gate.
+    stored = {"cumulative": {unit.id: {"consumed": 13.5}}}
+
+    def configure(client: Any) -> None:
+        client.get_energy_data = AsyncMock(return_value=empty_response)
+
+    with patch(MOCK_STORE_PATH) as mock_store_class:
+        mock_store = mock_store_class.return_value
+        mock_store.async_load = AsyncMock(return_value=stored)
+        mock_store.async_save = AsyncMock()
+
+        await setup_ata_integration_custom(
+            hass,
+            mock_context,
+            configure_client=configure,
+            options={CONF_ENABLE_WEBSOCKET: False},
+        )
+        # The first energy fetch is a background task (ADR-021).
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        assert state is not None
+        assert state.state == "13.5"
 
 
 @pytest.mark.asyncio
