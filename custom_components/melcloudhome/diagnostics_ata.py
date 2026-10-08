@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from .api.models_ata import AirToAirUnit
-from .diagnostics_shared import serialize_outdoor_temp_fields
+from .diagnostics_shared import (
+    serialize_outdoor_temp_fields,
+    serialize_wifi_signal_fields,
+)
 
 
 def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
@@ -31,4 +34,5 @@ def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
             unit.capabilities.has_energy_consumed_meter if unit.capabilities else None
         ),
         **serialize_outdoor_temp_fields(unit),
+        **serialize_wifi_signal_fields(unit),
     }

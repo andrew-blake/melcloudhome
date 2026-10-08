@@ -113,7 +113,6 @@ def create_mock_atw_unit(
     is_in_error: bool = False,
     error_code: str | None = None,
     ftc_model: int = 6,
-    rssi: int | None = -50,
     has_zone2: bool = False,
     has_boiler: bool = False,
     in_standby_mode: bool = False,
@@ -165,7 +164,6 @@ def create_mock_atw_unit(
         operation_status=operation_status,
         is_in_error=is_in_error,
         error_code=error_code,
-        rssi=rssi,
         time_zone=time_zone,
         ftc_model=ftc_model,
         energy_consumed=energy_consumed,
@@ -242,6 +240,10 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        # Unconfigured, the MagicMock raises inside the Wi-Fi tracker, and its
+        # warning matches the outdoor-temperature tests' "keep its previous
+        # value" filter. Tests that need a reading set it.
+        mock_client.get_wifi_signal = AsyncMock(return_value=None)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         # Mock ATW control client (composition pattern)
@@ -281,6 +283,10 @@ async def _setup_integration_custom(
         mock_client.login = AsyncMock()
         mock_client.close = AsyncMock()
         mock_client.get_user_context = AsyncMock(return_value=mock_context)
+        # Unconfigured, the MagicMock raises inside the Wi-Fi tracker, and its
+        # warning matches the outdoor-temperature tests' "keep its previous
+        # value" filter. Tests that need a reading set it.
+        mock_client.get_wifi_signal = AsyncMock(return_value=None)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
 
         if configure_client is not None:
@@ -338,7 +344,6 @@ def create_mock_ata_unit(
     in_standby_mode: bool = False,
     is_in_error: bool = False,
     error_code: str | None = None,
-    rssi: int | None = -50,
     has_energy_meter: bool = False,
     energy_consumed: float | None = None,
     has_outdoor_sensor: bool = False,
@@ -370,7 +375,6 @@ def create_mock_ata_unit(
         in_standby_mode=in_standby_mode,
         is_in_error=is_in_error,
         error_code=error_code,
-        rssi=rssi,
         time_zone=None,
         capabilities=AirToAirCapabilities(
             has_energy_consumed_meter=has_energy_meter,

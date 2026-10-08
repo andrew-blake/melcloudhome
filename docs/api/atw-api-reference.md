@@ -229,7 +229,7 @@ Returns complete user context including all buildings, devices, current states, 
 
 **Note:** This endpoint is **shared** between ATA and ATW devices.
 
-**RSSI:** The unit object carries a top-level `rssi` field (dBm), refreshed on every `/context` poll (~60s) — same as ATA. This is a faster-updating duplicate of the `rssi` measure also available via telemetry (Section 8); prefer this field over telemetry polling for WiFi signal strength.
+**RSSI:** The unit object still carries a top-level `rssi` field, but it stopped updating in September 2026 and has read -30 for every unit since 2026-09-15. The integration reads the Wi-Fi signal from the telemetry `rssi` measure instead (Section 8, ADR-028).
 
 ### Response Structure
 ```json
@@ -575,14 +575,13 @@ called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` ins
 
 **Data Characteristics:**
 - Sparse data: 0-4 datapoints per hour (not minute-level)
-- Time window: Typically 4 hours of historical data
+- Time window: for `measure=rssi` the response covers about one hour from `from`, whatever window is requested (ADR-028). Other measures are untested on this point.
 - Values are strings (convert to float)
 - RSSI values are integers (dBm, e.g., "-55")
 
 **Polling Recommendations:**
-- **Temperature measures:** Poll every 60 minutes (changes slowly)
-- **RSSI:** Don't poll this endpoint for RSSI — use the `rssi` field on `/context` instead (Section 2), which refreshes every ~60s instead of hourly
-- Use 4-hour lookback window for recent data
+- **Temperature measures:** Poll every 60 minutes (changes slowly). The earlier recommendation was a 4-hour lookback window. Whether the one-hour cap measured on `rssi` also applies to them is untested.
+- **RSSI:** The integration polls this endpoint with `measure=rssi` every 30 minutes, with a one-hour window ending now. The response covers about one hour from `from` and starts with the last reading before it (ADR-028).
 
 ### Internal Temperatures Report — the endpoint the integration uses
 

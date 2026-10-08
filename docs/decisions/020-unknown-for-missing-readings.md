@@ -1,6 +1,6 @@
 # ADR-020: Report `unknown`, Not `unavailable`, for Missing Readings
 
-**Status:** Accepted
+**Status:** Accepted. Amended for the Wi-Fi signal sensor by [ADR-028](028-wifi-signal-from-telemetry.md)
 **Date:** 2026-07-28
 **Amends:** [ADR-006](006-entity-description-pattern.md) (removes `available_fn` from the pattern); [ADR-008](008-energy-monitoring-architecture.md) (its availability rules for energy sensors)
 

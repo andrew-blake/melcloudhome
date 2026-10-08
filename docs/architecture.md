@@ -358,7 +358,7 @@ sequenceDiagram
 **Coordinator Responsibilities (`MELCloudHomeCoordinator`):**
 
 - **State polling**: Drives the 60-second `/context` refresh loop; dispatches updates to all platforms.
-- **Independent telemetry timers**: Separate 30-minute energy timer (ATW from combined-energy, ATA from telemetry, ADR-027, clock-aligned), 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), 30-minute ATW outdoor-temperature timer (via `/report/v1/comfort-graph` — the live `/context` value is never trusted, see issue #251), and 60-minute ATW flow/return telemetry timer. The timers are registered during setup, but the *first* energy/telemetry fetch runs in a background task rather than blocking entity creation on a long chain of sequentially paced requests (ADR-021 — its request counts predate the capability gating in #266 and are no longer accurate) — so entities appear immediately after a restart, with those sensors briefly reading `unknown` until the fetch completes. Because a failed slow-cadence poll leaves the previous value in place, the outdoor-temperature and ATW flow/return sensors expose a `last_reading` attribute carrying the time the unit itself recorded the value — see [ADR-022](decisions/022-reading-provenance.md). Energy sensors do not: their upstream timestamps are hour-bucket labels that only advance when consumption does, which would misreport an idle unit as a failing poll.
+- **Independent telemetry timers**: Separate 30-minute energy timer (ATW from combined-energy, ATA from telemetry, ADR-027, clock-aligned), 30-minute ATA outdoor-temperature timer (via `/report/v1/trendsummary`), 30-minute ATW outdoor-temperature timer (via `/report/v1/comfort-graph` — the live `/context` value is never trusted, see issue #251), 60-minute ATW flow/return telemetry timer, and a 30-minute Wi-Fi signal timer for both device types (via `/telemetry/telemetry/actual` with `measure=rssi`, ADR-028). The timers are registered during setup, but the *first* energy/telemetry fetch runs in a background task rather than blocking entity creation on a long chain of sequentially paced requests (ADR-021 — its request counts predate the capability gating in #266 and are no longer accurate) — so entities appear immediately after a restart, with those sensors briefly reading `unknown` until the fetch completes. Because a failed slow-cadence poll leaves the previous value in place, the outdoor-temperature, ATW flow/return and Wi-Fi signal sensors expose a `last_reading` attribute carrying the time the unit itself recorded the value — see [ADR-022](decisions/022-reading-provenance.md). Energy sensors do not: their upstream timestamps are hour-bucket labels that only advance when consumption does, which would misreport an idle unit as a failing poll.
 - **Re-auth ladder** (`_run_with_reauth`, guarded by `_reauth_lock`): retry-once → refresh_token → full login → `ConfigEntryAuthFailed` (triggers HA repair UI) if all fail. This is the single place in the integration that runs re-login on auth failure.
 - **WebSocket lifecycle**: `_async_setup_websocket` launches `MELCloudHomeWebSocket` as an entry-scoped background task when enabled (default on, `enable_websocket` option); `_on_ws_delta` feeds each delta into the same debounced refresh the control clients use. HA cancels the task on entry unload/reload.
 
@@ -498,7 +498,7 @@ classDiagram
         +dhw temperatures
         +energy_consumption/production
         +coefficient_of_performance
-        +rssi
+        +wifi_signal_reading
         +capabilities
     }
 

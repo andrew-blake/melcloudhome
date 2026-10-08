@@ -8,11 +8,11 @@
 
 ## About This Document
 
-> **Status 2026-08-22: the integration no longer calls `/telemetry/telemetry/actual`.** ATW water
+> **Status 2026-10-06:** the integration calls `/telemetry/telemetry/actual` only for `measure=rssi` (Wi-Fi signal, [ADR-028](../decisions/028-wifi-signal-from-telemetry.md)). ATW water
 > temperatures come from `report/v1/internaltemperatures` instead — see
 > [ADR-023](../decisions/023-atw-water-temperatures-from-report.md) and Section 8 of
 > [atw-api-reference.md](atw-api-reference.md). The vendor endpoint still exists and this document
-> still describes it accurately; treat the "how we use it" notes below as historical.
+> still describes it accurately. Except for `measure=rssi`, treat the "how we use it" notes below as historical.
 
 This is a **complete API reference** documenting all read-only (GET) telemetry and reporting endpoints available in the MELCloud Home API.
 
@@ -22,16 +22,16 @@ This is a **complete API reference** documenting all read-only (GET) telemetry a
 
 **Currently Implemented:**
 - Energy consumption telemetry (Section 3) - Used for energy monitoring sensors in ATA devices
-- WiFi RSSI for ATA and ATW devices (sourced from UserContext, not the telemetry polling endpoint)
+- Wi-Fi signal (RSSI) for ATA and ATW devices, from `/telemetry/telemetry/actual` with `measure=rssi` (ADR-028)
 
 **Reference Only (Not Implemented):**
-- Actual telemetry data polling (Section 1) - Flow/return temps for ATW
+- Actual telemetry data polling (Section 1) for measures other than `rssi` - Flow/return temps for ATW
 - Operation mode history (Section 4) - Historical operation tracking
 - Error log endpoint (Section 2) - Device error history
 - Report types (Section 5) - Historical reporting features
 
 **Why not implemented?**
-- UserContext already provides current temperatures (zone, tank) and RSSI for both ATA and ATW — the `rssi` measure exposed by this telemetry endpoint (Section 1) is a slower-refreshing duplicate of the same field
+- UserContext already provides current temperatures (zone, tank)
 - Telemetry polling requires separate API call per measure per device (significant API load)
 - Energy monitoring is the high-value use case and is implemented
 - Additional sensors (flow/return temps for ATW) can be added in future releases if users request them
@@ -311,7 +311,7 @@ The MELCloud Home UI provides 4 report types:
 ### 4. WI-FI SIGNAL Report
 - **Endpoint:** `/telemetry/telemetry/actual/{unit_id}` with `measure=rssi`
 - **Shows:** Wi-Fi signal strength over time
-- **URL:** TBD
+- **Used by the integration:** yes, every 30 minutes (ADR-028)
 
 ---
 
@@ -346,11 +346,10 @@ GET /monitor/ataunit/{id}/errorlog
 
 ### Wi-Fi Signal Monitoring
 ```python
-# Prefer the context poll — refreshes every ~60s vs this endpoint's hourly cadence
-GET /context  # unit.rssi, for both ATA and ATW
-
-# Only fall back to telemetry polling if a historical RSSI trend is needed
+# The integration's poll (ADR-028): every 30 minutes, per unit, UTC
 GET /telemetry/telemetry/actual/{id}?from={now-1h}&to={now}&measure=rssi
+# The first point is the last reading before "from"; take the newest by its stamp.
+# /context's own rssi has been frozen since September 2026.
 ```
 
 ### Operation Mode Tracking

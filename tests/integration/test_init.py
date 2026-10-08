@@ -34,6 +34,7 @@ async def test_force_refresh_service_registered(
     """Test force refresh service is registered on setup."""
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -60,6 +61,7 @@ async def test_force_refresh_service_unregistered_on_last_unload(
     """Test force refresh service is unregistered when last entry unloaded."""
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -101,6 +103,7 @@ async def test_token_only_data_updates_do_not_reload(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -141,6 +144,7 @@ async def test_options_flow_change_reloads_entry(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -178,6 +182,7 @@ async def test_websocket_runs_by_default(hass: HomeAssistant) -> None:
     """
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -205,6 +210,7 @@ async def test_websocket_opt_out_respected(hass: HomeAssistant) -> None:
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=_create_mock_user_context())
@@ -239,7 +245,7 @@ def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
     unit.vane_horizontal_direction = "Auto"
     unit.in_standby_mode = False
     unit.is_in_error = False
-    unit.rssi = -50
+    unit.wifi_signal_reading = None
     unit.energy_consumed = None
     # Add capabilities mock
     capabilities = MagicMock()
@@ -268,7 +274,7 @@ def _create_mock_atw_unit(unit_id: str, name: str) -> MagicMock:
     unit.forced_hot_water_mode = False
     unit.is_in_error = False
     unit.error_code = None
-    unit.rssi = -50
+    unit.wifi_signal_reading = None
     unit.ftc_model = 3
     # Add capabilities mock
     capabilities = MagicMock()
@@ -309,6 +315,7 @@ async def test_device_name_migration_uuid_pattern(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=context)
@@ -360,6 +367,7 @@ async def test_device_name_migration_respects_user_customization(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=context)
@@ -423,6 +431,7 @@ async def test_device_name_migration_multiple_devices(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=context)
@@ -480,6 +489,7 @@ async def test_device_name_migration_idempotent(
 
     with patch(MOCK_CLIENT_PATH) as mock_client:
         client = mock_client.return_value
+        client.get_wifi_signal = AsyncMock(return_value=None)
         client.login = AsyncMock()
         client.close = AsyncMock()
         client.get_user_context = AsyncMock(return_value=context)

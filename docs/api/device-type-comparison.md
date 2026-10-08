@@ -220,7 +220,7 @@ Increments:    0.5°C or 1°C (if hasHalfDegrees)
 
 ## Telemetry Measures
 
-**Note:** `rssi` is listed below because it's technically exposed as a telemetry measure for both device types, but both also carry a top-level `rssi` field on `/context` that refreshes every ~60s (vs this endpoint's hourly cadence) — that's the field the integration actually uses, not telemetry polling.
+**Note:** Both device types expose `rssi` as a telemetry measure, and the integration reads the Wi-Fi signal from it (ADR-028). The top-level `rssi` field on `/context` stopped updating in September 2026.
 
 ### Air-to-Air Measures
 
