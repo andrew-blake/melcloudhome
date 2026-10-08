@@ -421,7 +421,7 @@ Entities are created at `async_forward_entry_setups`. Only `/context` blocks tha
 | States before setup runs | none | HA's entity registry writes `unavailable` + `restored: True` for every known entity, so the full list appears greyed out before our code runs |
 | Entity IDs | allocated now from the UUID scheme | read from the registry, hence stable |
 | Tracker `Store`s | empty, no file | cumulative totals and hour values restored, then the retention/corrupt-value cleanup pass runs |
-| Energy baseline | `_is_first_initialization` is true, so `_initialize_unit_tracking` marks returned hours *seen* without adding them to the cumulative — historical data must not inflate the meter. Cumulative starts at 0.0 and the first real increment lands on the *next* poll | false — normal delta accounting resumes from the restored cumulative |
+| Energy baseline | `_is_first_initialization` is true, so `_initialize_unit_tracking` marks returned hours *seen* without adding them to the cumulative — historical data must not inflate the meter. Cumulative starts at 0.0 and the first real increment lands on the *next* poll | false — normal delta accounting resumes from the restored cumulative, which the sensor shows once the first fetch succeeds, even if the unit reported no hours (#343) |
 | Statistics zero point | set from the first valid float | read from the recorder database |
 | Device names | UUID-based | user's saved names restored |
 | Auth | full login | tokens restored from `entry.data` |
