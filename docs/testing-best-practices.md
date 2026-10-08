@@ -87,12 +87,14 @@ VCR tests record HTTP interactions with the real MELCloud API, then replay them 
 **Setup:**
 
 1. **Credentials file** - `.env` in repository root contains:
+
    ```bash
    MELCLOUD_USER=your_email@example.com
    MELCLOUD_PASSWORD=your_password
    ```
 
 2. **Recording cassettes** - First run records, subsequent runs replay:
+
    ```bash
    # Source credentials (pytest doesn't auto-load .env)
    set -a && source .env && set +a
@@ -148,6 +150,7 @@ async def test_get_outdoor_temperature(
 **Worktree Considerations:**
 
 Cassettes are branch-specific and live in the worktree:
+
 - When tests run from worktree, cassettes go to main repo initially
 - Move cassettes to worktree for committing: `mv ../../tests/api/cassettes/<file> tests/api/cassettes/`
 
@@ -168,6 +171,16 @@ Cassettes are branch-specific and live in the worktree:
 - ✅ Can assert on method calls and implementation details
 - ✅ Create component instances directly
 - ⚠️ Label files clearly (e.g., `test_coordinator_*.py`)
+
+### 4. Tool Tests (`tests/tools/`)
+
+**Purpose:** Test the repo's own tooling under `tools/`, such as `tools/prose_check.py`
+
+**Rules:**
+
+- ✅ Import the tool directly; no Home Assistant and no Docker
+- ✅ Collected by `make test-api` and `make test`, so CI runs them
+- ⚠️ The mock server's tests (`tests/api/test_mock_*.py`) predate this folder and still live in `tests/api/`
 
 ---
 
@@ -409,15 +422,16 @@ make test
 
 **Test type requirements:**
 
-| Test Type | Mock Server? | Docker? | Why |
-|-----------|--------------|---------|-----|
-| API unit | ❌ No | ❌ No | Uses VCR cassettes (recorded responses) |
-| Integration | ❌ No | ✅ Yes | Mocks client with `patch()`, needs pytest-homeassistant |
-| E2E | ✅ Yes | ✅ Yes | Tests real HTTP stack with rate limiting |
+| Test Type   | Mock Server? | Docker? | Why                                                     |
+| ----------- | ------------ | ------- | ------------------------------------------------------- |
+| API unit    | ❌ No        | ❌ No   | Uses VCR cassettes (recorded responses)                 |
+| Integration | ❌ No        | ✅ Yes  | Mocks client with `patch()`, needs pytest-homeassistant |
+| E2E         | ✅ Yes       | ✅ Yes  | Tests real HTTP stack with rate limiting                |
 
 Different test types have different requirements:
 
 **API unit tests** (VCR cassettes - no Docker needed):
+
 ```bash
 # Run natively - very fast, no containers
 pytest tests/api/test_auth.py -vv
@@ -426,6 +440,7 @@ pytest tests/api/test_client_ata.py -k "temperature" -vv
 ```
 
 **Integration tests** (mocked client - no mock server needed):
+
 ```bash
 # Run in Docker (needs pytest-homeassistant-custom-component)
 docker-compose -f docker-compose.test.yml run --rm integration-tests \
@@ -445,6 +460,7 @@ docker-compose -f docker-compose.test.yml run --rm integration-tests bash
 ```
 
 **E2E tests** (real HTTP stack - REQUIRES mock server):
+
 ```bash
 # 1. Start mock server first (REQUIRED for E2E)
 docker-compose -f docker-compose.test.yml up -d melcloud-mock
@@ -462,6 +478,7 @@ docker-compose -f docker-compose.test.yml down
 ```
 
 **Useful pytest flags:**
+
 - `-vv` - Very verbose (show full diffs, test names)
 - `-s` - Show print statements (disable output capture)
 - `--pdb` - Drop into debugger on failure

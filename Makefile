@@ -24,7 +24,7 @@ type-check:  ## Run mypy type checker
 
 test-api:  ## API unit tests only
 	@rm -f .coverage coverage.xml
-	uv run pytest tests/api/ -v -m "not e2e" \
+	uv run pytest tests/api/ tests/tools/ -v -m "not e2e" \
 		--cov=custom_components/melcloudhome \
 		--cov-report=xml \
 		--cov-report=html \
@@ -76,7 +76,7 @@ test: test-ensure-images  ## Run ALL tests with combined coverage
 	@rm -rf htmlcov coverage-output
 	@mkdir -p coverage-output
 	@echo "🧪 API unit tests..."
-	@uv run pytest tests/api/ -v -m "not e2e" \
+	@uv run pytest tests/api/ tests/tools/ -v -m "not e2e" \
 		--cov=custom_components/melcloudhome \
 		--cov-report=
 	@mv .coverage .coverage.api
