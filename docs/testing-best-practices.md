@@ -169,6 +169,16 @@ Cassettes are branch-specific and live in the worktree:
 - ✅ Create component instances directly
 - ⚠️ Label files clearly (e.g., `test_coordinator_*.py`)
 
+### 4. Tool Tests (`tests/tools/`)
+
+**Purpose:** Test the repo's own tooling under `tools/`, such as `tools/prose_check.py`
+
+**Rules:**
+
+- ✅ Import the tool directly; no Home Assistant and no Docker
+- ✅ Collected by `make test-api` and `make test`, so CI runs them
+- ⚠️ The mock server's tests (`tests/api/test_mock_*.py`) predate this folder and still live in `tests/api/`
+
 ---
 
 ## Test Architecture
