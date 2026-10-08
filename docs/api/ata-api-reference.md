@@ -966,18 +966,30 @@ PUT /monitor/cloudschedule/{unitId}
 - `enabled`: sent as **`false` in every captured create and update**, including ones where the UI's per-entry power on/off toggle was visibly ON (green) — that toggle maps to `power`, not `enabled`. What actually flips this field to `true`, or whether the web client ever does, was **not determined** in this session; don't assume it tracks the visible on/off state. The per-unit master switch below is a separate mechanism and wasn't tested for interaction with this field.
 - A "power-off" schedule was separately observed (passive HAR review) sending `null` for `operationMode`/`setPoint`/both vane fields alongside `power:false` — not re-confirmed in this session, but presumably still the Create-endpoint's flat-body behavior.
 
-**Enum mapping (confirmed on both Schedules and the adjacent [Scenes](#create-scene) endpoint):**
+**Enum mapping.** The WebSocket's command echoes use the same ints, which fills in the values Schedules and Scenes have not shown (see [WebSocket setting value types](../research/web-bff-websocket-capture/README.md#websocket-setting-value-types)):
 
 | Field | Int value | Meaning | Confirmed on |
 |-------|-----------|---------|---------------|
-| `operationMode` | `1` | Heat | Schedules (this session) |
-| `operationMode` | `3` | Cool | Schedules + [Scenes](#create-scene) |
-| `setFanSpeed` | `0` | Auto | Schedules (this session) |
-| `setFanSpeed` | `3` | Three | Schedules (this session) |
-| `setFanSpeed` | `5` | Five | [Scenes](#create-scene) |
-| `vaneVerticalDirection` | `0` | Auto | Schedules + [Scenes](#create-scene) |
-| `vaneVerticalDirection` | `1` | Position 1 | Schedules (this session) |
-| `vaneHorizontalDirection` | `3` | Centre | Schedules + [Scenes](#create-scene) |
+| `operationMode` | `1` | Heat | Schedules (this session) + WebSocket |
+| `operationMode` | `2` | Dry | WebSocket |
+| `operationMode` | `3` | Cool | Schedules + [Scenes](#create-scene) + WebSocket |
+| `operationMode` | `4` | Fan | WebSocket |
+| `operationMode` | `5` | Automatic | WebSocket |
+| `setFanSpeed` | `0` | Auto | Schedules (this session) + WebSocket |
+| `setFanSpeed` | `1`, `2`, `4` | One, Two, Four | WebSocket |
+| `setFanSpeed` | `3` | Three | Schedules (this session) + WebSocket |
+| `setFanSpeed` | `5` | Five | [Scenes](#create-scene) + WebSocket |
+| `vaneVerticalDirection` | `0` | Auto | Schedules + [Scenes](#create-scene) + WebSocket |
+| `vaneVerticalDirection` | `1` | Position 1 | Schedules (this session) + WebSocket |
+| `vaneVerticalDirection` | `2` to `5` | Positions 2 to 5 | WebSocket |
+| `vaneVerticalDirection` | `6` | Swing | WebSocket |
+| `vaneHorizontalDirection` | `0` | Auto | WebSocket |
+| `vaneHorizontalDirection` | `1` | Left | WebSocket |
+| `vaneHorizontalDirection` | `2` | LeftCentre | WebSocket |
+| `vaneHorizontalDirection` | `3` | Centre | Schedules + [Scenes](#create-scene) + WebSocket |
+| `vaneHorizontalDirection` | `4` | RightCentre | WebSocket |
+| `vaneHorizontalDirection` | `5` | Right | WebSocket |
+| `vaneHorizontalDirection` | `7` | Swing | WebSocket |
 
 ### Enable/Disable Schedules (master switch)
 

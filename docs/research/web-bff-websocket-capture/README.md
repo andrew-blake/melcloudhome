@@ -93,27 +93,74 @@ the integration's own delta logs while toggling each unit in turn.)
 
 ### WebSocket setting value types
 
-Captured frames while changing each setting type — see
+The values below come from frames captured while changing each setting type in
 [`web-bff-websocket_settings_anonymized.har`](web-bff-websocket_settings_anonymized.har)
-(WS entries only, unit IDs anonymized). One setting per frame, `name` in
-PascalCase; the **values are natively typed / enum-ints**, unlike the REST
-`/context` document which stringifies everything:
+(WS entries only, unit IDs anonymised) and from a log of every frame over 39
+hours on an account with both unit types, recorded with
+[`tools/ws_frame_logger.py`](../../../tools/ws_frame_logger.py). The ATA enum
+values were mapped by stepping one unit through every mode, fan speed and vane
+position from Home Assistant and matching each echo to the command.
+
+A frame carries only the settings that changed, so one frame can hold several
+(`RoomTemperature`, `Power` and `ActualFanSpeed` together is common). `name` is
+PascalCase. Values arrive in two encodings:
+
+- **Command echo.** Straight after a write, the frame carries enum settings as
+  ints and `Power` as a JSON boolean.
+- **Device report.** The unit's own periodic report carries the same settings
+  as words (`"Auto"`, `"Swing"`, `"True"`), as `/context` does. A report can
+  hold the state from before the latest command: one said `"Right"` two seconds
+  after horizontal Swing was set.
+
+Air-to-air (ATA):
 
 | Setting (`name`) | WebSocket `value` | Type | REST `/context` gives |
 |---|---|---|---|
-| `SetTemperature` | `24`, `24.5`, `26` | number (int **or** float; 0.5 steps) | string `"26"` |
-| `RoomTemperature` | `25`, `25.5` | number (int or float) | string `"28"` |
-| `OperationMode` | `3` = Cool, `4` = Fan | int (enum) | string `"Cool"` |
-| `SetFanSpeed` | `0` = Auto, `2` = fixed | int (enum) | string `"Auto"` |
-| `ActualFanSpeed` | `"1"`, `"2"`, `"3"` | **string** | string `"Off"` |
-| `VaneVerticalDirection` | `6` = swing | int (enum) | string |
-| `VaneHorizontalDirection` | `7` = swing | int (enum) | string |
-| `Power` | `true` / `false` | boolean | string `"False"` |
+| `Power` | `true` / `false` (echo), `"True"` / `"False"` (report) | boolean or string | string `"False"` |
+| `OperationMode` | `1` Heat, `2` Dry, `3` Cool, `4` Fan, `5` Automatic | int | string `"Cool"` |
+| `SetTemperature` | `20`, `20.5`, `24.5` | number (int or float; 0.5 steps) | string `"20"` |
+| `RoomTemperature` | `21`, `21.5` | number (int or float) | string `"21.5"` |
+| `SetFanSpeed` | `0` Auto, `1` to `5` One to Five | int | string `"Auto"` |
+| `ActualFanSpeed` | `"0"` to `"4"` | **string** of a digit | string word `"Off"`, `"Two"` |
+| `VaneVerticalDirection` | `0` Auto, `1` to `5` One to Five, `6` Swing (echo); `"Auto"` (report) | int or string | string `"Swing"` |
+| `VaneHorizontalDirection` | `0` Auto, `1` Left, `2` LeftCentre, `3` Centre, `4` RightCentre, `5` Right, `7` Swing (echo); `"Right"`, `"Swing"` (report) | int or string | string `"Centre"` |
 
-Two gotchas for a parser: (1) the socket sends **typed** values but REST sends
-**strings**, so the two paths need different coercion; (2) the socket is even
-inconsistent with itself — `SetFanSpeed` is an int but `ActualFanSpeed` is a
-string, and temperatures may be int or float.
+`6` never appeared for `VaneHorizontalDirection`.
+
+Air-to-water (ATW):
+
+| Setting (`name`) | WebSocket `value` | Type | REST `/context` gives |
+|---|---|---|---|
+| `OperationMode` | `"Stop"`, `"Heating"`, `"HotWater"`, `"FreezeStat"` | string | the same words |
+| `ForcedHotWaterMode` | `"False"` | string | string `"False"` |
+| `OutdoorTemperature` | `4` to `39` | int | string `"22"` |
+| `RoomTemperatureZone1` | `19`, `19.5` | number (int or float) | string `"19"` |
+| `TankWaterTemperature` | `"44"`, `"44.5"` | **string** | string `"47"` |
+
+A parser that applies frame values needs its own coercion per setting. The
+socket's types differ from `/context` and between echo and report frames.
+They also differ across settings: `SetFanSpeed` is an int and `ActualFanSpeed`
+a digit string, and `TankWaterTemperature` is a string where the other
+temperatures are numbers.
+
+### WebSocket message types
+
+The 39-hour log holds these `messageType` values:
+
+- `unitStateChanged`: the setting deltas above.
+- `unitCommunicationLost` and `unitCommunicationRestored`: the cloud lost or
+  regained contact with a unit.
+
+```json
+[{"messageType":"unitCommunicationLost",
+  "Data":{"id":"<unitId>","timestamp":"2026-10-05T17:32:23.447+01:00"}}]
+```
+
+The two communication messages carry lowercase `id` and `timestamp` and no
+`unitType`. The timestamp is local time with its UTC offset, about 10 seconds
+before the frame arrived. The integration acts on `unitStateChanged` only.
+
+No frame carried a Wi-Fi signal (`rssi`) value.
 
 **Socket lifecycle:** across the capture there were **no client→server frames**
 — no subscribe/handshake message; the client just opens `?hash=<hash>` and
@@ -123,6 +170,9 @@ frames) and no subprotocol. Ping/pong keepalive and the server's close frame are
 relay destabilises this socket — see the reverse-engineering guide). The
 integration drives its own keepalive via aiohttp `heartbeat=30s` and treats any
 close as reconnect-with-backoff, so those details don't affect the client.
+The frame logger records the closes. The server ends every session at the
+2-hour cap, mostly with close code `1006` (dropped without a close frame) and
+occasionally `1001` (going away).
 
 ### Mobile vs web: same WebSocket, two credential fronts
 

@@ -364,6 +364,19 @@ python tools/dump_device_state.py --unit-id <uuid>    # Single device
 
 Both tools require `MELCLOUD_USER` and `MELCLOUD_PASSWORD` environment variables.
 
+### `ws_frame_logger.py`
+
+Logs every raw WebSocket frame for every unit on the account to a `.jsonl`, then summarises what the socket carried: each setting's value types and values, disconnect reasons, the longest gap between frames, and runs that overlapped in one file. It needs no phone or proxy. [`mitmproxy/capture_ws.py`](mitmproxy/capture_ws.py) records the official app's socket instead.
+
+```bash
+set -a; . ./.env; set +a
+nohup caffeinate -i uv run python tools/ws_frame_logger.py --hours 24 &   # new file in _claude/ws-logs/
+uv run python tools/ws_frame_logger.py --hours 2 --out <existing.jsonl>    # appends
+uv run python tools/ws_frame_logger.py --summary <file.jsonl>
+```
+
+The output holds unit IDs, so it defaults to the gitignored `_claude/ws-logs/`. The connection URL is never written: its `?hash=` is a live credential. The logger opens a second socket on the account.
+
 ### `dump_sensor_readings.py`
 
 Tabulates every melcloudhome sensor alongside its `last_reading` attribute — the time the *unit*
