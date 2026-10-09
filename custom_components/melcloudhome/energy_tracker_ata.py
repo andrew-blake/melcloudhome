@@ -126,17 +126,19 @@ class ATAEnergyTracker(EnergyTrackerBase):
             f"get_energy_data({unit.name})",
         )
 
-        if not data or not data.get("measureData"):
-            _LOGGER.debug("No energy data available for unit %s", unit.name)
-            return
-
-        # Process all hourly values
-        values = data["measureData"][0].get("values", [])
+        measure = "consumed"
+        measure_data = (data or {}).get("measureData") or [{}]
+        values = measure_data[0].get("values", [])
         if not values:
+            _LOGGER.debug("No energy data available for unit %s", unit.name)
+            # Keep the previous value on an empty fetch (ADR-008), so an idle
+            # unit shows its stored total after a restart (#343). `in` first:
+            # subscripting the defaultdict would persist 0.0 for a new unit.
+            if unit.id in self._energy_cumulative:
+                self._energy_data[unit.id] = self._energy_cumulative[unit.id][measure]
             return
 
         # Use base class methods for delta tracking
-        measure = "consumed"
 
         # Check if this is first initialization and process accordingly
         if self._is_first_initialization(unit.id, measure):

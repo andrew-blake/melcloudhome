@@ -169,11 +169,11 @@ If changes made with the remote or MELCloud app take up to a minute to show in H
 - Verify the toggle is on: Settings → Devices & Services → MELCloud Home → Configure
 - Updates still arrive via 60-second polling even when the WebSocket is down
 
-### Energy Sensor Unavailable
+### Energy Sensor Shows Unknown
 
-- Some devices may not report energy data
-- Check if device shows energy consumption in the MELCloud Home app
-- Energy sensors require 30 minutes for initial data
+- Some units never report energy: on a multi-split, MELCloud can book the outdoor unit's energy to one indoor unit
+- Check whether the unit shows energy in the MELCloud Home app
+- After a restart the sensor reads unknown until the first energy fetch finishes
 
 ### Export Diagnostics
 
