@@ -10,19 +10,13 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.6.0
+## What's New in v2.6.1
 
-**Fan speed and vane now work from HomeKit.** Air conditioning units used to appear in HomeKit as a thermostat with only temperature and mode. Each unit now also gets a fan entity with its power, fan speed and vane swing. See [docs/homekit.md](docs/homekit.md) if the tile does not appear. The climate entity is unchanged, so if you only use the Home Assistant UI you can ignore the fan entity. Requested in [#318](https://github.com/andrew-blake/melcloudhome/issues/318).
+**Wi-Fi signal is live again.** MELCloud stopped updating the value the Wi-Fi signal sensor read, so from early September the sensor was stuck. The sensor now reads the same Wi-Fi history as the MELCloud Home app. Reported in [#350](https://github.com/andrew-blake/melcloudhome/issues/350).
 
-**Every command is now sent to your unit.** Changing a setting and changing it straight back, or choosing a value you had just set in the MELCloud app, used to send nothing the second time. Reported in [#310](https://github.com/andrew-blake/melcloudhome/issues/310) and [discussion #135](https://github.com/andrew-blake/melcloudhome/discussions/135).
+**Air conditioner energy shows after a restart.** An air conditioner that hadn't used energy in the last day showed "unknown" after a restart or reload until it next used energy. A Group helper that sums its energy could read "unknown" too. The energy sensor now shows its saved total shortly after a restart. Reported in [#343](https://github.com/andrew-blake/melcloudhome/issues/343).
 
-**Entities no longer go "unavailable" when MELCloud has a bad moment.** One or two failed requests in a row used to make every entity unavailable. They now keep their last values, and a third failure in a row still shows as unavailable. Reported in [#309](https://github.com/andrew-blake/melcloudhome/issues/309).
-
-**Heat pump energy during the hour.** Heat pump energy consumed, energy produced and COP now update during the hour instead of up to about 90 minutes late. Reported in [#333](https://github.com/andrew-blake/melcloudhome/issues/333).
-
-**No more silent freezes after signing in again.** The integration could stop updating until it was reloaded or Home Assistant restarted. Reported in [#336](https://github.com/andrew-blake/melcloudhome/issues/336).
-
-**Check automations that pass a mode to `climate.set_temperature` or `water_heater.set_temperature`.** The mode used to be ignored and is now applied, so remove it if you don't want it.
+**Check automations that trigger on any change of the Wi-Fi signal sensor.** They now also fire when only its `last_reading` changes. To fire only when the signal changes, set the trigger's **To** to **Any state (ignoring attribute changes)**.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
