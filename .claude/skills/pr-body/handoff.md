@@ -19,6 +19,11 @@ Pass no narrative. Test counts and soak results are facts and belong in the
 list; the story of obtaining them is what stays behind. If a fact cannot be
 stated without its story, it belongs in the ADR.
 
+Give each check as one fact with its result. Every deletion check for the
+change is one fact, "each new behaviour fails its test when its fix is
+removed"; the individual mutations stay in the plan or ADR. The routine gates
+(pre-commit, the suites) are one fact naming each with the HA version.
+
 The brief carries no exceptions to the skill's public-text rules. When a brief
 and the skill disagree on a name or a count, the writer follows the skill and
 reports the conflict in its hand-back.

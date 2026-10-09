@@ -100,6 +100,8 @@ Then, in order:
    state that reads differently, a discontinuity in recorded history, an
    automation that has to adapt. One section, one bullet each, with the remedy.
    Internal changes nobody outside the repo can observe do not belong here.
+   Each bullet carries a fact the Summary does not state. When the Summary's
+   opening sentence is the whole user-visible change, the section is absent.
 4. `## Risks accepted`: **when merging accepts a known risk**, such as an
    assumption shipped without evidence, a downside taken deliberately. Each
    bullet says what the risk is, what it costs if it lands, and how it would
@@ -112,9 +114,26 @@ Then, in order:
    leave **both unchecked**. The second reads "I reviewed and ran the change
    myself", a claim about the human author that nobody else can make for them.
    They tick one before opening the PR.
-6. `## Testing`: **required.** What ran and what it showed. An unchecked box for
-   anything a reviewer would otherwise assume was covered. Each box is one claim
-   on one line: what ran and its result. A suite's result is "passed" and the
+6. `## Testing`: **required.** What ran and what it showed, as three kinds of
+   box in this order:
+   - **One box for the routine gates**: lint, type-check, pre-commit and every
+     suite that passed, named together on one line with the HA version, e.g.
+     `- [x] \`make pre-commit\`, \`make test-api\`, \`make test-integration\` (HA 2026.2.3) and \`make test-e2e\`: passed at the head.`
+   - **One box per check that exercises this change**: a regression test
+     proven by deletion, a run on the HA floor, a devserver or production
+     observation. Variations of one check share its box, so every deletion
+     check is one box.
+   - **One unchecked box per check a reviewer of this diff would expect and
+     did not get**, followed by what that check would show for this diff that
+     the ticked boxes do not. Evidence the tests only simulate keeps its box:
+     a real capture of a response the tests fake, a device or account the
+     change was not run against. A check with nothing to show gets no box: a
+     suite the diff cannot reach, a devserver whose mock cannot show the
+     change, a second route to a check already ticked (a Docker target whose
+     suite ran in a venv), and a `/security-review` on a diff with no auth,
+     API-client or workflow change.
+
+   Each box is one claim on one line. A suite's result is "passed" and the
    environment it ran in (the HA version); CI shows the counts at the head. The
    evidence behind a claim (each mutation tried, timings, value comparisons,
    what a scrub left) lives in the record. Refer to the head as "the head",
@@ -190,7 +209,8 @@ read, so count the files someone must actually review.
 
 Compare like with like. The merged corpus predates `What changes for users` and
 `Risks accepted`, so its numbers describe `Summary` plus `Key changes` and
-nothing else: about 40 words for a two-line i18n fix (#255, 2 files), 200 for a
+nothing else: about 40 to 100 words when one or two files need review (#255, a
+two-line i18n fix, is 40), 200 for a
 20-file endpoint change (#257), 390 for an 11-file feature (#268), 550 for a
 33-file refactor (#269). Hold those two sections against that range.
 
@@ -202,6 +222,10 @@ number removes the part of the body a reviewer most needs.
 So when a body reads long, the question is whether `Summary` and `Key changes`
 have drifted past the corpus for a comparable review surface. File count
 predicts length poorly, and padding to reach a number is always wrong.
+
+**The writer applies this before handing back.** Count `Summary` plus
+`Key changes`, find the corpus range for the review surface, and when the count
+is above it, cut to it. The hand-back reports the count before and after.
 
 Across a stack, compare against the parent's body. With no parent body written
 yet, use the calibration above and say in your handover that the comparison was
