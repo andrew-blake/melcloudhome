@@ -61,8 +61,6 @@ services:
     depends_on:
       melcloud-mock:
         condition: service_healthy
-      integration-tests:
-        condition: service_completed_successfully
     environment:
       - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
       - COVERAGE_FILE=/app/coverage-output/.coverage
