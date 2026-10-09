@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-10-09
+
+### Changed
+
+- Each newer Wi-Fi signal `last_reading` registers a state change, so a state trigger on the Wi-Fi signal sensor with no **From** or **To** fires more often. To fire only when the signal changes, set the trigger's **To** to **Any state (ignoring attribute changes)**, or use `to: null` in YAML. (#350)
+
+### Fixed
+
+- The Wi-Fi signal sensor shows a live value again on air conditioners and heat pumps. MELCloud stopped updating the value the integration read, so from early September the sensor was stuck at one value, usually -30. The integration now reads the Wi-Fi history the MELCloud Home app shows, every 30 minutes, and the sensor gains a `last_reading` attribute with the time the unit sent the value. Some units send it only when it changes, so `last_reading` can be hours old while everything is working. After a restart the sensor reads "unknown" until its first Wi-Fi update, usually within a minute. (#350)
+- Air conditioner energy sensors now show their saved total shortly after a restart or reload. An air conditioner that hadn't used energy in the last day showed "unknown" until it next used energy, which could take hours or days. A Group helper summing such a sensor was also affected, and its hourly history on the Energy dashboard was distorted around the gap. Hours already distorted are not corrected. Heat pump energy sensors were not affected. (#343)
+
 ## [2.6.0] - 2026-10-02
 
 ### Added
