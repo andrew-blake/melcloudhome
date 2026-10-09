@@ -11,6 +11,10 @@ body around the session. So the author gathers, and a subagent writes.
 Pass it exactly this:
 
 - the branch, and nothing about its base; the writer resolves that itself
+- the issue number, or, when the change has none, **a problem statement**: one
+  to three sentences on what is wrong without this change, stated as it stands
+  today. A release or routine chore gets one line ("prepare the v2.6.0
+  release"). With neither, the writer stops and asks for it.
 - the paths of the ADR, plan or issue that hold the evidence
 - **a list of verified facts** for the Testing section: what ran, what it
   showed, and what was not done
@@ -18,6 +22,11 @@ Pass it exactly this:
 Pass no narrative. Test counts and soak results are facts and belong in the
 list; the story of obtaining them is what stays behind. If a fact cannot be
 stated without its story, it belongs in the ADR.
+
+Give each check as one fact with its result. Every deletion check for the
+change is one fact, "each new behaviour fails its test when its fix is
+removed"; the individual mutations stay in the plan or ADR. The routine gates
+(pre-commit, the suites) are one fact naming each with the HA version.
 
 The brief carries no exceptions to the skill's public-text rules. When a brief
 and the skill disagree on a name or a count, the writer follows the skill and
@@ -68,13 +77,10 @@ A claim you cannot establish and were not told stays an unchecked box. That is
 the safe direction: an unchecked box understates coverage, and a checked one
 that nobody verified is how a reviewer ends up trusting a test that never ran.
 
-A suite the diff cannot reach is a third case, and it gets a reason rather than
-a bare box. A bare unchecked box there reads as something forgotten:
-
-```markdown
-- [ ] `make test-e2e`: not run; the diff is one dev-only script and a lovelace
-      JSON, neither on an e2e path.
-```
+A suite the diff cannot reach is a third case. It gets no box in the body
+(SKILL.md, Testing), and the hand-back names it with the reason, so the author
+can see it was considered: "`make test-e2e`: no box; the diff is one dev-only
+script and a lovelace JSON, neither on an e2e path."
 
 Take no facts from a file left in `_claude/pr-bodies/` by an earlier session.
 Its title cannot tell you whether a human confirmed those lines or a previous
