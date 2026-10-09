@@ -11,6 +11,10 @@ body around the session. So the author gathers, and a subagent writes.
 Pass it exactly this:
 
 - the branch, and nothing about its base; the writer resolves that itself
+- the issue number, or, when the change has none, **a problem statement**: one
+  to three sentences on what is wrong without this change, stated as it stands
+  today. A release or routine chore gets one line ("prepare the v2.6.0
+  release"). With neither, the writer stops and asks for it.
 - the paths of the ADR, plan or issue that hold the evidence
 - **a list of verified facts** for the Testing section: what ran, what it
   showed, and what was not done
