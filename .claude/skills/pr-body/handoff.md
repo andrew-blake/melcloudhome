@@ -73,13 +73,10 @@ A claim you cannot establish and were not told stays an unchecked box. That is
 the safe direction: an unchecked box understates coverage, and a checked one
 that nobody verified is how a reviewer ends up trusting a test that never ran.
 
-A suite the diff cannot reach is a third case, and it gets a reason rather than
-a bare box. A bare unchecked box there reads as something forgotten:
-
-```markdown
-- [ ] `make test-e2e`: not run; the diff is one dev-only script and a lovelace
-      JSON, neither on an e2e path.
-```
+A suite the diff cannot reach is a third case. It gets no box in the body
+(SKILL.md, Testing), and the hand-back names it with the reason, so the author
+can see it was considered: "`make test-e2e`: no box; the diff is one dev-only
+script and a lovelace JSON, neither on an e2e path."
 
 Take no facts from a file left in `_claude/pr-bodies/` by an earlier session.
 Its title cannot tell you whether a human confirmed those lines or a previous
