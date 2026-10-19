@@ -142,10 +142,7 @@ async def _clear_friendly_device_names(
     device_reg = dr.async_get(hass)
     saved_names: dict[str, str] = {}
 
-    for device in device_reg.devices.values():
-        if entry.entry_id not in device.config_entries:
-            continue
-
+    for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id):
         if not any(identifier[0] == DOMAIN for identifier in device.identifiers):
             continue
 
@@ -198,10 +195,7 @@ async def _restore_device_names(
 
     restored_count = 0
     migrated_count = 0
-    for device in device_reg.devices.values():
-        if entry.entry_id not in device.config_entries:
-            continue
-
+    for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id):
         # Restore previously saved name_by_user
         if device.id in saved_names:
             device_reg.async_update_device(
