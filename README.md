@@ -10,13 +10,9 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.6.1
+## What's New in v2.6.2
 
-**Wi-Fi signal is live again.** MELCloud stopped updating the value the Wi-Fi signal sensor read, so from early September the sensor was stuck. The sensor now reads the same Wi-Fi history as the MELCloud Home app. Reported in [#350](https://github.com/andrew-blake/melcloudhome/issues/350).
-
-**Air conditioner energy shows after a restart.** An air conditioner that hadn't used energy in the last day showed "unknown" after a restart or reload until it next used energy. A Group helper that sums its energy could read "unknown" too. The energy sensor now shows its saved total shortly after a restart. Reported in [#343](https://github.com/andrew-blake/melcloudhome/issues/343).
-
-**Check automations that trigger on any change of the Wi-Fi signal sensor.** They now also fire when only its `last_reading` changes. To fire only when the signal changes, set the trigger's **To** to **Any state (ignoring attribute changes)**.
+**Ready for future Home Assistant releases.** Since Home Assistant 2026.10, the integration logged four deprecation warnings about the device registry each time it started. The code behind them would stop working in Home Assistant 2027.9, and the integration would then fail to start. The warnings are gone and device names you've set are kept as before. Fix contributed by budziam. Reported in [#368](https://github.com/andrew-blake/melcloudhome/issues/368) and [#372](https://github.com/andrew-blake/melcloudhome/issues/372).
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
