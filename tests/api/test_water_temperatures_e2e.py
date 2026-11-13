@@ -49,6 +49,7 @@ async def test_single_zone_unit_gets_the_base_pair_and_placeholders() -> None:
             assert measure in readings, f"{measure} missing"
             assert 0 < readings[measure].value < 90
             assert readings[measure].recorded_at.tzinfo is not None
+            # The mock's genuine readings sit on :16 seconds; :00 is its echo
             assert readings[measure].recorded_at.second != 0, "to-echo not stripped"
 
         # Zone 2 is absent entirely on a single-zone unit; zone 1 and boiler

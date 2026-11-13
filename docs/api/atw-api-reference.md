@@ -1,4 +1,5 @@
 # MELCloud Home API Reference - Air-to-Water Units
+
 ## Complete Air-to-Water Heat Pump API Specification
 
 **Document Version:** 1.1
@@ -33,6 +34,7 @@ For current integration features, see [README.md](../../README.md).
 5. **When in doubt, observe the UI - do not guess or extrapolate**
 
 **Rationale:** This is production heat pump equipment. Invalid commands could:
+
 - Confuse the system or backend
 - Trigger unexpected behavior
 - Potentially cause equipment issues
@@ -43,6 +45,7 @@ For current integration features, see [README.md](../../README.md).
 ## Device Architecture Overview
 
 Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabilities**:
+
 - **Zone 1** - Space heating control (underfloor heating/radiators)
 - **Hot Water (DHW)** - Domestic hot water tank
 
@@ -54,48 +57,50 @@ Air-to-Water heat pumps are **ONE physical device** with **TWO functional capabi
 
 ### Control Parameters (PUT /monitor/atwunit/{unitId})
 
-| Parameter | Type | Valid Values | Notes |
-|-----------|------|--------------|-------|
-| `power` | boolean | `true`, `false`, `null` | null for no change |
-| `setTemperatureZone1` | number | 10-30 (0.5° increments) | Zone target temperature |
-| `setTemperatureZone2` | number | null | Zone 2 support (if hasZone2=true) |
-| `operationModeZone1` | string | **Heating:**<br/>`"HeatRoomTemperature"`<br/>`"HeatFlowTemperature"`<br/>`"HeatCurve"`<br/>**Cooling (if hasCoolingMode=true):**<br/>`"CoolRoomTemperature"`<br/>`"CoolFlowTemperature"` | Zone operation mode |
-| `operationModeZone2` | string | null | Zone 2 mode (if hasZone2=true) |
-| `setTankWaterTemperature` | number | 40-60 | DHW tank target |
-| `forcedHotWaterMode` | boolean | `true`, `false`, `null` | DHW priority mode |
-| `setHeatFlowTemperatureZone1` | number | null | No observed effect. The iOS app never sends it, neither the app nor the web UI shows a flow target, and nothing reports one back. A write in room mode returned 200 and left the FTC panel and `/context` unchanged; flow mode is untested ([#351](https://github.com/andrew-blake/melcloudhome/issues/351)). The flow target is set on the FTC panel |
-| `setCoolFlowTemperatureZone1` | number | null | Untested. Always sent as null |
-| `setHeatFlowTemperatureZone2` | number | null | Untested. Always sent as null |
-| `setCoolFlowTemperatureZone2` | number | null | Untested. Always sent as null |
+| Parameter                     | Type    | Valid Values                                                                                                                                                                             | Notes                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `power`                       | boolean | `true`, `false`, `null`                                                                                                                                                                  | null for no change                                                                                                                                                                                                                                                                                                                                    |
+| `setTemperatureZone1`         | number  | 10-30 (0.5° increments)                                                                                                                                                                  | Zone target temperature                                                                                                                                                                                                                                                                                                                               |
+| `setTemperatureZone2`         | number  | null                                                                                                                                                                                     | Zone 2 support (if hasZone2=true)                                                                                                                                                                                                                                                                                                                     |
+| `operationModeZone1`          | string  | **Heating:**<br/>`"HeatRoomTemperature"`<br/>`"HeatFlowTemperature"`<br/>`"HeatCurve"`<br/>**Cooling (if hasCoolingMode=true):**<br/>`"CoolRoomTemperature"`<br/>`"CoolFlowTemperature"` | Zone operation mode                                                                                                                                                                                                                                                                                                                                   |
+| `operationModeZone2`          | string  | null                                                                                                                                                                                     | Zone 2 mode (if hasZone2=true)                                                                                                                                                                                                                                                                                                                        |
+| `setTankWaterTemperature`     | number  | 40-60                                                                                                                                                                                    | DHW tank target                                                                                                                                                                                                                                                                                                                                       |
+| `forcedHotWaterMode`          | boolean | `true`, `false`, `null`                                                                                                                                                                  | DHW priority mode                                                                                                                                                                                                                                                                                                                                     |
+| `setHeatFlowTemperatureZone1` | number  | null                                                                                                                                                                                     | No observed effect. The iOS app never sends it, neither the app nor the web UI shows a flow target, and nothing reports one back. A write in room mode returned 200 and left the FTC panel and `/context` unchanged; flow mode is untested ([#351](https://github.com/andrew-blake/melcloudhome/issues/351)). The flow target is set on the FTC panel |
+| `setCoolFlowTemperatureZone1` | number  | null                                                                                                                                                                                     | Untested. Always sent as null                                                                                                                                                                                                                                                                                                                         |
+| `setHeatFlowTemperatureZone2` | number  | null                                                                                                                                                                                     | Untested. Always sent as null                                                                                                                                                                                                                                                                                                                         |
+| `setCoolFlowTemperatureZone2` | number  | null                                                                                                                                                                                     | Untested. Always sent as null                                                                                                                                                                                                                                                                                                                         |
 
 ### Status Fields (GET /context)
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| `OperationMode` | string | **STATUS ONLY** - Current 3-way valve position<br/>`"Stop"` = idle<br/>`"HotWater"` = heating DHW<br/>Other = heating zone |
-| `Power` | boolean | System on/off |
-| `InStandbyMode` | boolean | Standby state |
-| `OperationModeZone1` | string | Zone 1 heating method |
-| `RoomTemperatureZone1` | number | Current room temp |
-| `SetTemperatureZone1` | number | Zone 1 target |
-| `TankWaterTemperature` | number | Current DHW temp |
-| `SetTankWaterTemperature` | number | DHW target |
-| `ForcedHotWaterMode` | boolean | DHW priority enabled |
-| `HasZone2` | string | **Ignored** - free-text (`"None"` or `"0"` on every captured device). Use `capabilities.hasZone2`. |
-| `HasCoolingMode` | boolean | Cooling available (usually false) |
-| `IsInError` | boolean | Error state |
-| `ErrorCode` | string | Error code if any |
+| Field                     | Type    | Meaning                                                                                                                    |
+| ------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `OperationMode`           | string  | **STATUS ONLY** - Current 3-way valve position<br/>`"Stop"` = idle<br/>`"HotWater"` = heating DHW<br/>Other = heating zone |
+| `Power`                   | boolean | System on/off                                                                                                              |
+| `InStandbyMode`           | boolean | Standby state                                                                                                              |
+| `OperationModeZone1`      | string  | Zone 1 heating method                                                                                                      |
+| `RoomTemperatureZone1`    | number  | Current room temp                                                                                                          |
+| `SetTemperatureZone1`     | number  | Zone 1 target                                                                                                              |
+| `TankWaterTemperature`    | number  | Current DHW temp                                                                                                           |
+| `SetTankWaterTemperature` | number  | DHW target                                                                                                                 |
+| `ForcedHotWaterMode`      | boolean | DHW priority enabled                                                                                                       |
+| `HasZone2`                | string  | **Ignored** - free-text (`"None"` or `"0"` on every captured device). Use `capabilities.hasZone2`.                         |
+| `HasCoolingMode`          | boolean | Cooling available (usually false)                                                                                          |
+| `IsInError`               | boolean | Error state                                                                                                                |
+| `ErrorCode`               | string  | Error code if any                                                                                                          |
 
 ---
 
 ## API Endpoints
 
 ### Base URL
+
 ```
 https://mobile.bff.melcloudhome.com
 ```
 
 ### Authentication
+
 - Uses OAuth 2.0 PKCE + AWS Cognito (same as ATA)
 - Bearer token authentication
 - User-Agent: `MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0`
@@ -105,6 +110,7 @@ https://mobile.bff.melcloudhome.com
 ## 1. Heat Pump Control
 
 ### Endpoint
+
 ```
 PUT /monitor/atwunit/{unitId}
 ```
@@ -112,6 +118,7 @@ PUT /monitor/atwunit/{unitId}
 Updates device settings. Supports **partial updates** - only send changed fields, set others to `null`.
 
 ### Headers
+
 ```http
 authorization: Bearer {access_token}
 content-type: application/json; charset=utf-8
@@ -119,6 +126,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 ### Request Body Structure
+
 ```json
 {
   "power": null,
@@ -140,6 +148,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ### Common Operations
 
 #### Power Control
+
 ```json
 // Power ON
 {"power": true, ...all others null...}
@@ -149,6 +158,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 #### Zone 1 Temperature
+
 ```json
 // Set zone temperature to 21°C
 {"setTemperatureZone1": 21, ...all others null...}
@@ -158,6 +168,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 #### DHW Temperature
+
 ```json
 // Set DHW tank to 50°C
 {"setTankWaterTemperature": 50, ...all others null...}
@@ -166,6 +177,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 #### Operation Modes (Zone 1)
+
 ```json
 // Room Temperature Mode (thermostat control)
 {"operationModeZone1": "HeatRoomTemperature", ...all others null...}
@@ -178,11 +190,13 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 **Mode Descriptions:**
+
 - **HeatRoomTemperature:** Thermostat mode - maintains room at target temperature
 - **HeatFlowTemperature:** Flow temperature mode - heats water to the flow target set on the FTC panel
 - **HeatCurve:** Weather compensation - adjusts based on outdoor temperature
 
 #### Forced Hot Water Mode
+
 ```json
 // Enable DHW priority ("Heat Now" in UI)
 {"forcedHotWaterMode": true, ...all others null...}
@@ -192,21 +206,25 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 **HA Operation Modes:** "Eco / High demand" (using HA standard water heater states)
+
 - **Eco** (`false`): Energy efficient, balanced operation (DHW heats automatically when needed)
 - **High demand** (`true`): Priority mode for faster DHW heating
 
 **MELCloud App Label:** "Auto / Heat Now" toggle
 
 **Effect:**
+
 - When enabled: Heat pump prioritizes DHW heating
 - Zone 1 heating temporarily suspended
 - Automatically returns to normal when DHW reaches target temperature
 
 ### Response
+
 ```
 HTTP 200 OK
 Content-Length: 0
 ```
+
 Empty response body indicates success.
 
 **Combining fields in one request.** Several fields sent together are applied together, and the
@@ -221,6 +239,7 @@ counterpart.
 ## 2. Device Status & Discovery
 
 ### Endpoint
+
 ```
 GET /context
 ```
@@ -232,6 +251,7 @@ Returns complete user context including all buildings, devices, current states, 
 **RSSI:** The unit object still carries a top-level `rssi` field, but it stopped updating in September 2026 and has read -30 for every unit since 2026-09-15. The integration reads the Wi-Fi signal from the telemetry `rssi` measure instead (Section 8, ADR-028).
 
 ### Response Structure
+
 ```json
 {
   "id": "user-uuid",
@@ -273,7 +293,9 @@ Returns complete user context including all buildings, devices, current states, 
 ```
 
 ### Settings Array Format
+
 Settings are returned as name-value pairs:
+
 ```json
 "settings": [
   {"name": "Power", "value": "True"},
@@ -294,6 +316,7 @@ Settings are returned as name-value pairs:
 ```
 
 ### Capabilities Object
+
 ```json
 "capabilities": {
   "hasHotWater": true,
@@ -319,27 +342,30 @@ Settings are returned as name-value pairs:
 
 **Key Capability Fields:**
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| `hasCoolingMode` | boolean | **true**: Device supports cooling operation<br/>**false**: Heating-only system |
+| Field                           | Type    | Meaning                                                                         |
+| ------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| `hasCoolingMode`                | boolean | **true**: Device supports cooling operation<br/>**false**: Heating-only system  |
 | `hasEstimatedEnergyConsumption` | boolean | **true**: Energy consumed data available<br/>**false**: No consumption tracking |
-| `hasEstimatedEnergyProduction` | boolean | **true**: Energy produced data available<br/>**false**: No production tracking |
-| `hasHalfDegrees` | boolean | Temperature increments (true=0.5°C, false=1.0°C) |
-| `hasZone2` | boolean | Dual zone support |
+| `hasEstimatedEnergyProduction`  | boolean | **true**: Energy produced data available<br/>**false**: No production tracking  |
+| `hasHalfDegrees`                | boolean | Temperature increments (true=0.5°C, false=1.0°C)                                |
+| `hasZone2`                      | boolean | Dual zone support                                                               |
 
 **Controller-Specific Capabilities:**
 
 **ERSC-VM2D (Modern controllers):**
+
 - `hasCoolingMode`: **true** (supports 2 cooling modes)
 - `hasEstimatedEnergyConsumption`: **true**
 - `hasEstimatedEnergyProduction`: **true**
 
 **EHSCVM2D (Older controllers):**
+
 - `hasCoolingMode`: **false** (heating-only)
 - `hasEstimatedEnergyConsumption`: **false**
 - `hasEstimatedEnergyProduction`: **false**
 
 **⚠️ Temperature Range Warning:**
+
 - API-reported ranges may be incorrect (known bug history)
 - Use safe defaults: Zone 1: 10-30°C, DHW: 40-60°C
 - Verify against physical FTC controller if possible
@@ -352,13 +378,14 @@ Settings are returned as name-value pairs:
 
 It indicates what the 3-way valve is currently doing:
 
-| Value | Meaning |
-|-------|---------|
-| `"Stop"` | Idle - not heating (target reached or disabled) |
-| `"HotWater"` | Currently heating DHW tank |
-| `"Heating"` | Currently heating zone (any mode) |
+| Value        | Meaning                                         |
+| ------------ | ----------------------------------------------- |
+| `"Stop"`     | Idle - not heating (target reached or disabled) |
+| `"HotWater"` | Currently heating DHW tank                      |
+| `"Heating"`  | Currently heating zone (any mode)               |
 
 **Usage:**
+
 - **Read this field** to know what device is doing RIGHT NOW
 - **Do NOT set this field** - it's automatically determined by system
 - Control zone operation via `operationModeZone1` instead
@@ -373,9 +400,9 @@ It indicates what the 3-way valve is currently doing:
 
 **Devices with cooling capability support 2 cooling modes:**
 
-| Mode | Description | Control Parameter |
-|------|-------------|-------------------|
-| `CoolRoomTemperature` | Cool based on room thermostat<br/>Target: Room temperature | `setTemperatureZone1` (10-30°C) |
+| Mode                  | Description                                                       | Control Parameter                                    |
+| --------------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
+| `CoolRoomTemperature` | Cool based on room thermostat<br/>Target: Room temperature        | `setTemperatureZone1` (10-30°C)                      |
 | `CoolFlowTemperature` | Cool based on flow temperature<br/>Target: Water flow temperature | None tested (`setCoolFlowTemperatureZone1` untested) |
 
 **Note:** `CoolCurve` mode does NOT exist (only `HeatCurve` exists for heating).
@@ -383,22 +410,26 @@ It indicates what the 3-way valve is currently doing:
 ### Cooling vs Heating Modes
 
 **Heating-only systems (hasCoolingMode=false):**
+
 - 3 heating modes: `HeatRoomTemperature`, `HeatFlowTemperature`, `HeatCurve`
 - 0 cooling modes
 
 **Heating+cooling systems (hasCoolingMode=true):**
+
 - 3 heating modes: `HeatRoomTemperature`, `HeatFlowTemperature`, `HeatCurve`
 - 2 cooling modes: `CoolRoomTemperature`, `CoolFlowTemperature`
 
 ### Mode Switching Behavior
 
 **When switching from heating to cooling:**
+
 - If current mode is `HeatCurve`: System automatically switches to `CoolRoomTemperature`
   - **Reason:** `CoolCurve` does not exist, so curve mode not available for cooling
   - **Workaround:** Integration automatically falls back to room temperature control
 - If current mode is `HeatRoomTemperature` or `HeatFlowTemperature`: Mode name updates to `Cool*`
 
 **Temperature Step:**
+
 - **Cooling mode:** Always 1.0°C increments (0.5°C NOT supported)
 - **Heating mode:** Depends on `hasHalfDegrees` capability (0.5°C or 1.0°C)
 
@@ -419,11 +450,13 @@ PUT /monitor/atwunit/{unitId}
 ## 5. Schedules
 
 ### Create/Update Schedule
+
 ```
 POST /monitor/atwcloudschedule/{unitId}
 ```
 
 **Request Body:**
+
 ```json
 {
   "id": "uuid-v4",
@@ -440,6 +473,7 @@ POST /monitor/atwcloudschedule/{unitId}
 ```
 
 **Field Details:**
+
 - `id`: Client-generated UUID
 - `days`: Array of day numbers (0=Sunday, 1=Monday, ..., 6=Saturday)
 - `time`: Time in HH:MM:SS format (24-hour)
@@ -449,11 +483,13 @@ POST /monitor/atwcloudschedule/{unitId}
   - `2` = `"HeatCurve"` (Weather compensation)
 
 ### Enable/Disable Schedules
+
 ```
 PUT /monitor/atwcloudschedule/{unitId}/enabled
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true
@@ -461,6 +497,7 @@ PUT /monitor/atwcloudschedule/{unitId}/enabled
 ```
 
 ### Delete Schedule
+
 ```
 DELETE /monitor/atwcloudschedule/{unitId}/{scheduleId}
 ```
@@ -474,28 +511,28 @@ POST /api/holidaymode
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
   "startDate": "2026-01-10T10:00:00",
   "endDate": "2026-01-20T18:00:00",
   "units": {
-    "ATW": [
-      "unit-uuid-1",
-      "unit-uuid-2"
-    ]
+    "ATW": ["unit-uuid-1", "unit-uuid-2"]
   }
 }
 ```
 
 **Features:**
+
 - Can apply to **multiple units** simultaneously
 - ISO 8601 datetime format
 - Set `enabled: false` to deactivate
 
 **Response shape note:** evidence level differs per field, confirmed via this integration's own mobile-BFF VCR cassettes (`tests/api/cassettes/test_get_devices.yaml`, line 667) — see [ata-api-reference.md](ata-api-reference.md#response-shape-in-get-context) for the full breakdown and the ATA `enabled`/`active` shape this compares against:
+
 - `frostProtection` carries `zone1Active`/`zone2Active` instead of a single `active` field — confirmed.
-- `holidayMode` carries a **single** `active` field, same shape as ATA — confirmed, *not* zone-split.
+- `holidayMode` carries a **single** `active` field, same shape as ATA — confirmed, _not_ zone-split.
 - `overheatProtection` is `null` on every ATW unit observed so far, so its shape is unconfirmed on ATW.
 
 ---
@@ -507,15 +544,14 @@ POST /api/protection/frost
 ```
 
 **Request Body:**
+
 ```json
 {
   "enabled": true,
   "min": 9,
   "max": 11,
   "units": {
-    "ATW": [
-      "unit-uuid"
-    ]
+    "ATW": ["unit-uuid"]
   }
 }
 ```
@@ -531,7 +567,7 @@ POST /api/protection/frost
 ### Real-Time Telemetry (Actual Values) — HISTORICAL
 
 > **The integration no longer calls this endpoint.** ATW water temperatures come from
-> `report/v1/internaltemperatures` (see *Internal Temperatures Report* below and
+> `report/v1/internaltemperatures` (see _Internal Temperatures Report_ below and
 > [ADR-023](../decisions/023-atw-water-temperatures-from-report.md)). The vendor endpoint still
 > exists, and this section is kept as a description of it.
 
@@ -543,6 +579,7 @@ Note the space between date and time rather than a `T` — that is what the clie
 called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` instead.
 
 **Supported Measures:**
+
 - `flow_temperature` - System flow temperature (°C)
 - `return_temperature` - System return temperature (°C)
 - `flow_temperature_zone1` - Zone 1 flow temperature (°C)
@@ -552,6 +589,7 @@ called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` ins
 - `rssi` - WiFi signal strength (dBm, negative values: -40 to -90)
 
 **Response Format:**
+
 ```json
 {
   "measureData": [
@@ -574,12 +612,14 @@ called this endpoint. The report endpoints use `YYYY-MM-DDTHH:MM:SS.0000000` ins
 ```
 
 **Data Characteristics:**
+
 - Sparse data: 0-4 datapoints per hour (not minute-level)
 - Time window: for `measure=rssi` the response covers about one hour from `from`, whatever window is requested (ADR-028). Other measures are untested on this point.
 - Values are strings (convert to float)
 - RSSI values are integers (dBm, e.g., "-55")
 
 **Polling Recommendations:**
+
 - **Temperature measures:** Poll every 60 minutes (changes slowly). The earlier recommendation was a 4-hour lookback window. Whether the one-hour cap measured on `rssi` also applies to them is untested.
 - **RSSI:** The integration polls this endpoint with `measure=rssi` every 30 minutes, with a one-hour window ending now. The response covers about one hour from `from` and starts with the last reading before it (ADR-028).
 
@@ -606,6 +646,7 @@ including the 7-decimal timestamp format.
 - `flow_temperature_boiler`, `return_temperature_boiler`
 
 **Response Format:**
+
 ```json
 [
   {
@@ -643,17 +684,17 @@ including the 7-decimal timestamp format.
   days as unreliable rather than supported.
 
   Because the floor is in unit-local time and the integration sends an explicit UTC marker, the
-  window crosses local midnight once the lookback exceeds the hours elapsed since midnight *in
-  the unit's zone*, which is offset-dependent. For a `Europe/Stockholm` unit at 15:19 local that
+  window crosses local midnight once the lookback exceeds the hours elapsed since midnight _in
+  the unit's zone_, which is offset-dependent. For a `Europe/Stockholm` unit at 15:19 local that
   threshold is 15.3h: a 12h lookback stays inside the day, a 16h one does not.
 
   Measured on prod, both times 2026-08-24, one `Europe/Stockholm` unit:
 
-  | Floored span | 06:14 local | 13:19 UTC (15:19 local) |
-  |---|---|---|
-  | 1 day | 200 | 200 (8h and 12h return byte-identical payloads) |
-  | 2 days | 200 | **500, eight consecutive attempts across 16h and 20h** |
-  | 3 days | 500 | not retested |
+  | Floored span | 06:14 local | 13:19 UTC (15:19 local)                                |
+  | ------------ | ----------- | ------------------------------------------------------ |
+  | 1 day        | 200         | 200 (8h and 12h return byte-identical payloads)        |
+  | 2 days       | 200         | **500, eight consecutive attempts across 16h and 20h** |
+  | 3 days       | 500         | not retested                                           |
 
   The eight failures rule out the intermittent-500 behaviour described below: 8h and 12h
   succeeded first try minutes either side of them.
@@ -672,27 +713,33 @@ including the 7-decimal timestamp format.
   unit, same moment. The practical effect is that the reachable history shrinks as the day
   progresses, so early morning can reach yesterday while mid-afternoon is capped at today's
   local midnight.
+
 - **The endpoint 500s intermittently on a window it serves moments later.** Two of roughly five
   consecutive requests for one unit failed on the same 8h window that had just succeeded, while
   the other unit served the identical request. A single 500 is therefore not evidence that a
   window is too wide.
 - **The final datapoint is synthetic.** Every dataset ends with a point stamped with the query
   `to` and the previous value repeated (the "to-echo" artifact, issue #224). Strip it before
-  reading a latest value or freshness is reported as zero.
+  reading a latest value or freshness is reported as zero. The echo is in the unit's local time
+  (a request `to` of `06:00Z` came back as `08:00` on a Europe/Stockholm unit), and the
+  response's top-level `to` field carries the same stamp, so match against that.
+- **Seconds do not identify synthetic points.** Hourly repeats are stamped `HH:00:00`, but a
+  unit's 2-minute upload phase drifts, and one unit's genuine readings sat on `:00` seconds for
+  most of a day (issue #394, ADR-029).
 - `hidden` is a **presentation** default, not a capability signal. It is a hardcoded constant
   keyed on dataset id — identical for every device, with no per-unit input — and it is `true`
   for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
   **not** "this hardware is absent"; in `comfort-graph` it is also `true` for
   `room_temperature_zone1`, which is certainly real on a single-zone unit. Do not gate on it.
 - **Absent hardware has been observed two different ways, so do not treat either as the rule.**
-  The dataset is always *present*; what it contains varies:
+  The dataset is always _present_; what it contains varies:
 
-  | Date | Endpoint | Window | Absent-hardware series |
-  |---|---|---|---|
-  | 2026-01-14 (`c2de27f`, #36) | per-measure telemetry | 4h | `"values": []` — **empty** |
-  | 2026-08-21 | this report | full day | flat **`25`** for a full day, on two units |
-  | 2026-08-23 (`test_get_atw_water_temperatures` cassette) | this report | 8h | `"data": []` — **empty** |
-  | 2026-08-24 (live probe, both prod units) | this report | 8h | `"data": []` — **empty** |
+  | Date                                                    | Endpoint              | Window   | Absent-hardware series                     |
+  | ------------------------------------------------------- | --------------------- | -------- | ------------------------------------------ |
+  | 2026-01-14 (`c2de27f`, #36)                             | per-measure telemetry | 4h       | `"values": []` — **empty**                 |
+  | 2026-08-21                                              | this report           | full day | flat **`25`** for a full day, on two units |
+  | 2026-08-23 (`test_get_atw_water_temperatures` cassette) | this report           | 8h       | `"data": []` — **empty**                   |
+  | 2026-08-24 (live probe, both prod units)                | this report           | 8h       | `"data": []` — **empty**                   |
 
   All three units were `hasZone2: false` / `hasBoiler: false`, so capability profile does not
   explain the difference; window length and date are the uncontrolled variables. The vendor's own
@@ -702,13 +749,15 @@ including the 7-decimal timestamp format.
   **Both shapes are handled without a special case:** a dataset holding no genuine reading is
   omitted by the parser, and a placeholder value is dropped by the capability filter. Nothing
   should be built that depends on which one arrives.
+
 - **`set_tank_water_temperature` carried only synthetic points** in the 2026-08-23 recording — 31
-  points, every one seconds-aligned, so none of them is a unit reading. Another reason to take tank
+  points, every one seconds-aligned, which the seconds rule of the time read as no unit reading
+  at all (ADR-029 has since retired that rule). Another reason to take tank
   temperature and its setpoint from `/context` (Section 2) rather than from this report.
 - **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
   single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`
   for a full day while the unsuffixed pair varied normally. The working assumption is that
-  the unsuffixed `flow_temperature` / `return_temperature` *are* the zone-1 flow and return on
+  the unsuffixed `flow_temperature` / `return_temperature` _are_ the zone-1 flow and return on
   such a system, and the integration gates the suffixed pair on Zone 2 support accordingly
   (Section 8, and `telemetry_tracker.py`).
 
@@ -719,6 +768,7 @@ including the 7-decimal timestamp format.
   idle loop looks like as much as a placeholder. It is a single snapshot, so it does **not**
   establish that the zone-1 pair carries real readings when zone 2 is present. Settling that
   needs a time series from a two-zone system while it is actively heating.
+
 - **Assumed, not verified:** whether zone-2 datasets appear for a unit that has zone 2 **on this
   endpoint**. Both units observed here were single-zone and neither response contained zone-2
   series, so it is unknown whether the server selects datasets per device or the report is always
@@ -740,11 +790,11 @@ including the 7-decimal timestamp format.
   local-stamped. Measured 2026-08-24, `internaltemperatures`, both live ATW units,
   at 08:00 UTC (= 10:00 local):
 
-  | `to` sent | newest genuine `return_temperature` |
-  |---|---|
-  | now (08:00) | 06:28:15 / 07:59:33 |
-  | now+2h (10:00) | 09:46:15 / 09:59:33 |
-  | now+3h (11:00) | 10:00:15 / 10:00:24 |
+  | `to` sent      | newest genuine `return_temperature` |
+  | -------------- | ----------------------------------- |
+  | now (08:00)    | 06:28:15 / 07:59:33                 |
+  | now+2h (10:00) | 09:46:15 / 09:59:33                 |
+  | now+3h (11:00) | 10:00:15 / 10:00:24                 |
 
   `trendsummary` behaves the same for a `Europe/London` unit: `to = now` gave
   `04:36:14 = 10`, `to = now+1h` gave `08:21:14 = 15`.
@@ -769,7 +819,7 @@ including the 7-decimal timestamp format.
 `/telemetry/telemetry/actual` served one measure at a time (Section 8). A single failure here
 costs every measure for that cycle rather than one.
 
-*(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)*
+_(Endpoint behaviour above measured 2026-08-21 against two real ATW units.)_
 
 ---
 
@@ -784,23 +834,36 @@ GET /report/v1/combined-energy?unitId={unitId}&period=Daily&from=2026-09-23T22:0
 The integration requests one local day per call, as UTC bounds with a trailing `Z`, and fetches yesterday and today each poll. Both vendor apps use this endpoint for every ATW energy view (Day, Week, Month); the vendor's apps send local wall-clock bounds without `Z`, which the server also accepts.
 
 **Response (abridged, a one-element list):**
+
 ```json
-[{
-  "reportPeriod": 1,
-  "datasets": [
-    {"id": "interval_energy_consumed", "data": [{"x": "2026-09-24T06:00:00", "y": 0.1333}]},
-    {"id": "interval_energy_produced", "data": [{"x": "2026-09-24T06:00:00", "y": 1.25}]},
-    {"id": "outside_temperature", "data": [{"x": "2026-09-24T06:00:00", "y": 11.5}]}
-  ],
-  "totalConsumedEnergyForPeriod": 1.7,
-  "totalProducedEnergyForPeriod": 9.2,
-  "scop": 5.4,
-  "from": "2026-09-24T00:00:00",
-  "to": "2026-09-24T23:59:59"
-}]
+[
+  {
+    "reportPeriod": 1,
+    "datasets": [
+      {
+        "id": "interval_energy_consumed",
+        "data": [{ "x": "2026-09-24T06:00:00", "y": 0.1333 }]
+      },
+      {
+        "id": "interval_energy_produced",
+        "data": [{ "x": "2026-09-24T06:00:00", "y": 1.25 }]
+      },
+      {
+        "id": "outside_temperature",
+        "data": [{ "x": "2026-09-24T06:00:00", "y": 11.5 }]
+      }
+    ],
+    "totalConsumedEnergyForPeriod": 1.7,
+    "totalProducedEnergyForPeriod": 9.2,
+    "scop": 5.4,
+    "from": "2026-09-24T00:00:00",
+    "to": "2026-09-24T23:59:59"
+  }
+]
 ```
 
 **Data characteristics (measured 2026-09-24 on one unit, Europe/Stockholm):**
+
 - Labels are the unit's **local** hour starts, with no zone marker. Values are kWh.
 - The in-progress hour is present and updates every minute. A completed hour's value equals the telemetry endpoint's final value exactly, from the first fetch after the hour closes.
 - Idle hours are omitted.
@@ -813,28 +876,33 @@ The telemetry endpoint `/telemetry/telemetry/energy/{unitId}?measure=interval_en
 **Capability Detection:**
 
 **ERSC-VM2D controllers (Complete energy data):**
+
 ```json
 {
   "hasEstimatedEnergyConsumption": true,
   "hasEstimatedEnergyProduction": true
 }
 ```
+
 - ✅ Full energy consumed data
 - ✅ Full energy produced data
 - ✅ COP calculable (produced/consumed)
 - ✅ Home Assistant Energy Dashboard compatible
 
 **EHSCVM2D controllers (No energy data):**
+
 ```json
 {
   "hasEstimatedEnergyConsumption": false,
   "hasEstimatedEnergyProduction": false
 }
 ```
+
 - ❌ Energy data not available
 - ✅ Telemetry temperature sensors still available
 
 **Integration Pattern:**
+
 1. Check both capabilities before creating energy sensors
 2. Only create sensors if BOTH are true
 3. Poll every 30 minutes, fetching yesterday's and today's combined-energy report
@@ -851,6 +919,7 @@ GET /monitor/atwunit/{unitId}/errorlog
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -879,6 +948,7 @@ GET /monitor/atwunit/{unitId}/errorlog
 ```
 
 **Result:**
+
 - Room temperature (e.g., 22°C) > target (10°C)
 - Zone 1 status: IDLE (no heating needed)
 - `OperationMode` changes to "Stop" or "HotWater"
@@ -891,6 +961,7 @@ GET /monitor/atwunit/{unitId}/errorlog
 The following fields appear in API responses but their purpose is unclear. **Do not modify these unless their behavior is understood.**
 
 ### ProhibitHotWater
+
 - **Location:** Settings array
 - **Type:** Boolean (string "True"/"False")
 - **Observed value:** Always "False" in all captures
@@ -898,7 +969,9 @@ The following fields appear in API responses but their purpose is unclear. **Do 
 - **Recommendation:** Always send `null` in control requests
 
 ### Additional Unknown Capabilities
+
 The following capability fields appear but their effect is unclear:
+
 - `maxImportPower`: Always 0 in observations
 - `maxHeatOutput`: Always 0 in observations
 - `temperatureUnit`: Always empty string
@@ -916,12 +989,14 @@ The following capability fields appear but their effect is unclear:
 This API documentation is based on comprehensive testing:
 
 ### Data Sources
+
 - **107 captured API calls** from MELCloud Home web application (Recording 2)
 - **30 targeted API calls** from focused testing (Recording 3)
 - **Community testing** from @pwa-2025 (EHSCVM2D Hydrokit)
 - **GitHub Discussion:** #26
 
 ### Hardware Tested
+
 - **Model:** EHSCVM2D Hydrokit
 - **Configuration:** Single zone, DHW support
 - **Heating type:** Underfloor heating
@@ -930,26 +1005,31 @@ This API documentation is based on comprehensive testing:
 ### Operations Tested
 
 **Power Control:**
+
 - ✅ Power ON/OFF (multiple cycles)
 - ✅ Rapid sequential changes (1-2 second intervals)
 
 **Temperature Testing:**
+
 - ✅ Zone 1: 10°C, 21°C, 22°C, 23°C, 24°C, 30°C (full range)
 - ✅ DHW: 40°C, 45°C, 49°C, 50°C, 51°C, 60°C (full range)
 - ✅ Incremental changes (up/down 1°C)
 
 **Operation Modes:**
+
 - ✅ HeatRoomTemperature (primary mode)
 - ✅ HeatFlowTemperature (tested 2x)
 - ✅ HeatCurve (tested)
 - ✅ Mode switching verified
 
 **DHW Control:**
+
 - ✅ Forced hot water mode (4 toggles ON/OFF)
 - ✅ DHW temperature changes
 - ✅ Priority behavior confirmed
 
 **Advanced Features:**
+
 - ✅ Schedule creation
 - ✅ Schedule enable/disable
 - ✅ Holiday mode (2 activations)
@@ -957,16 +1037,19 @@ This API documentation is based on comprehensive testing:
 - ✅ Error log retrieval
 
 **Monitoring:**
+
 - ✅ Real-time telemetry (9 measure types)
 - ✅ Energy reporting endpoints
 - ✅ Multiple time ranges (hourly, daily, monthly)
 
 ### Known Limitations
+
 - **Cooling mode:** Not tested (heat-only system)
 - **Measured energy:** Not tested (system has estimated only)
 - **Schedule integer mapping:** Unknown (requires additional testing)
 
 ### Temperature Range Bug Investigation
+
 - **Initial bug:** API reported 30-50°C for Zone 1 (incorrect for underfloor)
 - **User reported to Mitsubishi:** Bug acknowledged
 - **Bug fixed:** Now correctly reports 10-30°C
@@ -981,26 +1064,31 @@ Based on analysis of 110 API calls over testing session:
 ### Observed Web App Behavior
 
 **High-frequency polling (telemetry):**
+
 - `/telemetry/telemetry/actual/{unitId}`: Polled every few seconds
 - Purpose: Real-time UI updates for graphs
 - 51 calls in session (~46% of traffic)
 
 **Medium-frequency polling (state):**
+
 - `/context`: Polled periodically
 - 12 calls in session (~11% of traffic)
 - Returns complete state for all devices
 
 **Low-frequency polling (system):**
+
 - `/systeminvites`: Same frequency as context
 - 12 calls in session (~11% of traffic)
 
 **On-demand only:**
+
 - `/monitor/atwunit/{unitId}/errorlog`: 2 calls (manual refresh)
 - `/telemetry/telemetry/energy/{unitId}`: 8 calls (view changes, January 2026; the energy page has since moved to `/report/v1/combined-energy`)
 
 ### Recommendations for Home Assistant Integration
 
 **Primary state updates:**
+
 ```
 Interval: 60 seconds minimum
 Endpoint: GET /context
@@ -1008,6 +1096,7 @@ Purpose: Device discovery and state
 ```
 
 **Error monitoring:**
+
 ```
 Interval: Periodic (5-15 minutes) or on state change
 Endpoint: GET /monitor/atwunit/{unitId}/errorlog
@@ -1015,6 +1104,7 @@ Purpose: Error detection and notifications
 ```
 
 ### Rate Limiting Considerations
+
 - **Minimum interval:** 60 seconds for UserContext (per ATA experience)
 - **Keep it simple:** UserContext provides all essential state (temperatures, operation status)
 - **Error logs:** Poll periodically for proactive error detection
@@ -1024,12 +1114,14 @@ Purpose: Error detection and notifications
 ## Important Notes
 
 ### Temperature Ranges
+
 - **Zone 1:** 10-30°C (for underfloor heating systems)
 - **DHW:** 40-60°C
 - **API bug history:** Initial reports showed 30-50°C for Zone 1 (incorrect)
 - **Recommendation:** Use safe hardcoded defaults, don't trust API capabilities blindly
 
 ### String vs Integer Enums
+
 - **Control API (PUT /monitor/atwunit):** Uses STRINGS
   - `"HeatRoomTemperature"`, `"HeatFlowTemperature"`, `"HeatCurve"`
 - **Schedule API (POST /monitor/atwcloudschedule):** Uses INTEGERS
@@ -1038,14 +1130,17 @@ Purpose: Error detection and notifications
   - `2` = `"HeatCurve"` (Weather compensation)
 
 ### Multi-Unit Operations
+
 - Holiday mode: Supports multiple units in single call
 - Frost protection: Supports multiple units in single call
 - Regular control: One unit at a time
 
 ### Error Codes
+
 Based on observed error logs:
 
 **E4:**
+
 - **Observed in:** Multiple error log entries
 - **Typical cause:** Outdoor temperature sensor issues or high pressure
 - **Frequency:** Most common error in test system
@@ -1058,6 +1153,7 @@ Based on observed error logs:
 ## Device Information
 
 **Tested with:**
+
 - API reports: `ftcModel: 3` (physical controller model unknown)
 - Configuration: Single zone (no Zone 2), DHW support
 - System type: Underfloor heating + domestic hot water
