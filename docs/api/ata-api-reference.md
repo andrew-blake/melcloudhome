@@ -1,7 +1,9 @@
 # MELCloud Home API Reference - Air-to-Air Units
+
 ## Complete Air-to-Air (ATA) API Specification
 
 > **Note:** This document covers Air-to-Air (ATA) units only.
+>
 > - For Air-to-Water heat pumps, see [atw-api-reference.md](atw-api-reference.md)
 > - For device type comparison, see [device-type-comparison.md](device-type-comparison.md)
 
@@ -33,6 +35,7 @@ For current integration features, see [README.md](../../README.md).
 5. **When in doubt, observe the UI - do not guess or extrapolate**
 
 **Rationale:** This is production HVAC equipment. Invalid commands could:
+
 - Confuse the system or backend
 - Trigger unexpected behavior
 - Potentially cause equipment issues
@@ -42,22 +45,23 @@ For current integration features, see [README.md](../../README.md).
 
 ## Quick Reference: All Parameters
 
-| Parameter | Type | UI-Observed Values | Notes |
-|-----------|------|-------------------|-------|
-| `power` | boolean | `true`, `false` | null for no change |
-| `operationMode` | string | `"Heat"`, `"Cool"`, `"Automatic"`, `"Dry"`, `"Fan"` | ⚠️ "Automatic" NOT "Auto" |
-| `setFanSpeed` | string | `"Auto"`, `"One"`, `"Two"`, `"Three"`, `"Four"`, `"Five"` | ⚠️ Strings, NOT integers |
-| `setTemperature` | number | 10.0 - 31.0 (0.5° increments) | Mode-specific ranges apply |
-| `vaneVerticalDirection` | string | `"Auto"`, `"Swing"`, `"One"`, `"Two"`, `"Three"`, `"Four"`, `"Five"` | Positions 1-5 observed in docs |
-| `vaneHorizontalDirection` | string | `"Auto"`, `"Swing"` (+positions per docs) | Additional positions in earlier docs |
-| `temperatureIncrementOverride` | null | Always `null` | Purpose unknown, always null |
-| `inStandbyMode` | boolean | `true`, `false` | null for no change |
+| Parameter                      | Type    | UI-Observed Values                                                   | Notes                                |
+| ------------------------------ | ------- | -------------------------------------------------------------------- | ------------------------------------ |
+| `power`                        | boolean | `true`, `false`                                                      | null for no change                   |
+| `operationMode`                | string  | `"Heat"`, `"Cool"`, `"Automatic"`, `"Dry"`, `"Fan"`                  | ⚠️ "Automatic" NOT "Auto"            |
+| `setFanSpeed`                  | string  | `"Auto"`, `"One"`, `"Two"`, `"Three"`, `"Four"`, `"Five"`            | ⚠️ Strings, NOT integers             |
+| `setTemperature`               | number  | 10.0 - 31.0 (0.5° increments)                                        | Mode-specific ranges apply           |
+| `vaneVerticalDirection`        | string  | `"Auto"`, `"Swing"`, `"One"`, `"Two"`, `"Three"`, `"Four"`, `"Five"` | Positions 1-5 observed in docs       |
+| `vaneHorizontalDirection`      | string  | `"Auto"`, `"Swing"` (+positions per docs)                            | Additional positions in earlier docs |
+| `temperatureIncrementOverride` | null    | Always `null`                                                        | Purpose unknown, always null         |
+| `inStandbyMode`                | boolean | `true`, `false`                                                      | null for no change                   |
 
 ---
 
 ## API Endpoints
 
 ### Base URL
+
 ```
 https://mobile.bff.melcloudhome.com
 ```
@@ -67,6 +71,7 @@ https://mobile.bff.melcloudhome.com
 This integration talks to the **mobile BFF** (`mobile.bff.melcloudhome.com`), the host behind the Base URL above. A separate **web host** (`melcloudhome.com`, the Blazor web app used by [docs/research/web-bff-websocket-capture/README.md](../research/web-bff-websocket-capture/README.md)) exposes an equivalent but not always identical `/api/...` surface — same auth server and data model, different path conventions (e.g. mobile's `/monitor/{resource}/{unitId}` vs web's `/api/{resource}`). Where an endpoint below was only observed on one host, its evidence note says which; treat the other host's path as inferred-by-analogy unless stated otherwise.
 
 ### Authentication
+
 - Uses OAuth 2.0 PKCE + AWS Cognito (see [../architecture.md](../architecture.md) for details)
 - Bearer token authentication
 - User-Agent: `MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0`
@@ -78,6 +83,7 @@ This integration talks to the **mobile BFF** (`mobile.bff.melcloudhome.com`), th
 Updates device settings. Supports **partial updates** - only send changed fields, set others to `null`.
 
 **Headers:**
+
 ```http
 authorization: Bearer {access_token}
 content-type: application/json; charset=utf-8
@@ -85,6 +91,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 **Request Body:**
+
 ```json
 {
   "power": null,
@@ -99,6 +106,7 @@ user-agent: MonitorAndControl.App.Mobile/52 CFNetwork/3860.400.51 Darwin/25.3.0
 ```
 
 **Response:**
+
 - Status: `200 OK`
 - Body: Empty (Content-Length: 0)
 
@@ -123,17 +131,18 @@ Returns complete device list with current states and capabilities.
 **Type:** `string`
 **UI-Observed Values:**
 
-| UI Display | API Value | Verified |
-|------------|-----------|----------|
-| HEAT | `"Heat"` | ✅ Observed |
-| COOL | `"Cool"` | ✅ Observed |
-| AUTO | `"Automatic"` | ✅ Observed |
-| DRY | `"Dry"` | ✅ Observed |
-| FAN | `"Fan"` | ✅ Observed |
+| UI Display | API Value     | Verified    |
+| ---------- | ------------- | ----------- |
+| HEAT       | `"Heat"`      | ✅ Observed |
+| COOL       | `"Cool"`      | ✅ Observed |
+| AUTO       | `"Automatic"` | ✅ Observed |
+| DRY        | `"Dry"`       | ✅ Observed |
+| FAN        | `"Fan"`       | ✅ Observed |
 
 **⚠️ Important Discovery:** AUTO mode in UI maps to `"Automatic"` in API (NOT `"Auto"`).
 
 **Example Request:**
+
 ```json
 {
   "power": null,
@@ -148,6 +157,7 @@ Returns complete device list with current states and capabilities.
 ```
 
 **HA Integration Mapping:**
+
 ```python
 OPERATION_MODE_MAP = {
     "Heat": "heat",
@@ -165,19 +175,20 @@ OPERATION_MODE_MAP = {
 **Type:** `string` (⚠️ NOT integer!)
 **UI-Observed Values:**
 
-| UI Display | API Value | Verified |
-|------------|-----------|----------|
-| AUTO | `"Auto"` | ✅ Observed |
-| 1 FAN SPEED | `"One"` | ✅ Observed |
-| 2 FAN SPEED | `"Two"` | 📝 Inferred (consistent pattern) |
-| 3 FAN SPEED | `"Three"` | ✅ Observed |
-| 4 FAN SPEED | `"Four"` | 📝 Inferred (consistent pattern) |
-| 5 FAN SPEED | `"Five"` | ✅ Observed |
+| UI Display  | API Value | Verified                         |
+| ----------- | --------- | -------------------------------- |
+| AUTO        | `"Auto"`  | ✅ Observed                      |
+| 1 FAN SPEED | `"One"`   | ✅ Observed                      |
+| 2 FAN SPEED | `"Two"`   | 📝 Inferred (consistent pattern) |
+| 3 FAN SPEED | `"Three"` | ✅ Observed                      |
+| 4 FAN SPEED | `"Four"`  | 📝 Inferred (consistent pattern) |
+| 5 FAN SPEED | `"Five"`  | ✅ Observed                      |
 
 **⚠️ Critical Correction:** Earlier documentation incorrectly stated fan speeds were integers (0-5).
 The actual API uses **string values**: `"Auto"`, `"One"`, `"Two"`, `"Three"`, `"Four"`, `"Five"`.
 
 **Example Request:**
+
 ```json
 {
   "power": null,
@@ -194,6 +205,7 @@ The actual API uses **string values**: `"Auto"`, `"One"`, `"Two"`, `"Three"`, `"
 **HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
 
 The integration normalizes API capitalized values to lowercase for Home Assistant:
+
 ```python
 # API Layer (matches MELCloud API exactly)
 API values: "Auto", "One", "Two", "Three", "Four", "Five"
@@ -223,18 +235,20 @@ HA values: "auto", "one", "two", "three", "four", "five"
 
 **Mode-Specific Ranges** (from device capabilities):
 
-| Mode | Minimum | Maximum |
-|------|---------|---------|
-| Heat | 10°C | 31°C |
-| Cool/Dry | 16°C | 31°C |
-| Automatic | 16°C | 31°C |
+| Mode      | Minimum | Maximum |
+| --------- | ------- | ------- |
+| Heat      | 10°C    | 31°C    |
+| Cool/Dry  | 16°C    | 31°C    |
+| Automatic | 16°C    | 31°C    |
 
 **Device Capabilities:**
+
 - `hasHalfDegreeIncrements`: `true`
 - `hasExtendedTemperatureRange`: `true`
 - Ranges returned in GET `/context` response
 
 **Example Request:**
+
 ```json
 {
   "power": null,
@@ -249,6 +263,7 @@ HA values: "auto", "one", "two", "three", "four", "five"
 ```
 
 **HA Integration:**
+
 - Maps directly to HA climate `target_temperature`
 - Use device capability ranges for min/max
 - Support 0.5° precision
@@ -260,19 +275,20 @@ HA values: "auto", "one", "two", "three", "four", "five"
 **Type:** `string`
 **UI-Observed Values:**
 
-| UI Display | API Value | Verified |
-|------------|-----------|----------|
-| AUTO | `"Auto"` | ✅ Observed |
-| SWING | `"Swing"` | ✅ Observed |
-| Position 1 | `"One"` | 📝 From earlier docs |
-| Position 2 | `"Two"` | 📝 From earlier docs |
+| UI Display | API Value | Verified             |
+| ---------- | --------- | -------------------- |
+| AUTO       | `"Auto"`  | ✅ Observed          |
+| SWING      | `"Swing"` | ✅ Observed          |
+| Position 1 | `"One"`   | 📝 From earlier docs |
+| Position 2 | `"Two"`   | 📝 From earlier docs |
 | Position 3 | `"Three"` | 📝 From earlier docs |
-| Position 4 | `"Four"` | 📝 From earlier docs |
-| Position 5 | `"Five"` | 📝 From earlier docs |
+| Position 4 | `"Four"`  | 📝 From earlier docs |
+| Position 5 | `"Five"`  | 📝 From earlier docs |
 
 **Note:** Positions 1-5 follow the same naming pattern as fan speeds, documented in earlier API discovery.
 
 **Example Request:**
+
 ```json
 {
   "power": null,
@@ -289,6 +305,7 @@ HA values: "auto", "one", "two", "three", "four", "five"
 **HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
 
 The integration normalizes API capitalized values to lowercase for Home Assistant:
+
 ```python
 # API Layer (matches MELCloud API exactly)
 API values: "Auto", "Swing", "One", "Two", "Three", "Four", "Five"
@@ -315,19 +332,20 @@ HA values: "auto", "swing", "one", "two", "three", "four", "five"
 **Type:** `string`
 **UI-Observed Values:**
 
-| UI Display | API Value | Verified |
-|------------|-----------|----------|
-| AUTO | `"Auto"` | ✅ Observed |
-| SWING | `"Swing"` | ✅ Observed |
-| LEFT | `"Left"` | 📝 From earlier docs |
-| CENTER LEFT | `"LeftCentre"` | 📝 From earlier docs |
-| CENTER | `"Centre"` | 📝 From earlier docs |
+| UI Display   | API Value       | Verified             |
+| ------------ | --------------- | -------------------- |
+| AUTO         | `"Auto"`        | ✅ Observed          |
+| SWING        | `"Swing"`       | ✅ Observed          |
+| LEFT         | `"Left"`        | 📝 From earlier docs |
+| CENTER LEFT  | `"LeftCentre"`  | 📝 From earlier docs |
+| CENTER       | `"Centre"`      | 📝 From earlier docs |
 | CENTER RIGHT | `"RightCentre"` | 📝 From earlier docs |
-| RIGHT | `"Right"` | 📝 From earlier docs |
+| RIGHT        | `"Right"`       | 📝 From earlier docs |
 
 **Note:** Positional values documented in earlier API discovery. Auto and Swing confirmed through UI observation.
 
 **Example Request:**
+
 ```json
 {
   "power": null,
@@ -344,6 +362,7 @@ HA values: "auto", "swing", "one", "two", "three", "four", "five"
 **HA Integration (✅ IMPLEMENTED as of v2.0.0-beta.2):**
 
 The integration normalizes API capitalized values to lowercase for Home Assistant:
+
 ```python
 # API Layer (matches MELCloud API exactly, British spelling)
 API values: "Auto", "Swing", "Left", "LeftCentre", "Centre", "RightCentre", "Right"
@@ -397,6 +416,7 @@ Documented in device capabilities. Not tested in this session.
 ## Complete Request Examples
 
 ### Change Mode to Cool
+
 ```json
 {
   "power": null,
@@ -411,6 +431,7 @@ Documented in device capabilities. Not tested in this session.
 ```
 
 ### Set Fan Speed to 3
+
 ```json
 {
   "power": null,
@@ -425,6 +446,7 @@ Documented in device capabilities. Not tested in this session.
 ```
 
 ### Set Temperature to 22.5°C
+
 ```json
 {
   "power": null,
@@ -439,6 +461,7 @@ Documented in device capabilities. Not tested in this session.
 ```
 
 ### Multiple Changes at Once
+
 ```json
 {
   "power": true,
@@ -458,13 +481,13 @@ Documented in device capabilities. Not tested in this session.
 
 ### Climate Entity Attributes
 
-| HA Attribute | API Parameter | Notes |
-|--------------|---------------|-------|
-| `hvac_mode` | `operationMode` | See OPERATION_MODE_MAP |
-| `target_temperature` | `setTemperature` | Direct number mapping |
-| `fan_mode` | `setFanSpeed` | See FAN_SPEED_MAP |
-| `swing_mode` | `vaneVerticalDirection` / `vaneHorizontalDirection` | May need to combine or choose primary |
-| `current_temperature` | From GET response `RoomTemperature` | Read-only |
+| HA Attribute          | API Parameter                                       | Notes                                 |
+| --------------------- | --------------------------------------------------- | ------------------------------------- |
+| `hvac_mode`           | `operationMode`                                     | See OPERATION_MODE_MAP                |
+| `target_temperature`  | `setTemperature`                                    | Direct number mapping                 |
+| `fan_mode`            | `setFanSpeed`                                       | See FAN_SPEED_MAP                     |
+| `swing_mode`          | `vaneVerticalDirection` / `vaneHorizontalDirection` | May need to combine or choose primary |
+| `current_temperature` | From GET response `RoomTemperature`                 | Read-only                             |
 
 ### Implementation Notes
 
@@ -507,6 +530,7 @@ Documented in device capabilities. Not tested in this session.
 ## Testing Methodology
 
 **All values verified through:**
+
 1. Opening MELCloud Home UI in browser with DevTools
 2. Making changes through official UI controls
 3. Capturing PUT requests in Network tab
@@ -547,6 +571,7 @@ Device capabilities are returned in GET `/context` response. Key capabilities:
 ```
 
 Use these capabilities to:
+
 - Set temperature min/max in HA
 - Enable/disable HVAC modes based on device support
 - Determine available fan speeds
@@ -560,14 +585,15 @@ Use these capabilities to:
 
 **Corrects earlier documentation:** [device-type-comparison.md](device-type-comparison.md#endpoint-comparison) previously marked Holiday Mode and Frost Protection as "ATW exclusive". That was never true — both are **shared, building-level endpoints** that accept ATA unit IDs too, confirmed here via a live HAR capture (2026-07-20, real account) that exercised all three endpoints below end-to-end (enable → verify in `/context` → disable → verify again) on a set of ATA units, then restored everything to its original disabled state.
 
-These are **not** per-unit endpoints like the control/schedule APIs above — a single call takes a *list* of unit IDs and applies the same setting to all of them at once, matching the batch pattern already noted for ATW in [device-type-comparison.md](device-type-comparison.md#endpoint-comparison).
+These are **not** per-unit endpoints like the control/schedule APIs above — a single call takes a _list_ of unit IDs and applies the same setting to all of them at once, matching the batch pattern already noted for ATW in [device-type-comparison.md](device-type-comparison.md#endpoint-comparison).
 
 ### Frost Protection
 
 ```
 POST /api/protection/frost
 ```
-*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
+
+_(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))_
 
 **Request Body (confirmed):**
 
@@ -589,7 +615,8 @@ Prevents units from freezing by maintaining a minimum temperature. `min`/`max` d
 ```
 POST /api/protection/overheat
 ```
-*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
+
+_(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))_
 
 **New discovery** — not documented anywhere before this, for either device type.
 
@@ -613,7 +640,8 @@ Same shape as Frost Protection — presumably the ceiling-temperature counterpar
 ```
 POST /api/holidaymode
 ```
-*(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))*
+
+_(web host: `melcloudhome.com` — the mobile-BFF equivalent path is unconfirmed; see [Hosts](#hosts))_
 
 ⚠️ **Unverified report:** a contributor has stated that a GET probe against `/monitor/holidaymode` on the mobile BFF returned `405 Method Not Allowed` with an `Allow: POST` header, which would mean the route exists there too. This is **not backed by a saved artifact** (no HAR or request/response transcript was committed) and hasn't been independently re-verified, so it's noted here rather than promoted to "confirmed." Frost/overheat protection's mobile-BFF equivalents remain unconfirmed (reportedly ~35 naming variants tried, none found).
 
@@ -649,14 +677,24 @@ That same ATW unit has `hasZone2: false`, so the zone-split on `frostProtection`
 ```json
 {
   "frostProtection": { "enabled": true, "active": false, "min": 10, "max": 12 },
-  "overheatProtection": { "enabled": true, "active": false, "min": 35, "max": 37 },
-  "holidayMode": { "enabled": true, "active": false, "startDate": "2026-07-20T18:30:53.79", "endDate": "2026-07-22T12:00:00" }
+  "overheatProtection": {
+    "enabled": true,
+    "active": false,
+    "min": 35,
+    "max": 37
+  },
+  "holidayMode": {
+    "enabled": true,
+    "active": false,
+    "startDate": "2026-07-20T18:30:53.79",
+    "endDate": "2026-07-22T12:00:00"
+  }
 }
 ```
 
 All three are `null` when never configured (the default/original state on every unit in this capture). Once configured they persist as an object even when `enabled: false` — only the value flips, the object doesn't revert to `null`.
 
-**`enabled` vs `active`** — not previously documented and easy to conflate: `enabled` means the protection mode is armed/configured; `active` means it is *currently* engaged (e.g. the room is actually at/below the frost threshold right now). Both stayed `false`/`false` and `true`/`false` respectively throughout this capture since no unit's temperature crossed the configured thresholds — `active:true` was not observed, so its exact trigger condition (probably current room or outdoor temperature vs. `min`/`max`) is inferred from the field names, not directly confirmed.
+**`enabled` vs `active`** — not previously documented and easy to conflate: `enabled` means the protection mode is armed/configured; `active` means it is _currently_ engaged (e.g. the room is actually at/below the frost threshold right now). Both stayed `false`/`false` and `true`/`false` respectively throughout this capture since no unit's temperature crossed the configured thresholds — `active:true` was not observed, so its exact trigger condition (probably current room or outdoor temperature vs. `min`/`max`) is inferred from the field names, not directly confirmed.
 
 ### Evidence Level
 
@@ -673,6 +711,7 @@ Confirmed via a live HAR capture, 2026-07-20, real account: all three endpoints 
 Returns historical temperature data for chart display. Used by integration to fetch outdoor temperature.
 
 **Query Parameters:**
+
 - `unitId` - Device UUID
 - `period` - Report period: `Hourly` or `Daily`
 - `from` - Start datetime (ISO 8601: `YYYY-MM-DDTHH:MM:SS.0000000`)
@@ -680,7 +719,7 @@ Returns historical temperature data for chart display. Used by integration to fe
 
 **Note:** With `period=Daily` the API ignores `from`/`to` and returns all available historical data (observed: 200+ datapoints spanning several weeks). With `period=Hourly` the API honours the requested window, so idle units that haven't run inside the window return no genuine readings. Wider windows work but get slow past ~72h-96h and can return a genuine `500` at 7 days/168h — see Integration Usage below for the window this integration actually uses.
 
-**Datapoint semantics (verified against prod, 2026-07-28):** responses mix two kinds of points. Genuine unit readings appear only under `period=Hourly` and carry the unit's actual upload time with arbitrary seconds (e.g. `07:15:24`). Synthetic chart points pad the series: hourly repeats of the last value stamped `HH:00:00`, and a final point stamped with the query's `to` in the unit's local time, which the response also carries as its top-level `to` field. Seconds alone do not separate the two kinds: a unit's upload phase drifts, and genuine readings can sit on `:00` seconds for hours (issue #394, ADR-029). `period=Daily` returns *only* 30-minute bucket aggregates plus the `to`-echo — no genuine reading timestamps — and its latest value can diverge from the unit's actual latest reading. The `to`-echo means the last datapoint's timestamp always looks fresh regardless of how stale the data is. A separate Daily-only artifact was observed twice (2026-06-24 and 2026-07-25) where the freshest label led the query time by up to an hour during 00:00–01:00 BST — consistent with local-time bucket labels read as UTC. That mechanism is now confirmed: report timestamps are stamped in the unit's own timezone (2026-08-24, see [ADR-022](../decisions/022-reading-provenance.md)), and a `Europe/London` unit under BST leads a UTC-read label by exactly the hour observed. The integration only uses `Hourly` genuine readings and converts them with the unit's zone, so the artifact cannot recur.
+**Datapoint semantics (verified against prod, 2026-07-28):** responses mix two kinds of points. Genuine unit readings appear only under `period=Hourly` and carry the unit's actual upload time with arbitrary seconds (e.g. `07:15:24`). Synthetic chart points pad the series: hourly repeats of the last value stamped `HH:00:00`, and a final point stamped with the query's `to` in the unit's local time, which the response also carries as its top-level `to` field. Seconds alone do not separate the two kinds: a unit's upload phase drifts, and genuine readings can sit on `:00` seconds for hours (issue #394, ADR-029). `period=Daily` returns _only_ 30-minute bucket aggregates plus the `to`-echo — no genuine reading timestamps — and its latest value can diverge from the unit's actual latest reading. The `to`-echo means the last datapoint's timestamp always looks fresh regardless of how stale the data is. A separate Daily-only artifact was observed twice (2026-06-24 and 2026-07-25) where the freshest label led the query time by up to an hour during 00:00–01:00 BST — consistent with local-time bucket labels read as UTC. That mechanism is now confirmed: report timestamps are stamped in the unit's own timezone (2026-08-24, see [ADR-022](../decisions/022-reading-provenance.md)), and a `Europe/London` unit under BST leads a UTC-read label by exactly the hour observed. The integration only uses `Hourly` genuine readings and converts them with the unit's zone, so the artifact cannot recur.
 
 **Example Request:**
 
@@ -695,7 +734,7 @@ GET /report/v1/trendsummary?unitId=aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825&period=D
   "datasets": [
     {
       "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
-      "data": [{"x": "2026-02-03T12:00:00", "y": 17.0}],
+      "data": [{ "x": "2026-02-03T12:00:00", "y": 17.0 }],
       "backgroundColor": "#F1995D",
       "borderColor": "#F1995D",
       "yAxisId": "yTemp",
@@ -708,11 +747,11 @@ GET /report/v1/trendsummary?unitId=aaaaaaaa-aaaa-aaaa-aaaa-4c6fd61ac825&period=D
     },
     {
       "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.SET_TEMPERATURE",
-      "data": [{"x": "2026-02-03T12:00:00", "y": 19.0}]
+      "data": [{ "x": "2026-02-03T12:00:00", "y": 19.0 }]
     },
     {
       "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
-      "data": [{"x": "2026-02-03T12:00:00", "y": 11.0}]
+      "data": [{ "x": "2026-02-03T12:00:00", "y": 11.0 }]
     }
   ],
   "annotations": []
@@ -741,7 +780,8 @@ A second `trendsummary` endpoint exists on the **legacy web host** (`melcloudhom
 ```
 GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly&from=<iso>&to=<iso>
 ```
-*(web host: `melcloudhome.com` — the mobile-BFF equivalent above is a different endpoint, not a host variant of this one; see [Hosts](#hosts))*
+
+_(web host: `melcloudhome.com` — the mobile-BFF equivalent above is a different endpoint, not a host variant of this one; see [Hosts](#hosts))_
 
 - Two extra `period` values observed that the mobile BFF endpoint above wasn't seen to support: `Weekly`, `Monthly`.
 - `Hourly` period returned data at roughly **3-minute resolution** in a live driven re-capture (2026-07-23: 211 datapoints over an 11h13m window) — finer-grained than anything the mobile BFF variant was observed to return, and a candidate source for HA long-term statistics import if this endpoint is ever integrated. (Corrects an earlier "~2-minute" estimate from the original passive review — the actual interval may vary with how recently the unit was reporting.)
@@ -752,9 +792,21 @@ GET /api/v1/report/trendsummary?unitId=<uuid>&period=Hourly|Daily|Weekly|Monthly
   {
     "unitId": "<unit UUID>",
     "triggers": [
-      { "trigger": "<iso datetime>", "measure": "room_temperature", "value": 25.5 },
-      { "trigger": "9999-12-31T23:59:59.9999999", "measure": "set_temperature", "value": null },
-      { "trigger": "<iso datetime>", "measure": "outside_temperature", "value": 29 }
+      {
+        "trigger": "<iso datetime>",
+        "measure": "room_temperature",
+        "value": 25.5
+      },
+      {
+        "trigger": "9999-12-31T23:59:59.9999999",
+        "measure": "set_temperature",
+        "value": null
+      },
+      {
+        "trigger": "<iso datetime>",
+        "measure": "outside_temperature",
+        "value": 29
+      }
     ],
     "before": "<iso datetime>",
     "currentPeriod": "<iso datetime>",
@@ -783,7 +835,8 @@ All endpoints below were directly observed on the **legacy web host** (`melcloud
 ```
 GET /api/user/scenes
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 Returns an array of scene objects for the authenticated user.
 
@@ -792,7 +845,8 @@ Returns an array of scene objects for the authenticated user.
 ```
 POST /api/scene
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 **Request Body (fields observed):**
 
@@ -837,12 +891,12 @@ POST /api/scene
 
 **Enum mapping — POST sends ints, GET returns strings (confirmed both directions on this endpoint):**
 
-| Field | POST value (int) | GET value (string) |
-|-------|-------------------|---------------------|
-| `operationMode` | `3` | `"cool"` |
-| `setFanSpeed` | `5` | `"five"` |
-| `vaneHorizontalDirection` | `3` | `"centre"` |
-| `vaneVerticalDirection` | `0` | `"auto"` |
+| Field                     | POST value (int) | GET value (string) |
+| ------------------------- | ---------------- | ------------------ |
+| `operationMode`           | `3`              | `"cool"`           |
+| `setFanSpeed`             | `5`              | `"five"`           |
+| `vaneHorizontalDirection` | `3`              | `"centre"`         |
+| `vaneVerticalDirection`   | `0`              | `"auto"`           |
 
 This same int/string duality is also confirmed directly on the Schedules endpoint — see [#195](https://github.com/andrew-blake/melcloudhome/pull/195). Here it's observed on both the request and response side of this endpoint, so the mapping pairs above can be treated as confirmed (for these specific values; other positions/modes weren't exercised in the capture).
 
@@ -851,7 +905,8 @@ This same int/string duality is also confirmed directly on the Schedules endpoin
 ```
 GET /api/scene/{sceneId}
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 **New endpoint, confirmed 2026-07-23** — fetches a single scene by ID; the web UI calls this when opening a scene for editing. **Response body confirmed via a real DevTools HAR capture**: identical shape to one entry of the `GET /api/user/scenes` array (`id`, `userId`, `name`, `enabled`, `icon`, `ataSceneSettings`, `atwSceneSettings`).
 
@@ -860,16 +915,18 @@ GET /api/scene/{sceneId}
 ```
 PUT /api/scene/{sceneId}
 ```
-*(web host: `melcloudhome.com`)*
 
-**Corrects earlier documentation** — this section previously assumed Update reused `POST /api/scene` (same as Create). **Confirmed 2026-07-23 via a real DevTools HAR capture: Update is `PUT` to the scene's own ID-scoped URL** with a **flat** request body — the *entire* scene object (`id`, `userId`, `name`, `enabled`, `icon`, `ataSceneSettings`, `atwSceneSettings`), with `id`/`userId` repeated matching the URL, not just the changed fields. This is a genuinely different shape from Schedules' Update, which nests the payload as `{id, schedule: {...}}` — don't assume the two APIs share a convention just because both offer Create/Update/Delete.
+_(web host: `melcloudhome.com`)_
+
+**Corrects earlier documentation** — this section previously assumed Update reused `POST /api/scene` (same as Create). **Confirmed 2026-07-23 via a real DevTools HAR capture: Update is `PUT` to the scene's own ID-scoped URL** with a **flat** request body — the _entire_ scene object (`id`, `userId`, `name`, `enabled`, `icon`, `ataSceneSettings`, `atwSceneSettings`), with `id`/`userId` repeated matching the URL, not just the changed fields. This is a genuinely different shape from Schedules' Update, which nests the payload as `{id, schedule: {...}}` — don't assume the two APIs share a convention just because both offer Create/Update/Delete.
 
 ### Enable Scene
 
 ```
 PUT /api/scene/{sceneId}/enable
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 Empty body, confirmed `200` with an empty response. Sets `enabled: true`. **Confirmed 2026-07-23: this immediately applies the scene's settings to the target unit(s)** — verified by watching a real unit power on and change mode/temperature in real time upon enabling a test scene (see the Behavioral note above).
 
@@ -878,7 +935,8 @@ Empty body, confirmed `200` with an empty response. Sets `enabled: true`. **Conf
 ```
 PUT /api/scene/{sceneId}/disable
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 **New endpoint, confirmed 2026-07-23** — previously assumed not to exist as a dedicated path ("disabling likely goes through the general update instead"). Empty request body, empty `200` response, confirmed via the web UI: clicking an already-enabled scene's tile calls this and flips `enabled` back to `false` in the subsequent `GET /api/user/scenes` response. Unlike Enable, disabling does not appear to send any command to the unit (the unit's state was left as Enable had set it; disabling only stops the scene from being "active", it doesn't revert the unit).
 
@@ -887,7 +945,8 @@ PUT /api/scene/{sceneId}/disable
 ```
 DELETE /api/scene/{sceneId}
 ```
-*(web host: `melcloudhome.com`)*
+
+_(web host: `melcloudhome.com`)_
 
 Confirmed via a real DevTools HAR capture, 2026-07-23 (no request body; empty response). Path matches the original 2026-07-11 observation exactly.
 
@@ -907,7 +966,7 @@ All three write operations below (create, update, delete) were directly observed
 POST /monitor/cloudschedule/{unitId}
 ```
 
-*Mobile-BFF path shown per [device-type-comparison.md](device-type-comparison.md) and the confirmed ATW twin (`/monitor/atwcloudschedule/{unitId}`) — inferred by analogy, not directly captured on mobile for ATA. All observations below were made on the **web host** (`melcloudhome.com`), where this same request/response was captured as `POST /api/cloudschedule/{unitId}`; see Evidence Level.*
+_Mobile-BFF path shown per [device-type-comparison.md](device-type-comparison.md) and the confirmed ATW twin (`/monitor/atwcloudschedule/{unitId}`) — inferred by analogy, not directly captured on mobile for ATA. All observations below were made on the **web host** (`melcloudhome.com`), where this same request/response was captured as `POST /api/cloudschedule/{unitId}`; see Evidence Level._
 
 **Request Body (confirmed, flat shape):**
 
@@ -932,7 +991,7 @@ POST /monitor/cloudschedule/{unitId}
 PUT /monitor/cloudschedule/{unitId}
 ```
 
-*Mobile-BFF path inferred the same way as Create above — observed on the web host as `PUT /api/cloudschedule/{unitId}`.*
+_Mobile-BFF path inferred the same way as Create above — observed on the web host as `PUT /api/cloudschedule/{unitId}`._
 
 ⚠️ **Different from Create**: same URL (no schedule ID in the path — it's the same URL Create posts to, just a different HTTP method) and a **nested** body, not the flat shape Create uses:
 
@@ -968,28 +1027,28 @@ PUT /monitor/cloudschedule/{unitId}
 
 **Enum mapping.** The WebSocket's command echoes use the same ints, which fills in the values Schedules and Scenes have not shown (see [WebSocket setting value types](../research/web-bff-websocket-capture/README.md#websocket-setting-value-types)):
 
-| Field | Int value | Meaning | Confirmed on |
-|-------|-----------|---------|---------------|
-| `operationMode` | `1` | Heat | Schedules (this session) + WebSocket |
-| `operationMode` | `2` | Dry | WebSocket |
-| `operationMode` | `3` | Cool | Schedules + [Scenes](#create-scene) + WebSocket |
-| `operationMode` | `4` | Fan | WebSocket |
-| `operationMode` | `5` | Automatic | WebSocket |
-| `setFanSpeed` | `0` | Auto | Schedules (this session) + WebSocket |
-| `setFanSpeed` | `1`, `2`, `4` | One, Two, Four | WebSocket |
-| `setFanSpeed` | `3` | Three | Schedules (this session) + WebSocket |
-| `setFanSpeed` | `5` | Five | [Scenes](#create-scene) + WebSocket |
-| `vaneVerticalDirection` | `0` | Auto | Schedules + [Scenes](#create-scene) + WebSocket |
-| `vaneVerticalDirection` | `1` | Position 1 | Schedules (this session) + WebSocket |
-| `vaneVerticalDirection` | `2` to `5` | Positions 2 to 5 | WebSocket |
-| `vaneVerticalDirection` | `6` | Swing | WebSocket |
-| `vaneHorizontalDirection` | `0` | Auto | WebSocket |
-| `vaneHorizontalDirection` | `1` | Left | WebSocket |
-| `vaneHorizontalDirection` | `2` | LeftCentre | WebSocket |
-| `vaneHorizontalDirection` | `3` | Centre | Schedules + [Scenes](#create-scene) + WebSocket |
-| `vaneHorizontalDirection` | `4` | RightCentre | WebSocket |
-| `vaneHorizontalDirection` | `5` | Right | WebSocket |
-| `vaneHorizontalDirection` | `7` | Swing | WebSocket |
+| Field                     | Int value     | Meaning          | Confirmed on                                    |
+| ------------------------- | ------------- | ---------------- | ----------------------------------------------- |
+| `operationMode`           | `1`           | Heat             | Schedules (this session) + WebSocket            |
+| `operationMode`           | `2`           | Dry              | WebSocket                                       |
+| `operationMode`           | `3`           | Cool             | Schedules + [Scenes](#create-scene) + WebSocket |
+| `operationMode`           | `4`           | Fan              | WebSocket                                       |
+| `operationMode`           | `5`           | Automatic        | WebSocket                                       |
+| `setFanSpeed`             | `0`           | Auto             | Schedules (this session) + WebSocket            |
+| `setFanSpeed`             | `1`, `2`, `4` | One, Two, Four   | WebSocket                                       |
+| `setFanSpeed`             | `3`           | Three            | Schedules (this session) + WebSocket            |
+| `setFanSpeed`             | `5`           | Five             | [Scenes](#create-scene) + WebSocket             |
+| `vaneVerticalDirection`   | `0`           | Auto             | Schedules + [Scenes](#create-scene) + WebSocket |
+| `vaneVerticalDirection`   | `1`           | Position 1       | Schedules (this session) + WebSocket            |
+| `vaneVerticalDirection`   | `2` to `5`    | Positions 2 to 5 | WebSocket                                       |
+| `vaneVerticalDirection`   | `6`           | Swing            | WebSocket                                       |
+| `vaneHorizontalDirection` | `0`           | Auto             | WebSocket                                       |
+| `vaneHorizontalDirection` | `1`           | Left             | WebSocket                                       |
+| `vaneHorizontalDirection` | `2`           | LeftCentre       | WebSocket                                       |
+| `vaneHorizontalDirection` | `3`           | Centre           | Schedules + [Scenes](#create-scene) + WebSocket |
+| `vaneHorizontalDirection` | `4`           | RightCentre      | WebSocket                                       |
+| `vaneHorizontalDirection` | `5`           | Right            | WebSocket                                       |
+| `vaneHorizontalDirection` | `7`           | Swing            | WebSocket                                       |
 
 ### Enable/Disable Schedules (master switch)
 
@@ -997,7 +1056,7 @@ PUT /monitor/cloudschedule/{unitId}
 PUT /monitor/cloudschedule/{unitId}/enabled
 ```
 
-*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); the passively-observed web-host form is `PUT /api/cloudschedule/{unitId}/enabled` — not re-driven in this session, so left as previously documented.*
+_Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); the passively-observed web-host form is `PUT /api/cloudschedule/{unitId}/enabled` — not re-driven in this session, so left as previously documented._
 
 ```json
 { "enabled": true }
@@ -1011,7 +1070,7 @@ Per-unit switch that toggles all of that unit's schedules at once, independent o
 DELETE /monitor/cloudschedule/{unitId}/{scheduleId}
 ```
 
-*Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); observed on the web host as `DELETE /api/cloudschedule/{unitId}/{scheduleId}`.*
+_Mobile-BFF path per [device-type-comparison.md](device-type-comparison.md); observed on the web host as `DELETE /api/cloudschedule/{unitId}/{scheduleId}`._
 
 **Confirmed** — both test schedule entries created during this capture were deleted this way (on the web host), cleanly removing them from the account with no other side effects observed.
 
@@ -1024,10 +1083,12 @@ Two sources feed this section: a passive 2026-07-11 HAR review of the web app (d
 ## Error Handling
 
 **Observed Responses:**
+
 - Success: `200 OK` with empty body
 - All test requests succeeded
 
 **Best Practices:**
+
 1. Validate against device capabilities before sending
 2. Only send values observed from UI
 3. Use null for unchanged parameters
@@ -1059,14 +1120,14 @@ Two sources feed this section: a passive 2026-07-11 HAR review of the web app (d
 
 ## Document History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2025-11-16 | Initial comprehensive API reference with UI-verified values |
-| 1.3 | 2026-07-20 | Added Protection Modes & Holiday Mode section (frost/overheat protection, holiday mode), confirmed via live HAR capture; corrects earlier "ATW exclusive" claim |
-| 1.4 | 2026-07-20 | Added Scenes section and legacy-web Trend Summary variant, sourced from 2026-07-11 web-app HAR capture |
-| 1.5 | 2026-07-20 | Added Schedules section (cloud-schedule CRUD), sourced from 2026-07-11 web-app HAR capture |
-| 1.6 | 2026-07-20 | Schedules section rewritten with confirmed data from a live driven capture: day-number encoding and int-typed mode/fan/vane fields moved from inferred to confirmed; documented the Update (PUT) endpoint and its distinct nested body shape |
-| 1.7 | 2026-07-27 | Flagged the mobile-BFF `/monitor/holidaymode` route as reported-but-unverified rather than confirmed, as no capture artifact backs it |
+| Version | Date       | Changes                                                                                                                                                                                                                                      |
+| ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | 2025-11-16 | Initial comprehensive API reference with UI-verified values                                                                                                                                                                                  |
+| 1.3     | 2026-07-20 | Added Protection Modes & Holiday Mode section (frost/overheat protection, holiday mode), confirmed via live HAR capture; corrects earlier "ATW exclusive" claim                                                                              |
+| 1.4     | 2026-07-20 | Added Scenes section and legacy-web Trend Summary variant, sourced from 2026-07-11 web-app HAR capture                                                                                                                                       |
+| 1.5     | 2026-07-20 | Added Schedules section (cloud-schedule CRUD), sourced from 2026-07-11 web-app HAR capture                                                                                                                                                   |
+| 1.6     | 2026-07-20 | Schedules section rewritten with confirmed data from a live driven capture: day-number encoding and int-typed mode/fan/vane fields moved from inferred to confirmed; documented the Update (PUT) endpoint and its distinct nested body shape |
+| 1.7     | 2026-07-27 | Flagged the mobile-BFF `/monitor/holidaymode` route as reported-but-unverified rather than confirmed, as no capture artifact backs it                                                                                                        |
 
 **Data Collection Session:** 2025-11-16
 **Equipment:** Mitsubishi Electric air conditioning system
