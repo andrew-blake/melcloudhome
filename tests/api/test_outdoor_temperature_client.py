@@ -13,17 +13,17 @@ from custom_components.melcloudhome.api.parsing import parse_api_timestamp
 class TestParseOutdoorTemp:
     """Tests for _parse_outdoor_temp method.
 
-    Real trendsummary responses mix genuine unit readings (arbitrary-second
-    timestamps like 07:15:24) with synthetic chart points the server appends:
-    bucket-aligned repeats of the last value (08:00:00, 09:00:00) and a final
-    point stamped with the query's own "to" parameter. Only points with
-    non-zero seconds are real readings.
+    Real trendsummary responses mix genuine unit readings with synthetic chart
+    points the server appends: hourly repeats of the last value (08:00:00,
+    09:00:00) and a final point stamped with the response's top-level "to".
+    Every real response carries that "to", so these fixtures do too.
     """
 
     def test_parse_outdoor_temperature_success(self):
         """Test parsing returns the latest genuine reading."""
         client = MELCloudHomeClient()
         response = {
+            "to": "2026-02-03T12:30:00",
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.ROOM_TEMPERATURE",
@@ -36,7 +36,7 @@ class TestParseOutdoorTemp:
                         {"x": "2026-02-03T12:00:23", "y": 12.0},
                     ],
                 },
-            ]
+            ],
         }
 
         result = client._parse_outdoor_temp(response)
@@ -145,12 +145,13 @@ class TestParseOutdoorTemp:
         client = MELCloudHomeClient()
         response = [
             {
+                "to": "2026-04-12T20:30:00",
                 "datasets": [
                     {
                         "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
                         "data": [{"x": "2026-04-12T20:00:41", "y": 14.5}],
                     }
-                ]
+                ],
             }
         ]
 
@@ -173,8 +174,8 @@ class TestParseOutdoorTemp:
 async def test_get_outdoor_temperature_calls_api_correctly(mocker):
     """Test that get_outdoor_temperature queries Hourly with a 48h window.
 
-    The "to" timestamp must be truncated to whole seconds=0 so the server's
-    to-echo point is recognisable as synthetic by the parser.
+    The "to" timestamp is truncated to whole minutes, the only form whose
+    echo has been measured.
     """
     client = MELCloudHomeClient()
 
@@ -183,12 +184,13 @@ async def test_get_outdoor_temperature_calls_api_correctly(mocker):
         client,
         "_api_request",
         return_value={
+            "to": "2026-02-03T12:30:00",
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
                     "data": [{"x": "2026-02-03T12:00:23", "y": 12.0}],
                 }
-            ]
+            ],
         },
     )
 
@@ -261,12 +263,13 @@ async def test_get_atw_outdoor_temperature_calls_api_correctly(mocker):
         client,
         "_api_request",
         return_value={
+            "to": "2026-08-17T09:30:00",
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
                     "data": [{"x": "2026-08-17T09:00:23", "y": 16.0}],
                 }
-            ]
+            ],
         },
     )
 

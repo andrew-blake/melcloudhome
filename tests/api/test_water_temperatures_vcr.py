@@ -71,6 +71,6 @@ async def test_get_atw_water_temperatures(
     for dataset_id, reading in readings.items():
         assert 0.0 <= reading.value <= 90.0, f"{dataset_id}: {reading.value}"
         assert reading.recorded_at.tzinfo is not None, f"{dataset_id}: naive stamp"
-        assert reading.recorded_at.second != 0, (
-            f"{dataset_id}: seconds-aligned stamp means a synthetic point survived"
+        assert (reading.recorded_at.minute, reading.recorded_at.second) != (0, 0), (
+            f"{dataset_id}: an hour-aligned stamp means a synthetic point survived"
         )

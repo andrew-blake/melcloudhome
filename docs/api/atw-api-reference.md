@@ -678,7 +678,12 @@ including the 7-decimal timestamp format.
   window is too wide.
 - **The final datapoint is synthetic.** Every dataset ends with a point stamped with the query
   `to` and the previous value repeated (the "to-echo" artifact, issue #224). Strip it before
-  reading a latest value or freshness is reported as zero.
+  reading a latest value or freshness is reported as zero. The echo is in the unit's local time
+  (a request `to` of `06:00Z` came back as `08:00` on a Europe/Stockholm unit), and the
+  response's top-level `to` field carries the same stamp, so match against that.
+- **Seconds do not identify synthetic points.** Hourly repeats are stamped `HH:00:00`, but a
+  unit's 2-minute upload phase drifts, and one unit's genuine readings sat on `:00` seconds for
+  most of a day (issue #394, ADR-029).
 - `hidden` is a **presentation** default, not a capability signal. It is a hardcoded constant
   keyed on dataset id — identical for every device, with no per-unit input — and it is `true`
   for all four zone/boiler-suffixed series. It means "off by default in the vendor's chart",
@@ -703,7 +708,8 @@ including the 7-decimal timestamp format.
   omitted by the parser, and a placeholder value is dropped by the capability filter. Nothing
   should be built that depends on which one arrives.
 - **`set_tank_water_temperature` carried only synthetic points** in the 2026-08-23 recording — 31
-  points, every one seconds-aligned, so none of them is a unit reading. Another reason to take tank
+  points, every one seconds-aligned, which the seconds rule of the time read as no unit reading
+  at all (ADR-029 has since retired that rule). Another reason to take tank
   temperature and its setpoint from `/context` (Section 2) rather than from this report.
 - **On single-zone devices the zone-1 suffix carries the placeholder, not a reading.** Two
   single-zone units read a flat 25 on `flow_temperature_zone1` / `return_temperature_zone1`

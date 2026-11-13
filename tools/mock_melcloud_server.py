@@ -1325,7 +1325,8 @@ class MockMELCloudServer:
             datapoints_outdoor.append({"x": timestamp, "y": 12.0})
             current += timedelta(minutes=10)
 
-        # Synthetic to-echo point (server pads the chart to "now")
+        # Synthetic to-echo point (server pads the chart to "now"). Like the
+        # real API, the response's top-level "to" carries the same local stamp.
         echo = to_time.isoformat()
         datapoints_room.append({"x": echo, "y": 20.5})
         datapoints_set.append({"x": echo, "y": 21.0})
@@ -1382,7 +1383,9 @@ class MockMELCloudServer:
             )
 
         return web.Response(
-            text=json.dumps({"datasets": datasets, "annotations": []}),
+            text=json.dumps(
+                {"datasets": datasets, "annotations": [], "to": to_time.isoformat()}
+            ),
             content_type="text/plain",
             charset="utf-8",
         )
@@ -1420,7 +1423,9 @@ class MockMELCloudServer:
         ]
 
         return web.Response(
-            text=json.dumps({"datasets": datasets, "annotations": []}),
+            text=json.dumps(
+                {"datasets": datasets, "annotations": [], "to": to_time.isoformat()}
+            ),
             content_type="text/plain",
             charset="utf-8",
         )
@@ -1485,7 +1490,9 @@ class MockMELCloudServer:
 
         # Mobile API wraps the report in a list
         return web.Response(
-            text=json.dumps([{"datasets": datasets, "annotations": []}]),
+            text=json.dumps(
+                [{"datasets": datasets, "annotations": [], "to": to_time.isoformat()}]
+            ),
             content_type="text/plain",
             charset="utf-8",
         )

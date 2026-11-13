@@ -9,8 +9,11 @@ Reference: docs/api/atw-api-reference.md, ADR-023
 Run with: make test-api
 """
 
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from freezegun import freeze_time
@@ -24,19 +27,17 @@ def _dataset(dataset_id: str, points: list[dict[str, Any]]) -> dict[str, Any]:
     return {"id": dataset_id, "label": dataset_id.upper(), "data": points}
 
 
-def _report(*datasets: dict[str, Any]) -> list[dict[str, Any]]:
-    """A response in the mobile BFF's list-wrapped shape."""
-    return [{"datasets": list(datasets), "annotations": []}]
+def _report(
+    *datasets: dict[str, Any], to: str = "2026-08-22T14:30:00"
+) -> list[dict[str, Any]]:
+    """A response in the mobile BFF's list-wrapped shape, carrying its "to"."""
+    return [{"datasets": list(datasets), "annotations": [], "to": to}]
 
 
 @freeze_time("2026-08-22 14:30:00", real_asyncio=True)
 @pytest.mark.asyncio
 async def test_queries_hourly_over_an_8h_window(mocker) -> None:
-    """One request, period=Hourly, 8h window, seconds-aligned "to".
-
-    The seconds alignment is load-bearing: it is what makes the server's
-    to-echo point identifiable as synthetic.
-    """
+    """One request, period=Hourly, 8h window, whole-minute "to"."""
     client = MELCloudHomeClient()
     mock_request = mocker.patch.object(
         client,
@@ -131,9 +132,10 @@ async def test_parses_the_bare_dict_response_shape(mocker) -> None:
         client,
         "_api_request",
         return_value={
+            "to": "2026-08-22T14:30:00",
             "datasets": [
                 _dataset("flow_temperature", [{"x": "2026-08-22T14:12:16", "y": 45.2}])
-            ]
+            ],
         },
     )
 
@@ -239,3 +241,85 @@ async def test_newest_point_is_chosen_by_timestamp_not_position(mocker) -> None:
     assert result == {
         "flow_temperature": Reading(45.2, datetime(2026, 8, 22, 14, 12, 16, tzinfo=UTC))
     }
+
+
+_ISSUE_394 = json.loads(
+    (
+        Path(__file__).parent / "fixtures" / "issue394_internaltemperatures.json"
+    ).read_text()
+)
+
+
+@pytest.mark.asyncio
+async def test_genuine_readings_on_zero_seconds_are_kept(mocker) -> None:
+    """A unit whose upload phase drifted onto :00 seconds still updates (#394).
+
+    Trimmed from a real response: genuine 2-minute readings stamped
+    06:58:00, hourly repeats at 07:00:00 and the echo at 07:06:00. The old
+    seconds == 0 rule kept only the stragglers on :59 (06:53:59) and froze
+    flow for hours.
+    """
+    client = MELCloudHomeClient()
+    mocker.patch.object(client, "_api_request", return_value=_ISSUE_394)
+
+    result = await client.get_atw_water_temperatures("unit-1")
+
+    assert result["flow_temperature"] == Reading(
+        27.0, datetime(2026, 11, 13, 6, 58, 0, tzinfo=UTC)
+    )
+    assert result["return_temperature"] == Reading(
+        26.5, datetime(2026, 11, 13, 7, 3, 59, tzinfo=UTC)
+    )
+    assert client._parse_outdoor_temp(_ISSUE_394) == Reading(
+        0.0, datetime(2026, 11, 13, 6, 28, 0, tzinfo=UTC)
+    )
+
+
+@pytest.mark.asyncio
+async def test_echo_is_matched_in_the_units_local_time(mocker) -> None:
+    """The request's "to" is UTC; the echo comes back in unit-local time.
+
+    Measured on the VCR cassette: to=06:00Z was echoed as 08:00 on a
+    Europe/Stockholm unit. Matching the request's own "to" would publish the
+    echo as a fresh reading (the #224 failure), so the response's "to" is used.
+    """
+    client = MELCloudHomeClient()
+    mocker.patch.object(
+        client,
+        "_api_request",
+        return_value=_report(
+            _dataset(
+                "flow_temperature",
+                [
+                    {"x": "2026-08-22T16:12:16", "y": 45.2},
+                    {"x": "2026-08-22T16:30:00", "y": 45.2},  # echo
+                ],
+            ),
+            to="2026-08-22T16:30:00",
+        ),
+    )
+
+    result = await client.get_atw_water_temperatures(
+        "unit-1", ZoneInfo("Europe/Stockholm")
+    )
+
+    assert result == {
+        "flow_temperature": Reading(45.2, datetime(2026, 8, 22, 14, 12, 16, tzinfo=UTC))
+    }
+
+
+def test_without_a_response_to_the_final_point_is_the_echo() -> None:
+    """No top-level "to": treat the final point as the echo.
+
+    Every measured response carries "to". Without it, losing one genuine
+    point is cheaper than publishing an echo as a fresh reading.
+    """
+    client = MELCloudHomeClient()
+    data = [
+        {"x": "2026-08-22T14:12:16", "y": 45.2},
+        {"x": "2026-08-22T14:28:31", "y": 46.0},
+    ]
+
+    assert client._latest_genuine_reading(data) == Reading(
+        45.2, datetime(2026, 8, 22, 14, 12, 16, tzinfo=UTC)
+    )

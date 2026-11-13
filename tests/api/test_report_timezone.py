@@ -34,18 +34,18 @@ def test_report_params_declare_utc_explicitly(client):
 
 @freeze_time("2026-08-24 08:00:00")
 def test_report_params_still_truncate_seconds(client):
-    # The to-echo point is identified by second == 0, so `to` must stay
-    # seconds-aligned.
+    # Whole-minute `to` is the only form whose echo has been measured
+    # (ADR-029).
     params = client._report_params(UNIT, timedelta(hours=8))
     assert params["to"].endswith(":00.0000000Z")
 
 
 def test_latest_genuine_reading_converts_from_the_unit_timezone(client):
     data = [
-        {"x": "2026-08-24T09:00:00", "y": 17.5},  # synthetic: second == 0
+        {"x": "2026-08-24T09:00:00", "y": 17.5},  # synthetic: hourly repeat
         {"x": "2026-08-24T09:46:15", "y": 22.0},  # genuine
     ]
-    reading = client._latest_genuine_reading(data, STOCKHOLM)
+    reading = client._latest_genuine_reading(data, STOCKHOLM, "2026-08-24T10:00:00")
     assert reading is not None
     assert reading.value == 22.0
     assert reading.recorded_at == datetime(2026, 8, 24, 7, 46, 15, tzinfo=UTC)
@@ -53,7 +53,7 @@ def test_latest_genuine_reading_converts_from_the_unit_timezone(client):
 
 def test_latest_genuine_reading_defaults_to_utc(client):
     data = [{"x": "2026-08-24T09:46:15", "y": 22.0}]
-    reading = client._latest_genuine_reading(data)
+    reading = client._latest_genuine_reading(data, to="2026-08-24T10:00:00")
     assert reading is not None
     assert reading.recorded_at == datetime(2026, 8, 24, 9, 46, 15, tzinfo=UTC)
 
@@ -61,6 +61,7 @@ def test_latest_genuine_reading_defaults_to_utc(client):
 def test_parse_outdoor_temp_converts_from_the_unit_timezone(client):
     response = [
         {
+            "to": "2026-08-24T08:30:00",
             "datasets": [
                 {
                     "label": "REPORT.TREND_SUMMARY_REPORT.DATASET.LABELS.OUTDOOR_TEMPERATURE",
@@ -69,7 +70,7 @@ def test_parse_outdoor_temp_converts_from_the_unit_timezone(client):
                         {"x": "2026-08-24T08:21:14", "y": 15},  # genuine
                     ],
                 }
-            ]
+            ],
         }
     ]
     reading = client._parse_outdoor_temp(response, ZoneInfo("Europe/London"))
