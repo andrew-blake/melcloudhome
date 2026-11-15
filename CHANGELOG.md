@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2026-11-15
+
+### Fixed
+
+- Heat pump (ATW) flow and return temperatures could stop updating for hours while the heat pump was running. A heat pump sends its readings on a regular cycle, and when that cycle landed exactly on the minute, the integration mistook the readings for filler points that MELCloud adds to its charts and ignored them. Outdoor temperature on heat pumps and air conditioners uses the same check and gets the same fix. (thanks @Pipazoid, #394)
+
 ## [2.6.2] - 2026-11-01
 
 ### Fixed
