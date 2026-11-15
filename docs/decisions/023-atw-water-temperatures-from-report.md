@@ -3,6 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-08-22
 **Amends:** [ADR-014](014-atw-telemetry-sensors.md) (the endpoint those sensors read)
+**Amended by:** [ADR-029](029-synthetic-report-points-by-shape.md) (synthetic points are matched by shape; the `seconds == 0` rule below is superseded)
 **Decision Makers:** @andrew-blake
 
 ---

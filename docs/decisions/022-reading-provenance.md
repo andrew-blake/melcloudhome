@@ -129,7 +129,7 @@ faults invalidate the old evidence. That evidence was a `return_temperature`
 datapoint sitting 76 seconds inside a UTC-based query window.
 
 First, the datapoint it measured was `data[-1]`, which #224 later established is
-the server echoing the query's own `to` parameter back verbatim. Matching that
+the server echoing the query's own `to` parameter back. Matching that
 against the request clock tests the timezone of *our request*, not of the data —
 it would sit just inside the window whatever zone the unit was in.
 

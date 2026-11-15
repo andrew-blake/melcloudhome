@@ -349,15 +349,26 @@ class MELCloudHomeClient:
         )
 
     def _latest_genuine_reading(
-        self, data: list[dict[str, Any]], tz: tzinfo = UTC
+        self, data: list[dict[str, Any]], tz: tzinfo = UTC, to: Any = None
     ) -> Reading | None:
         """Return the newest genuine reading in one report dataset's points.
 
-        Report responses mix real unit readings with synthetic chart points -
-        bucket-aligned repeats and a final echo of the query's own "to". Genuine
-        readings carry the unit's upload time with arbitrary seconds, so points
-        with seconds == 0 are skipped (issue #224; callers send a seconds-aligned
-        "to" precisely so the echo is caught by this rule).
+        Report responses mix real unit readings with synthetic chart points:
+        hourly carry-forward repeats stamped HH:00:00, and a final echo of the
+        query's "to". Both are matched on the naive stamp as sent, in the unit's
+        own time. The echo is matched against `to`, the response's top-level
+        "to", which the server sends in that same local time; the request's own
+        "to" is UTC and matches only on a UTC+0 unit (ADR-029).
+
+        Seconds are not a signal. A unit's 2-minute upload phase drifts, and its
+        genuine readings can sit on :00 seconds for hours (#394), which the old
+        seconds == 0 rule (#224) threw away. The cost of the hour rule is a
+        genuine reading landing exactly on HH:00:00, at most one an hour.
+
+        A response without "to" has its final point treated as the echo: every
+        measured response carries "to", and publishing an echo as a fresh
+        reading is the #224 failure, so losing one genuine point is the cheaper
+        mistake.
 
         The newest reading is chosen by its own timestamp rather than by its
         position in the series. Responses arrive in ascending order, but
@@ -369,6 +380,13 @@ class MELCloudHomeClient:
         stayed in the lookback. Transport failures still raise from the caller,
         so a 500 stays distinguishable from "no reading" (issue #251).
         """
+        if to is None and data and isinstance(data[-1], dict):
+            to = data[-1].get("x")
+        try:
+            echo: datetime | None = datetime.fromisoformat(str(to)).replace(tzinfo=None)
+        except ValueError:
+            echo = None
+
         stamped: list[tuple[datetime, float]] = []
 
         for point in data:
@@ -377,9 +395,13 @@ class MELCloudHomeClient:
                 value = point.get("y")
                 if recorded_at is None or value is None:
                     continue
-                timestamp = parse_api_timestamp(str(recorded_at), tz)
-                if timestamp.second == 0:
+                local = datetime.fromisoformat(str(recorded_at))
+                if (
+                    local.minute == local.second == 0
+                    or local.replace(tzinfo=None) == echo
+                ):
                     continue  # Synthetic chart point, not a unit reading
+                timestamp = parse_api_timestamp(str(recorded_at), tz)
                 stamped.append((timestamp, float(value)))
             except (AttributeError, TypeError, ValueError, OverflowError):
                 # Log the whole point, not the offending field: repr escapes
@@ -408,9 +430,9 @@ class MELCloudHomeClient:
           }
         ]
 
-        The server appends synthetic chart points: bucket-aligned repeats and
-        an echo of the query's own "to". _latest_genuine_reading holds the rule
-        that separates those from real readings (issue #224).
+        The server appends synthetic chart points: hourly carry-forward
+        repeats and an echo of the query's "to". _latest_genuine_reading holds
+        the rule that separates those from real readings (ADR-029).
 
         Args:
             response: Trendsummary API response (list or dict)
@@ -427,10 +449,11 @@ class MELCloudHomeClient:
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
         datasets = report.get("datasets", []) if isinstance(report, dict) else []
+        to = report.get("to") if isinstance(report, dict) else None
         for dataset in datasets:
             label = dataset.get("label", "")
             if "OUTDOOR_TEMPERATURE" in label:
-                return self._latest_genuine_reading(dataset.get("data", []), tz)
+                return self._latest_genuine_reading(dataset.get("data", []), tz, to)
         return None  # No outdoor temp dataset found
 
     def _report_params(self, unit_id: str, lookback: timedelta) -> dict[str, str]:
@@ -438,8 +461,9 @@ class MELCloudHomeClient:
 
         period=Hourly is the only period whose points carry genuine reading
         timestamps; Daily returns 30-minute bucket labels (issue #152). "to" is
-        truncated to seconds=0 so the server's to-echo point is identifiable as
-        synthetic (see _latest_genuine_reading).
+        truncated to whole minutes, the only form whose echo has been measured;
+        the echo itself is matched against the response's own "to" (see
+        _latest_genuine_reading, ADR-029).
 
         The trailing "Z" is load-bearing. The server keeps each unit's points in
         the unit's OWN timezone and compares from/to against that local column.
@@ -476,9 +500,6 @@ class MELCloudHomeClient:
         Both query a /report/v1/ endpoint with period=Hourly and parse the
         same response shape via _parse_outdoor_temp - they differ only in
         endpoint, lookback window, and log wording.
-
-        "to" is truncated to seconds=0 so the server's to-echo point is
-        identifiable as synthetic (see _parse_outdoor_temp).
 
         Raises whatever _api_request/_parse_outdoor_temp raise - callers
         must handle failures. This is deliberate: a real error (e.g. a 500)
@@ -605,13 +626,14 @@ class MELCloudHomeClient:
         # Mobile BFF wraps the report in a list
         report = response[0] if isinstance(response, list) and response else response
         datasets = report.get("datasets", []) if isinstance(report, dict) else []
+        to = report.get("to") if isinstance(report, dict) else None
 
         readings: dict[str, Reading] = {}
         for dataset in datasets:
             dataset_id = dataset.get("id")
             if not dataset_id:
                 continue
-            reading = self._latest_genuine_reading(dataset.get("data", []), tz)
+            reading = self._latest_genuine_reading(dataset.get("data", []), tz, to)
             if reading is not None:
                 readings[dataset_id] = reading
         return readings
