@@ -37,7 +37,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
 
     _attr_has_entity_name = True  # Use device name + entity name pattern
     _attr_translation_key = "melcloudhome"  # For icon translations
-    _attr_temperature_unit = "°C"
+    _attr_native_temperature_unit = _attr_temperature_unit = "°C"
     _attr_max_temp = TEMP_MAX_HEAT
 
     def __init__(
@@ -110,10 +110,12 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         return self._action_determiner.determine_action(device)
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         device = self.get_device()
         return device.room_temperature if device else None
+
+    current_temperature = native_current_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
 
     @property
     def target_temperature_step(self) -> float:
@@ -129,10 +131,12 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         return 1.0  # Safe default
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the target temperature."""
         device = self.get_device()
         return device.set_temperature if device else None
+
+    target_temperature = native_target_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
 
     @property
     def fan_mode(self) -> str | None:

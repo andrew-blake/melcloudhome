@@ -49,7 +49,7 @@ class ATWClimateBase(
 
     _attr_has_entity_name = True
     _attr_translation_key = "melcloudhome"  # For preset mode translations
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_ZONE
     _attr_max_temp = ATW_TEMP_MAX_ZONE
 
@@ -94,12 +94,12 @@ class ATWClimateBase(
 
     @property
     @abstractmethod
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return current room temperature for this zone."""
 
     @property
     @abstractmethod
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return target temperature for this zone."""
 
     @abstractmethod
@@ -329,16 +329,20 @@ class ATWClimateZone1(ATWClimateBase):
         return device.operation_mode_zone1 if device else None
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return current Zone 1 room temperature."""
         device = self.get_device()
         return device.room_temperature_zone1 if device else None
 
+    current_temperature = native_current_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
+
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return target Zone 1 temperature."""
         device = self.get_device()
         return device.set_temperature_zone1 if device else None
+
+    target_temperature = native_target_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
 
     async def _async_set_zone_temperature(self, temperature: float) -> None:
         """Set Zone 1 temperature."""
@@ -387,16 +391,20 @@ class ATWClimateZone2(ATWClimateBase):
         return device.operation_mode_zone2 if device else None
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return current Zone 2 room temperature."""
         device = self.get_device()
         return device.room_temperature_zone2 if device else None
 
+    current_temperature = native_current_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
+
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return target Zone 2 temperature."""
         device = self.get_device()
         return device.set_temperature_zone2 if device else None
+
+    target_temperature = native_target_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
 
     async def _async_set_zone_temperature(self, temperature: float) -> None:
         """Set Zone 2 temperature."""
