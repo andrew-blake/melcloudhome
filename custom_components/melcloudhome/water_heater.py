@@ -67,7 +67,7 @@ class ATWWaterHeater(
     """
 
     _attr_has_entity_name = True  # Use device name + entity name pattern
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_DHW
     _attr_max_temp = ATW_TEMP_MAX_DHW
 
@@ -103,20 +103,24 @@ class ATWWaterHeater(
         self._attr_operation_list = [STATE_ECO, STATE_HIGH_DEMAND]
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return current DHW tank temperature."""
         device = self.get_device()
         if device is None:
             return None
         return device.tank_water_temperature
 
+    current_temperature = native_current_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
+
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return target DHW tank temperature."""
         device = self.get_device()
         if device is None:
             return None
         return device.set_tank_water_temperature
+
+    target_temperature = native_target_temperature  # ponytail: pre-2026.11 HA reads this; drop when hacs.json floor >= 2026.11
 
     @property
     def target_temperature_step(self) -> float:
