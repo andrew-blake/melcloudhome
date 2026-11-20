@@ -11,10 +11,13 @@ class HVACActionDeterminer:
     """Determines HVAC action from device state.
 
     Extracted from climate.py to reduce complexity and improve testability.
-    Uses hysteresis (±0.5°C) to avoid state flapping.
+    The API reports no heating/cooling state for ATA units, so the action is
+    inferred from room temperature against the setpoint.
     """
 
-    HYSTERESIS_THRESHOLD = 0.5  # °C
+    # Automatic only: the API doesn't say which way the unit is working, so a
+    # reading this close to the setpoint could be either; report idle.
+    AUTO_DEADBAND = 0.5  # °C
 
     def determine_action(
         self,
@@ -84,22 +87,19 @@ class HVACActionDeterminer:
         Returns:
             HVACAction based on mode and temperature difference
         """
-        threshold = self.HYSTERESIS_THRESHOLD
-
         if operation_mode == "Heat":
-            # Heating mode: if current is below target (with hysteresis), we're heating
-            if current < target - threshold:
+            # The unit heats until the reading reaches the setpoint (#404)
+            if current < target:
                 return HVACAction.HEATING
             return HVACAction.IDLE
 
         if operation_mode == "Cool":
-            # Cooling mode: if current is above target (with hysteresis), we're cooling
-            if current > target + threshold:
+            if current > target:
                 return HVACAction.COOLING
             return HVACAction.IDLE
 
         if operation_mode == "Automatic":
-            # Auto mode: infer based on which direction we need to go
+            threshold = self.AUTO_DEADBAND
             if current < target - threshold:
                 return HVACAction.HEATING
             if current > target + threshold:
