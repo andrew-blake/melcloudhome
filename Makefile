@@ -37,13 +37,14 @@ test-build:  ## Build test Docker images (run after changing pyproject.toml/uv.l
 test-ensure-images:
 	@docker image inspect melcloudhome-mock:latest >/dev/null 2>&1 || $(MAKE) test-build
 	@docker image inspect melcloudhome-test:latest >/dev/null 2>&1 || $(MAKE) test-build
+	@docker image inspect melcloudhome-test:py313 >/dev/null 2>&1 || $(MAKE) test-build
 
-test-integration: test-ensure-images  ## Integration tests only
+test-integration: test-ensure-images  ## Integration tests on the latest HA (Python 3.14)
 	@rm -f .coverage coverage.xml
 	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm integration-tests \
-		sh -c "uv pip install pytest-homeassistant-custom-component && \
-		       uv run pytest tests/integration/ -v \
+		sh -c "uv pip install -r requirements-test-latest-ha.txt && \
+		       uv run --no-sync pytest tests/integration/ -p no:respx -v \
 		         --cov=custom_components/melcloudhome \
 		         --cov-report=xml \
 		         --cov-report=html \
@@ -52,12 +53,13 @@ test-integration: test-ensure-images  ## Integration tests only
 
 # phcc 0.13.269 pins homeassistant==2025.8.0 — the hacs.json floor. pycares<5
 # because that HA's aiodns 3.5.0 breaks against pycares 5.x. Bump BOTH the pin
-# here and hacs.json together when raising the floor.
-test-integration-floor: test-ensure-images  ## Integration tests on the hacs.json HA floor
-	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
-	docker compose -f docker-compose.test.yml run --rm integration-tests \
+# here and hacs.json together when raising the floor. Python 3.13 image: this
+# phcc won't install on 3.14. --no-sync keeps HA's pins (plain uv run re-syncs
+# to uv.lock). No mock server: integration tests mock the client.
+test-integration-floor: test-ensure-images  ## Integration tests on the hacs.json HA floor (Python 3.13)
+	docker compose -f docker-compose.test.yml run --rm integration-tests-floor \
 		sh -c "uv pip install 'pytest-homeassistant-custom-component==0.13.269' 'pycares<5' && \
-		       uv run pytest tests/integration/ -q --no-cov"
+		       uv run --no-sync pytest tests/integration/ -q --no-cov"
 	docker compose -f docker-compose.test.yml down
 
 test-e2e: test-ensure-images  ## E2E tests only
