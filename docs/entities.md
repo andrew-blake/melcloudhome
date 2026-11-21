@@ -30,7 +30,7 @@ For each air conditioning unit, the following entities are created:
 
 - **Entity ID**: `climate.melcloudhome_{short_id}_climate`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
-- **HVAC Action**: Heating/cooling/idle, inferred from room temperature against the setpoint (the API reports no heating or cooling state)
+- **HVAC Action**: Heating/cooling/idle, inferred from room temperature against the setpoint (the API reports no heating or cooling state). A unit can keep heating at or above its setpoint, or cooling at or below it, and reads idle while it does.
 
 ### Fan Entity
 
