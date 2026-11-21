@@ -134,12 +134,12 @@ Beta releases let users opt in to pre-release testing by picking a pre-release v
 
 **This is the part that trips people up.** Look at past releases for the pattern:
 
-| Artifact | Value |
-|---|---|
-| `manifest.json` version | `"2.3.1"` (base version, **no suffix**) |
-| `CHANGELOG.md` heading | `## [2.3.1] - YYYY-MM-DD` (base version, **no suffix**) |
-| `README.md` "What's New" | `## What's New in v2.3.1` (base version) |
-| Git tag | `v2.3.1-beta.1` (**beta suffix lives only on the tag**) |
+| Artifact                 | Value                                                   |
+| ------------------------ | ------------------------------------------------------- |
+| `manifest.json` version  | `"2.3.1"` (base version, **no suffix**)                 |
+| `CHANGELOG.md` heading   | `## [2.3.1] - YYYY-MM-DD` (base version, **no suffix**) |
+| `README.md` "What's New" | `## What's New in v2.3.1` (base version)                |
+| Git tag                  | `v2.3.1-beta.1` (**beta suffix lives only on the tag**) |
 
 The release workflow strips the suffix from the tag (`sed 's/-.*//'`) to get `BASE_VERSION=2.3.1`, then validates manifest/README/CHANGELOG against that base. If you put `-beta.1` in the CHANGELOG heading, the workflow grep for `[2.3.1]` will fail.
 
