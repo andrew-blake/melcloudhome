@@ -62,10 +62,10 @@ When you push a tag (e.g., `v1.3.4` or `v1.3.4-beta.1`), GitHub Actions automati
 2. **Tests** - Runs the full test suite (format, lint, type-check, API tests, HA integration tests)
 3. **Extracts release notes** - Parses CHANGELOG.md to extract notes for this version
 4. **Detects pre-release** - Tags with `-alpha.N` / `-beta.N` / `-rc.N` are marked as pre-release
-5. **Creates GitHub release** - Publishes release with extracted notes
+5. **Creates GitHub release** - Publishes the release with the tag as its title (without one, Home Assistant's update dialog shows "None") and the extracted notes
 6. **Fails if** - Version mismatch (manifest/README/CHANGELOG), missing CHANGELOG entry, or any test failures
 
-The release appears at <https://github.com/andrew-blake/melcloudhome/releases>. Pre-releases are only visible to HACS users who have enabled the "Show beta versions" switch.
+The release appears at <https://github.com/andrew-blake/melcloudhome/releases>.
 
 ---
 
@@ -111,7 +111,7 @@ Config entry version bumps, schema migrations, or other changes that are transpa
 
 ## Beta Release Process
 
-Beta releases let HACS users opt in to pre-release testing via the "Show beta versions" switch.
+Beta releases let users opt in to pre-release testing by picking a pre-release version: **Install another version** in Marketplace (Home Assistant 2026.11 and later) or **Need a different version?** in HACS (2026.10 and earlier).
 
 ### When to Use Beta Releases
 
@@ -134,12 +134,12 @@ Beta releases let HACS users opt in to pre-release testing via the "Show beta ve
 
 **This is the part that trips people up.** Look at past releases for the pattern:
 
-| Artifact | Value |
-|---|---|
-| `manifest.json` version | `"2.3.1"` (base version, **no suffix**) |
-| `CHANGELOG.md` heading | `## [2.3.1] - YYYY-MM-DD` (base version, **no suffix**) |
-| `README.md` "What's New" | `## What's New in v2.3.1` (base version) |
-| Git tag | `v2.3.1-beta.1` (**beta suffix lives only on the tag**) |
+| Artifact                 | Value                                                   |
+| ------------------------ | ------------------------------------------------------- |
+| `manifest.json` version  | `"2.3.1"` (base version, **no suffix**)                 |
+| `CHANGELOG.md` heading   | `## [2.3.1] - YYYY-MM-DD` (base version, **no suffix**) |
+| `README.md` "What's New" | `## What's New in v2.3.1` (base version)                |
+| Git tag                  | `v2.3.1-beta.1` (**beta suffix lives only on the tag**) |
 
 The release workflow strips the suffix from the tag (`sed 's/-.*//'`) to get `BASE_VERSION=2.3.1`, then validates manifest/README/CHANGELOG against that base. If you put `-beta.1` in the CHANGELOG heading, the workflow grep for `[2.3.1]` will fail.
 
@@ -246,6 +246,15 @@ Discussions don't have a `gh` CLI command; use the GraphQL API. Repository/categ
 
 ## Upgrade
 
+**Home Assistant 2026.11 and later (Marketplace):**
+
+1. Open Settings → Marketplace → **Installed** → MELCloud Home
+2. Click the three-dot menu (top right) → **Install another version**
+3. Select **v2.3.1** and click **Update**
+4. Restart Home Assistant: in Settings, click the **Restart required for MELCloud Home** repair, then **Restart**
+
+**Home Assistant 2026.10 and earlier (HACS):**
+
 1. Open HACS → Integrations → MELCloud Home
 2. Click the three-dot menu (top right) → **Redownload**
 3. Click **Download**
@@ -268,7 +277,7 @@ For a beta that fixes a specific reported issue, post a comment on that issue po
 
 - **Don't claim "resolved"** — users on stable are still affected until stable graduation
 - **Don't use internal terminology** — describe the change in user terms (e.g. "mobile app API" not "BFF")
-- **Include HACS install steps inline** — most users don't know how to install a specific beta version
+- **Include Marketplace and HACS install steps inline** — most users don't know how to install a specific beta version
 - **Acknowledge that waiting for stable is valid** — some users won't want to run a beta
 
 **Template:**
@@ -277,9 +286,18 @@ For a beta that fixes a specific reported issue, post a comment on that issue po
 **Update: fix available in v2.3.1-beta.1**
 
 [One sentence describing the fix in user-facing terms].
-This is available now as a beta release via HACS.
+This is available now as a beta release.
 
-If you're comfortable running a beta, upgrade via HACS — no reconfiguration needed, your existing setup will migrate automatically on restart.
+If you're comfortable running a beta, upgrade as below. No reconfiguration is needed: your existing setup migrates automatically on restart.
+
+**Home Assistant 2026.11 and later (Marketplace):**
+
+1. Open Settings → Marketplace → **Installed** → MELCloud Home
+2. Click the three-dot menu (top right) → **Install another version**
+3. Select **v2.3.1-beta.1** (marked Pre-release) and click **Update**
+4. Restart Home Assistant: in Settings, click the **Restart required for MELCloud Home** repair, then **Restart**
+
+**Home Assistant 2026.10 and earlier (HACS):**
 
 1. Open HACS → Integrations → MELCloud Home
 2. Click the three-dot menu (top right) → **Redownload**

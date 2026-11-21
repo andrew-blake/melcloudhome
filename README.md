@@ -10,9 +10,11 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.6.3
+## What's New in v2.6.4
 
-**Heat pump flow and return temperatures keep updating.** On some heat pumps, the flow and return temperature sensors could stop updating for hours while the heat pump was running. The timing of a heat pump's readings can drift through the day. While the readings landed exactly on the minute, the integration mistook them for filler points that MELCloud adds to its charts and ignored them. Outdoor temperature on heat pumps and air conditioners uses the same check and gets the same fix. Reported and tested by Pipazoid in [#394](https://github.com/andrew-blake/melcloudhome/issues/394).
+**Ready for Home Assistant 2026.11.** Home Assistant 2026.11 logs deprecation warnings at startup from the air conditioner, heat pump and hot water tank entities, and says support for the way they report temperatures ends in 2027.11. This release updates them, so the warnings stop. Reported by puppycod in [#400](https://github.com/andrew-blake/melcloudhome/issues/400).
+
+**Air conditioners show heating or cooling until the room reaches the setpoint.** In Heat or Cool, an air conditioner showed its action as idle for the last 0.5 °C before the setpoint, while the unit was still working ([#404](https://github.com/andrew-blake/melcloudhome/issues/404)).
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 
@@ -70,11 +72,14 @@ For tested controller models and capability details, see [SUPPORTED_DEVICES.md](
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace or HACS (Recommended)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrew-blake&repository=melcloudhome&category=integration)
 
-Or manually: open HACS, search for "MELCloud Home", click "Download", and restart Home Assistant.
+Or manually:
+
+- **Home Assistant 2026.11 and later:** open Settings → Marketplace → **Browse**, search for "MELCloud Home", click **Install**, then **Set up**.
+- **Home Assistant 2026.10 and earlier:** open HACS, search for "MELCloud Home", click **Download**, and restart Home Assistant.
 
 ### Manual Installation
 

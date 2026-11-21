@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.4] - 2026-11-21
+
+### Fixed
+
+- Home Assistant 2026.11 logged deprecation warnings from the air conditioner, heat pump and hot water tank entities at startup, because Home Assistant ends support for the way these entities reported temperatures in 2027.11. The entities now report temperatures the way Home Assistant 2026.11 expects, so the warnings stop. (thanks @puppycod, #400)
+- An air conditioner in Heat showed its action as idle once the room temperature was within 0.5 °C below the setpoint, while the unit was still heating. Cool did the same within 0.5 °C above the setpoint. The action now shows heating or cooling until the room temperature reaches the setpoint, and history and automations count that time as heating or cooling. Auto mode is unchanged. The integration works out the action from the room temperature and the setpoint, so a unit that keeps heating at or above its setpoint, or cooling at or below it, shows idle while it does. (#404)
+
 ## [2.6.3] - 2026-11-15
 
 ### Fixed
