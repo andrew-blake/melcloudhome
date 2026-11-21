@@ -98,8 +98,8 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
     def hvac_action(self) -> HVACAction | None:
         """Return the current HVAC action (what device is actually doing).
 
-        This is inferred from the operation mode and temperature difference.
-        Uses hysteresis (±0.5°C) to avoid state flapping.
+        This is inferred from the operation mode and temperature difference;
+        see HVACActionDeterminer.
 
         Note: This is polling-based with 60s updates, so may not reflect
         real-time device behavior.

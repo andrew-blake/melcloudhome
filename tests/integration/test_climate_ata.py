@@ -279,6 +279,52 @@ async def test_hvac_action_cooling_when_temp_above_target(hass: HomeAssistant) -
     assert state.attributes["hvac_action"] == HVACAction.COOLING
 
 
+@pytest.mark.parametrize(
+    ("operation_mode", "room_temperature", "expected"),
+    [
+        ("Heat", 17.5, HVACAction.HEATING),
+        ("Cool", 18.5, HVACAction.COOLING),
+    ],
+)
+@pytest.mark.asyncio
+async def test_hvac_action_working_within_half_degree_of_target(
+    hass: HomeAssistant,
+    operation_mode: str,
+    room_temperature: float,
+    expected: HVACAction,
+) -> None:
+    """Heat and Cool keep working until the reading reaches the setpoint (#404)."""
+    mock_unit = create_mock_ata_unit(
+        operation_mode=operation_mode,
+        set_temperature=18.0,
+        room_temperature=room_temperature,
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[mock_unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get(_CLIMATE_ENTITY)
+    assert state is not None
+    assert state.attributes["hvac_action"] == expected
+
+
+@pytest.mark.asyncio
+async def test_hvac_action_auto_idle_within_deadband(hass: HomeAssistant) -> None:
+    """Automatic keeps its deadband: the API doesn't say which way it is working."""
+    mock_unit = create_mock_ata_unit(
+        operation_mode="Automatic", set_temperature=18.0, room_temperature=18.5
+    )
+    mock_context = create_mock_ata_user_context(
+        [create_mock_ata_building(units=[mock_unit])]
+    )
+    await setup_ata_integration_custom(hass, mock_context)
+
+    state = hass.states.get(_CLIMATE_ENTITY)
+    assert state is not None
+    assert state.attributes["hvac_action"] == HVACAction.IDLE
+
+
 @pytest.mark.asyncio
 async def test_device_unavailable_when_in_error_state(hass: HomeAssistant) -> None:
     """Test that device shows as unavailable when in error state."""

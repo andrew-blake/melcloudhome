@@ -30,7 +30,7 @@ For each air conditioning unit, the following entities are created:
 
 - **Entity ID**: `climate.melcloudhome_{short_id}_climate`
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
-- **HVAC Action**: Real-time heating/cooling/idle status
+- **HVAC Action**: Heating/cooling/idle, inferred from room temperature against the setpoint (the API reports no heating or cooling state). A unit can keep heating at or above its setpoint, or cooling at or below it, and reads idle while it does.
 
 ### Fan Entity
 
@@ -225,11 +225,11 @@ previous value, so `last_reading` is how you tell a fresh reading from an hours-
 
 Reading it together with the value tells you which of three things is happening:
 
-| `last_reading` | value | meaning |
-|---|---|---|
-| advancing | unchanging | the reading itself is steady — a settled circuit, or MELCloud's constant 25 °C where the hardware is absent |
-| stale | unchanging | the fetch is failing; the value you see is old |
-| advancing | moving | healthy |
+| `last_reading` | value      | meaning                                                                                                     |
+| -------------- | ---------- | ----------------------------------------------------------------------------------------------------------- |
+| advancing      | unchanging | the reading itself is steady — a settled circuit, or MELCloud's constant 25 °C where the hardware is absent |
+| stale          | unchanging | the fetch is failing; the value you see is old                                                              |
+| advancing      | moving     | healthy                                                                                                     |
 
 Because the attribute changes on every poll that brings a newer reading, these sensors
 register a state change each time — even when the value is identical. Automations that trigger
@@ -271,6 +271,7 @@ to be created for every heat pump, where they read a constant 25 °C on devices 
   - Update frequency: Every 30 minutes
 
 **Availability:**
+
 - **Energy Consumed sensor:** Created when device has `hasEstimatedEnergyConsumption=true` OR `hasMeasuredEnergyConsumption=true`
 - **Energy Produced sensor:** Created when device has `hasEstimatedEnergyProduction=true` OR `hasMeasuredEnergyProduction=true`
 - **Note:** Sensors are created independently. A device may have only one sensor if it has only one capability flag.
