@@ -72,11 +72,14 @@ For tested controller models and capability details, see [SUPPORTED_DEVICES.md](
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace or HACS (Recommended)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=andrew-blake&repository=melcloudhome&category=integration)
 
-Or manually: open HACS, search for "MELCloud Home", click "Download", and restart Home Assistant.
+Or manually:
+
+- **Home Assistant 2026.11 and later:** open Settings → Marketplace → **Browse**, search for "MELCloud Home", click **Install**, then **Set up**.
+- **Home Assistant 2026.10 and earlier:** open HACS, search for "MELCloud Home", click **Download**, and restart Home Assistant.
 
 ### Manual Installation
 
