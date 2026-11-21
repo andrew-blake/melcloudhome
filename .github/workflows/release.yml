@@ -170,9 +170,9 @@ jobs:
       - name: Create GitHub Release
         run: |
           if [ "${NEEDS_VALIDATE_OUTPUTS_PRERELEASE}" == "true" ]; then
-            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt --prerelease
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release_notes.txt --prerelease
           else
-            gh release create "${GITHUB_REF_NAME}" --notes-file release_notes.txt
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes-file release_notes.txt
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
