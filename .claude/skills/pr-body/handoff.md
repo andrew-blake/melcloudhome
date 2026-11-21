@@ -127,10 +127,10 @@ for.
 `Testing` and the disclosure boxes are exempt: their length tracks what was
 verified. Report the word count before and after the cut.
 
-A sentence you add or rewrite after the hand-back gets the writer's rules in
-full: check it against the common-mistakes table and re-run `prose_check.py`.
-Your edits carry the context the writer was kept from, so they are where
-narrative and unchecked claims come back in.
+A sentence you keep, add or rewrite after the hand-back gets the writer's rules
+in full: check it against the common-mistakes table and re-run
+`prose_check.py`. Your edits carry the context the writer was kept from, so they
+are where narrative and unchecked claims come back in.
 
 ## Write it to a file
 
