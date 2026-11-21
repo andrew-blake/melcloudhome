@@ -19,6 +19,7 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
@@ -31,7 +32,9 @@ async def test_atw_climate_zone1_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state is not None
     assert state.state == HVACMode.HEAT
     assert state.attributes["current_temperature"] == 20.0
@@ -50,7 +53,10 @@ async def test_atw_set_temperature_zone1(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_temperature",
-        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 22.5},
+        {
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+            "temperature": 22.5,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -73,7 +79,10 @@ async def test_atw_hvac_mode_heat_powers_up_system(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_hvac_mode",
-        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "hvac_mode": HVACMode.HEAT},
+        {
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+            "hvac_mode": HVACMode.HEAT,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -98,7 +107,9 @@ async def test_atw_preset_mode_reflects_zone_operation_mode(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state.attributes["preset_mode"] == "room"
 
 
@@ -118,7 +129,12 @@ async def test_atw_set_preset_mode_room_to_flow(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_preset_mode",
-        {"entity_id": "climate.melcloudhome_0efc_9abc_zone_1", "preset_mode": "flow"},
+        {
+            "entity_id": entity_id_for(
+                hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1")
+            ),
+            "preset_mode": "flow",
+        },
         blocking=True,
     )
 
@@ -139,7 +155,12 @@ async def test_atw_set_preset_mode_flow_to_curve(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_preset_mode",
-        {"entity_id": "climate.melcloudhome_0efc_9abc_zone_1", "preset_mode": "curve"},
+        {
+            "entity_id": entity_id_for(
+                hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1")
+            ),
+            "preset_mode": "curve",
+        },
         blocking=True,
     )
 
@@ -159,7 +180,9 @@ async def test_atw_hvac_action_idle_when_valve_on_dhw(hass: HomeAssistant) -> No
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state.attributes["hvac_action"] == HVACAction.IDLE
 
 
@@ -180,7 +203,9 @@ async def test_atw_hvac_action_heating_when_valve_on_zone1_and_below_target(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state.attributes["hvac_action"] == HVACAction.HEATING
 
 
@@ -197,7 +222,9 @@ async def test_atw_extra_state_attributes_include_valve_status(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state.attributes["operation_status"] == "Heating"
     assert "forced_dhw_active" in state.attributes
     assert "zone_heating_available" in state.attributes
@@ -214,7 +241,12 @@ async def test_atw_climate_unavailable_when_device_in_error(
     await setup_atw_integration_custom(hass, mock_context)
 
     assert (
-        hass.states.get("climate.melcloudhome_0efc_9abc_zone_1").state == "unavailable"
+        hass.states.get(
+            entity_id_for(
+                hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1")
+            )
+        ).state
+        == "unavailable"
     )
 
 
@@ -228,7 +260,9 @@ async def test_atw_climate_zone_naming_includes_zone_1_suffix(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("climate.melcloudhome_0efc_9abc_zone_1")
+    state = hass.states.get(
+        entity_id_for(hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1"))
+    )
     assert state is not None
     assert "_zone_1" in state.entity_id
 
@@ -242,7 +276,12 @@ async def test_atw_climate_off_when_power_false(hass: HomeAssistant) -> None:
     await setup_atw_integration_custom(hass, mock_context)
 
     assert (
-        hass.states.get("climate.melcloudhome_0efc_9abc_zone_1").state == HVACMode.OFF
+        hass.states.get(
+            entity_id_for(
+                hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1")
+            )
+        ).state
+        == HVACMode.OFF
     )
 
 
@@ -261,7 +300,7 @@ async def test_atw_cooling_hvac_mode_available_when_capability_enabled(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID))
     assert HVACMode.COOL in state.attributes["hvac_modes"]
     assert HVACMode.HEAT in state.attributes["hvac_modes"]
     assert HVACMode.OFF in state.attributes["hvac_modes"]
@@ -277,7 +316,7 @@ async def test_atw_cooling_hvac_mode_unavailable_without_capability(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID))
     assert HVACMode.COOL not in state.attributes["hvac_modes"]
     assert HVACMode.HEAT in state.attributes["hvac_modes"]
 
@@ -295,7 +334,7 @@ async def test_atw_cooling_mode_detected_from_operation_mode(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID))
     assert state.state == HVACMode.COOL
     assert state.attributes["preset_mode"] == "room"
 
@@ -313,7 +352,7 @@ async def test_atw_cooling_preset_modes_only_room_and_flow(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID))
     preset_modes = state.attributes["preset_modes"]
     assert "room" in preset_modes
     assert "flow" in preset_modes
@@ -332,7 +371,7 @@ async def test_atw_heating_preset_modes_all_three(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID))
     preset_modes = state.attributes["preset_modes"]
     assert "room" in preset_modes
     assert "flow" in preset_modes
@@ -354,7 +393,9 @@ async def test_atw_cooling_temperature_step_always_one_degree(
     await setup_atw_integration_custom(hass, mock_context)
 
     assert (
-        hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID).attributes["target_temp_step"]
+        hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID)).attributes[
+            "target_temp_step"
+        ]
         == 1.0
     )
 
@@ -374,7 +415,10 @@ async def test_atw_set_preset_mode_in_cooling(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_preset_mode",
-        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "preset_mode": "flow"},
+        {
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+            "preset_mode": "flow",
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -402,7 +446,10 @@ async def test_atw_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_hvac_mode",
-        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "hvac_mode": HVACMode.COOL},
+        {
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+            "hvac_mode": HVACMode.COOL,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -433,7 +480,10 @@ async def test_a_zone1_setpoint_matching_current_state_is_still_sent(
         await hass.services.async_call(
             "climate",
             "set_temperature",
-            {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 21.0},
+            {
+                "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+                "temperature": 21.0,
+            },
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -460,12 +510,18 @@ async def test_zone1_entity_shows_a_written_setpoint_before_the_next_refresh(
     await hass.services.async_call(
         "climate",
         "set_temperature",
-        {"entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID, "temperature": 22.5},
+        {
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
+            "temperature": 22.5,
+        },
         blocking=True,
     )
 
     assert (
-        hass.states.get(TEST_CLIMATE_ZONE1_ENTITY_ID).attributes["temperature"] == 22.5
+        hass.states.get(entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID)).attributes[
+            "temperature"
+        ]
+        == 22.5
     )
 
 
@@ -486,7 +542,7 @@ async def test_atw_set_temperature_acts_on_the_mode_it_is_given(
         "climate",
         "set_temperature",
         {
-            "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+            "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
             "temperature": 21,
             "hvac_mode": HVACMode.HEAT,
         },
@@ -518,7 +574,7 @@ async def test_atw_set_temperature_rejects_a_mode_the_unit_does_not_support(
             "climate",
             "set_temperature",
             {
-                "entity_id": TEST_CLIMATE_ZONE1_ENTITY_ID,
+                "entity_id": entity_id_for(hass, TEST_CLIMATE_ZONE1_ENTITY_ID),
                 "temperature": 21,
                 "hvac_mode": HVACMode.DRY,
             },

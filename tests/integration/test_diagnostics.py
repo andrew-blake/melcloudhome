@@ -20,10 +20,6 @@ from homeassistant.helpers import (
     entity_registry as er,
 )
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
-    async_fire_time_changed,
-)
 
 from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
@@ -33,16 +29,22 @@ from custom_components.melcloudhome.diagnostics import (
 
 from .conftest import (
     MOCK_CLIENT_PATH,
+    TEST_ATA_UNIT_ID,
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_ata_integration_custom,
     setup_atw_integration_custom,
     wire_connected_ws,
     ws_text_frame,
+)
+from .ha_testing import (
+    MockConfigEntry,
+    async_fire_time_changed,
 )
 
 
@@ -144,14 +146,17 @@ async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
     assert "entities" in diagnostics
     entities = diagnostics["entities"]
 
-    climate_entity_id = "climate.melcloudhome_a1b2_9abc_climate"
-    assert climate_entity_id in entities
-    assert entities[climate_entity_id]["state"] == "heat"
-    assert "attributes" in entities[climate_entity_id]
+    climate = _diagnostics_entry(
+        entities, entity_id_for(hass, ("climate", TEST_ATA_UNIT_ID))
+    )
+    assert climate["state"] == "heat"
+    assert "attributes" in climate
 
-    temp_sensor_id = "sensor.melcloudhome_a1b2_9abc_room_temperature"
-    assert temp_sensor_id in entities
-    assert entities[temp_sensor_id]["state"] == "20.0"
+    temp_sensor = _diagnostics_entry(
+        entities,
+        entity_id_for(hass, ("sensor", f"{TEST_ATA_UNIT_ID}_room_temperature")),
+    )
+    assert temp_sensor["state"] == "20.0"
 
 
 @pytest.mark.asyncio
@@ -293,6 +298,41 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
     assert atw_unit["outdoor_temp_last_error_at"] is not None
 
 
+def _diagnostics_entry(entities: dict, entity_id: str) -> dict:
+    """The diagnostics entry for `entity_id`, under its key as dumped.
+
+    Diagnostics redacts anything before the "melcloudhome_" marker, and from
+    HA 2026.6 every generated ID has the device's area there, so the key is
+    matched on the domain and the part from the marker on.
+    """
+    domain, object_id = entity_id.split(".", 1)
+    tail = object_id[object_id.index("melcloudhome_") :]
+    matches = [
+        key
+        for key in entities
+        if (key.startswith(f"{domain}.") and key.endswith(f"_{tail}"))
+        or key == entity_id
+    ]
+    assert len(matches) == 1, f"{entity_id}: diagnostics keys {matches}"
+    entry: dict = entities[matches[0]]
+    return entry
+
+
+def _device(hass: HomeAssistant, entry, unit_id: str) -> dr.DeviceEntry:
+    """The entry's device for `unit_id`.
+
+    dr.async_get_device is deprecated from HA 2026.11; this lookup exists
+    unchanged from the 2025.8 floor on.
+    """
+    devices = [
+        d
+        for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if (DOMAIN, unit_id) in d.identifiers
+    ]
+    assert len(devices) == 1
+    return devices[0]
+
+
 def _assert_leak_redacted(
     entities: dict, leaked_entity_id: str, raw_substring: str
 ) -> None:
@@ -343,9 +383,7 @@ async def test_diagnostics_redacts_device_name_from_entity_id_key(
     )
     entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
-    device_reg = dr.async_get(hass)
-    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
-    assert device is not None
+    device = _device(hass, entry, unit_id)
     assert device.name_by_user == "Test Cottage Bathroom"
 
     leaked = await _register_leaked_entity(
@@ -377,15 +415,14 @@ async def test_diagnostics_redacts_area_name_from_entity_id_key(
     entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
     device_reg = dr.async_get(hass)
-    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
-    assert device is not None
+    device = _device(hass, entry, unit_id)
     assert device.name_by_user == "Test Building Bathroom"
 
     area_reg = ar.async_get(hass)
     area = area_reg.async_get_or_create("Test Building")
     device_reg.async_update_device(device.id, area_id=area.id)
-    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
-    assert device is not None and device.area_id == area.id
+    device = _device(hass, entry, unit_id)
+    assert device.area_id == area.id
 
     leaked = await _register_leaked_entity(
         hass, entry, unit_id, device.id, "test_building"
@@ -414,13 +451,12 @@ async def test_diagnostics_redacts_unknown_mechanism_leak(hass: HomeAssistant) -
     entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
     device_reg = dr.async_get(hass)
-    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
-    assert device is not None
+    device = _device(hass, entry, unit_id)
     # Clear name_by_user and any auto-suggested area - neither known
     # mechanism is in play here, only the arbitrary leaked prefix below.
     device_reg.async_update_device(device.id, name_by_user=None, area_id=None)
-    device = device_reg.async_get_device(identifiers={(DOMAIN, unit_id)})
-    assert device is not None and not device.name_by_user and not device.area_id
+    device = _device(hass, entry, unit_id)
+    assert not device.name_by_user and not device.area_id
 
     leaked = await _register_leaked_entity(
         hass, entry, unit_id, device.id, "some_ancient_naming_scheme"
@@ -436,16 +472,22 @@ async def test_diagnostics_redacts_unknown_mechanism_leak(hass: HomeAssistant) -
 async def test_diagnostics_single_device_type_entity_ids_unaffected(
     hass: HomeAssistant,
 ) -> None:
-    """Single-device accounts have no name prefix to redact - must be a no-op."""
+    """An ID with nothing before "melcloudhome_" is dumped unchanged; any
+    other is redacted. Which case a run sees depends on the HA version: from
+    2026.6 every generated ID carries the device's area before the marker."""
     mock_context = create_mock_ata_user_context()
     entry, _ = await setup_ata_integration_custom(hass, mock_context)
 
     diagnostics = await async_get_config_entry_diagnostics(hass, entry)
     entities = diagnostics["entities"]
 
-    assert "climate.melcloudhome_a1b2_9abc_climate" in entities
-    assert "sensor.melcloudhome_a1b2_9abc_room_temperature" in entities
-    assert not any("redacted_device_" in key for key in entities)
+    registered = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+    with_marker = [e.entity_id for e in registered if "melcloudhome_" in e.entity_id]
+    assert with_marker
+    for entity_id in with_marker:
+        unprefixed = entity_id.split(".", 1)[1].startswith("melcloudhome_")
+        assert (entity_id in entities) is unprefixed, entity_id
+        _diagnostics_entry(entities, entity_id)
 
 
 @pytest.mark.asyncio

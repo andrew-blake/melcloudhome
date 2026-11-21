@@ -20,6 +20,8 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_ata_integration_custom,
 )
 
@@ -59,13 +61,22 @@ async def test_sensor_entity_creation(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
+        temp_state = hass.states.get(
+            entity_id_for(
+                hass,
+                ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature"),
+            )
+        )
         assert temp_state is not None
         assert float(temp_state.state) == 20.0
         assert temp_state.attributes["unit_of_measurement"] == "°C"
         assert temp_state.attributes["device_class"] == "temperature"
 
-        wifi_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_wifi_signal")
+        wifi_state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_wifi_signal")
+            )
+        )
         assert wifi_state is not None
         assert wifi_state.attributes["unit_of_measurement"] == "dBm"
         assert wifi_state.attributes["device_class"] == "signal_strength"
@@ -75,7 +86,11 @@ async def test_sensor_entity_creation(hass: HomeAssistant) -> None:
         assert temp_state.attributes["friendly_name"].endswith("Room temperature")
         assert wifi_state.attributes["friendly_name"].endswith("WiFi signal")
 
-        energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        energy_state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert energy_state is not None
         assert float(energy_state.state) == 0.0  # First init starts at 0
         assert energy_state.attributes["unit_of_measurement"] == "kWh"
@@ -112,19 +127,37 @@ async def test_energy_sensor_conditional_creation(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        energy_state_1 = hass.states.get("sensor.melcloudhome_aaaa_9999_energy")
+        energy_state_1 = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "aaaa1234-5678-9abc-def0-123456789999_energy")
+            )
+        )
         assert energy_state_1 is not None
         assert float(energy_state_1.state) == 0.0
 
-        energy_state_2 = hass.states.get("sensor.melcloudhome_bbbb_8888_energy")
-        assert energy_state_2 is None
+        assert (
+            find_entity_id(
+                hass, ("sensor", "bbbb1234-5678-9abc-def0-123456788888_energy")
+            )
+            is None
+        )
 
         assert (
-            hass.states.get("sensor.melcloudhome_aaaa_9999_room_temperature")
+            hass.states.get(
+                entity_id_for(
+                    hass,
+                    ("sensor", "aaaa1234-5678-9abc-def0-123456789999_room_temperature"),
+                )
+            )
             is not None
         )
         assert (
-            hass.states.get("sensor.melcloudhome_bbbb_8888_room_temperature")
+            hass.states.get(
+                entity_id_for(
+                    hass,
+                    ("sensor", "bbbb1234-5678-9abc-def0-123456788888_room_temperature"),
+                )
+            )
             is not None
         )
 
@@ -150,7 +183,11 @@ async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
         hass, initial_context, configure_client=configure
     )
 
-    temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
+    temp_state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature")
+        )
+    )
     assert float(temp_state.state) == 20.0
 
     from custom_components.melcloudhome.const import DOMAIN
@@ -159,7 +196,14 @@ async def test_sensor_state_updates_on_refresh(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert (
-        float(hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature").state)
+        float(
+            hass.states.get(
+                entity_id_for(
+                    hass,
+                    ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature"),
+                )
+            ).state
+        )
         == 22.0
     )
 
@@ -185,11 +229,20 @@ async def test_energy_sensor_availability(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        energy_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        energy_state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert energy_state is not None
         assert energy_state.state == "unknown"
 
-        temp_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_room_temperature")
+        temp_state = hass.states.get(
+            entity_id_for(
+                hass,
+                ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature"),
+            )
+        )
         assert temp_state is not None
         assert float(temp_state.state) == 20.0
 
@@ -237,7 +290,11 @@ async def test_idle_unit_shows_its_stored_total_after_a_restart(
         # The first energy fetch is a background task (ADR-021).
         await hass.async_block_till_done(wait_background_tasks=True)
 
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         assert state.state == "13.5"
 
@@ -264,10 +321,16 @@ async def test_frost_protection_setpoint_sensors_only_when_configured(
     await setup_ata_integration_custom(hass, mock_context)
 
     min_state = hass.states.get(
-        "sensor.melcloudhome_aaaa_9999_frost_protection_minimum"
+        entity_id_for(
+            hass,
+            ("sensor", "aaaa1234-5678-9abc-def0-123456789999_frost_protection_min"),
+        )
     )
     max_state = hass.states.get(
-        "sensor.melcloudhome_aaaa_9999_frost_protection_maximum"
+        entity_id_for(
+            hass,
+            ("sensor", "aaaa1234-5678-9abc-def0-123456789999_frost_protection_max"),
+        )
     )
     assert min_state is not None
     assert float(min_state.state) == 10
@@ -275,11 +338,17 @@ async def test_frost_protection_setpoint_sensors_only_when_configured(
     assert float(max_state.state) == 12
 
     assert (
-        hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_minimum")
+        find_entity_id(
+            hass,
+            ("sensor", "bbbb1234-5678-9abc-def0-123456788888_frost_protection_min"),
+        )
         is None
     )
     assert (
-        hass.states.get("sensor.melcloudhome_bbbb_8888_frost_protection_maximum")
+        find_entity_id(
+            hass,
+            ("sensor", "bbbb1234-5678-9abc-def0-123456788888_frost_protection_max"),
+        )
         is None
     )
 
@@ -298,10 +367,16 @@ async def test_overheat_protection_setpoint_sensors(hass: HomeAssistant) -> None
     await setup_ata_integration_custom(hass, mock_context)
 
     min_state = hass.states.get(
-        "sensor.melcloudhome_a1b2_9abc_overheat_protection_minimum"
+        entity_id_for(
+            hass,
+            ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_overheat_protection_min"),
+        )
     )
     max_state = hass.states.get(
-        "sensor.melcloudhome_a1b2_9abc_overheat_protection_maximum"
+        entity_id_for(
+            hass,
+            ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_overheat_protection_max"),
+        )
     )
     assert min_state is not None
     assert float(min_state.state) == 35
@@ -325,8 +400,18 @@ async def test_holiday_mode_date_sensors(hass: HomeAssistant) -> None:
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    start_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_start")
-    end_state = hass.states.get("sensor.melcloudhome_a1b2_9abc_holiday_mode_end")
+    start_state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_holiday_mode_start_date"),
+        )
+    )
+    end_state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_holiday_mode_end_date"),
+        )
+    )
     assert start_state is not None
     assert start_state.state == "2026-07-20T18:30:53.79"
     assert end_state is not None
@@ -350,8 +435,12 @@ async def test_sensors_created_when_values_absent_at_setup(hass: HomeAssistant) 
     await setup_ata_integration_custom(hass, mock_context)
 
     for entity_id in (
-        "sensor.melcloudhome_a1b2_9abc_room_temperature",
-        "sensor.melcloudhome_a1b2_9abc_wifi_signal",
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature")
+        ),
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_wifi_signal")
+        ),
     ):
         state = hass.states.get(entity_id)
         assert state is not None, f"{entity_id} was not created"
@@ -367,7 +456,11 @@ async def test_actual_fan_speed_sensor(hass: HomeAssistant) -> None:
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_actual_fan_speed")
+        )
+    )
     assert state is not None
     assert state.state == "two"
     assert state.attributes["device_class"] == "enum"
@@ -380,7 +473,9 @@ async def test_actual_fan_speed_sensor(hass: HomeAssistant) -> None:
         "five",
     ]
     # Shares the climate entity's vocabulary rather than the API's capitalisation.
-    climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
+    climate_state = hass.states.get(
+        entity_id_for(hass, ("climate", "a1b2c3d4-5678-9abc-def0-123456789abc"))
+    )
     assert climate_state is not None
     assert climate_state.attributes["fan_mode"] == "auto"
 
@@ -394,7 +489,11 @@ async def test_actual_fan_speed_sensor_reports_off(hass: HomeAssistant) -> None:
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_actual_fan_speed")
+        )
+    )
     assert state is not None
     assert state.state == "off"
 
@@ -413,6 +512,10 @@ async def test_actual_fan_speed_sensor_created_when_absent(
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_a1b2_9abc_actual_fan_speed")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_actual_fan_speed")
+        )
+    )
     assert state is not None
     assert state.state == "unknown"

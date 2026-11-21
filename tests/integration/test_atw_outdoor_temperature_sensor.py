@@ -23,10 +23,11 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
-ENTITY_ID = "sensor.melcloudhome_0efc_9abc_outdoor_temperature"
+ENTITY_ID = ("sensor", "0efc1234-5678-9abc-def0-123456789abc_outdoor_temperature")
 
 
 async def test_atw_outdoor_temperature_sensor_shows_polled_value(
@@ -45,7 +46,7 @@ async def test_atw_outdoor_temperature_sensor_shows_polled_value(
 
     await setup_atw_integration_custom(hass, mock_context, configure_client=configure)
 
-    state = hass.states.get(ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, ENTITY_ID))
     assert state is not None
     assert state.state == "16.0"
     assert state.attributes["last_reading"] == "2026-08-17T08:57:11+00:00"
@@ -68,7 +69,7 @@ async def test_atw_outdoor_temperature_unknown_when_poll_returns_none(
 
     await setup_atw_integration_custom(hass, mock_context, configure_client=configure)
 
-    state = hass.states.get(ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, ENTITY_ID))
     assert state is not None
     assert state.state == "unknown"
 
@@ -91,7 +92,7 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
         hass, mock_context, configure_client=configure
     )
 
-    assert hass.states.get(ENTITY_ID).state == "16.0"
+    assert hass.states.get(entity_id_for(hass, ENTITY_ID)).state == "16.0"
 
     mock_client.get_atw_outdoor_temperature = AsyncMock(
         return_value=Reading(14.0, datetime(2026, 8, 17, 9, 27, 11, tzinfo=UTC))
@@ -102,7 +103,7 @@ async def test_atw_outdoor_temperature_updates_on_coordinator_refresh(
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
-    state = hass.states.get(ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, ENTITY_ID))
     assert state.state == "14.0"
     assert state.attributes["last_reading"] == "2026-08-17T09:27:11+00:00"
 
@@ -137,7 +138,7 @@ async def test_atw_outdoor_temp_last_error_recorded_on_poll_failure(
     assert unit.outdoor_temp_last_error_at == datetime(2026, 8, 17, 9, 30, tzinfo=UTC)
     # Sensor still shows unknown, not an error state - failures never surface
     # as anything other than "no value yet" to the end user.
-    assert hass.states.get(ENTITY_ID).state == "unknown"
+    assert hass.states.get(entity_id_for(hass, ENTITY_ID)).state == "unknown"
 
 
 async def test_atw_outdoor_temp_last_error_cleared_on_next_success(

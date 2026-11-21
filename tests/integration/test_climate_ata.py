@@ -18,10 +18,12 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_ata_integration_custom,
 )
 
-_CLIMATE_ENTITY = "climate.melcloudhome_a1b2_9abc_climate"
+_CLIMATE_ENTITY = ("climate", "a1b2c3d4-5678-9abc-def0-123456789abc")
 
 
 def _configure_ata_controls(client: Any) -> None:
@@ -42,7 +44,7 @@ async def test_climate_entity_state_reflects_device_data(hass: HomeAssistant) ->
         hass, mock_context, configure_client=_configure_ata_controls
     )
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.state == HVACMode.HEAT
     assert state.attributes["current_temperature"] == 20.0
@@ -62,7 +64,7 @@ async def test_set_hvac_mode_to_cool(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_hvac_mode",
-        {"entity_id": _CLIMATE_ENTITY, "hvac_mode": HVACMode.COOL},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "hvac_mode": HVACMode.COOL},
         blocking=True,
     )
 
@@ -91,7 +93,7 @@ async def test_set_hvac_mode_writes_even_when_already_matching(
     await hass.services.async_call(
         "climate",
         "set_hvac_mode",
-        {"entity_id": _CLIMATE_ENTITY, "hvac_mode": HVACMode.HEAT},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "hvac_mode": HVACMode.HEAT},
         blocking=True,
     )
 
@@ -114,7 +116,7 @@ async def test_turn_on_uses_atomic_power_and_mode(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "turn_on",
-        {"entity_id": _CLIMATE_ENTITY},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY)},
         blocking=True,
     )
 
@@ -133,7 +135,7 @@ async def test_set_hvac_mode_off_turns_device_off(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_hvac_mode",
-        {"entity_id": _CLIMATE_ENTITY, "hvac_mode": HVACMode.OFF},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "hvac_mode": HVACMode.OFF},
         blocking=True,
     )
 
@@ -149,7 +151,7 @@ async def test_set_temperature_within_valid_range(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_temperature",
-        {"entity_id": _CLIMATE_ENTITY, "temperature": 22.5},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "temperature": 22.5},
         blocking=True,
     )
 
@@ -170,7 +172,7 @@ async def test_set_temperature_out_of_range_rejected(hass: HomeAssistant) -> Non
         await hass.services.async_call(
             "climate",
             "set_temperature",
-            {"entity_id": _CLIMATE_ENTITY, "temperature": 5.0},
+            {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "temperature": 5.0},
             blocking=True,
         )
 
@@ -178,7 +180,7 @@ async def test_set_temperature_out_of_range_rejected(hass: HomeAssistant) -> Non
         await hass.services.async_call(
             "climate",
             "set_temperature",
-            {"entity_id": _CLIMATE_ENTITY, "temperature": 35.0},
+            {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "temperature": 35.0},
             blocking=True,
         )
 
@@ -194,7 +196,7 @@ async def test_set_fan_mode(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_fan_mode",
-        {"entity_id": _CLIMATE_ENTITY, "fan_mode": "three"},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "fan_mode": "three"},
         blocking=True,
     )
 
@@ -210,7 +212,7 @@ async def test_set_swing_mode_vertical_vanes(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_swing_mode",
-        {"entity_id": _CLIMATE_ENTITY, "swing_mode": "swing"},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "swing_mode": "swing"},
         blocking=True,
     )
 
@@ -226,7 +228,10 @@ async def test_set_swing_horizontal_mode(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate",
         "set_swing_horizontal_mode",
-        {"entity_id": _CLIMATE_ENTITY, "swing_horizontal_mode": "centre"},
+        {
+            "entity_id": entity_id_for(hass, _CLIMATE_ENTITY),
+            "swing_horizontal_mode": "centre",
+        },
         blocking=True,
     )
 
@@ -242,7 +247,7 @@ async def test_hvac_action_heating_when_temp_below_target(hass: HomeAssistant) -
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.attributes["hvac_action"] == HVACAction.HEATING
 
@@ -258,7 +263,7 @@ async def test_hvac_action_idle_when_temp_at_target(hass: HomeAssistant) -> None
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.attributes["hvac_action"] == HVACAction.IDLE
 
@@ -274,7 +279,7 @@ async def test_hvac_action_cooling_when_temp_above_target(hass: HomeAssistant) -
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.attributes["hvac_action"] == HVACAction.COOLING
 
@@ -304,7 +309,7 @@ async def test_hvac_action_working_within_half_degree_of_target(
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.attributes["hvac_action"] == expected
 
@@ -320,7 +325,7 @@ async def test_hvac_action_auto_idle_within_deadband(hass: HomeAssistant) -> Non
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.attributes["hvac_action"] == HVACAction.IDLE
 
@@ -334,7 +339,7 @@ async def test_device_unavailable_when_in_error_state(hass: HomeAssistant) -> No
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.state == "unavailable"
 
@@ -348,7 +353,7 @@ async def test_device_power_off_shows_hvac_mode_off(hass: HomeAssistant) -> None
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state is not None
     assert state.state == HVACMode.OFF
     assert state.attributes["hvac_action"] == HVACAction.OFF
@@ -363,10 +368,16 @@ async def test_turn_on_and_turn_off_services(hass: HomeAssistant) -> None:
     )
 
     await hass.services.async_call(
-        "climate", "turn_off", {"entity_id": _CLIMATE_ENTITY}, blocking=True
+        "climate",
+        "turn_off",
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY)},
+        blocking=True,
     )
     await hass.services.async_call(
-        "climate", "turn_on", {"entity_id": _CLIMATE_ENTITY}, blocking=True
+        "climate",
+        "turn_on",
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY)},
+        blocking=True,
     )
 
 
@@ -376,8 +387,7 @@ async def test_device_removal_entity_becomes_unavailable(hass: HomeAssistant) ->
     mock_context = create_mock_ata_user_context([create_mock_ata_building(units=[])])
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get(_CLIMATE_ENTITY)
-    assert state is None  # Entity not created when no units
+    assert find_entity_id(hass, _CLIMATE_ENTITY) is None  # not created: no units
 
 
 @pytest.mark.asyncio
@@ -395,7 +405,7 @@ async def test_climate_vocabularies_are_unchanged(hass: HomeAssistant) -> None:
         hass, mock_context, configure_client=_configure_ata_controls
     )
 
-    state = hass.states.get(_CLIMATE_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY))
     assert state.attributes["fan_modes"] == [
         "auto",
         "one",
@@ -453,7 +463,7 @@ async def test_a_command_matching_current_state_is_still_sent(
         await hass.services.async_call(
             "climate",
             service,
-            {"entity_id": _CLIMATE_ENTITY, field: value},
+            {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), field: value},
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -475,7 +485,7 @@ async def test_set_temperature_acts_on_the_mode_it_is_given(
         "climate",
         "set_temperature",
         {
-            "entity_id": _CLIMATE_ENTITY,
+            "entity_id": entity_id_for(hass, _CLIMATE_ENTITY),
             "temperature": 22.0,
             "hvac_mode": HVACMode.HEAT,
         },
@@ -509,7 +519,7 @@ async def test_set_temperature_rejects_a_mode_the_unit_does_not_support(
             "climate",
             "set_temperature",
             {
-                "entity_id": _CLIMATE_ENTITY,
+                "entity_id": entity_id_for(hass, _CLIMATE_ENTITY),
                 "temperature": 22.0,
                 "hvac_mode": HVACMode.HEAT_COOL,
             },

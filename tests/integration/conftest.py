@@ -1,10 +1,13 @@
 """Fixtures for Home Assistant integration tests.
 
-These fixtures require pytest-homeassistant-custom-component.
+These fixtures require pytest-homeassistant (latest HA) or
+pytest-homeassistant-custom-component (floor). Both register their plugin
+through an entry point; see ha_testing.py.
 """
 
 import asyncio
 import json
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -16,7 +19,6 @@ from custom_components.melcloudhome.api.parsing import Reading
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.api.models import Building, UserContext
     from custom_components.melcloudhome.api.models_ata import (
@@ -25,8 +27,54 @@ if TYPE_CHECKING:
     )
     from custom_components.melcloudhome.api.models_atw import AirToWaterUnit
 
-# Import fixtures from pytest-homeassistant-custom-component
-pytest_plugins = ["pytest_homeassistant_custom_component"]
+    from .ha_testing import MockConfigEntry
+
+
+# Deprecation guard: fail the run if Home Assistant logs a deprecation for this
+# integration (#400 would have been caught). Collected for the whole session,
+# because HA logs some deprecations once per process, at class definition, in
+# whichever test first imports the platform.
+_DEPRECATION_ALLOWLIST = (
+    # config_flow.py gates "Connect to Mock Server" on show_advanced_options.
+    # Tracked in _claude/BACKLOG.md ("`show_advanced_options` deprecated,
+    # removed in HA 2027.6"). Delete this entry when that fix lands.
+    "The deprecated function show_advanced_options was called from melcloudhome.",
+)
+
+
+class _DeprecationCollector(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.WARNING)
+        self.found: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        message = record.getMessage()
+        if "melcloudhome" not in message and "melcloudhome" not in record.name:
+            return
+        if "deprecat" not in message.lower() and (
+            "stop working in Home Assistant" not in message
+        ):
+            return
+        if not message.startswith(_DEPRECATION_ALLOWLIST):
+            self.found.append(f"{record.name}: {message}")
+
+
+_deprecations = _DeprecationCollector()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    logging.getLogger().addHandler(_deprecations)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if not _deprecations.found:
+        return
+    session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.section("Home Assistant deprecations logged for melcloudhome")
+        for line in dict.fromkeys(_deprecations.found):
+            reporter.line(line)
 
 
 @pytest.fixture(autouse=True)
@@ -79,24 +127,49 @@ def mock_setup_entry():
 # Mock path for MELCloudHomeClient in main integration
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"
 
-# Test device UUID - generates entity_id: water_heater.melcloudhome_0efc_9abc_tank
 TEST_ATW_UNIT_ID = "0efc1234-5678-9abc-def0-123456789abc"
 TEST_ATW_BUILDING_ID = "building-test-id"
 
-# Test entity IDs (calculated from TEST_ATW_UNIT_ID)
-# Unit ID 0efc1234-5678-9abc... → first 4 chars: 0efc, last 4 chars: 9abc
-TEST_CLIMATE_ZONE1_ENTITY_ID = "climate.melcloudhome_0efc_9abc_zone_1"
-TEST_WATER_HEATER_ENTITY_ID = "water_heater.melcloudhome_0efc_9abc_tank"
-TEST_SWITCH_SYSTEM_POWER = "switch.melcloudhome_0efc_9abc_system_power"
-TEST_SENSOR_ZONE1_TEMP = "sensor.melcloudhome_0efc_9abc_zone_1_temperature"
-TEST_SENSOR_TANK_TEMP = "sensor.melcloudhome_0efc_9abc_tank_temperature"
-TEST_SENSOR_ENERGY_CONSUMED = "sensor.melcloudhome_0efc_9abc_energy_consumed"
-TEST_SENSOR_ENERGY_PRODUCED = "sensor.melcloudhome_0efc_9abc_energy_produced"
-TEST_SENSOR_COP = "sensor.melcloudhome_0efc_9abc_coefficient_of_performance"
-TEST_BINARY_SENSOR_ERROR = "binary_sensor.melcloudhome_0efc_9abc_error_state"
-TEST_BINARY_SENSOR_CONNECTION = "binary_sensor.melcloudhome_0efc_9abc_connection_state"
-TEST_CLIMATE_ZONE2_ENTITY_ID = "climate.melcloudhome_0efc_9abc_zone_2"
-TEST_SENSOR_ZONE2_TEMP = "sensor.melcloudhome_0efc_9abc_zone_2_temperature"
+EntityKey = tuple[str, str]  # (domain, unique_id)
+
+
+def entity_id_for(hass: "HomeAssistant", key: EntityKey) -> str:
+    """Look up an entity's ID in the entity registry by its unique_id.
+
+    Tests never hard-code entity IDs: from HA 2026.6 a generated ID carries
+    the device's area, and the post-setup dialog can rewrite it (#403).
+    """
+    found = find_entity_id(hass, key)
+    assert found is not None, f"no {key[0]} entity with unique_id {key[1]!r}"
+    return found
+
+
+def find_entity_id(hass: "HomeAssistant", key: EntityKey) -> str | None:
+    """Entity ID for (domain, unique_id), or None if it was never created."""
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    found: str | None = er.async_get(hass).async_get_entity_id(key[0], DOMAIN, key[1])
+    return found
+
+
+# Test entity keys for TEST_ATW_UNIT_ID
+TEST_CLIMATE_ZONE1_ENTITY_ID = ("climate", f"{TEST_ATW_UNIT_ID}_zone_1")
+TEST_WATER_HEATER_ENTITY_ID = ("water_heater", f"{TEST_ATW_UNIT_ID}_tank")
+TEST_SWITCH_SYSTEM_POWER = ("switch", f"{TEST_ATW_UNIT_ID}_system_power")
+TEST_SENSOR_ZONE1_TEMP = ("sensor", f"{TEST_ATW_UNIT_ID}_zone_1_temperature")
+TEST_SENSOR_TANK_TEMP = ("sensor", f"{TEST_ATW_UNIT_ID}_tank_temperature")
+TEST_SENSOR_ENERGY_CONSUMED = ("sensor", f"{TEST_ATW_UNIT_ID}_energy_consumed")
+TEST_SENSOR_ENERGY_PRODUCED = ("sensor", f"{TEST_ATW_UNIT_ID}_energy_produced")
+TEST_SENSOR_COP = ("sensor", f"{TEST_ATW_UNIT_ID}_cop")
+TEST_BINARY_SENSOR_ERROR = ("binary_sensor", f"{TEST_ATW_UNIT_ID}_error_state")
+TEST_BINARY_SENSOR_CONNECTION = (
+    "binary_sensor",
+    f"{TEST_ATW_UNIT_ID}_connection_state",
+)
+TEST_CLIMATE_ZONE2_ENTITY_ID = ("climate", f"{TEST_ATW_UNIT_ID}_zone_2")
+TEST_SENSOR_ZONE2_TEMP = ("sensor", f"{TEST_ATW_UNIT_ID}_zone_2_temperature")
 
 
 def create_mock_atw_unit(
@@ -229,9 +302,10 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
     For custom mock data, use setup_atw_integration_custom() factory.
     """
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.const import DOMAIN
+
+    from .ha_testing import MockConfigEntry
 
     mock_context = create_mock_atw_user_context()
 
@@ -274,9 +348,10 @@ async def _setup_integration_custom(
     options: dict[str, Any] | None = None,
 ) -> "tuple[MockConfigEntry, Any]":
     from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.melcloudhome.const import DOMAIN
+
+    from .ha_testing import MockConfigEntry
 
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value

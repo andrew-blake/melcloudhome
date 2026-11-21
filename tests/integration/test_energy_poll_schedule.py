@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun import freeze_time
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 from custom_components.melcloudhome.coordinator import energy_poll_slot
@@ -23,6 +22,7 @@ from .conftest import (
     create_mock_atw_user_context,
     setup_atw_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
 FROZEN_NOW = datetime(2026, 9, 26, 10, 0, 0, tzinfo=UTC)

@@ -10,10 +10,17 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import HomeAssistant
 
-from .conftest import create_mock_ata_energy_context, setup_ata_integration_custom
+from .conftest import (
+    create_mock_ata_energy_context,
+    entity_id_for,
+    setup_ata_integration_custom,
+)
 
-CLIMATE_ENTITY_ID = "climate.melcloudhome_a1b2_9abc_climate"
-ROOM_TEMP_ENTITY_ID = "sensor.melcloudhome_a1b2_9abc_room_temperature"
+CLIMATE_ENTITY_ID = ("climate", "a1b2c3d4-5678-9abc-def0-123456789abc")
+ROOM_TEMP_ENTITY_ID = (
+    "sensor",
+    "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature",
+)
 
 
 @pytest.mark.asyncio
@@ -39,10 +46,10 @@ async def test_entities_created_while_energy_fetch_is_still_running(
         configure_client=configure_client,
     )
 
-    assert hass.states.get(CLIMATE_ENTITY_ID) is not None, (
+    assert hass.states.get(entity_id_for(hass, CLIMATE_ENTITY_ID)) is not None, (
         "core climate entity must exist without waiting for the energy fetch"
     )
-    assert hass.states.get(ROOM_TEMP_ENTITY_ID) is not None
+    assert hass.states.get(entity_id_for(hass, ROOM_TEMP_ENTITY_ID)) is not None
 
     # Unload with the fetch still in flight: must not raise or hang, and
     # must not close the client underneath an in-flight request.

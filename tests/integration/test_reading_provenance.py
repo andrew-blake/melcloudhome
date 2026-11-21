@@ -20,7 +20,6 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.parsing import Reading, parse_api_timestamp
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
@@ -31,10 +30,15 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
-FLOW_TEMP_ENTITY_ID = "sensor.melcloudhome_0efc_9abc_flow_temperature"
+FLOW_TEMP_ENTITY_ID = (
+    "sensor",
+    "0efc1234-5678-9abc-def0-123456789abc_flow_temperature",
+)
 
 # Stamp format the report endpoint uses on its datapoints: naive ISO, UTC.
 API_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
@@ -95,7 +99,7 @@ async def test_successful_poll_reports_an_hours_old_datapoint(
     stamp = (dt_util.utcnow() - timedelta(hours=3)).strftime(API_TIME_FORMAT)
     await _setup_with_telemetry(hass, _readings((stamp, 41.5)))
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert float(state.state) == 41.5
     assert state.attributes["last_reading"] == _expected_last_reading(stamp)
@@ -115,7 +119,7 @@ async def test_last_reading_is_the_payload_time_not_now(hass: HomeAssistant) -> 
     """
     await _setup_with_telemetry(hass, _readings(("2026-01-14T12:48:44", 38.0)))
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert state.attributes["last_reading"] == "2026-01-14T12:48:44+00:00"
 
@@ -132,7 +136,7 @@ async def test_failed_poll_keeps_the_previous_reading_unrestamped(
     """
     stamp = "2026-01-14T12:48:44"
     mock_client = await _setup_with_telemetry(hass, _readings((stamp, 38.0)))
-    assert hass.states.get(FLOW_TEMP_ENTITY_ID).attributes[
+    assert hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID)).attributes[
         "last_reading"
     ] == _expected_last_reading(stamp)
 
@@ -142,7 +146,7 @@ async def test_failed_poll_keeps_the_previous_reading_unrestamped(
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=61))
     await hass.async_block_till_done(wait_background_tasks=True)
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert float(state.state) == 38.0
     assert state.attributes["last_reading"] == _expected_last_reading(stamp)
@@ -163,7 +167,7 @@ async def test_newest_datapoint_is_chosen_by_timestamp_not_position(
         ),
     )
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert float(state.state) == 44.0
     assert state.attributes["last_reading"] == _expected_last_reading(newest)
@@ -182,13 +186,15 @@ async def test_successful_poll_that_omits_a_measure_clears_it(
     """
     stamp = "2026-01-14T12:48:44"
     mock_client = await _setup_with_telemetry(hass, _readings((stamp, 38.0)))
-    assert float(hass.states.get(FLOW_TEMP_ENTITY_ID).state) == 38.0
+    assert (
+        float(hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID)).state) == 38.0
+    )
 
     mock_client.get_atw_water_temperatures = AsyncMock(return_value={})
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=61))
     await hass.async_block_till_done(wait_background_tasks=True)
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert state.state == "unknown"
     assert state.attributes["last_reading"] is None
@@ -201,7 +207,7 @@ async def test_last_reading_present_but_null_before_any_reading(
     """The key exists from the start so templates can rely on it."""
     await _setup_with_telemetry(hass, None)
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert state.state == "unknown"
     assert "last_reading" in state.attributes

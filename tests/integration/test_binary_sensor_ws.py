@@ -15,7 +15,6 @@ import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
 
@@ -27,6 +26,7 @@ from .conftest import (
     wire_connected_ws,
     ws_text_frame,
 )
+from .ha_testing import MockConfigEntry
 
 WS_ENTITY_ID = "binary_sensor.melcloud_home_real_time_updates"
 

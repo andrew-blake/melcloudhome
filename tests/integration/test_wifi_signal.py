@@ -18,7 +18,6 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.exceptions import ServiceUnavailableError
 from custom_components.melcloudhome.api.models import Building
@@ -30,11 +29,13 @@ from .conftest import (
     create_mock_ata_unit,
     create_mock_ata_user_context,
     create_mock_atw_unit,
+    entity_id_for,
     setup_ata_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
-ATA_WIFI = "sensor.melcloudhome_a1b2_9abc_wifi_signal"
-ATW_WIFI = "sensor.melcloudhome_0efc_9abc_wifi_signal"
+ATA_WIFI = ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_wifi_signal")
+ATW_WIFI = ("sensor", "0efc1234-5678-9abc-def0-123456789abc_wifi_signal")
 STAMP = datetime(2026, 10, 5, 10, 41, 24, tzinfo=UTC)
 
 
@@ -86,7 +87,7 @@ async def test_both_device_types_show_the_newest_reading_as_an_integer(
     """Same series, same handling for ATA and ATW. The state is "-56", never "-56.0"."""
     await _setup(hass, AsyncMock(return_value=Reading(-56, STAMP)))
 
-    for entity_id in (ATA_WIFI, ATW_WIFI):
+    for entity_id in (entity_id_for(hass, ATA_WIFI), entity_id_for(hass, ATW_WIFI)):
         state = hass.states.get(entity_id)
         assert state is not None, entity_id
         assert state.state == "-56", entity_id
@@ -102,7 +103,7 @@ async def test_unknown_with_null_last_reading_before_any_reading(
     """The entity exists and the key exists, with nothing to show yet."""
     await _setup(hass, AsyncMock(return_value=None))
 
-    for entity_id in (ATA_WIFI, ATW_WIFI):
+    for entity_id in (entity_id_for(hass, ATA_WIFI), entity_id_for(hass, ATW_WIFI)):
         state = hass.states.get(entity_id)
         assert state is not None, f"{entity_id} was not created"
         assert state.state == "unknown"
@@ -121,10 +122,10 @@ async def test_the_timer_fetches_again_after_30_minutes_and_not_before(
     get_wifi_signal.return_value = newer
 
     await _advance(hass, 29)
-    assert hass.states.get(ATA_WIFI).state == "-56"
+    assert hass.states.get(entity_id_for(hass, ATA_WIFI)).state == "-56"
 
     await _advance(hass, 31)
-    state = hass.states.get(ATA_WIFI)
+    state = hass.states.get(entity_id_for(hass, ATA_WIFI))
     assert state.state == "-61"
     assert state.attributes["last_reading"] == newer.recorded_at.isoformat()
 
@@ -151,7 +152,7 @@ async def test_failed_or_empty_fetch_keeps_the_value_and_its_stamp(
     get_wifi_signal.configure_mock(**outcome)
     await _advance(hass, 31)
 
-    state = hass.states.get(ATA_WIFI)
+    state = hass.states.get(entity_id_for(hass, ATA_WIFI))
     assert state.state == "-56"
     assert state.attributes["last_reading"] == STAMP.isoformat()
 
@@ -166,7 +167,7 @@ async def test_reading_survives_a_context_poll_that_replaces_the_units(
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
-    for entity_id in (ATA_WIFI, ATW_WIFI):
+    for entity_id in (entity_id_for(hass, ATA_WIFI), entity_id_for(hass, ATW_WIFI)):
         assert hass.states.get(entity_id).state == "-56", entity_id
 
 
@@ -182,7 +183,7 @@ async def test_a_fetch_shows_while_context_polls_are_failing(
     get_wifi_signal.return_value = Reading(-61, STAMP + timedelta(minutes=20))
     await _advance(hass, 31)
 
-    assert hass.states.get(ATA_WIFI).state == "-61"
+    assert hass.states.get(entity_id_for(hass, ATA_WIFI)).state == "-61"
 
 
 @pytest.mark.asyncio
@@ -196,8 +197,8 @@ async def test_one_unit_failing_does_not_stop_the_others(hass: HomeAssistant) ->
 
     await _setup(hass, AsyncMock(side_effect=by_unit))
 
-    assert hass.states.get(ATA_WIFI).state == "unknown"
-    assert hass.states.get(ATW_WIFI).state == "-61"
+    assert hass.states.get(entity_id_for(hass, ATA_WIFI)).state == "unknown"
+    assert hass.states.get(entity_id_for(hass, ATW_WIFI)).state == "-61"
 
 
 @pytest.mark.parametrize(

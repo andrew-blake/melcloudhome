@@ -20,6 +20,7 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
@@ -30,7 +31,7 @@ async def test_switch_entity_created_with_correct_attributes(
     setup_atw_integration,
 ) -> None:
     """Test switch entity is created with correct attributes."""
-    state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
+    state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == STATE_ON
     assert "System Power" in state.attributes[ATTR_FRIENDLY_NAME]
@@ -45,12 +46,15 @@ async def test_turn_on_powers_atw_system(hass: HomeAssistant) -> None:
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_power = AsyncMock()
 
-    state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
+    state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == STATE_OFF
 
     await hass.services.async_call(
-        SWITCH_DOMAIN, "turn_on", {"entity_id": TEST_SWITCH_SYSTEM_POWER}, blocking=True
+        SWITCH_DOMAIN,
+        "turn_on",
+        {"entity_id": entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER)},
+        blocking=True,
     )
     await hass.async_block_till_done()
 
@@ -66,14 +70,14 @@ async def test_turn_off_powers_off_atw_system(hass: HomeAssistant) -> None:
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_power = AsyncMock()
 
-    state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
+    state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == STATE_ON
 
     await hass.services.async_call(
         SWITCH_DOMAIN,
         "turn_off",
-        {"entity_id": TEST_SWITCH_SYSTEM_POWER},
+        {"entity_id": entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER)},
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -89,7 +93,7 @@ async def test_switch_state_reflects_system_power(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
+    state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == STATE_OFF
 
@@ -102,7 +106,7 @@ async def test_switch_unavailable_when_device_in_error(hass: HomeAssistant) -> N
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get(TEST_SWITCH_SYSTEM_POWER)
+    state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == "unavailable"
 
@@ -128,7 +132,7 @@ async def test_atw_power_is_sent_even_when_the_cache_already_agrees(
     await hass.services.async_call(
         SWITCH_DOMAIN,
         "turn_off",
-        {"entity_id": TEST_SWITCH_SYSTEM_POWER},
+        {"entity_id": entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER)},
         blocking=True,
     )
     await hass.async_block_till_done()

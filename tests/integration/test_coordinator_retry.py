@@ -26,6 +26,8 @@ from custom_components.melcloudhome.api.exceptions import (
 )
 from custom_components.melcloudhome.coordinator import MELCloudHomeCoordinator
 
+from .conftest import entity_id_for
+
 
 @pytest.fixture
 def mock_client():
@@ -37,11 +39,17 @@ def mock_client():
 
 
 @pytest.fixture
-def coordinator(hass, mock_client):
-    """Create coordinator instance for testing."""
-    return MELCloudHomeCoordinator(
+async def coordinator(hass, mock_client):
+    """Create coordinator instance for testing.
+
+    It has no config entry, so nothing shuts it down; without the teardown a
+    debounced refresh leaves HA's cooldown timer behind.
+    """
+    coordinator = MELCloudHomeCoordinator(
         hass, mock_client, "test@example.com", "password", None
     )
+    yield coordinator
+    await coordinator.async_shutdown()
 
 
 @pytest.mark.asyncio
@@ -166,9 +174,9 @@ async def test_token_refresh_on_auth_error(coordinator):
 @pytest.mark.asyncio
 async def test_persist_tokens_updates_config_entry(hass, mock_client):
     """Test that _persist_tokens writes token snapshot to config entry."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     from custom_components.melcloudhome.const import DOMAIN
+
+    from .ha_testing import MockConfigEntry
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -397,7 +405,7 @@ async def test_a_raising_listener_does_not_fail_the_write(hass):
     await hass.services.async_call(
         "climate",
         "set_temperature",
-        {"entity_id": _CLIMATE_ENTITY, "temperature": 23.0},
+        {"entity_id": entity_id_for(hass, _CLIMATE_ENTITY), "temperature": 23.0},
         blocking=True,
     )
     await hass.async_block_till_done()

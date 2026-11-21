@@ -25,7 +25,6 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
 
@@ -35,7 +34,9 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
 )
+from .ha_testing import MockConfigEntry
 
 LEGACY_ATA_KEY = "melcloudhome_energy_data"
 LEGACY_ATW_KEY = "melcloudhome_energy_data_atw"
@@ -44,8 +45,8 @@ UNIT_A = TEST_ATA_UNIT_ID  # -> sensor.melcloudhome_a1b2_9abc_energy
 UNIT_B = (
     "e5f6a7b8-1234-5678-9def-aabbccdd1234"  # -> sensor.melcloudhome_e5f6_1234_energy
 )
-SENSOR_A = "sensor.melcloudhome_a1b2_9abc_energy"
-SENSOR_B = "sensor.melcloudhome_e5f6_1234_energy"
+SENSOR_A = ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+SENSOR_B = ("sensor", "e5f6a7b8-1234-5678-9def-aabbccdd1234_energy")
 
 
 def account_suffix(account_id: str) -> str:
@@ -185,7 +186,7 @@ async def test_migration_does_not_rerun_when_new_key_present_but_empty(
 
     # Fresh tracker: first init marks history as seen, counts nothing.
     # 25.7 appearing here means the migration re-ran off the legacy file.
-    state = hass.states.get(SENSOR_A)
+    state = hass.states.get(entity_id_for(hass, SENSOR_A))
     assert state is not None
     assert float(state.state) == 0.0
     assert hass_storage[ata_key(EMAIL)]["data"]["cumulative"].get(UNIT_A, {}).get(
@@ -277,7 +278,7 @@ async def test_single_entry_migrates_with_totals_unchanged(
         release_poll.set()
         await wait_for_startup_fetch(hass, entry)
 
-    state = hass.states.get(SENSOR_A)
+    state = hass.states.get(entity_id_for(hass, SENSOR_A))
     assert state is not None
     assert float(state.state) == pytest.approx(25.7, rel=0.01)
 
@@ -330,8 +331,8 @@ async def test_two_entries_split_comingled_legacy_file(
         await setup_entry(hass, entry_a)
         await setup_entry(hass, entry_b)
 
-        state_a = hass.states.get(SENSOR_A)
-        state_b = hass.states.get(SENSOR_B)
+        state_a = hass.states.get(entity_id_for(hass, SENSOR_A))
+        state_b = hass.states.get(entity_id_for(hass, SENSOR_B))
         assert state_a is not None and state_b is not None
         total_a = float(state_a.state)
         total_b = float(state_b.state)
@@ -370,8 +371,8 @@ async def test_two_entries_split_comingled_legacy_file(
         await hass.async_block_till_done()
         await wait_for_startup_fetch(hass, entry_b)
 
-    state_a = hass.states.get(SENSOR_A)
-    state_b = hass.states.get(SENSOR_B)
+    state_a = hass.states.get(entity_id_for(hass, SENSOR_A))
+    state_b = hass.states.get(entity_id_for(hass, SENSOR_B))
     assert state_a is not None and state_b is not None
     assert float(state_a.state) >= total_a
     assert float(state_b.state) >= total_b
@@ -430,7 +431,7 @@ async def test_v1_3_4_legacy_format_migrates_via_legacy_key(
     with patch(MOCK_CLIENT_PATH, return_value=client):
         await setup_entry(hass, make_entry(EMAIL, unique_id=EMAIL))
 
-    state = hass.states.get(SENSOR_A)
+    state = hass.states.get(entity_id_for(hass, SENSOR_A))
     assert state is not None
     assert float(state.state) == pytest.approx(25.7, rel=0.01)
 
@@ -450,7 +451,7 @@ async def test_clean_install_starts_fresh(
     with patch(MOCK_CLIENT_PATH, return_value=client):
         await setup_entry(hass, make_entry(EMAIL, unique_id=EMAIL))
 
-    state = hass.states.get(SENSOR_A)
+    state = hass.states.get(entity_id_for(hass, SENSOR_A))
     assert state is not None
     assert float(state.state) == 0.0
     # The new keys exist even with nothing migrated, so migration never retries

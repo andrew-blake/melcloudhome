@@ -20,7 +20,6 @@ from homeassistant.components.climate import HVACMode
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.exceptions import (
     ApiError,
@@ -28,10 +27,15 @@ from custom_components.melcloudhome.api.exceptions import (
 )
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 
-from .conftest import create_mock_ata_user_context, setup_ata_integration_custom
+from .conftest import (
+    create_mock_ata_user_context,
+    entity_id_for,
+    setup_ata_integration_custom,
+)
+from .ha_testing import async_fire_time_changed
 
-_CLIMATE_ENTITY = "climate.melcloudhome_a1b2_9abc_climate"
-_ROOM_TEMP_ENTITY = "sensor.melcloudhome_a1b2_9abc_room_temperature"
+_CLIMATE_ENTITY = ("climate", "a1b2c3d4-5678-9abc-def0-123456789abc")
+_ROOM_TEMP_ENTITY = ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_room_temperature")
 
 
 async def _setup(hass: HomeAssistant):
@@ -39,7 +43,7 @@ async def _setup(hass: HomeAssistant):
     _entry, mock_client = await setup_ata_integration_custom(
         hass, mock_context, options={CONF_ENABLE_WEBSOCKET: False}
     )
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
     return mock_context, mock_client
 
 
@@ -59,8 +63,8 @@ async def test_single_timed_out_poll_keeps_entities_available(
     with caplog.at_level(logging.WARNING):
         await _next_poll(hass)
 
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
-    assert hass.states.get(_ROOM_TEMP_ENTITY).state == "20.0"
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _ROOM_TEMP_ENTITY)).state == "20.0"
     warnings = [
         r.message
         for r in caplog.records
@@ -83,7 +87,7 @@ async def test_single_network_error_keeps_entities_available(
 
     await _next_poll(hass)
 
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
 
 @pytest.mark.asyncio
@@ -95,17 +99,19 @@ async def test_third_consecutive_failure_marks_unavailable_then_recovers(
     mock_client.get_user_context = AsyncMock(side_effect=TimeoutError())
 
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == STATE_UNAVAILABLE
+    assert (
+        hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == STATE_UNAVAILABLE
+    )
 
     mock_client.get_user_context = AsyncMock(return_value=mock_context)
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
 
 @pytest.mark.asyncio
@@ -124,7 +130,7 @@ async def test_failure_tolerance_resets_after_a_good_poll(
     await _next_poll(hass)
     await _next_poll(hass)
 
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
 
 @pytest.mark.asyncio
@@ -135,7 +141,7 @@ async def test_single_503_keeps_entities_available(hass: HomeAssistant) -> None:
 
     await _next_poll(hass)
 
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
 
 @pytest.mark.asyncio
@@ -146,7 +152,9 @@ async def test_third_503_marks_unavailable(hass: HomeAssistant) -> None:
 
     await _next_poll(hass)
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == HVACMode.HEAT
+    assert hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == HVACMode.HEAT
 
     await _next_poll(hass)
-    assert hass.states.get(_CLIMATE_ENTITY).state == STATE_UNAVAILABLE
+    assert (
+        hass.states.get(entity_id_for(hass, _CLIMATE_ENTITY)).state == STATE_UNAVAILABLE
+    )

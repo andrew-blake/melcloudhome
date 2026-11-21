@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from freezegun import freeze_time
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import DOMAIN
@@ -16,8 +15,10 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
     setup_ata_integration_custom,
 )
+from .ha_testing import MockConfigEntry
 
 # Test device UUIDs (match mock server IDs)
 LIVING_ROOM_ID = "0efc1234-5678-9abc-def0-1234567887db"  # Has outdoor sensor
@@ -66,7 +67,9 @@ async def test_outdoor_temperature_sensor_created_when_device_has_sensor(
     hass: HomeAssistant, setup_integration_with_outdoor_temp
 ):
     """Test outdoor temp sensor created for device with outdoor sensor."""
-    entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+    entity_id = entity_id_for(
+        hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+    )
     state = hass.states.get(entity_id)
 
     assert state is not None
@@ -84,7 +87,9 @@ async def test_outdoor_temperature_sensor_exposes_last_reading(
     Units stop uploading outdoor temperature while idle (issue #171), so the
     sensor exposes the datapoint timestamp to make stale values detectable.
     """
-    entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+    entity_id = entity_id_for(
+        hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+    )
     state = hass.states.get(entity_id)
 
     assert state is not None
@@ -96,7 +101,9 @@ async def test_outdoor_temperature_sensor_created_but_unknown_when_no_sensor(
 ):
     """Outdoor temp sensor is always created; a unit with no reading shows
     'unknown', not dropped."""
-    entity_id = "sensor.melcloudhome_5b3e_7a9b_outdoor_temperature"
+    entity_id = entity_id_for(
+        hass, ("sensor", "5b3e4321-8765-cba9-fed0-abcdef987a9b_outdoor_temperature")
+    )
     state = hass.states.get(entity_id)
     assert state is not None
     assert state.state == "unknown"
@@ -106,7 +113,9 @@ async def test_outdoor_temperature_updates_on_coordinator_refresh(
     hass: HomeAssistant, setup_integration_with_outdoor_temp
 ):
     """Test outdoor temperature value updates when coordinator refreshes."""
-    entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+    entity_id = entity_id_for(
+        hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+    )
 
     state_before = hass.states.get(entity_id)
     assert state_before is not None
@@ -140,7 +149,9 @@ async def test_outdoor_temperature_created_and_unknown_when_first_poll_fails(
 
     await setup_ata_integration_custom(hass, mock_context, configure_client=configure)
 
-    entity_id = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
+    entity_id = entity_id_for(
+        hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+    )
     state = hass.states.get(entity_id)
     assert state is not None
     assert state.state == "unknown"
@@ -189,8 +200,12 @@ async def test_outdoor_temperature_all_units_polled_on_refresh(
         hass, mock_context, configure_client=configure
     )
 
-    living_room_entity = "sensor.melcloudhome_0efc_87db_outdoor_temperature"
-    study_entity = "sensor.melcloudhome_a1b2_6789_outdoor_temperature"
+    living_room_entity = entity_id_for(
+        hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+    )
+    study_entity = entity_id_for(
+        hass, ("sensor", "a1b2c3d4-e5f6-7890-abcd-ef0123456789_outdoor_temperature")
+    )
 
     state_lr = hass.states.get(living_room_entity)
     state_study = hass.states.get(study_entity)
@@ -333,7 +348,11 @@ async def test_outdoor_temp_failure_warns_once_per_streak(
 
     assert len(failure_warnings()) == 1, "entering the streak should warn once"
 
-    state = hass.states.get("sensor.melcloudhome_0efc_87db_outdoor_temperature")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+        )
+    )
     assert state is not None
     assert state.state == "unknown"
 
@@ -351,7 +370,11 @@ async def test_outdoor_temp_failure_warns_once_per_streak(
     assert len(recovery_warnings()) == 1, "leaving the streak should log recovery"
     assert len(failure_warnings()) == 1
 
-    state = hass.states.get("sensor.melcloudhome_0efc_87db_outdoor_temperature")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-1234567887db_outdoor_temperature")
+        )
+    )
     assert state is not None
     assert state.state == "11.0"
 
