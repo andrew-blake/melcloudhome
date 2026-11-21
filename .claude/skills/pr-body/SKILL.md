@@ -13,6 +13,9 @@ A PR body tells a reviewer what changed, what to check, and what risk they are
 accepting by merging. It is written from the diff and the linked decision
 record.
 
+**Release PRs (`chore/release-v*`) do not use this skill.** Fill the template in
+`docs/release-process.md` ("Release PR body") directly, without a subagent.
+
 ## Source contract
 
 Inputs: `git diff <base>..HEAD`, `git diff --shortstat <base>..HEAD`, the linked
