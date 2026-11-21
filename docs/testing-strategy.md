@@ -86,7 +86,7 @@ async def test_set_temperature(authenticated_client):
 
 **How it works:**
 
-- Uses `pytest-homeassistant-custom-component` framework
+- Uses HA's official `pytest-homeassistant` on the latest HA, and `pytest-homeassistant-custom-component` on the `hacs.json` floor; `tests/integration/ha_testing.py` imports from whichever is installed
 - Runs in Docker container with clean HA environment
 - Provides real HA fixtures (`hass`, `hass_client`, etc.)
 - Mocks API client at the boundary (not HA internals)
@@ -94,7 +94,8 @@ async def test_set_temperature(authenticated_client):
 
 **Why Docker:**
 
-- `pytest-homeassistant-custom-component` has dependency conflicts with project dependencies
+- The HA test packages pin Home Assistant's own dependencies, which conflict with `uv.lock`
+- The latest HA needs Python 3.14 and the floor's test package needs Python 3.13
 - Requires specific HA environment and fixtures
 - Docker provides isolation and reproducibility
 - Matches CI/CD environment
@@ -105,16 +106,17 @@ async def test_set_temperature(authenticated_client):
 # tests/integration/test_climate_ata.py
 async def test_set_temperature(hass, setup_integration):
     """Test setting temperature through HA service."""
-    state = hass.states.get("climate.melcloudhome_test_unit")
+    entity_id = entity_id_for(hass, ("climate", TEST_ATA_UNIT_ID))
+    state = hass.states.get(entity_id)
     assert state.state == HVACMode.HEAT
 
     await hass.services.async_call(
         "climate", "set_temperature",
-        {"entity_id": "climate.melcloudhome_test_unit", "temperature": 22},
+        {"entity_id": entity_id, "temperature": 22},
         blocking=True
     )
 
-    state = hass.states.get("climate.melcloudhome_test_unit")
+    state = hass.states.get(entity_id)
     assert state.attributes["temperature"] == 22
 ```
 
@@ -123,18 +125,21 @@ async def test_set_temperature(hass, setup_integration):
 **Test structure:**
 
 - `tests/integration/` - HA integration tests
-- `tests/integration/Dockerfile` - Test environment
-- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
+- `Dockerfile.test` - Test environment (`PYTHON_VERSION` build argument)
+- Entity IDs are looked up by unique ID (`entity_id_for` in `tests/integration/conftest.py`), never hard-coded: from HA 2026.6 a generated ID includes the device's area
 
 **Coverage:** Config flow, entity platforms, coordinator, service calls
 
-**HA version coverage:** CI runs this tier twice — once against current HA
-(`make test`, latest `pytest-homeassistant-custom-component`) and once against the
-declared `hacs.json` floor (`make test-integration-floor`, phcc `0.13.269` =
-HA 2025.8.0). The floor pin lives in the Makefile and must be bumped together with
-any `hacs.json` floor raise — a stale pin silently keeps testing the old floor.
-Versions between the two endpoints are deliberately untested (two-point trade-off,
-not a full matrix).
+**HA version coverage:** CI runs this tier twice. The latest HA runs in `make test`
+and `make test-integration` on Python 3.14, with `pytest-homeassistant` pinned in
+`requirements-test-latest-ha.txt`. Bumping that pin moves the run to a new HA release. The declared `hacs.json` floor runs in `make test-integration-floor`
+on Python 3.13, with phcc `0.13.269` = HA 2025.8.0. The floor pin lives in the Makefile
+and must be bumped together with any `hacs.json` floor raise. A stale pin silently
+keeps testing the old floor. Versions between the two endpoints are deliberately
+untested, a two-point trade-off.
+
+Both runs fail if Home Assistant logs a deprecation for this integration
+(`tests/integration/conftest.py`, deprecation guard).
 
 ---
 
@@ -186,7 +191,7 @@ prove.
 
 ### 2. Integration Tests (Docker) ✅
 
-- **Tool:** pytest-homeassistant-custom-component
+- **Tool:** pytest-homeassistant (latest HA), pytest-homeassistant-custom-component (floor)
 - **What:** HA integration, config flow, entities, services
 - **Coverage:** Config flow, coordinator, entity platforms
 - **Speed:** ~30 seconds (includes Docker build cache)
@@ -301,6 +306,6 @@ make deploy-watch
 
 This testing strategy reflects **ADR-012: Docker-Based Integration Testing**.
 
-**Key decision:** Use Docker containers for HA integration tests instead of installing pytest-homeassistant-custom-component locally, avoiding dependency conflicts while maintaining comprehensive test coverage.
+**Key decision:** Use Docker containers for HA integration tests instead of installing the HA test packages locally, avoiding dependency conflicts while maintaining comprehensive test coverage.
 
 See `docs/decisions/012-docker-integration-tests.md` for full rationale.
