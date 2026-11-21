@@ -41,7 +41,7 @@ git commit -m "chore: prepare v1.3.4 release"
 git push -u origin chore/release-v1.3.4
 
 # 7. Create and merge release PR
-gh pr create --title "Release v1.3.4" --body "Prepare v1.3.4 release"
+gh pr create --title "Release v1.3.4" --body-file /tmp/release-pr.md  # see "Release PR body" below
 gh pr merge <pr-number> --squash  # or merge via GitHub UI
 
 # 8. Create and push release tag (on main after PR merged)
@@ -50,6 +50,30 @@ git pull
 make release         # Creates tag and validates CHANGELOG
 git push --tags      # Triggers automated GitHub release workflow
 ```
+
+### Release PR body
+
+A release PR's diff is the CHANGELOG and README prose the maintainer already approved, so its body stays minimal. Stable, beta and graduation PRs all use this template in place of the `pr-body` skill. Write it to a file outside the repo, such as `/tmp/release-pr.md`, and pass it with `--body-file`:
+
+```markdown
+## Summary
+
+Prepares v2.6.4: CHANGELOG entries and a README "What's New" paragraph for #400 (#401) and #404 (#406), GitHub releases titled with the tag, and Marketplace install and upgrade steps in the README and `docs/release-process.md`.
+
+## AI Disclosure
+
+- [ ] No AI/agent tooling was used
+- [x] AI/agent tooling assisted; I reviewed and ran the change myself before submitting
+
+## Testing
+
+- [x] `manifest.json`, the README "What's New" heading and the CHANGELOG entry all read 2.6.4, the base version the release workflow checks the tag against.
+```
+
+- **Summary:** one sentence, "Prepares vX.Y.Z: …", naming what it covers by issue with the fixing PR in brackets. Other commits on the release branch (a workflow fix, docs) go after the colon in the same sentence. Add "Stacked on #N." when the branch is stacked.
+- **AI Disclosure:** the maintainer ticks the box that is true before opening.
+- **Testing:** the one version-consistency box. Check it before ticking: `manifest.json`, the README "What's New" heading and the CHANGELOG heading must all read the base version.
+- **Leave out:** restated CHANGELOG entries, instructions (tag after merge), CI results, and boxes for the release workflow or `make pre-commit`.
 
 ### Automated GitHub Release Workflow
 
@@ -164,7 +188,7 @@ make version-patch   # or version-minor / version-major
 git add custom_components/melcloudhome/manifest.json CHANGELOG.md README.md
 git commit -m "chore: prepare v2.3.1-beta.1 release"
 git push -u origin chore/release-v2.3.1-beta.1
-gh pr create --title "Release v2.3.1-beta.1" --body "Beta release for community testing"
+gh pr create --title "Release v2.3.1-beta.1" --body-file /tmp/release-pr.md  # see "Release PR body"
 gh pr merge --squash
 
 # 6. Tag and push (the ONLY place beta suffix appears)
@@ -212,7 +236,7 @@ git checkout -b chore/release-v2.3.1
 git add CHANGELOG.md README.md
 git commit -m "chore: update CHANGELOG and README for v2.3.1 stable release"
 git push -u origin chore/release-v2.3.1
-gh pr create --title "Release v2.3.1" --body "Graduate beta to stable"
+gh pr create --title "Release v2.3.1" --body-file /tmp/release-pr.md  # see "Release PR body"
 gh pr merge --squash
 
 # 5. Tag stable

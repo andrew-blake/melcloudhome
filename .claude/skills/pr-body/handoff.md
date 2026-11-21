@@ -23,6 +23,12 @@ Pass no narrative. Test counts and soak results are facts and belong in the
 list; the story of obtaining them is what stays behind. If a fact cannot be
 stated without its story, it belongs in the ADR.
 
+The problem statement is a claim the writer will repeat as given, so check it
+before dispatching. It states the problem as it stands, with no history of how
+it was found or what an earlier draft did. A statement that something is
+missing ("not written down", "nothing records it") is easy to state and hard to
+prove: find where the thing lives now and say where it is missing from.
+
 Give each check as one fact with its result. Every deletion check for the
 change is one fact, "each new behaviour fails its test when its fix is
 removed"; the individual mutations stay in the plan or ADR. The routine gates
@@ -120,6 +126,11 @@ for.
 
 `Testing` and the disclosure boxes are exempt: their length tracks what was
 verified. Report the word count before and after the cut.
+
+A sentence you keep, add or rewrite after the hand-back gets the writer's rules
+in full: check it against the common-mistakes table and re-run
+`prose_check.py`. Your edits carry the context the writer was kept from, so they
+are where narrative and unchecked claims come back in.
 
 ## Write it to a file
 

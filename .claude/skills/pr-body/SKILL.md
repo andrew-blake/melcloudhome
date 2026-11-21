@@ -13,6 +13,9 @@ A PR body tells a reviewer what changed, what to check, and what risk they are
 accepting by merging. It is written from the diff and the linked decision
 record.
 
+**Release PRs (`chore/release-v*`) do not use this skill.** Fill the template in
+`docs/release-process.md` ("Release PR body") directly, without a subagent.
+
 ## Source contract
 
 Inputs: `git diff <base>..HEAD`, `git diff --shortstat <base>..HEAD`, the linked
@@ -144,6 +147,8 @@ Then, in order:
    without a commit hash: the branch's hashes disappear when the PR is
    squash-merged.
 
+After Testing, keep any attribution line the session requires.
+
 **Every ticked box holds at the head.** A check that ran before later commits
 is re-run at the head when it is cheap (lint, type-check, the suites, the
 security review). Evidence too costly to repeat, such as a devserver or
@@ -244,9 +249,12 @@ in front of them.
 | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Restating a sensitive value the reason merely refers to                                                            | Name the category                                                                                                              |
 | Opening with how the problem was discovered                                                                        | Open with the problem as it stands, then what changed                                                                          |
+| An absence claim ("not written down", "nothing records X", "nowhere")                                              | Name where it lives now and where it is missing from; the PR history or another file usually holds it                          |
 | A Summary that restates the diff in prose                                                                          | Lead with the problem; the diff carries the wording of the change                                                              |
 | Framing: a sentence that announces, counts or signposts ("The skill sizes a body to its change.")                  | Delete it; if no fact goes with it, it was framing                                                                             |
 | Over-compression: a dangling participle or a verb with no clear subject ("…, keeping evidence the tests simulate") | Give every verb a subject, or split the sentence                                                                               |
+| A sentence a reviewer must read twice, or one carrying several changes                                             | One claim per sentence, its reason included; fold a fragment that only states a fact into the sentence it supports             |
+| A term only the skill or session defines ("dispatched writer", "fixture brief", "hand-back")                       | Say what the thing is in plain words                                                                                           |
 | Reproducing the ADR's measurement table                                                                            | One clause plus the link                                                                                                       |
 | "moved from X to Y", "previously", "used to"                                                                       | State current behaviour only                                                                                                   |
 | Any negation carrying the emphasis: `X, not Y`, `X rather than Y`, `isn't an option`, `is not the argument`        | Say what is true, positively. Contrast two real options by naming both                                                         |
