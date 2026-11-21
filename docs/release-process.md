@@ -53,7 +53,7 @@ git push --tags      # Triggers automated GitHub release workflow
 
 ### Release PR body
 
-A release PR's diff is the CHANGELOG and README prose the maintainer already approved, so its body stays minimal. This applies to stable, beta and graduation PRs alike; the generic `pr-body` skill does not. Write it to a file outside the repo, such as `/tmp/release-pr.md`, and pass it with `--body-file`:
+A release PR's diff is the CHANGELOG and README prose the maintainer already approved, so its body stays minimal. Stable, beta and graduation PRs all use this template in place of the `pr-body` skill. Write it to a file outside the repo, such as `/tmp/release-pr.md`, and pass it with `--body-file`:
 
 ```markdown
 ## Summary
