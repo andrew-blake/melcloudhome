@@ -304,8 +304,4 @@ make deploy-watch
 
 ## Architecture Decision
 
-This testing strategy reflects **ADR-012: Docker-Based Integration Testing**.
-
 **Key decision:** Use Docker containers for HA integration tests instead of installing the HA test packages locally, avoiding dependency conflicts while maintaining comprehensive test coverage.
-
-See `docs/decisions/012-docker-integration-tests.md` for full rationale.

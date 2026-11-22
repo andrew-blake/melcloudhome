@@ -42,7 +42,9 @@ updates:
       prefix: "chore"
       include: "scope"
     # Digest updates only. A tag change is a Python version change (the floor
-    # stage must stay on 3.13), so it's made by hand.
+    # stage must stay on 3.13), so it's made by hand. Digest PRs carry no
+    # semver update type, so dependabot-auto-merge.yml leaves them for a
+    # manual merge.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]

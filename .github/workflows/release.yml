@@ -117,10 +117,10 @@ jobs:
           enable-cache: false
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install 3.14
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --python 3.14
 
       - name: Format check
         run: make format-check
@@ -133,6 +133,9 @@ jobs:
 
       - name: Run all tests (identical to local)
         run: make test
+
+      - name: Run integration tests on the hacs.json HA floor
+        run: make test-integration-floor
 
   release:
     name: Create GitHub Release
