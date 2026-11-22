@@ -5,6 +5,7 @@
 **Why NOT to mock homeassistant modules:**
 
 ### 1. **Metaclass Conflicts**
+
 ```python
 # This WILL fail:
 sys.modules["homeassistant"] = MagicMock()
@@ -14,16 +15,19 @@ class MyEntity(CoordinatorEntity, ClimateEntity):  # TypeError: metaclass confli
 Home Assistant entities use complex metaclasses that can't be properly mocked with MagicMock.
 
 ### 2. **False Positives**
+
 - Tests pass but integration fails in real HA
 - Mocks don't match actual HA API behavior
 - Miss HA-specific validation and error cases
 
 ### 3. **Maintenance Burden**
+
 - HA APIs change frequently
 - Mocks become outdated
 - More effort to maintain than actual tests
 
 ### 4. **Doesn't Test Integration Points**
+
 - Coordinator interaction with HA core
 - Entity registry integration
 - Device registry integration
@@ -38,18 +42,21 @@ Home Assistant entities use complex metaclasses that can't be properly mocked wi
 ### Tier 1: **API Layer Testing** (Native Python) ✅
 
 **What we test:**
+
 - ✅ Complete API client functionality (82 tests)
 - ✅ All CRUD operations with real API (via VCR)
 - ✅ Error handling and edge cases
 - ✅ Data model parsing and validation
 
 **How it works:**
+
 - Tests the API client without any Home Assistant dependency
 - Uses real API responses (recorded with VCR cassettes)
 - Fast execution (~12s with VCR replay)
 - No Docker required
 
 **Example:**
+
 ```python
 # tests/api/test_client_control.py
 @pytest.mark.vcr
@@ -69,6 +76,7 @@ async def test_set_temperature(authenticated_client):
 ### Tier 2: **Home Assistant Integration Testing** (Docker) ✅
 
 **What we test:**
+
 - ✅ Integration setup and teardown
 - ✅ Config flow (user authentication, options)
 - ✅ Entity registration and lifecycle
@@ -77,70 +85,82 @@ async def test_set_temperature(authenticated_client):
 - ✅ Coordinator updates and error handling
 
 **How it works:**
-- Uses `pytest-homeassistant-custom-component` framework
+
+- Uses HA's official `pytest-homeassistant` on the latest HA, and `pytest-homeassistant-custom-component` on the `hacs.json` floor; `tests/integration/ha_testing.py` imports from whichever is installed
 - Runs in Docker container with clean HA environment
 - Provides real HA fixtures (`hass`, `hass_client`, etc.)
 - Mocks API client at the boundary (not HA internals)
 - Tests through HA core interfaces (states, services)
 
 **Why Docker:**
-- `pytest-homeassistant-custom-component` has dependency conflicts with project dependencies
+
+- The HA test packages pin Home Assistant's own dependencies, which conflict with `uv.lock`
+- The latest HA needs Python 3.14 and the floor's test package needs Python 3.13
 - Requires specific HA environment and fixtures
 - Docker provides isolation and reproducibility
 - Matches CI/CD environment
 
 **Example:**
+
 ```python
 # tests/integration/test_climate_ata.py
 async def test_set_temperature(hass, setup_integration):
     """Test setting temperature through HA service."""
-    state = hass.states.get("climate.melcloudhome_test_unit")
+    entity_id = entity_id_for(hass, ("climate", TEST_ATA_UNIT_ID))
+    state = hass.states.get(entity_id)
     assert state.state == HVACMode.HEAT
 
     await hass.services.async_call(
         "climate", "set_temperature",
-        {"entity_id": "climate.melcloudhome_test_unit", "temperature": 22},
+        {"entity_id": entity_id, "temperature": 22},
         blocking=True
     )
 
-    state = hass.states.get("climate.melcloudhome_test_unit")
+    state = hass.states.get(entity_id)
     assert state.attributes["temperature"] == 22
 ```
 
 **Run with:** `make test` (Docker Compose with mock server and HA integration tests)
 
 **Test structure:**
+
 - `tests/integration/` - HA integration tests
-- `tests/integration/Dockerfile` - Test environment
-- Tests execute from `tests/integration/` directory to load pytest_plugins correctly
+- `Dockerfile.test` - Test environment (`PYTHON_VERSION` build argument)
+- Entity IDs are looked up by unique ID (`entity_id_for` in `tests/integration/conftest.py`), never hard-coded: from HA 2026.6 a generated ID includes the device's area
 
 **Coverage:** Config flow, entity platforms, coordinator, service calls
 
-**HA version coverage:** CI runs this tier twice — once against current HA
-(`make test`, latest `pytest-homeassistant-custom-component`) and once against the
-declared `hacs.json` floor (`make test-integration-floor`, phcc `0.13.269` =
-HA 2025.8.0). The floor pin lives in the Makefile and must be bumped together with
-any `hacs.json` floor raise — a stale pin silently keeps testing the old floor.
-Versions between the two endpoints are deliberately untested (two-point trade-off,
-not a full matrix).
+**HA version coverage:** CI runs this tier twice. The latest HA runs in `make test`
+and `make test-integration` on Python 3.14, with `pytest-homeassistant` pinned in
+`ci/latest-ha/requirements.txt`. Bumping that pin moves the run to a new HA release. The declared `hacs.json` floor runs in `make test-integration-floor`
+on Python 3.13, with phcc `0.13.269` = HA 2025.8.0. The floor pin lives in the Makefile
+and must be bumped together with any `hacs.json` floor raise. A stale pin silently
+keeps testing the old floor. Versions between the two endpoints are deliberately
+untested, a two-point trade-off.
+
+Both runs fail if Home Assistant logs a deprecation for this integration
+(`tests/integration/conftest.py`, deprecation guard).
 
 ---
 
 ### Tier 3: **Manual Testing** (Production HA) ✅
 
 **When to use:**
+
 - Final verification before release
 - Testing with real MELCloud account
 - UI/UX validation
 - Long-running stability tests
 
 **Our deployment tool:**
+
 ```bash
 make deploy-test  # Deploy + API verification
 make deploy-watch # Deploy + live log monitoring
 ```
 
 **Manual test checklist:**
+
 - Configuration → Integrations → Add Integration
 - Verify all devices discovered
 - Test power on/off
@@ -162,6 +182,7 @@ prove.
 ## Complete Testing Stack
 
 ### 1. API Tests (Native Python) ✅
+
 - **Tool:** pytest + VCR
 - **What:** API client operations, models, error handling
 - **Coverage:** 82% of API client code
@@ -169,19 +190,22 @@ prove.
 - **Command:** `make test-api`
 
 ### 2. Integration Tests (Docker) ✅
-- **Tool:** pytest-homeassistant-custom-component
+
+- **Tool:** pytest-homeassistant (latest HA), pytest-homeassistant-custom-component (floor)
 - **What:** HA integration, config flow, entities, services
 - **Coverage:** Config flow, coordinator, entity platforms
 - **Speed:** ~30 seconds (includes Docker build cache)
 - **Command:** `make test`
 
 ### 3. Code Quality ✅
+
 - **Tools:** ruff, mypy, pre-commit
 - **What:** Type safety, linting, formatting
 - **Coverage:** 100% of code
 - **Status:** All passing
 
 ### 4. Manual Verification (Production HA) ✅
+
 - **Tool:** Deployment scripts + real HA instance
 - **What:** Final verification, UI/UX, real MELCloud API
 - **When:** Pre-release only
@@ -192,6 +216,7 @@ prove.
 ## Testing Workflow
 
 ### During Development:
+
 ```bash
 # 1. Write/modify code
 vim custom_components/melcloudhome/climate.py
@@ -212,6 +237,7 @@ make dev-restart   # Reload after changes
 ```
 
 ### Before Commit:
+
 ```bash
 # Pre-commit hooks run automatically
 git commit -m "..."
@@ -222,6 +248,7 @@ make pre-commit
 ```
 
 ### Before Release:
+
 ```bash
 # 1. Full test suite
 make test-api  # API unit tests (fast)
@@ -242,6 +269,7 @@ make deploy-watch
 ## Best Practices for HA Custom Components
 
 ### ✅ DO:
+
 - Test API/business logic comprehensively with VCR
 - Test HA integration through `hass.states` and `hass.services` interfaces
 - Mock at the API boundary (not HA internals)
@@ -251,6 +279,7 @@ make deploy-watch
 - Use code quality tools (ruff, mypy)
 
 ### ❌ DON'T:
+
 - Mock homeassistant modules or core classes
 - Test coordinator/entity internals directly
 - Skip integration tests for HA-specific code
@@ -275,8 +304,4 @@ make deploy-watch
 
 ## Architecture Decision
 
-This testing strategy reflects **ADR-012: Docker-Based Integration Testing**.
-
-**Key decision:** Use Docker containers for HA integration tests instead of installing pytest-homeassistant-custom-component locally, avoiding dependency conflicts while maintaining comprehensive test coverage.
-
-See `docs/decisions/012-docker-integration-tests.md` for full rationale.
+**Key decision:** Use Docker containers for HA integration tests instead of installing the HA test packages locally, avoiding dependency conflicts while maintaining comprehensive test coverage.

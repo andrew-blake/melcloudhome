@@ -15,6 +15,7 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
@@ -28,7 +29,11 @@ async def test_atw_error_state_sensor_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert state is not None
     assert state.state == STATE_OFF  # No error
 
@@ -42,7 +47,12 @@ async def test_atw_connection_state_sensor_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_connection_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_connection_state"),
+        )
+    )
     assert state is not None
     assert state.state == STATE_ON  # Connected
 
@@ -56,7 +66,12 @@ async def test_atw_forced_dhw_active_sensor_created(hass: HomeAssistant) -> None
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_forced_dhw_active")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_forced_dhw_active"),
+        )
+    )
     assert state is not None
     assert state.state == STATE_ON  # Forced DHW is active
 
@@ -70,7 +85,11 @@ async def test_atw_error_state_on_when_device_in_error(hass: HomeAssistant) -> N
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert state is not None
     assert state.state == STATE_ON  # Device in error
 
@@ -84,7 +103,11 @@ async def test_atw_error_state_exposes_error_code(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert state.state == STATE_ON
     assert state.attributes["error_code"] == "E4"
 
@@ -98,7 +121,11 @@ async def test_atw_error_code_none_when_no_error(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_error_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert state.state == STATE_OFF
     assert state.attributes["error_code"] is None
 
@@ -112,7 +139,12 @@ async def test_atw_forced_dhw_reflects_device_mode(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_forced_dhw_active")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_forced_dhw_active"),
+        )
+    )
     assert state is not None
     assert state.state == STATE_OFF  # Forced DHW not active
 
@@ -126,6 +158,11 @@ async def test_atw_connection_always_available(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_0efc_9abc_connection_state")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("binary_sensor", "0efc1234-5678-9abc-def0-123456789abc_connection_state"),
+        )
+    )
     assert state is not None
     assert state.state == STATE_ON  # Connected

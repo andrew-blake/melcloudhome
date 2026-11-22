@@ -24,6 +24,7 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
@@ -34,7 +35,11 @@ async def test_water_heater_entity_created_with_correct_attributes(
     setup_atw_integration,
 ) -> None:
     """Test water heater entity is created with correct attributes."""
-    state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+        )
+    )
     assert state is not None
     assert state.state == STATE_ECO
     assert state.attributes[ATTR_TEMPERATURE] == 50.0
@@ -52,7 +57,10 @@ async def test_set_temperature_updates_dhw_temp(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "water_heater",
         "set_temperature",
-        {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "temperature": 55},
+        {
+            "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
+            "temperature": 55,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -70,13 +78,16 @@ async def test_set_operation_mode_eco_to_performance(hass: HomeAssistant) -> Non
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_forced_hot_water = AsyncMock()
 
-    state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID))
     assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
 
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "operation_mode": STATE_HIGH_DEMAND},
+        {
+            "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
+            "operation_mode": STATE_HIGH_DEMAND,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -94,13 +105,16 @@ async def test_set_operation_mode_performance_to_eco(hass: HomeAssistant) -> Non
     _, mock_client = await setup_atw_integration_custom(hass, mock_context)
     mock_client.atw.set_forced_hot_water = AsyncMock()
 
-    state = hass.states.get(TEST_WATER_HEATER_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID))
     assert state.attributes[ATTR_OPERATION_MODE] == STATE_HIGH_DEMAND
 
     await hass.services.async_call(
         "water_heater",
         "set_operation_mode",
-        {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "operation_mode": STATE_ECO},
+        {
+            "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
+            "operation_mode": STATE_ECO,
+        },
         blocking=True,
     )
     await hass.async_block_till_done()
@@ -122,7 +136,11 @@ async def test_current_operation_reflects_forced_dhw_mode(hass: HomeAssistant) -
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+        )
+    )
     assert state.attributes[ATTR_OPERATION_MODE] == STATE_ECO
 
 
@@ -135,7 +153,11 @@ async def test_availability_false_when_device_in_error(hass: HomeAssistant) -> N
     await setup_atw_integration_custom(hass, mock_context)
 
     assert (
-        hass.states.get("water_heater.melcloudhome_0efc_9abc_tank").state
+        hass.states.get(
+            entity_id_for(
+                hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+            )
+        ).state
         == "unavailable"
     )
 
@@ -154,7 +176,11 @@ async def test_extra_state_attributes_include_operation_status(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+        )
+    )
     assert state.attributes["operation_status"] == "HotWater"
     assert "forced_dhw_active" in state.attributes
     assert "zone_heating_suspended" in state.attributes
@@ -173,9 +199,11 @@ async def test_water_heater_with_performance_mode(hass: HomeAssistant) -> None:
     await setup_atw_integration_custom(hass, mock_context)
 
     assert (
-        hass.states.get("water_heater.melcloudhome_0efc_9abc_tank").attributes[
-            ATTR_OPERATION_MODE
-        ]
+        hass.states.get(
+            entity_id_for(
+                hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+            )
+        ).attributes[ATTR_OPERATION_MODE]
         == STATE_HIGH_DEMAND
     )
 
@@ -186,8 +214,22 @@ async def test_water_heater_device_info_matches_climate(hass: HomeAssistant) -> 
     mock_context = create_mock_atw_user_context()
     await setup_atw_integration_custom(hass, mock_context)
 
-    assert hass.states.get("water_heater.melcloudhome_0efc_9abc_tank") is not None
-    assert hass.states.get("climate.melcloudhome_0efc_9abc_zone_1") is not None
+    assert (
+        hass.states.get(
+            entity_id_for(
+                hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+            )
+        )
+        is not None
+    )
+    assert (
+        hass.states.get(
+            entity_id_for(
+                hass, ("climate", "0efc1234-5678-9abc-def0-123456789abc_zone_1")
+            )
+        )
+        is not None
+    )
 
 
 @pytest.mark.asyncio
@@ -201,7 +243,11 @@ async def test_water_heater_temperature_in_range(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+        )
+    )
     assert state.attributes["current_temperature"] == 45.0
     assert state.attributes[ATTR_TEMPERATURE] == 50.0
     assert 40 <= state.attributes[ATTR_TEMPERATURE] <= 60
@@ -213,7 +259,11 @@ async def test_water_heater_entity_naming_includes_tank(hass: HomeAssistant) -> 
     mock_context = create_mock_atw_user_context()
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("water_heater.melcloudhome_0efc_9abc_tank")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("water_heater", "0efc1234-5678-9abc-def0-123456789abc_tank")
+        )
+    )
     assert state is not None
     assert "_tank" in state.entity_id
 
@@ -235,7 +285,10 @@ async def test_a_dhw_setpoint_matching_current_state_is_still_sent(
         await hass.services.async_call(
             "water_heater",
             "set_temperature",
-            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "temperature": 50.0},
+            {
+                "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
+                "temperature": 50.0,
+            },
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -256,7 +309,10 @@ async def test_an_operation_mode_matching_current_state_is_still_sent(
         await hass.services.async_call(
             "water_heater",
             "set_operation_mode",
-            {"entity_id": TEST_WATER_HEATER_ENTITY_ID, "operation_mode": STATE_ECO},
+            {
+                "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
+                "operation_mode": STATE_ECO,
+            },
             blocking=True,
         )
         await hass.async_block_till_done()
@@ -278,7 +334,7 @@ async def test_set_temperature_acts_on_the_operation_mode_it_is_given(
         "water_heater",
         "set_temperature",
         {
-            "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+            "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
             "temperature": 55,
             "operation_mode": "high_demand",
         },
@@ -311,7 +367,7 @@ async def test_set_temperature_refuses_an_unsupported_operation_mode(
             "water_heater",
             "set_temperature",
             {
-                "entity_id": TEST_WATER_HEATER_ENTITY_ID,
+                "entity_id": entity_id_for(hass, TEST_WATER_HEATER_ENTITY_ID),
                 "temperature": 55,
                 "operation_mode": "boost",
             },

@@ -16,10 +16,6 @@ import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
-    async_fire_time_changed,
-)
 
 from custom_components.melcloudhome.const import (
     DATA_LOOKBACK_HOURS_ENERGY,
@@ -32,6 +28,11 @@ from .conftest import (
     TEST_ATA_BUILDING_ID,
     TEST_ATA_UNIT_ID,
     create_mock_ata_energy_context,
+    entity_id_for,
+)
+from .ha_testing import (
+    MockConfigEntry,
+    async_fire_time_changed,
 )
 
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
@@ -156,7 +157,11 @@ async def test_initial_energy_fetch_with_first_init(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         assert state.state == "0.0"  # Should start at 0, not include historical data
         assert state.attributes["unit_of_measurement"] == "kWh"
@@ -227,7 +232,11 @@ async def test_energy_accumulation_cumulative_totals(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Expected: 0.5 (initial) + 0.6 (11:00) + 0.7 (12:00) = 1.8 kWh
@@ -280,7 +289,11 @@ async def test_corrupt_hourly_energy_value_rejected(hass: HomeAssistant) -> None
     async with setup_energy_entry(
         hass, initial_storage, mock_energy_data
     ) as mock_store:
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Expected: 3.1 (initial, 12:00 already seen) + 0.8 (14:00, legitimate)
@@ -359,7 +372,11 @@ async def test_all_corrupt_first_init_completes_and_does_not_loop(
     )
 
     async with setup_energy_entry(hass, None, mock_energy_data):
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         assert float(state.state) == 0.0
         assert caplog.text.count("Initializing consumed tracking") == 1
@@ -425,7 +442,11 @@ async def test_corrupt_historical_value_self_heals_on_load(
     async with setup_energy_entry(
         hass, polluted_storage, mock_energy_data
     ) as mock_store:
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Expected: cumulative reset to 0.0 after the purge. The 12:00 and
@@ -489,7 +510,11 @@ async def test_all_corrupt_hour_values_self_heal_keeps_delta_tracking(
     async with setup_energy_entry(
         hass, polluted_storage, mock_energy_data
     ) as mock_store:
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Cumulative healed to 0.0, then the poll's two legitimate hours
@@ -545,7 +570,11 @@ async def test_stale_hour_values_pruned_on_load(hass: HomeAssistant) -> None:
     async with setup_energy_entry(
         hass, initial_storage, mock_energy_data
     ) as mock_store:
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         # Pruning stale entries alone must not touch the cumulative total -
         # only implausible-value purging does that.
@@ -627,7 +656,11 @@ async def test_double_hour_prevention(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Should still be 1.1 kWh (no new hours added)
@@ -713,7 +746,11 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should be 10.0 + 0.1 = 10.1 kWh
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         assert float(state.state) == pytest.approx(10.1, rel=0.01)
 
@@ -730,7 +767,11 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Should add delta: 0.3 - 0.1 = 0.2 kWh → 10.1 + 0.2 = 10.3 kWh
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert float(state.state) == pytest.approx(10.3, rel=0.01)
         # ❌ WILL FAIL with current code: stays at 10.1 (skips "old" hour)
 
@@ -750,7 +791,11 @@ async def test_energy_topping_up_progressive_updates(hass: HomeAssistant) -> Non
 
         # ✅ Should add: delta 09:00 (0.1) + new 10:00 (0.1) = 0.2 kWh
         # 10.3 + 0.2 = 10.5 kWh
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert float(state.state) == pytest.approx(10.5, rel=0.01)
         # ❌ WILL FAIL with current code: would be 10.2 (skips 09:00 delta, adds 10:00)
 
@@ -831,7 +876,11 @@ async def test_energy_persistence_across_restarts(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Expected: 25.7 (persisted) + 0.9 (new hour) = 26.6 kWh
@@ -928,7 +977,11 @@ async def test_storage_migration_from_v1_3_4_to_v2_0(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows migrated value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         # Expected: 15.3 (migrated from v1.3.4) + 0.7 (new hour) = 16.0 kWh
         assert float(state.state) == pytest.approx(16.0, rel=0.01)
@@ -1035,7 +1088,11 @@ async def test_storage_no_migration_for_v2_0_format(hass: HomeAssistant) -> None
         await hass.async_block_till_done()
 
         # ✅ Verify sensor exists and shows restored value + new accumulation
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
         # Expected: 20.5 (restored from v2.0) + 0.7 (new hour) = 21.2 kWh
         assert float(state.state) == pytest.approx(21.2, rel=0.01)
@@ -1110,7 +1167,11 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
         # ✅ CORRECT: Assert through state machine
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Sensor reads unknown when the initial fetch fails - energy_consumed
@@ -1118,7 +1179,9 @@ async def test_energy_update_failure_recovery(hass: HomeAssistant) -> None:
         assert state.state == "unknown"
 
         # Verify integration didn't crash - other sensors still work
-        climate_state = hass.states.get("climate.melcloudhome_a1b2_9abc_climate")
+        climate_state = hass.states.get(
+            entity_id_for(hass, ("climate", "a1b2c3d4-5678-9abc-def0-123456789abc"))
+        )
         assert climate_state is not None
         assert climate_state.state == "heat"  # Climate entity still functional
 
@@ -1169,7 +1232,11 @@ async def test_energy_polling_cancellation_on_shutdown(hass: HomeAssistant) -> N
         await hass.async_block_till_done()
 
         # Verify sensor exists
-        state = hass.states.get("sensor.melcloudhome_a1b2_9abc_energy")
+        state = hass.states.get(
+            entity_id_for(
+                hass, ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
+            )
+        )
         assert state is not None
 
         # Reset call count after setup

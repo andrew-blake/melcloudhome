@@ -24,10 +24,14 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
 
-FLOW_TEMP_ENTITY_ID = "sensor.melcloudhome_0efc_9abc_flow_temperature"
+FLOW_TEMP_ENTITY_ID = (
+    "sensor",
+    "0efc1234-5678-9abc-def0-123456789abc_flow_temperature",
+)
 
 # A naive stamp exactly as /report/v1/internaltemperatures sends it: wall-clock
 # time in the unit's own zone, seconds != 0 so it is not the synthetic to-echo.
@@ -76,7 +80,7 @@ async def test_last_reading_is_converted_from_the_unit_zone(
     """A Europe/Madrid unit stamping 10:30:17 local must read 08:30:17 UTC."""
     await _setup_with_zone(hass, "Europe/Madrid")
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert float(state.state) == 41.5
     last_reading = datetime.fromisoformat(state.attributes["last_reading"])
@@ -95,7 +99,7 @@ async def test_missing_zone_falls_back_to_utc(hass: HomeAssistant) -> None:
     """
     await _setup_with_zone(hass, None)
 
-    state = hass.states.get(FLOW_TEMP_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, FLOW_TEMP_ENTITY_ID))
     assert state is not None
     assert float(state.state) == 41.5
     last_reading = datetime.fromisoformat(state.attributes["last_reading"])

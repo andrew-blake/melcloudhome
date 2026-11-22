@@ -190,12 +190,12 @@ Cassettes are branch-specific and live in the worktree:
 
 Integration and E2E tests run in separate Docker services due to conflicting infrastructure needs:
 
-- **Integration tests** run WITH pytest-homeassistant-custom-component
+- **Integration tests** run WITH an HA test package: `pytest-homeassistant` on the latest HA (Python 3.14), `pytest-homeassistant-custom-component` on the `hacs.json` floor (Python 3.13)
   - Includes pytest-socket (blocks network access for safety)
   - Tests Home Assistant integration logic
   - Validates entity behavior through `hass.states` and `hass.services`
 
-- **E2E tests** run WITHOUT pytest-homeassistant
+- **E2E tests** run WITHOUT an HA test package (Python 3.14)
   - Real network access to mock server
   - Tests full HTTP stack (DNS, TCP, HTTP request/response)
   - Validates rate limiting enforcement with RequestPacer
@@ -226,7 +226,8 @@ See `docker-compose.test.yml` for implementation details.
   - **ATA helpers:** `create_mock_ata_unit()`, `create_mock_ata_building()`, `create_mock_ata_user_context()`, `setup_ata_integration_custom()`
   - **ATW helpers:** `create_mock_atw_unit()`, `create_mock_atw_building()`, `create_mock_atw_user_context()`, `setup_atw_integration_custom()`
   - Both `setup_*_integration_custom()` helpers return `(entry, mock_client)` — capture `mock_client` when you need to assert on calls or reconfigure mocks after setup
-  - Reusable test constants (`TEST_ATA_UNIT_ID`, `TEST_ATW_UNIT_ID`, entity IDs, etc.)
+  - Reusable test constants (`TEST_ATA_UNIT_ID`, `TEST_ATW_UNIT_ID`, entity keys, etc.)
+  - `entity_id_for(hass, (domain, unique_id))` looks an entity ID up in the entity registry; `find_entity_id()` returns `None` for an entity that was never created. Never hard-code an entity ID: from HA 2026.6 a generated ID includes the device's area, and the post-setup dialog can rewrite it
 
 **Critical rule:** Always check conftest for existing helpers before writing local `create_mock_*` functions or copying the `MockConfigEntry` setup block. If helpers are missing for your use case, add them to conftest rather than duplicating inline.
 
@@ -405,8 +406,8 @@ make test
 
 **Why Docker Compose?**
 
-- `pytest-homeassistant-custom-component` requires Home Assistant
-- HA requires aiohttp 3.8-3.11 (incompatible with our aiohttp >=3.13.2)
+- The HA test packages pin Home Assistant and its dependencies, which conflict with `uv.lock`
+- The latest HA needs Python 3.14; the floor's test package only installs on Python 3.13
 - E2E tests need mock MELCloud server with rate limiting
 - Docker Compose provides isolated environment with both services
 
@@ -414,19 +415,21 @@ make test
 
 1. Runs API unit tests natively (creates `.coverage` file)
 2. Starts mock MELCloud server (with rate limiting enabled)
-3. Runs integration-tests service (WITH pytest-homeassistant, appends to `.coverage`)
-4. Runs e2e-tests service (WITHOUT pytest-homeassistant, appends to `.coverage`, generates final reports)
+3. Runs integration-tests service (Python 3.14, WITH pytest-homeassistant, appends to `.coverage`)
+4. Runs e2e-tests service (Python 3.14, WITHOUT an HA test package, appends to `.coverage`, generates final reports)
 5. Tears down containers
+
+`make test-integration-floor` runs the floor separately, in the `integration-tests-floor` service on the Python 3.13 image.
 
 ### Running Targeted Tests (Debugging)
 
 **Test type requirements:**
 
-| Test Type   | Mock Server? | Docker? | Why                                                     |
-| ----------- | ------------ | ------- | ------------------------------------------------------- |
-| API unit    | ❌ No        | ❌ No   | Uses VCR cassettes (recorded responses)                 |
-| Integration | ❌ No        | ✅ Yes  | Mocks client with `patch()`, needs pytest-homeassistant |
-| E2E         | ✅ Yes       | ✅ Yes  | Tests real HTTP stack with rate limiting                |
+| Test Type   | Mock Server? | Docker? | Why                                                   |
+| ----------- | ------------ | ------- | ----------------------------------------------------- |
+| API unit    | ❌ No        | ❌ No   | Uses VCR cassettes (recorded responses)               |
+| Integration | ❌ No        | ✅ Yes  | Mocks client with `patch()`, needs an HA test package |
+| E2E         | ✅ Yes       | ✅ Yes  | Tests real HTTP stack with rate limiting              |
 
 Different test types have different requirements:
 
@@ -442,21 +445,23 @@ pytest tests/api/test_client_ata.py -k "temperature" -vv
 **Integration tests** (mocked client - no mock server needed):
 
 ```bash
-# Run in Docker (needs pytest-homeassistant-custom-component)
-docker-compose -f docker-compose.test.yml run --rm integration-tests \
-  sh -c "uv pip install pytest-homeassistant-custom-component && \
-         uv run pytest tests/integration/test_climate_ata.py -vv"
+# Run in Docker on the latest HA. --no-sync keeps HA's pinned versions
+# (a plain `uv run` re-syncs to uv.lock); -p no:respx is required by
+# pytest-homeassistant.
+docker compose -f docker-compose.test.yml run --rm integration-tests \
+  sh -c "uv pip install -r ci/latest-ha/requirements.txt && \
+         uv run --no-sync pytest tests/integration/test_climate_ata.py -p no:respx -vv"
 
 # Run specific test function
-docker-compose -f docker-compose.test.yml run --rm integration-tests \
-  sh -c "uv pip install pytest-homeassistant-custom-component && \
-         uv run pytest tests/integration/test_climate_ata.py::test_set_temperature -vv -s"
+docker compose -f docker-compose.test.yml run --rm integration-tests \
+  sh -c "uv pip install -r ci/latest-ha/requirements.txt && \
+         uv run --no-sync pytest tests/integration/test_climate_ata.py::test_set_temperature -p no:respx -vv -s"
 
 # Interactive shell for debugging
-docker-compose -f docker-compose.test.yml run --rm integration-tests bash
+docker compose -f docker-compose.test.yml run --rm integration-tests bash
 # Then inside container:
-# uv pip install pytest-homeassistant-custom-component
-# uv run pytest tests/integration/test_climate_ata.py -vv
+# uv pip install -r ci/latest-ha/requirements.txt
+# uv run --no-sync pytest tests/integration/test_climate_ata.py -p no:respx -vv
 ```
 
 **E2E tests** (real HTTP stack - REQUIRES mock server):
@@ -544,7 +549,8 @@ When publishing to HACS, ensure:
 ### Community Resources
 
 - [Building a HA Custom Component Part 2: Unit Testing and CI](https://aarongodfrey.dev/home%20automation/building_a_home_assistant_custom_component_part_2/)
-- [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component)
+- [pytest-homeassistant](https://pypi.org/project/pytest-homeassistant/) (HA's official test package, HA 2026.11 onward)
+- [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) (retired after HA 2026.10.4; used for the floor run)
 - [HA Community: Best practices for custom components](https://community.home-assistant.io/t/best-practices-to-develop-and-maintain-a-custom-component/339295)
 
 ### Working Examples in This Project

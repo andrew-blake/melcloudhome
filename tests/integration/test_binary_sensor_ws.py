@@ -15,20 +15,26 @@ import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
 
 from .conftest import (
     MOCK_CLIENT_PATH,
+    EntityKey,
     OpenFakeWS,
     create_mock_atw_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_atw_integration_custom,
     wire_connected_ws,
     ws_text_frame,
 )
+from .ha_testing import MockConfigEntry
 
-WS_ENTITY_ID = "binary_sensor.melcloud_home_real_time_updates"
+
+def _ws_key(entry: MockConfigEntry) -> EntityKey:
+    """The entry's real-time-updates sensor: one per config entry."""
+    return ("binary_sensor", f"{entry.entry_id}_realtime_updates")
 
 
 @pytest.mark.asyncio
@@ -40,18 +46,19 @@ async def test_ws_sensor_off_when_listener_cannot_connect(
     def fail_hash(client: MagicMock) -> None:
         client.async_get_ws_hash = AsyncMock(side_effect=RuntimeError("down"))
 
-    await setup_atw_integration_custom(
+    entry, _ = await setup_atw_integration_custom(
         hass, create_mock_atw_user_context(), configure_client=fail_hash
     )
 
-    state = hass.states.get(WS_ENTITY_ID)
+    ws_entity_id = entity_id_for(hass, _ws_key(entry))
+    state = hass.states.get(ws_entity_id)
     assert state is not None
     assert state.state == STATE_OFF
     assert state.attributes["device_class"] == "connectivity"
     assert state.attributes["last_delta_at"] is None
 
     registry = er.async_get(hass)
-    entity = registry.async_get(WS_ENTITY_ID)
+    entity = registry.async_get(ws_entity_id)
     assert entity is not None
     assert entity.entity_category == er.EntityCategory.DIAGNOSTIC
 
@@ -59,13 +66,13 @@ async def test_ws_sensor_off_when_listener_cannot_connect(
 @pytest.mark.asyncio
 async def test_ws_sensor_absent_when_opted_out(hass: HomeAssistant) -> None:
     """Opting out of real-time updates creates no connectivity sensor."""
-    await setup_atw_integration_custom(
+    entry, _ = await setup_atw_integration_custom(
         hass,
         create_mock_atw_user_context(),
         options={CONF_ENABLE_WEBSOCKET: False},
     )
 
-    assert hass.states.get(WS_ENTITY_ID) is None
+    assert find_entity_id(hass, _ws_key(entry)) is None
 
 
 @pytest.mark.asyncio
@@ -93,9 +100,8 @@ async def test_ws_sensor_removed_on_opt_out_no_orphan(hass: HomeAssistant) -> No
         # Enabled (default): entity created and registered.
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-        assert hass.states.get(WS_ENTITY_ID) is not None
-        registry = er.async_get(hass)
-        assert registry.async_get(WS_ENTITY_ID) is not None
+        ws_entity_id = entity_id_for(hass, _ws_key(entry))
+        assert hass.states.get(ws_entity_id) is not None
 
         # Opt out and reload — entity must be gone from states AND registry.
         hass.config_entries.async_update_entry(
@@ -104,8 +110,8 @@ async def test_ws_sensor_removed_on_opt_out_no_orphan(hass: HomeAssistant) -> No
         await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
 
-        assert hass.states.get(WS_ENTITY_ID) is None
-        assert registry.async_get(WS_ENTITY_ID) is None
+        assert hass.states.get(ws_entity_id) is None
+        assert find_entity_id(hass, _ws_key(entry)) is None
 
         # Opt back in and reload — the sensor must come back.
         hass.config_entries.async_update_entry(
@@ -114,8 +120,7 @@ async def test_ws_sensor_removed_on_opt_out_no_orphan(hass: HomeAssistant) -> No
         await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
 
-        assert hass.states.get(WS_ENTITY_ID) is not None
-        assert registry.async_get(WS_ENTITY_ID) is not None
+        assert hass.states.get(entity_id_for(hass, _ws_key(entry))) is not None
 
 
 @pytest.mark.asyncio
@@ -123,7 +128,7 @@ async def test_ws_sensor_on_when_connected_and_tracks_deltas(
     hass: HomeAssistant,
 ) -> None:
     """A live socket reads on; a received delta stamps last_delta_at."""
-    await setup_atw_integration_custom(
+    entry, _ = await setup_atw_integration_custom(
         hass,
         create_mock_atw_user_context(),
         configure_client=lambda client: wire_connected_ws(
@@ -134,7 +139,7 @@ async def test_ws_sensor_on_when_connected_and_tracks_deltas(
     # debounced refresh from the delta run to completion.
     await hass.async_block_till_done()
 
-    state = hass.states.get(WS_ENTITY_ID)
+    state = hass.states.get(entity_id_for(hass, _ws_key(entry)))
     assert state is not None
     assert state.state == STATE_ON
     # Exposed as an ISO 8601 string (consistent with the diagnostics section),
@@ -193,16 +198,17 @@ async def test_ws_sensor_flips_off_when_socket_drops(hass: HomeAssistant) -> Non
         )
         client.async_ws_session = AsyncMock(return_value=session)
 
-    await setup_atw_integration_custom(
+    entry, _ = await setup_atw_integration_custom(
         hass, create_mock_atw_user_context(), configure_client=wire
     )
+    ws_entity_id = entity_id_for(hass, _ws_key(entry))
 
     # The connect -> delta -> drop cycle involves no timers, but runs in a
     # background task; poll until the drop has propagated to the entity.
     state = None
     for _ in range(100):
         await hass.async_block_till_done()
-        state = hass.states.get(WS_ENTITY_ID)
+        state = hass.states.get(ws_entity_id)
         if state and state.attributes["last_delta_at"] and state.state == STATE_OFF:
             break
         await asyncio.sleep(0.01)

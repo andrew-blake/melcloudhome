@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.exceptions import ApiError
 from custom_components.melcloudhome.const import DOMAIN
@@ -22,8 +21,11 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_ata_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
 # The climate tests already mock every ATA control this platform can reach, and
 # then some; a second copy here would only drift out of step with it.
@@ -32,7 +34,7 @@ from .test_climate_ata import _configure_ata_controls
 # melcloudhome_<first4><last4> from create_device_info, plus the slug of
 # _attr_name. Confirmed: slugify("melcloudhome_a1b2_9abc A/C fan", separator="_")
 # gives this, and the same call on "... Climate" gives the climate constant.
-_FAN_ENTITY = "fan.melcloudhome_a1b2_9abc_a_c_fan"
+_FAN_ENTITY = ("fan", "a1b2c3d4-5678-9abc-def0-123456789abc_ac_fan")
 
 
 async def _setup(hass: HomeAssistant, **unit_kw: Any) -> tuple[Any, Any]:
@@ -49,7 +51,7 @@ async def _set_percentage(hass: HomeAssistant, percentage: int) -> None:
     await hass.services.async_call(
         "fan",
         "set_percentage",
-        {"entity_id": _FAN_ENTITY, "percentage": percentage},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "percentage": percentage},
         blocking=True,
     )
 
@@ -97,7 +99,10 @@ async def _let_tasks_run() -> None:
 async def _power_off_via_service(hass: HomeAssistant) -> None:
     """Tap the tile off."""
     await hass.services.async_call(
-        "fan", "turn_off", {"entity_id": _FAN_ENTITY}, blocking=True
+        "fan",
+        "turn_off",
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY)},
+        blocking=True,
     )
 
 
@@ -112,7 +117,7 @@ async def test_fan_entity_created_for_ata_unit(hass: HomeAssistant) -> None:
     """A unit with fan speeds gets a fan entity."""
     await _setup(hass)
 
-    assert hass.states.get(_FAN_ENTITY) is not None
+    assert hass.states.get(entity_id_for(hass, _FAN_ENTITY)) is not None
 
 
 @pytest.mark.asyncio
@@ -120,7 +125,9 @@ async def test_percentage_reflects_commanded_speed(hass: HomeAssistant) -> None:
     """Speed three of five reports as 60 percent."""
     await _setup(hass, power=True, set_fan_speed="Three")
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 60
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"] == 60
+    )
 
 
 @pytest.mark.asyncio
@@ -137,7 +144,7 @@ async def test_percentage_is_none_before_any_numbered_speed_seen(
     """
     await _setup(hass, power=True, set_fan_speed="Auto")
 
-    state = hass.states.get(_FAN_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _FAN_ENTITY))
     assert state.attributes["percentage"] is None
     assert state.attributes["preset_mode"] == "auto"
 
@@ -164,7 +171,7 @@ async def test_percentage_reports_last_numbered_speed_in_auto(
     await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
     await hass.async_block_till_done()
 
-    state = hass.states.get(_FAN_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _FAN_ENTITY))
     assert state.attributes["percentage"] == 60
     assert state.attributes["preset_mode"] == "auto"
 
@@ -205,7 +212,7 @@ async def test_set_preset_mode_auto(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "fan",
         "set_preset_mode",
-        {"entity_id": _FAN_ENTITY, "preset_mode": "auto"},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "preset_mode": "auto"},
         blocking=True,
     )
 
@@ -218,7 +225,10 @@ async def test_turn_off_powers_the_unit_down(hass: HomeAssistant) -> None:
     _, mock_client = await _setup(hass)
 
     await hass.services.async_call(
-        "fan", "turn_off", {"entity_id": _FAN_ENTITY}, blocking=True
+        "fan",
+        "turn_off",
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY)},
+        blocking=True,
     )
 
     assert mock_client.ata.set_power.call_args[0][1] is False
@@ -229,7 +239,7 @@ async def test_speed_count_follows_device_capability(hass: HomeAssistant) -> Non
     """A three-speed unit gets three steps, not five."""
     await _setup(hass, power=True, set_fan_speed="Three", number_of_fan_speeds=3)
 
-    state = hass.states.get(_FAN_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _FAN_ENTITY))
     assert state.attributes["percentage_step"] == pytest.approx(100 / 3)
     assert state.attributes["percentage"] == 100
 
@@ -239,7 +249,7 @@ async def test_no_fan_entity_without_fan_speeds(hass: HomeAssistant) -> None:
     """A unit reporting no speeds gets no fan entity."""
     await _setup(hass, number_of_fan_speeds=0)
 
-    assert hass.states.get(_FAN_ENTITY) is None
+    assert find_entity_id(hass, _FAN_ENTITY) is None
 
 
 @pytest.mark.asyncio
@@ -247,7 +257,10 @@ async def test_oscillating_true_when_vane_swinging(hass: HomeAssistant) -> None:
     """The API's Swing is the only vane value that oscillates."""
     await _setup(hass, power=True, vane_vertical="Swing")
 
-    assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is True
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["oscillating"]
+        is True
+    )
 
 
 @pytest.mark.asyncio
@@ -258,7 +271,10 @@ async def test_oscillating_false_for_fixed_positions(
     """Auto is a fixed mode-dependent angle, not a sweep, per the vendor manual."""
     await _setup(hass, power=True, vane_vertical=vane)
 
-    assert hass.states.get(_FAN_ENTITY).attributes["oscillating"] is False
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["oscillating"]
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -269,7 +285,7 @@ async def test_oscillate_on_sends_swing(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "fan",
         "oscillate",
-        {"entity_id": _FAN_ENTITY, "oscillating": True},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "oscillating": True},
         blocking=True,
     )
 
@@ -289,7 +305,7 @@ async def test_oscillate_off_sends_auto(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "fan",
         "oscillate",
-        {"entity_id": _FAN_ENTITY, "oscillating": False},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "oscillating": False},
         blocking=True,
     )
 
@@ -306,7 +322,7 @@ async def test_turn_on_preserves_the_operation_mode(hass: HomeAssistant) -> None
     _, mock_client = await _setup(hass, power=False, operation_mode="Heat")
 
     await hass.services.async_call(
-        "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
+        "fan", "turn_on", {"entity_id": entity_id_for(hass, _FAN_ENTITY)}, blocking=True
     )
 
     assert mock_client.ata.set_power_and_mode.call_args[0][1:] == (True, "Heat", None)
@@ -330,7 +346,7 @@ async def test_turn_on_with_percentage_supersedes_a_pending_drag_write(
     await hass.services.async_call(
         "fan",
         "turn_on",
-        {"entity_id": _FAN_ENTITY, "percentage": 100},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "percentage": 100},
         blocking=True,
     )
 
@@ -353,7 +369,7 @@ async def test_turn_on_with_percentage_sets_power_and_speed(
     await hass.services.async_call(
         "fan",
         "turn_on",
-        {"entity_id": _FAN_ENTITY, "percentage": 40},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "percentage": 40},
         blocking=True,
     )
 
@@ -376,7 +392,7 @@ async def test_turn_on_with_auto_preset_sets_power_and_speed(
     await hass.services.async_call(
         "fan",
         "turn_on",
-        {"entity_id": _FAN_ENTITY, "preset_mode": "auto"},
+        {"entity_id": entity_id_for(hass, _FAN_ENTITY), "preset_mode": "auto"},
         blocking=True,
     )
 
@@ -476,7 +492,10 @@ async def test_concurrent_set_percentage_calls_write_the_last_position(
                 hass.services.async_call(
                     "fan",
                     "set_percentage",
-                    {"entity_id": _FAN_ENTITY, "percentage": percentage},
+                    {
+                        "entity_id": entity_id_for(hass, _FAN_ENTITY),
+                        "percentage": percentage,
+                    },
                     blocking=True,
                 )
             )
@@ -601,7 +620,7 @@ async def test_turn_on_still_powers_on_after_a_set_percentage_burst(
     await _set_percentage(hass, 20)
     await _let_the_speed_write_land(hass)
     await hass.services.async_call(
-        "fan", "turn_on", {"entity_id": _FAN_ENTITY}, blocking=True
+        "fan", "turn_on", {"entity_id": entity_id_for(hass, _FAN_ENTITY)}, blocking=True
     )
 
     assert mock_client.ata.set_power_and_mode.call_count == 2
@@ -613,7 +632,10 @@ async def test_no_oscillation_without_a_vane(hass: HomeAssistant) -> None:
     """A unit with neither swing nor air direction gets no oscillate control."""
     await _setup(hass, power=True, has_swing=False, has_air_direction=False)
 
-    assert "oscillating" not in hass.states.get(_FAN_ENTITY).attributes
+    assert (
+        "oscillating"
+        not in hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes
+    )
 
 
 @pytest.mark.asyncio
@@ -659,7 +681,9 @@ async def test_entity_shows_a_written_speed_before_the_next_refresh(
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=2))
     await _let_tasks_run()
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"] == 80
+    )
 
 
 @pytest.mark.asyncio
@@ -699,7 +723,9 @@ async def test_a_write_landing_during_a_poll_still_shows_the_written_speed(
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
     await _let_tasks_run()
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 80
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"] == 80
+    )
 
 
 @pytest.mark.asyncio
@@ -720,7 +746,10 @@ async def test_entity_reports_a_commanded_speed_before_its_write_lands(
 
     await _set_percentage(hass, 100)
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 100
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"]
+        == 100
+    )
 
 
 @pytest.mark.asyncio
@@ -738,7 +767,9 @@ async def test_a_power_off_drops_a_pending_speed(
     await _set_percentage(hass, 100)
     await power_off(hass)
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 60
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"] == 60
+    )
 
 
 @pytest.mark.asyncio
@@ -756,7 +787,7 @@ async def test_a_drag_from_off_reads_on_before_its_write_lands(
 
     await _set_percentage(hass, 100)
 
-    state = hass.states.get(_FAN_ENTITY)
+    state = hass.states.get(entity_id_for(hass, _FAN_ENTITY))
     assert state.state == "on"
     assert state.attributes["percentage"] == 100
 
@@ -776,7 +807,7 @@ async def test_a_drag_to_zero_reads_off_before_its_write_lands(
 
     await _set_percentage(hass, 0)
 
-    assert hass.states.get(_FAN_ENTITY).state == "off"
+    assert hass.states.get(entity_id_for(hass, _FAN_ENTITY)).state == "off"
 
 
 @pytest.mark.asyncio
@@ -801,11 +832,16 @@ async def test_a_failed_write_drops_the_entity_back_to_the_device(
     mock_client.ata.set_power_and_mode.side_effect = ApiError("upstream said no")
 
     await _set_percentage(hass, 100)
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 100
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"]
+        == 100
+    )
 
     await _let_the_speed_write_land(hass)
 
-    assert hass.states.get(_FAN_ENTITY).attributes["percentage"] == 20
+    assert (
+        hass.states.get(entity_id_for(hass, _FAN_ENTITY)).attributes["percentage"] == 20
+    )
 
 
 @pytest.mark.asyncio

@@ -19,6 +19,8 @@ from .conftest import (
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_ata_integration_custom,
 )
 
@@ -29,9 +31,16 @@ async def test_binary_sensor_entity_creation(hass: HomeAssistant) -> None:
     mock_context = create_mock_ata_user_context()
     await setup_ata_integration_custom(hass, mock_context)
 
-    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    error_state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     connection_state = hass.states.get(
-        "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+        entity_id_for(
+            hass,
+            ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_connection_state"),
+        )
     )
 
     assert error_state is not None
@@ -55,7 +64,9 @@ async def test_error_state_sensor_reflects_unit_status(hass: HomeAssistant) -> N
     )
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
+    error_sensor_id = entity_id_for(
+        hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_error_state")
+    )
     assert hass.states.get(error_sensor_id).state == STATE_ON  # ON = problem exists
 
     # Update to no-error state and refresh
@@ -82,7 +93,11 @@ async def test_error_state_sensor_exposes_error_code(hass: HomeAssistant) -> Non
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    error_state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert error_state.state == STATE_ON
     assert error_state.attributes["error_code"] == "E6"
 
@@ -95,7 +110,11 @@ async def test_error_state_sensor_error_code_none_when_no_error(
     mock_context = create_mock_ata_user_context()
     await setup_ata_integration_custom(hass, mock_context)
 
-    error_state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_error_state")
+    error_state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_error_state")
+        )
+    )
     assert error_state.state == STATE_OFF
     assert error_state.attributes["error_code"] is None
 
@@ -108,7 +127,9 @@ async def test_connection_state_sensor_reflects_coordinator_status(
     mock_context = create_mock_ata_user_context()
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+    connection_sensor_id = entity_id_for(
+        hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_connection_state")
+    )
     assert hass.states.get(connection_sensor_id).state == STATE_ON  # Connected
 
     from custom_components.melcloudhome.api.exceptions import ApiError
@@ -131,7 +152,9 @@ async def test_error_sensor_unavailable_when_coordinator_fails(
     mock_context = create_mock_ata_user_context()
     _, mock_client = await setup_ata_integration_custom(hass, mock_context)
 
-    error_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_error_state"
+    error_sensor_id = entity_id_for(
+        hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_error_state")
+    )
     assert hass.states.get(error_sensor_id).state != "unavailable"
 
     from custom_components.melcloudhome.api.exceptions import ApiError
@@ -161,7 +184,9 @@ async def test_connection_sensor_always_available(hass: HomeAssistant) -> None:
         await hass.services.async_call(DOMAIN, "force_refresh", {}, blocking=True)
         await hass.async_block_till_done()
 
-    connection_sensor_id = "binary_sensor.melcloudhome_a1b2_9abc_connection_state"
+    connection_sensor_id = entity_id_for(
+        hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_connection_state")
+    )
     connection_state = hass.states.get(connection_sensor_id)
     assert connection_state is not None
     assert connection_state.state == STATE_OFF  # Shows disconnection, not unavailable
@@ -195,14 +220,19 @@ async def test_frost_protection_created_when_api_reports_object(
     await setup_ata_integration_custom(hass, mock_context)
 
     with_frost_state = hass.states.get(
-        "binary_sensor.melcloudhome_aaaa_9999_frost_protection"
+        entity_id_for(
+            hass,
+            ("binary_sensor", "aaaa1234-5678-9abc-def0-123456789999_frost_protection"),
+        )
     )
-    without_frost_state = hass.states.get(
-        "binary_sensor.melcloudhome_bbbb_8888_frost_protection"
-    )
-
     assert with_frost_state is not None
-    assert without_frost_state is None
+    assert (
+        find_entity_id(
+            hass,
+            ("binary_sensor", "bbbb1234-5678-9abc-def0-123456788888_frost_protection"),
+        )
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -236,7 +266,15 @@ async def test_protection_mode_state_reflects_enabled_flag(
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_overheat_protection")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            (
+                "binary_sensor",
+                "a1b2c3d4-5678-9abc-def0-123456789abc_overheat_protection",
+            ),
+        )
+    )
     assert state is not None
     assert state.state == expected_state
 
@@ -258,7 +296,12 @@ async def test_protection_mode_active_attribute_exposed(hass: HomeAssistant) -> 
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_frost_protection")
+    state = hass.states.get(
+        entity_id_for(
+            hass,
+            ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_frost_protection"),
+        )
+    )
     assert state is not None
     assert state.state == STATE_ON
     assert state.attributes["active"] is False
@@ -285,7 +328,11 @@ async def test_holiday_mode_active_attribute_exposed(hass: HomeAssistant) -> Non
     )
     await setup_ata_integration_custom(hass, mock_context)
 
-    state = hass.states.get("binary_sensor.melcloudhome_a1b2_9abc_holiday_mode")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("binary_sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_holiday_mode")
+        )
+    )
     assert state is not None
     assert state.attributes["active"] is True
     assert "start_date" not in state.attributes

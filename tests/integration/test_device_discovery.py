@@ -8,9 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.const import DOMAIN
+
+from .ha_testing import MockConfigEntry
 
 # Mock where the name is looked up, not where it's defined
 MOCK_CLIENT_PATH = "custom_components.melcloudhome.MELCloudHomeClient"

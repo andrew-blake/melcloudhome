@@ -21,7 +21,6 @@ import pytest
 from freezegun import freeze_time
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.parsing import parse_energy_report
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
@@ -33,8 +32,10 @@ from .conftest import (
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
     setup_atw_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
 MOCK_STORE_PATH = "custom_components.melcloudhome.energy_tracker_base.Store"
 KEY = "%Y-%m-%d %H:%M:%S.000000000"
@@ -183,14 +184,22 @@ async def test_sensor_rises_during_the_hour(hass: HomeAssistant) -> None:
         _storage(stored, 10.0, 30.0),
     )
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.1)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.3)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.1)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.3)
 
     energy[_hour(0)] = (0.3, 0.9)  # the in-progress hour grows
     await _poll(hass)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.3)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.9)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.3)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.9)
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -213,13 +222,21 @@ async def test_upgrade_with_telemetry_keys_does_not_double_count(
     )
 
     # Stored hours unchanged; only the partial in-progress hour is new.
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.1)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.3)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.1)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.3)
 
     await _poll(hass)  # same values again: counted once, not twice
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.1)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.3)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.1)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.3)
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -237,8 +254,12 @@ async def test_young_install_does_not_count_energy_from_before_tracking(
         _storage(stored, 1.0, 3.0),
     )
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(1.0)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(3.0)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(1.0)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(3.0)
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -258,8 +279,12 @@ async def test_single_day_windows_never_see_the_multi_day_fake_point(
     )
     await _poll(hass)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.0)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.0)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.0)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.0)
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -281,7 +306,9 @@ async def test_unit_without_zone_tracks_on_utc_and_warns_once(
         await _poll(hass)
         await _poll(hass)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.1)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.1)
     warnings = [r for r in caplog.records if "no usable time zone" in r.getMessage()]
     assert len(warnings) == 1
 
@@ -298,7 +325,9 @@ async def test_failed_yesterday_request_still_counts_today(hass: HomeAssistant) 
         _storage(stored, 10.0, 30.0),
     )
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.2)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.2)
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -309,8 +338,8 @@ async def test_unit_with_no_energy_yet_stays_quiet(hass: HomeAssistant) -> None:
     )
     await _poll(hass)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == 0.0
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == 0.0
+    assert _state(hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)) == 0.0
+    assert _state(hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)) == 0.0
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -341,9 +370,14 @@ async def test_two_units_in_different_zones_get_their_own_keys(
     zones = {TEST_ATW_UNIT_ID: STOCKHOLM, SECOND_UNIT_ID: LONDON}
     await _setup(hass, units, _report_side_effect(energy, zones), storage)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.1)
     assert _state(
-        hass, "sensor.melcloudhome_1eaf_89ab_energy_consumed"
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.1)
+    assert _state(
+        hass,
+        entity_id_for(
+            hass, ("sensor", "1eaf5678-1234-4abc-8def-0123456789ab_energy_consumed")
+        ),
     ) == pytest.approx(20.1)
 
 
@@ -363,8 +397,12 @@ async def test_yesterdays_last_hour_keeps_updating_after_midnight(
         _storage(stored, 10.0, 30.0),
     )
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == pytest.approx(10.3)
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == pytest.approx(30.9)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)
+    ) == pytest.approx(10.3)
+    assert _state(
+        hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)
+    ) == pytest.approx(30.9)
 
 
 @pytest.mark.parametrize(
@@ -410,8 +448,8 @@ async def test_first_init_defers_until_both_days_fetch_succeed(
     )
     await _poll(hass)
 
-    assert _state(hass, TEST_SENSOR_ENERGY_CONSUMED) == 0.0
-    assert _state(hass, TEST_SENSOR_ENERGY_PRODUCED) == 0.0
+    assert _state(hass, entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)) == 0.0
+    assert _state(hass, entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)) == 0.0
 
 
 @freeze_time(FROZEN_NOW, real_asyncio=True)
@@ -422,5 +460,11 @@ async def test_all_windows_failing_leaves_energy_unknown(hass: HomeAssistant) ->
     )
     await _poll(hass)
 
-    assert hass.states.get(TEST_SENSOR_ENERGY_CONSUMED).state == "unknown"
-    assert hass.states.get(TEST_SENSOR_ENERGY_PRODUCED).state == "unknown"
+    assert (
+        hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED)).state
+        == "unknown"
+    )
+    assert (
+        hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED)).state
+        == "unknown"
+    )

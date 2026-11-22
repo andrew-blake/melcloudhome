@@ -14,6 +14,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from .conftest import (
+    TEST_ATW_UNIT_ID,
     TEST_SENSOR_COP,
     TEST_SENSOR_ENERGY_CONSUMED,
     TEST_SENSOR_ENERGY_PRODUCED,
@@ -21,6 +22,8 @@ from .conftest import (
     create_mock_atw_energy_report,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_atw_integration_custom,
 )
 
@@ -36,7 +39,11 @@ async def test_atw_zone_1_temperature_sensor_created(hass: HomeAssistant) -> Non
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_zone_1_temperature")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_zone_1_temperature")
+        )
+    )
     assert state is not None
     assert float(state.state) == 20.5
 
@@ -50,7 +57,11 @@ async def test_atw_tank_temperature_sensor_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_tank_temperature")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_tank_temperature")
+        )
+    )
     assert state is not None
     assert float(state.state) == 48.5
 
@@ -64,7 +75,11 @@ async def test_atw_operation_status_sensor_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_operation_status")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_operation_status")
+        )
+    )
     assert state is not None
     assert state.state == "HotWater"
 
@@ -78,7 +93,11 @@ async def test_atw_operation_status_shows_raw_api_value(hass: HomeAssistant) -> 
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    state = hass.states.get("sensor.melcloudhome_0efc_9abc_operation_status")
+    state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_operation_status")
+        )
+    )
     # Raw API value, not mapped
     assert state.state == "Heating"
 
@@ -94,8 +113,16 @@ async def test_atw_sensor_unknown_when_temp_none(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    zone_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_zone_1_temperature")
-    tank_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_tank_temperature")
+    zone_temp = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_zone_1_temperature")
+        )
+    )
+    tank_temp = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_tank_temperature")
+        )
+    )
 
     assert zone_temp.state == "unknown"
     assert tank_temp.state == "unknown"
@@ -112,9 +139,21 @@ async def test_atw_sensors_unavailable_when_device_in_error(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    zone_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_zone_1_temperature")
-    tank_temp = hass.states.get("sensor.melcloudhome_0efc_9abc_tank_temperature")
-    operation = hass.states.get("sensor.melcloudhome_0efc_9abc_operation_status")
+    zone_temp = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_zone_1_temperature")
+        )
+    )
+    tank_temp = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_tank_temperature")
+        )
+    )
+    operation = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_operation_status")
+        )
+    )
 
     assert zone_temp.state == "unavailable"
     assert tank_temp.state == "unavailable"
@@ -151,9 +190,9 @@ async def test_atw_energy_sensors_created_when_capability_present(
             hass, mock_context, configure_client=configure
         )
 
-        consumed = hass.states.get(TEST_SENSOR_ENERGY_CONSUMED)
-        produced = hass.states.get(TEST_SENSOR_ENERGY_PRODUCED)
-        cop = hass.states.get(TEST_SENSOR_COP)
+        consumed = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED))
+        produced = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED))
+        cop = hass.states.get(entity_id_for(hass, TEST_SENSOR_COP))
 
         assert consumed is not None
         assert produced is not None
@@ -178,9 +217,9 @@ async def test_atw_energy_sensors_not_created_without_capability(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    assert hass.states.get(TEST_SENSOR_ENERGY_CONSUMED) is None
-    assert hass.states.get(TEST_SENSOR_ENERGY_PRODUCED) is None
-    assert hass.states.get(TEST_SENSOR_COP) is None
+    assert find_entity_id(hass, TEST_SENSOR_ENERGY_CONSUMED) is None
+    assert find_entity_id(hass, TEST_SENSOR_ENERGY_PRODUCED) is None
+    assert find_entity_id(hass, TEST_SENSOR_COP) is None
 
 
 @pytest.mark.asyncio
@@ -199,9 +238,9 @@ async def test_atw_energy_sensors_unknown_when_values_none(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    consumed = hass.states.get(TEST_SENSOR_ENERGY_CONSUMED)
-    produced = hass.states.get(TEST_SENSOR_ENERGY_PRODUCED)
-    cop = hass.states.get(TEST_SENSOR_COP)
+    consumed = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED))
+    produced = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED))
+    cop = hass.states.get(entity_id_for(hass, TEST_SENSOR_COP))
 
     assert consumed is not None
     assert produced is not None
@@ -239,9 +278,9 @@ async def test_atw_cop_calculation_correct(hass: HomeAssistant) -> None:
             hass, mock_context, configure_client=configure
         )
 
-        consumed = hass.states.get(TEST_SENSOR_ENERGY_CONSUMED)
-        produced = hass.states.get(TEST_SENSOR_ENERGY_PRODUCED)
-        cop = hass.states.get(TEST_SENSOR_COP)
+        consumed = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED))
+        produced = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED))
+        cop = hass.states.get(entity_id_for(hass, TEST_SENSOR_COP))
 
         assert consumed is not None
         assert produced is not None
@@ -279,9 +318,9 @@ async def test_atw_energy_sensors_have_correct_device_class(
             hass, mock_context, configure_client=configure
         )
 
-        consumed = hass.states.get(TEST_SENSOR_ENERGY_CONSUMED)
-        produced = hass.states.get(TEST_SENSOR_ENERGY_PRODUCED)
-        cop = hass.states.get(TEST_SENSOR_COP)
+        consumed = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_CONSUMED))
+        produced = hass.states.get(entity_id_for(hass, TEST_SENSOR_ENERGY_PRODUCED))
+        cop = hass.states.get(entity_id_for(hass, TEST_SENSOR_COP))
 
         assert consumed.attributes.get("device_class") == "energy"
         assert produced.attributes.get("device_class") == "energy"
@@ -321,7 +360,11 @@ async def test_atw_wifi_signal_sensor_created(hass: HomeAssistant) -> None:
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    wifi_state = hass.states.get("sensor.melcloudhome_0efc_9abc_wifi_signal")
+    wifi_state = hass.states.get(
+        entity_id_for(
+            hass, ("sensor", "0efc1234-5678-9abc-def0-123456789abc_wifi_signal")
+        )
+    )
     assert wifi_state is not None
     assert wifi_state.attributes["unit_of_measurement"] == "dBm"
     assert wifi_state.attributes["device_class"] == "signal_strength"
@@ -347,18 +390,15 @@ async def test_telemetry_sensors_created_without_telemetry_data(
     )
     await setup_atw_integration_custom(hass, mock_context)
 
-    # entity_id's object-id segment comes from the translated name (see
-    # initialize_entity_base() fix for #240), so "zone1" (key) reads as
-    # "zone 1" (translated name) -> "zone_1" (slugified) in the entity_id.
-    for measure in (
+    for key in (
         "flow_temperature",
         "return_temperature",
-        "flow_temperature_zone_1",
-        "return_temperature_zone_1",
+        "flow_temperature_zone1",
+        "return_temperature_zone1",
         "flow_temperature_boiler",
         "return_temperature_boiler",
     ):
-        entity_id = f"sensor.melcloudhome_0efc_9abc_{measure}"
-        state = hass.states.get(entity_id)
-        assert state is not None, f"{entity_id} was not created"
+        state = hass.states.get(
+            entity_id_for(hass, ("sensor", f"{TEST_ATW_UNIT_ID}_{key}"))
+        )
         assert state.state == "unknown"

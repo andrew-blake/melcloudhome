@@ -1,7 +1,8 @@
 """Tests for MELCloud Home config flow.
 
-These tests require pytest-homeassistant-custom-component which provides
-mock Home Assistant fixtures. They run in Docker or CI.
+These tests need an HA test package (pytest-homeassistant on the latest HA,
+pytest-homeassistant-custom-component on the floor),
+which provides mock Home Assistant fixtures. They run in Docker or CI.
 
 Run with: make test-integration
 """
@@ -14,13 +15,14 @@ from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_RECONFIGURE
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.melcloudhome.api.exceptions import (
     AuthenticationError,
     ServiceUnavailableError,
 )
 from custom_components.melcloudhome.const import CONF_DEBUG_MODE, DOMAIN
+
+from .ha_testing import MockConfigEntry
 
 
 @pytest.mark.asyncio

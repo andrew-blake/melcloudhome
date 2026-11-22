@@ -16,17 +16,21 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET
 
 from .conftest import (
+    TEST_ATW_UNIT_ID,
+    EntityKey,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
+    entity_id_for,
+    find_entity_id,
     setup_atw_integration_custom,
 )
+from .ha_testing import async_fire_time_changed
 
 SECOND_UNIT_ID = "22221234-5678-9abc-def0-123456789999"
 
@@ -49,8 +53,8 @@ PLACEHOLDERS = {
 }
 
 
-def _entity(unit_suffix: str, measure: str) -> str:
-    return f"sensor.melcloudhome_{unit_suffix}_{measure}"
+def _entity(unit_id: str, key: str) -> EntityKey:
+    return ("sensor", f"{unit_id}_{key}")
 
 
 async def _setup(hass: HomeAssistant, units: list, readings) -> Any:
@@ -79,10 +83,20 @@ async def test_readings_land_on_their_own_entities(hass: HomeAssistant) -> None:
     await _setup(hass, [create_mock_atw_unit()], BASE_PAIR)
 
     assert (
-        float(hass.states.get(_entity("0efc_9abc", "flow_temperature")).state) == 45.2
+        float(
+            hass.states.get(
+                entity_id_for(hass, _entity(TEST_ATW_UNIT_ID, "flow_temperature"))
+            ).state
+        )
+        == 45.2
     )
     assert (
-        float(hass.states.get(_entity("0efc_9abc", "return_temperature")).state) == 41.8
+        float(
+            hass.states.get(
+                entity_id_for(hass, _entity(TEST_ATW_UNIT_ID, "return_temperature"))
+            ).state
+        )
+        == 41.8
     )
 
 
@@ -98,7 +112,10 @@ async def test_placeholders_for_absent_hardware_reach_no_entity(
     """
     await _setup(hass, [create_mock_atw_unit()], BASE_PAIR | PLACEHOLDERS)
 
-    assert hass.states.get(_entity("0efc_9abc", "flow_temperature_boiler")) is None
+    assert (
+        find_entity_id(hass, _entity(TEST_ATW_UNIT_ID, "flow_temperature_boiler"))
+        is None
+    )
     for state in hass.states.async_all("sensor"):
         assert state.state != "25.0", f"{state.entity_id} took a placeholder"
 
@@ -129,9 +146,19 @@ async def test_one_unit_failing_leaves_its_sibling_alone(hass: HomeAssistant) ->
 
     assert len(calls) == 2, "both units must be polled"
     assert (
-        float(hass.states.get(_entity("0efc_9abc", "flow_temperature")).state) == 45.2
+        float(
+            hass.states.get(
+                entity_id_for(hass, _entity(TEST_ATW_UNIT_ID, "flow_temperature"))
+            ).state
+        )
+        == 45.2
     )
-    assert hass.states.get(_entity("2222_9999", "flow_temperature")).state == "unknown"
+    assert (
+        hass.states.get(
+            entity_id_for(hass, _entity(SECOND_UNIT_ID, "flow_temperature"))
+        ).state
+        == "unknown"
+    )
 
 
 @pytest.mark.asyncio
@@ -151,11 +178,18 @@ async def test_zone2_unit_gets_its_zone2_readings(
     )
 
     for measure, expected in (
-        ("flow_temperature_zone_1", 44.0),
-        ("flow_temperature_zone_2", 38.0),
-        ("return_temperature_zone_2", 35.0),
+        ("flow_temperature_zone1", 44.0),
+        ("flow_temperature_zone2", 38.0),
+        ("return_temperature_zone2", 35.0),
     ):
-        assert float(hass.states.get(_entity("0efc_9abc", measure)).state) == expected
+        assert (
+            float(
+                hass.states.get(
+                    entity_id_for(hass, _entity(TEST_ATW_UNIT_ID, measure))
+                ).state
+            )
+            == expected
+        )
 
     assert not [
         record for record in caplog.records if "no zone-2 datasets" in record.message
@@ -183,9 +217,9 @@ async def test_missing_zone2_datasets_warn_once_per_unit(
     assert len(warnings) == 1
     assert warnings[0].levelno == logging.WARNING
 
-    assert hass.states.get(_entity("0efc_9abc", "flow_temperature_zone_2")).state == (
-        "unknown"
-    )
+    assert hass.states.get(
+        entity_id_for(hass, _entity(TEST_ATW_UNIT_ID, "flow_temperature_zone2"))
+    ).state == ("unknown")
 
     # A second poll must not repeat it
     mock_client.get_atw_water_temperatures = AsyncMock(return_value=BASE_PAIR)

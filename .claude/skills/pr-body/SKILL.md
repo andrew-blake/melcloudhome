@@ -125,7 +125,7 @@ Then, in order:
    box in this order:
    - **One box for the routine gates**: lint, type-check, pre-commit and every
      suite that passed, named together on one line with the HA version, e.g.
-     `- [x] \`make pre-commit\`, \`make test-api\`, \`make test-integration\` (HA 2026.2.3) and \`make test-e2e\`: passed at the head.`
+     `- [x] \`make pre-commit\`, \`make test-api\`, \`make test-integration\` (HA 2026.11.2) and \`make test-e2e\`: passed at the head.`
    - **One box per check that exercises this change**: a regression test
      proven by deletion, a run on the HA floor, a devserver or production
      observation. Variations of one check share its box, so every deletion
