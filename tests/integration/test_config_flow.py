@@ -1,7 +1,8 @@
 """Tests for MELCloud Home config flow.
 
-These tests require pytest-homeassistant-custom-component which provides
-mock Home Assistant fixtures. They run in Docker or CI.
+These tests need an HA test package (pytest-homeassistant on the latest HA,
+pytest-homeassistant-custom-component on the floor),
+which provides mock Home Assistant fixtures. They run in Docker or CI.
 
 Run with: make test-integration
 """

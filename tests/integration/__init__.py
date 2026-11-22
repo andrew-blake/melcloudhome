@@ -1,7 +1,8 @@
 """Home Assistant integration tests.
 
-These tests require pytest-homeassistant-custom-component and run in Docker/CI.
-They are NOT run as part of the standard `make test` target.
+These tests need an HA test package (pytest-homeassistant on the latest HA,
+pytest-homeassistant-custom-component on the floor) and run in Docker/CI, as
+part of `make test`.
 
 To run locally:
     make test-integration

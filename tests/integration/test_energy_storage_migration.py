@@ -41,10 +41,8 @@ from .ha_testing import MockConfigEntry
 LEGACY_ATA_KEY = "melcloudhome_energy_data"
 LEGACY_ATW_KEY = "melcloudhome_energy_data_atw"
 
-UNIT_A = TEST_ATA_UNIT_ID  # -> sensor.melcloudhome_a1b2_9abc_energy
-UNIT_B = (
-    "e5f6a7b8-1234-5678-9def-aabbccdd1234"  # -> sensor.melcloudhome_e5f6_1234_energy
-)
+UNIT_A = TEST_ATA_UNIT_ID
+UNIT_B = "e5f6a7b8-1234-5678-9def-aabbccdd1234"
 SENSOR_A = ("sensor", "a1b2c3d4-5678-9abc-def0-123456789abc_energy")
 SENSOR_B = ("sensor", "e5f6a7b8-1234-5678-9def-aabbccdd1234_energy")
 

@@ -67,13 +67,17 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    if not _deprecations.found:
+    problems = list(dict.fromkeys(_deprecations.found))
+    # Self-check: if anything detached the handler, the run went unguarded.
+    if _deprecations not in logging.getLogger().handlers:
+        problems.append("the guard's handler is no longer on the root logger")
+    if not problems:
         return
     session.exitstatus = pytest.ExitCode.TESTS_FAILED
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
     if reporter is not None:
-        reporter.section("Home Assistant deprecations logged for melcloudhome")
-        for line in dict.fromkeys(_deprecations.found):
+        reporter.section("Deprecation guard (melcloudhome)")
+        for line in problems:
             reporter.line(line)
 
 
@@ -85,12 +89,12 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 @pytest.fixture(autouse=True)
 def pin_test_language(hass):
-    """Pin HA's language so translation-derived entity_ids are deterministic.
+    """Pin HA's language so translated entity names are deterministic.
 
-    entity_id generation now falls through to the resolved/translated name
-    (see initialize_entity_base() fix for #240) - without this pin, these
-    tests would silently depend on pytest-homeassistant-custom-component's
-    undeclared default language rather than an explicit one.
+    An entity's name comes from its translation_key (#240/#246), and new
+    entity IDs are built from it; test_entity_naming.py asserts those names.
+    Without this pin they would depend on the HA test package's undeclared
+    default language.
     """
     hass.config.language = "en"
     yield
