@@ -1,0 +1,4 @@
+# Home Assistant test package for the latest-HA integration run (Python 3.14).
+# Pinned, with its own Dependabot entry (.github/dependabot.yml): each HA
+# release arrives as its own PR instead of a red main.
+pytest-homeassistant==2026.11.2

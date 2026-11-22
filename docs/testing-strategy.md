@@ -132,7 +132,7 @@ async def test_set_temperature(hass, setup_integration):
 
 **HA version coverage:** CI runs this tier twice. The latest HA runs in `make test`
 and `make test-integration` on Python 3.14, with `pytest-homeassistant` pinned in
-`requirements-test-latest-ha.txt`. Bumping that pin moves the run to a new HA release. The declared `hacs.json` floor runs in `make test-integration-floor`
+`ci/latest-ha/requirements.txt`. Bumping that pin moves the run to a new HA release. The declared `hacs.json` floor runs in `make test-integration-floor`
 on Python 3.13, with phcc `0.13.269` = HA 2025.8.0. The floor pin lives in the Makefile
 and must be bumped together with any `hacs.json` floor raise. A stale pin silently
 keeps testing the old floor. Versions between the two endpoints are deliberately

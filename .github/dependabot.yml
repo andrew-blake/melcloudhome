@@ -25,6 +25,50 @@ updates:
     cooldown:
       default-days: 7
 
+  # Docker base images (Dockerfile.test, Dockerfile.mock), pinned by digest
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "andrew-blake"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    # Digest updates only. A tag change is a Python version change (the floor
+    # stage must stay on 3.13), so it's made by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    cooldown:
+      default-days: 7
+
+  # HA test package for the latest-HA run. Own entry: the root pip entry
+  # ignores major bumps, and HA's year rollover (2026.x -> 2027.1) is one.
+  - package-ecosystem: "pip"
+    directory: "/ci/latest-ha"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "andrew-blake"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    cooldown:
+      default-days: 7
+
   # Python dependencies (pyproject.toml)
   - package-ecosystem: "pip"
     directory: "/"

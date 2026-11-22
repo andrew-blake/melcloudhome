@@ -449,18 +449,18 @@ pytest tests/api/test_client_ata.py -k "temperature" -vv
 # (a plain `uv run` re-syncs to uv.lock); -p no:respx is required by
 # pytest-homeassistant.
 docker compose -f docker-compose.test.yml run --rm integration-tests \
-  sh -c "uv pip install -r requirements-test-latest-ha.txt && \
+  sh -c "uv pip install -r ci/latest-ha/requirements.txt && \
          uv run --no-sync pytest tests/integration/test_climate_ata.py -p no:respx -vv"
 
 # Run specific test function
 docker compose -f docker-compose.test.yml run --rm integration-tests \
-  sh -c "uv pip install -r requirements-test-latest-ha.txt && \
+  sh -c "uv pip install -r ci/latest-ha/requirements.txt && \
          uv run --no-sync pytest tests/integration/test_climate_ata.py::test_set_temperature -p no:respx -vv -s"
 
 # Interactive shell for debugging
 docker compose -f docker-compose.test.yml run --rm integration-tests bash
 # Then inside container:
-# uv pip install -r requirements-test-latest-ha.txt
+# uv pip install -r ci/latest-ha/requirements.txt
 # uv run --no-sync pytest tests/integration/test_climate_ata.py -p no:respx -vv
 ```
 

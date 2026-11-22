@@ -1,7 +1,12 @@
 # 3.14 for the latest-HA integration run and e2e; 3.13 for the HA-floor run
 # (its pytest-homeassistant-custom-component won't install on 3.14).
+# Base images are pinned by digest, one literal FROM per version so
+# Dependabot's docker updater can read them; PYTHON_VERSION picks the stage
+# and BuildKit skips the other.
 ARG PYTHON_VERSION=3.14
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:7cf77f594be8042dab6daa9fe326f90962252268b4f120a7f5dccce4d947e6c1 AS base-3.14
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca AS base-3.13
+FROM base-${PYTHON_VERSION}
 
 WORKDIR /app
 
@@ -20,7 +25,7 @@ RUN uv sync --frozen
 
 # NOTE: the HA test package is NOT installed here. It includes pytest-socket,
 # which blocks E2E tests, so integration runs install it at container start
-# (pytest-homeassistant from requirements-test-latest-ha.txt, or the floor's
+# (pytest-homeassistant from ci/latest-ha/requirements.txt, or the floor's
 # pytest-homeassistant-custom-component).
 
 # Copy source code LAST (changes most frequently)

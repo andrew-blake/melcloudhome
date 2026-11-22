@@ -33,7 +33,7 @@ services:
       - ./custom_components:/app/custom_components:ro
       - ./tests:/app/tests:ro
       - ./tools:/app/tools:ro
-      - ./requirements-test-latest-ha.txt:/app/requirements-test-latest-ha.txt:ro
+      - ./ci/latest-ha/requirements.txt:/app/ci/latest-ha/requirements.txt:ro
       - uv-cache:/root/.cache/uv
     working_dir: /app
     networks:
@@ -44,7 +44,7 @@ services:
     environment:
       - MELCLOUD_MOCK_URL=http://melcloud-mock:8080
       - COVERAGE_FILE=/app/coverage-output/.coverage
-    command: sh -c "uv pip install -r requirements-test-latest-ha.txt && uv run --no-sync pytest tests/integration/ -p no:respx -v --cov=custom_components/melcloudhome --cov-append --cov-report="
+    command: sh -c "uv pip install -r ci/latest-ha/requirements.txt && uv run --no-sync pytest tests/integration/ -p no:respx -v --cov=custom_components/melcloudhome --cov-append --cov-report="
 
   # Integration tests on the hacs.json HA floor: Python 3.13, because
   # pytest-homeassistant-custom-component 0.13.269 (HA 2025.8.0) won't

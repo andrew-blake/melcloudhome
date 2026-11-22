@@ -43,7 +43,7 @@ test-integration: test-ensure-images  ## Integration tests on the latest HA (Pyt
 	@rm -f .coverage coverage.xml
 	docker compose -f docker-compose.test.yml up --no-build -d melcloud-mock
 	docker compose -f docker-compose.test.yml run --rm integration-tests \
-		sh -c "uv pip install -r requirements-test-latest-ha.txt && \
+		sh -c "uv pip install -r ci/latest-ha/requirements.txt && \
 		       uv run --no-sync pytest tests/integration/ -p no:respx -v \
 		         --cov=custom_components/melcloudhome \
 		         --cov-report=xml \
