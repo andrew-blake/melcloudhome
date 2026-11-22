@@ -42,10 +42,10 @@ make zizmor                      # Security scan workflows (run before pushing w
 uv run python tools/prose_check.py FILE  # Prose conventions for docs, ADRs, PR/issue text (advisory)
 
 # Testing
-make test-build                  # Build Docker test images (after dep changes)
+make test-build                  # Build Docker test images (after dep changes or a base-image digest bump)
 make test-api                    # API unit tests (VCR, no Docker)
-make test-integration            # Integration tests (Docker, mocked API)
-make test-integration-floor      # Same suite on the hacs.json HA floor
+make test-integration            # Integration tests on latest HA (Docker, Py 3.14, mocked API)
+make test-integration-floor      # Same suite on the hacs.json HA floor (Py 3.13)
 make test-e2e                    # E2E tests (Docker, mock server)
 make test                        # All tests with coverage
 ```
