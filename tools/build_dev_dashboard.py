@@ -4,13 +4,15 @@
 One view per ATW unit, plus a single view comparing the ATA units' fan speeds.
 
 `make dev-reset` restores `dev-config-template/.storage/`, so a dashboard only
-survives a reset if it lives there. A static snapshot cannot: entity IDs carry
-the building name as a prefix (`<building>_melcloudhome_<id>_<measure>`), and
-for real devices that name is personal data which must not reach the repo.
+survives a reset if it lives there. A static snapshot of a real install cannot:
+entity IDs belong to Home Assistant and the user, built from device names and
+areas, and for real devices those names are personal data which must not reach
+the repo.
 
-So the design is committed as this generator rather than as its output. It reads
-whatever ATW units the registry holds and emits cards for them, which also means
-it keeps working when a device share lapses or a building is renamed.
+So the design is committed as this generator rather than as its output. It
+groups entities by device from the registries and finds each one by its unique
+ID, never by entity ID text, so it works whatever the IDs look like and keeps
+working when a device share lapses or a building is renamed.
 
     # write the live dashboard for every unit found
     python3 tools/build_dev_dashboard.py
@@ -27,94 +29,93 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
-from functools import lru_cache
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 DEV_STORAGE = Path("dev-config/.storage")
 DASHBOARD = "lovelace.melcloudhome_testing"
+DOMAIN = "melcloudhome"
 
-# The mock server's two building names (tools/mock_melcloud_server.py, "My Home"
-# and "Shared Building"), which are synthetic and safe to commit. Keep this list
-# matching the mock, and add nothing else to it: every other building name comes
-# from a real MELCloud account, and one of them is a street address. An
-# unrecognised building is treated as real and excluded by --mock-only, so the
-# failure mode of a stale list is a missing view rather than a leak.
-MOCK_BUILDINGS = ("my_home", "shared_building")
-
-# Every water-temperature series the vendor defines. Listed in full for every
-# unit whether or not the entity still exists: #266 stopped creating the ones
+# Every water-temperature series the vendor defines. Graphed for every unit
+# whose registry holds the entity, live or not: #266 stopped creating the ones
 # for absent hardware, so on most units the suffixed four are orphaned registry
 # entries. Graphing them anyway is deliberate - where a series stops is the
 # discontinuity worth comparing against the MELCloud Home app's own charts.
+# A series never registered for a unit has no entity ID to graph.
+# Unique-ID suffixes (the sensor description keys).
 WATER_TEMPS = (
     "flow_temperature",
     "return_temperature",
-    "flow_temperature_zone_1",
-    "return_temperature_zone_1",
-    "flow_temperature_zone_2",
-    "return_temperature_zone_2",
+    "flow_temperature_zone1",
+    "return_temperature_zone1",
+    "flow_temperature_zone2",
+    "return_temperature_zone2",
     "flow_temperature_boiler",
     "return_temperature_boiler",
 )
 
-ENTITY_RE = re.compile(r"^[a-z_]+\.(.+_melcloudhome_[0-9a-f]{4}_[0-9a-f]{4})_")
 
+@dataclass
+class Unit:
+    """One MELCloud unit's device, and its entities keyed by unique-ID suffix.
 
-@lru_cache(maxsize=1)
-def _entities(storage: Path) -> tuple[dict[str, Any], ...]:
-    """The entity registry, parsed once for the three callers that want it."""
-    registry = json.loads((storage / "core.entity_registry").read_text())
-    return tuple(registry["data"]["entities"])
-
-
-def find_atw_units(storage: Path) -> list[tuple[str, bool]]:
-    """Return (entity_id_prefix, has_zone2) for each ATW unit in the registry.
-
-    An ATW unit is identified by its water heater; zone 2 by a second climate
-    entity. Both are capability-gated at creation (#266), so the registry is
-    the honest source for what a unit actually has.
+    A unique ID is the unit UUID plus `_<key>` (the ATA climate is the bare
+    UUID, so its suffix is ""). `mock` comes from the config entry: the mock
+    server's entry is created with debug_mode on.
     """
-    prefixes: set[str] = set()
-    entity_ids: set[str] = set()
-    for entry in _entities(storage):
-        entity_id = entry["entity_id"]
-        entity_ids.add(entity_id)
-        match = ENTITY_RE.match(entity_id)
-        if match:
-            prefixes.add(match.group(1))
 
-    units = []
-    for prefix in sorted(prefixes):
-        if f"water_heater.{prefix}_tank" not in entity_ids:
-            continue  # ATA unit
-        units.append((prefix, f"climate.{prefix}_zone_2" in entity_ids))
-    return units
+    name: str
+    mock: bool
+    entities: dict[str, str]
+
+    def eid(self, suffix: str) -> str:
+        return self.entities.get(suffix, f"sensor.missing{suffix}")
+
+    @property
+    def is_atw(self) -> bool:
+        return "_tank" in self.entities
+
+    @property
+    def label(self) -> str:
+        return f"{self.name} ({'mock' if self.mock else 'real'})"
 
 
-def find_ata_units(storage: Path) -> list[str]:
-    """Return the entity_id prefix of each ATA unit in the registry.
+def _load(storage: Path, name: str) -> Any:
+    return json.loads((storage / name).read_text())["data"]
 
-    An ATA unit is the inverse of find_atw_units' test: a climate entity with
-    no water heater beside it. Reading the registry rather than assuming keeps
-    this correct when a shared unit disappears.
+
+def find_units(storage: Path) -> list[Unit]:
+    """Every unit device in the registry, mock or real, sorted by name.
+
+    Device names are personal data for real units, so they are read here at
+    runtime rather than written into this file. The account's service device
+    (identifier = its config entry ID) isn't a unit and is skipped.
     """
-    entity_ids = {entry["entity_id"] for entry in _entities(storage)}
-    prefixes = {
-        match.group(1)
-        for entity_id in entity_ids
-        if (match := ENTITY_RE.match(entity_id))
+    mock_entries = {
+        entry["entry_id"]
+        for entry in _load(storage, "core.config_entries")["entries"]
+        if entry["domain"] == DOMAIN and entry["data"].get("debug_mode")
     }
-    return sorted(
-        prefix
-        for prefix in prefixes
-        if f"climate.{prefix}_climate" in entity_ids
-        and f"water_heater.{prefix}_tank" not in entity_ids
-    )
+    units: dict[str, tuple[str, Unit]] = {}
+    for device in _load(storage, "core.device_registry")["devices"]:
+        entry_ids = device.get("config_entries") or [device.get("config_entry_id")]
+        for identifier in device["identifiers"]:  # not always pairs
+            domain, unit_id = identifier[0], identifier[-1]
+            if domain == DOMAIN and unit_id not in entry_ids:
+                name = device.get("name_by_user") or device.get("name") or unit_id
+                mock = any(e in mock_entries for e in entry_ids)
+                units[device["id"]] = (unit_id, Unit(name, mock, {}))
+    for entity in _load(storage, "core.entity_registry")["entities"]:
+        if entity["platform"] == DOMAIN and entity.get("device_id") in units:
+            unit_id, unit = units[entity["device_id"]]
+            unit.entities[entity["unique_id"].removeprefix(unit_id)] = entity[
+                "entity_id"
+            ]
+    return sorted((u for _, u in units.values()), key=lambda u: u.name)
 
 
-def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, Any]:
+def build_ata_fan_view(units: list[Unit]) -> dict[str, Any]:
     """One view comparing every ATA unit's actual fan speed against its mode.
 
     The sensor is a device_class=ENUM, so it has no long-term statistics and a
@@ -124,8 +125,8 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
     Mock units carry a series too, derived rather than modulating, so a mock row
     reading `unknown` is a fault rather than a gap in the mock.
     """
-    fans = [f"sensor.{prefix}_actual_fan_speed" for prefix in prefixes]
-    climates = [f"climate.{prefix}_climate" for prefix in prefixes]
+    fans = [u.eid("_actual_fan_speed") for u in units]
+    climates = [u.eid("") for u in units]
     return {
         "type": "sections",
         "max_columns": 4,
@@ -162,11 +163,11 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
                         "content": "| unit | power / mode | requested | actual |"
                         "\n|---|---|---|---|\n"
                         + "\n".join(
-                            f"| {label(prefix, names)} "
-                            f"| {{{{ states('climate.{prefix}_climate') }}}} "
-                            f"| {{{{ state_attr('climate.{prefix}_climate', 'fan_mode') }}}} "
-                            f"| {{{{ states('sensor.{prefix}_actual_fan_speed') }}}} |"
-                            for prefix in prefixes
+                            f"| {u.label} "
+                            f"| {{{{ states('{u.eid('')}') }}}} "
+                            f"| {{{{ state_attr('{u.eid('')}', 'fan_mode') }}}} "
+                            f"| {{{{ states('{u.eid('_actual_fan_speed')}') }}}} |"
+                            for u in units
                         ),
                         "grid_options": {"columns": "full"},
                     },
@@ -174,43 +175,6 @@ def build_ata_fan_view(prefixes: list[str], names: dict[str, str]) -> dict[str, 
             }
         ],
     }
-
-
-def device_names(storage: Path) -> dict[str, str]:
-    """Map entity-id prefix -> the device's display name, read at runtime.
-
-    Device names are personal data for real units, so they are looked up from
-    the local registry rather than written into this file.
-
-    Joined entity -> device_id -> device rather than matched on the entity id's
-    `<uuid first 4>_<uuid last 4>` short form, because that short form is NOT
-    unique: the mock unit `bf8d5678-...-456789ab5119` and the real
-    `bf8d1e84-...-25b87a945119` both render `bf8d_5119`, and matching on it gave
-    the mock unit the real device's name. The entity registry's device_id is
-    exact.
-    """
-    devices = json.loads((storage / "core.device_registry").read_text())
-    by_id = {
-        device["id"]: (device.get("name_by_user") or device.get("name") or "")
-        for device in devices["data"]["devices"]
-    }
-    names: dict[str, str] = {}
-    for entry in _entities(storage):
-        match = ENTITY_RE.match(entry["entity_id"])
-        name = by_id.get(entry.get("device_id") or "")
-        if match and name:
-            names[match.group(1)] = name
-    return names
-
-
-def label(prefix: str, names: dict[str, str]) -> str:
-    """A human view title, preferring the device's own name."""
-    kind = "mock" if prefix.startswith(MOCK_BUILDINGS) else "real"
-    name = names.get(prefix)
-    if name:
-        return f"{name} ({kind})"
-    building, _, short = prefix.partition("_melcloudhome_")
-    return f"{building.replace('_', ' ').title()} {short} ({kind})"
 
 
 def _heading(text: str) -> dict[str, Any]:
@@ -237,7 +201,7 @@ def _stats(
     }
 
 
-def _provenance(prefix: str) -> dict[str, Any]:
+def _provenance(unit: Unit) -> dict[str, Any]:
     """A table of each water temperature's value and its last_reading.
 
     A statistics graph cannot show an attribute, and last_reading is what
@@ -245,7 +209,7 @@ def _provenance(prefix: str) -> dict[str, Any]:
     """
     rows = []
     for measure in WATER_TEMPS:
-        entity = f"sensor.{prefix}_{measure}"
+        entity = unit.eid(f"_{measure}")
         rows.append(
             f"| {measure.replace('_', ' ')} "
             f"| {{{{ states('{entity}') }}}} "
@@ -260,21 +224,23 @@ def _provenance(prefix: str) -> dict[str, Any]:
     }
 
 
-def build_view(prefix: str, has_zone2: bool, names: dict[str, str]) -> dict[str, Any]:
-    name = label(prefix, names)
-    water = [f"sensor.{prefix}_{m}" for m in WATER_TEMPS]
+def build_view(unit: Unit) -> dict[str, Any]:
+    name = unit.label
+    water = [unit.eid(f"_{m}") for m in WATER_TEMPS if f"_{m}" in unit.entities]
 
     live: list[dict[str, Any]] = [_heading(f"{name} - live")]
-    live.append({"type": "tile", "entity": f"climate.{prefix}_zone_1"})
-    if has_zone2:
-        live.append({"type": "tile", "entity": f"climate.{prefix}_zone_2"})
+    zones = [z for z in ("_zone_1", "_zone_2") if z in unit.entities]
+    live += [{"type": "tile", "entity": unit.eid(z)} for z in zones]
     live += [
-        {"type": "tile", "entity": f"water_heater.{prefix}_tank"},
-        {"type": "tile", "entity": f"switch.{prefix}_system_power"},
-        {"type": "tile", "entity": f"sensor.{prefix}_operation_status"},
-        {"type": "tile", "entity": f"binary_sensor.{prefix}_forced_dhw_active"},
-        {"type": "tile", "entity": f"sensor.{prefix}_outdoor_temperature"},
-        {"type": "tile", "entity": f"sensor.{prefix}_tank_temperature"},
+        {"type": "tile", "entity": unit.eid(suffix)}
+        for suffix in (
+            "_tank",
+            "_system_power",
+            "_operation_status",
+            "_forced_dhw_active",
+            "_outdoor_temperature",
+            "_tank_temperature",
+        )
     ]
 
     temps = [
@@ -292,27 +258,24 @@ def build_view(prefix: str, has_zone2: bool, names: dict[str, str]) -> dict[str,
             "entities": water,
             "grid_options": {"columns": "full"},
         },
-        _provenance(prefix),
+        _provenance(unit),
     ]
 
     energy = [
         _heading("Energy and diagnostics"),
         _stats(
-            [
-                f"sensor.{prefix}_energy_consumed",
-                f"sensor.{prefix}_energy_produced",
-            ],
+            [unit.eid("_energy_consumed"), unit.eid("_energy_produced")],
             title="Energy (7d)",
             period="hour",
             stat_types=["sum"],
         ),
         _stats(
-            [f"sensor.{prefix}_coefficient_of_performance"],
+            [unit.eid("_cop")],
             title="COP (7d)",
             stat_types=["mean", "min", "max"],
         ),
         _stats(
-            [f"sensor.{prefix}_wifi_signal"],
+            [unit.eid("_wifi_signal")],
             title="WiFi signal (7d)",
             period="hour",
         ),
@@ -346,16 +309,13 @@ def main() -> int:
     parser.add_argument(
         "--mock-only",
         action="store_true",
-        help="emit only mock-server units, so the output is safe to commit",
+        help="emit only mock-server units (debug_mode entry), safe to commit",
     )
     args = parser.parse_args()
 
-    units = find_atw_units(args.storage)
-    ata = find_ata_units(args.storage)
-    names = device_names(args.storage)
-    if args.mock_only:
-        units = [u for u in units if u[0].startswith(MOCK_BUILDINGS)]
-        ata = [p for p in ata if p.startswith(MOCK_BUILDINGS)]
+    found = [u for u in find_units(args.storage) if u.mock or not args.mock_only]
+    units = [u for u in found if u.is_atw]
+    ata = [u for u in found if not u.is_atw]
     if not units and not ata:
         print("No units found - is the integration configured?")
         return 1
@@ -367,8 +327,8 @@ def main() -> int:
         "key": DASHBOARD,
         "data": {
             "config": {
-                "views": [build_view(p, z, names) for p, z in units]
-                + ([build_ata_fan_view(ata, names)] if ata else []),
+                "views": [build_view(u) for u in units]
+                + ([build_ata_fan_view(ata)] if ata else []),
             }
         },
     }
@@ -381,8 +341,8 @@ def main() -> int:
     out.write_text(json.dumps(envelope, indent=1) + "\n")
     total = len(units) + (1 if ata else 0)
     print(f"Wrote {out} with {total} view(s):")
-    for prefix, has_zone2 in units:
-        print(f"  {label(prefix, names)}{' [zone 2]' if has_zone2 else ''}")
+    for unit in units:
+        print(f"  {unit.label}{' [zone 2]' if '_zone_2' in unit.entities else ''}")
     if ata:
         print(f"  ATA fan speed [{len(ata)} unit(s)]")
     print("Restart HA to pick it up: make dev-restart")
