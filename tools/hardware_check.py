@@ -176,8 +176,9 @@ class Unit:
         self.ha = ha
         self.fan = fan_entity
         # ponytail: prod-only; matches by ID text and the English label, so on
-        # a fresh v6 install or non-English labels it can match the wrong unit
-        # or miss its polls. Look up by unique ID if it ever runs elsewhere.
+        # an install set up after #403, or with non-English labels, it can
+        # match the wrong unit or miss its polls. Look up by unique ID if it
+        # ever runs elsewhere.
         self.tail4 = fan_entity.split("_a_c_fan")[0][-4:]
         states = ha.call("/api/states")
         self.climate = next(
