@@ -26,6 +26,7 @@ make dev-up
 ```
 
 This starts:
+
 - **Mock MELCloud API** on `http://localhost:8080`
 - **Home Assistant** on `http://localhost:8123`
 
@@ -138,6 +139,7 @@ make dev-logs
 ```
 
 **Make commands available:**
+
 - `make dev-up` - Start dev environment
 - `make dev-restart` - Restart HA (reload code changes)
 - `make dev-logs` - View HA logs
@@ -160,6 +162,7 @@ make dev-reset
 ```
 
 This restores the dev environment to a clean snapshot with:
+
 - User account already created (dev/dev)
 - Onboarding completed
 
@@ -206,6 +209,7 @@ make dev-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 ```
 
 **What gets saved:**
+
 - Complete `.storage` directory (all entity/device registries, auth, etc.)
 - Separate copies of entity and device registries for easy inspection
 
@@ -222,6 +226,7 @@ make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 ```
 
 **Use cases:**
+
 - Save state before/after major changes for comparison testing
 - Create known-good checkpoints during development
 - Revert to a baseline after testing
@@ -229,6 +234,7 @@ make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 - Upgrade verification testing (save before, compare after)
 
 **Notes:**
+
 - Snapshot command requires Home Assistant container to be running
 - Restore command stops containers, restores state, starts only HA (not mock server)
 - Use `make dev-up` after restore if you need the mock server
@@ -244,6 +250,7 @@ This completely wipes the environment and starts from scratch. You'll need to cr
 ## Mock Server Details
 
 The mock server provides:
+
 - **2 ATA devices** (Air-to-Air / AC units)
   - Living Room AC
   - Bedroom AC
@@ -274,6 +281,7 @@ curl -X PUT http://localhost:8080/monitor/atwunit/atw-house-heatpump \
 ### Change admin credentials:
 
 Create `.env` file:
+
 ```bash
 HASS_USERNAME=admin
 HASS_PASSWORD=mypassword
@@ -299,20 +307,23 @@ kill -9 $(lsof -ti:8123)
 ```
 
 Or change the port in `docker-compose.dev.yml`:
+
 ```yaml
 ports:
-  - "9123:8123"  # Use port 9123 instead
+  - "9123:8123" # Use port 9123 instead
 ```
 
 ### Integration not showing up
 
 1. Check the custom component is mounted:
+
    ```bash
    docker compose -f docker-compose.dev.yml exec homeassistant \
      ls -la /config/custom_components/melcloudhome
    ```
 
 2. Check logs for errors:
+
    ```bash
    docker compose -f docker-compose.dev.yml logs homeassistant | grep melcloudhome
    ```
@@ -334,6 +345,7 @@ make dev-reset-full  # Complete wipe (slow)
 **Symptom:** Can't see the "Connect to Mock Server" checkbox when adding the integration.
 
 **Solution:** Enable Advanced Mode in your Home Assistant profile:
+
 1. Click your profile (bottom left)
 2. Enable "Advanced Mode" toggle
 3. Return to integration setup
@@ -373,13 +385,13 @@ These files are stored in `dev-config/` and persist between restarts.
 
 **Key differences from your remote HA instance:**
 
-| Aspect | Dev Environment | Production |
-|--------|----------------|------------|
-| **API endpoint** | Mock server (localhost:8080) | Real MELCloud API |
-| **Devices** | 2 ATA + 1 ATW (simulated) | Your actual devices |
-| **Data** | In-memory state | Real sensor data |
-| **Config** | dev-config/ (local) | Remote server |
-| **Auth** | No validation | Real OAuth tokens |
+| Aspect           | Dev Environment              | Production          |
+| ---------------- | ---------------------------- | ------------------- |
+| **API endpoint** | Mock server (localhost:8080) | Real MELCloud API   |
+| **Devices**      | 2 ATA + 1 ATW (simulated)    | Your actual devices |
+| **Data**         | In-memory state              | Real sensor data    |
+| **Config**       | dev-config/ (local)          | Remote server       |
+| **Auth**         | No validation                | Real OAuth tokens   |
 
 The mock server is perfect for testing integration logic, UI, and state management without physical hardware.
 

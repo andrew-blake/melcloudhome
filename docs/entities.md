@@ -16,13 +16,13 @@ Home Assistant builds each new entity ID from the area, the device name and the 
 
 A fresh install with no areas gets IDs such as:
 
-| Entity                    | Example ID                         |
-| ------------------------- | ---------------------------------- |
-| Air conditioner (climate) | `climate.living_room_ac`           |
-| A/C fan                   | `fan.living_room_ac_a_c_fan`       |
+| Entity                    | Example ID                                             |
+| ------------------------- | ------------------------------------------------------ |
+| Air conditioner (climate) | `climate.living_room_ac`                               |
+| A/C fan                   | `fan.living_room_ac_a_c_fan`                           |
 | Heat pump Zone 1, Zone 2  | `climate.heat_pump_zone_1`, `climate.heat_pump_zone_2` |
-| Tank                      | `water_heater.heat_pump_tank`      |
-| System power              | `switch.heat_pump_system_power`    |
+| Tank                      | `water_heater.heat_pump_tank`                          |
+| System power              | `switch.heat_pump_system_power`                        |
 
 If two units in different buildings share a name, the second unit's IDs get a `_2` suffix; rename one of them to tell them apart.
 

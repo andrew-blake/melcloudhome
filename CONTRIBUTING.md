@@ -200,9 +200,10 @@ If you're adding support for new device types (e.g., ERV ventilators):
 2. Use reverse engineering tools to understand API
 3. Document request/response patterns
 4. Implement corresponding client methods
-6. Add tests with VCR cassettes
+5. Add tests with VCR cassettes
 
 **Tools:**
+
 - mitmproxy for mobile app traffic capture ([setup guide](tools/mitmproxy/README.md))
 - Mock server for testing
 - pytest-recording (VCR) for API tests
