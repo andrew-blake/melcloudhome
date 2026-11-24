@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-030](030-follow-home-assistants-naming-model.md). Existing entity IDs keep the `melcloudhome_` prefix; new ones are built by Home Assistant.
 
 ## Date
 

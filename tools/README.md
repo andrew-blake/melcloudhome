@@ -269,6 +269,8 @@ See [`mitmproxy/README.md`](mitmproxy/README.md) for the iOS setup (proxy + CA c
 
 List and inspect MELCloud Home entities via Home Assistant API. Useful for debugging and monitoring integration status.
 
+It matches entity IDs that contain `melcloud`, so it finds the `melcloudhome_` IDs that existing installs keep. A fresh install's IDs, such as `climate.living_room_ac`, don't match.
+
 **Usage:**
 
 ```bash
@@ -292,15 +294,15 @@ List and inspect MELCloud Home entities via Home Assistant API. Useful for debug
 
 ═══ CLIMATE Platform (1 entities) ═══
 
-climate.melcloud_0efc_76db
+climate.melcloudhome_0efc_76db_climate
   ✓ State: heat
 
 ═══ SENSOR Platform (2 entities) ═══
 
-sensor.melcloud_0efc_76db_room_temperature
+sensor.melcloudhome_0efc_76db_room_temperature
   ✓ State: 19.0
 
-sensor.melcloud_bf8d_5119_room_temperature
+sensor.melcloudhome_bf8d_5119_room_temperature
   ✓ State: 17.5
 
 ═══ Summary ═══
@@ -310,6 +312,8 @@ Total MELCloud entities: 3
 ### `test_turn_on_off.sh`
 
 Test TURN_ON/TURN_OFF feature flags and functionality for climate entities. Verifies HA 2025.1+ compliance.
+
+It matches entity IDs that start with `climate.melcloud_`, so it finds neither `climate.melcloudhome_` IDs nor a fresh install's IDs.
 
 **Usage:**
 
@@ -414,7 +418,8 @@ periods, the first ATW unit's native `OutdoorTemperature` context field (a
 control group that bypasses trendsummary), and Home Assistant's currently
 reported outdoor temperature — including the `last_reading` attribute, so the
 integration's claimed staleness can be validated against the raw API. Units
-are discovered from `/context`; HA entity IDs are derived from unit UUIDs.
+are discovered from `/context`; HA entity IDs are built from unit UUIDs in the
+`melcloudhome_` form that existing installs keep, so a fresh install's IDs don't match.
 
 ```bash
 source .env
@@ -475,20 +480,22 @@ long-lived access token.
 **Usage:**
 
 ```bash
-uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors
+uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors (existing installs)
 uv run tools/find_corrupt_energy_readings.py --days 1095            # scan further back (default: 730 days)
 uv run tools/find_corrupt_energy_readings.py --threshold-kwh 50     # lower the sensitivity
-uv run tools/find_corrupt_energy_readings.py --entity sensor.melcloudhome_0efc_76db_energy
+uv run tools/find_corrupt_energy_readings.py --entity sensor.living_room_ac_energy
 uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan every cumulative sensor, export to CSV
 uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
 ```
+
+Auto-discovery matches the `sensor.melcloudhome_` prefix that existing installs keep. On an install whose energy sensors have other IDs, pass `--entity` or `--all`.
 
 **Fixing a flagged point:**
 
 For each entity/timestamp the script flags:
 
 1. Open **Developer Tools → Statistics** in Home Assistant
-2. Search for the entity (e.g. `sensor.melcloudhome_b657_22c6_energy`) and click
+2. Search for the entity (e.g. `sensor.living_room_ac_energy`) and click
    the **ramp icon** on its row ("Adjust a statistic")
 3. Pick the flagged hour from the list (times are shown in your local timezone —
    the script prints UTC)

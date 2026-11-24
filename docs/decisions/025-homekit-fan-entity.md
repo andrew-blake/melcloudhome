@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-09-11
 **Relates to:** [ADR-013](013-automatic-friendly-device-names.md) (the device
-naming this entity inherits),
+naming this entity inherits; device naming now follows [ADR-030](030-follow-home-assistants-naming-model.md)),
 [ADR-018](018-out-of-band-state-sync-limitation.md) (the deduplication
 trade-off these writes change),
 [ADR-026](026-remove-control-write-dedup.md) (which removed that deduplication
@@ -260,6 +260,8 @@ than the problem, and it is rejected here because the fan entity costs existing
 users nothing.
 
 ## Consequences
+
+> **Status note:** the fan's name is now translated into the install's language, so the tile name below is the English one. Device naming follows [ADR-030](030-follow-home-assistants-naming-model.md).
 
 - HomeKit gains a second tile per unit, for example "Living Room A-C fan". The
   Home app shows a hyphen because the bridge substitutes one for the slash in

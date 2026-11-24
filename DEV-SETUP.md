@@ -70,12 +70,14 @@ The "Connect to Mock Server" checkbox connects to the mock server instead of pro
 
 The mock server provides four pre-configured test devices, defined inline in `tools/mock_melcloud_server.py`:
 
+The example entity IDs assume a fresh setup with no areas assigned. Home Assistant builds the IDs, so an area or a device name set in the setup dialog changes them.
+
 **ATA Devices (Air-to-Air Heat Pumps):**
 
 1. **Living Room AC**
    - UUID: `0efc1234-5678-9abc-def0-1234567887db`
-   - Entity prefix: `melcloudhome_0efc_87db`
-   - Example entity: `climate.melcloudhome_0efc_87db_climate`
+   - Serial number: `melcloudhome_0efc_87db`
+   - Example entity: `climate.living_room_ac`
    - Model: MSZ-AP35VG
    - Capabilities: Heat, Cool, Dry, Fan, Auto modes
    - Fan speeds: Auto, Low, Medium, High, Very High
@@ -84,8 +86,8 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 2. **Bedroom AC**
    - UUID: `bf8d5678-90ab-cdef-0123-456789ab5119`
-   - Entity prefix: `melcloudhome_bf8d_5119`
-   - Example entity: `climate.melcloudhome_bf8d_5119_climate`
+   - Serial number: `melcloudhome_bf8d_5119`
+   - Example entity: `climate.bedroom_ac`
    - Model: MSZ-LN25VG
    - Same capabilities as Living Room AC
    - Current: 18°C → Target: 20°C
@@ -94,11 +96,11 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 3. **House Heat Pump**
    - UUID: `bf2d256c-42ac-4799-a6d8-c6ab433e5666`
-   - Entity prefix: `melcloudhome_bf2d_5666`
+   - Serial number: `melcloudhome_bf2d_5666`
    - Example entities:
-     - `climate.melcloudhome_bf2d_5666_zone_1`
-     - `water_heater.melcloudhome_bf2d_5666_tank`
-     - `switch.melcloudhome_bf2d_5666_system_power`
+     - `climate.house_heat_pump_zone_1`
+     - `water_heater.house_heat_pump_tank`
+     - `switch.house_heat_pump_system_power`
    - Mock device (ftcModel: 3)
    - Zone 1 (underfloor heating): Target 25°C, Current 23°C
    - Hot water tank: Target 50°C, Current 48°C
@@ -107,7 +109,7 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 4. **Dual Zone Heat Pump**
    - UUID: `aed21234-5678-9abc-def0-123456789abc`
-   - Entity prefix: `melcloudhome_aed2_9abc`
+   - Serial number: `melcloudhome_aed2_9abc`
    - Mock device (ftcModel: 5), two heating zones (`hasZone2: true`)
    - Zone 1: Target 19°C, Current 21°C — Zone 2: Target 21°C, Current 21°C
    - Hot water tank: Target 40°C, Current 40°C

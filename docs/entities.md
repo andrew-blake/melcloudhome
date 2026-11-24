@@ -2,23 +2,31 @@
 
 Complete reference for all entities created by the MELCloud Home integration.
 
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-11-24
 
 ---
 
-## Entity Naming Convention
+## Entity Names and IDs
 
-All entities use **stable UUID-based entity IDs** to ensure automations never break when device names change.
+Each unit is a device. New devices are named after the unit in your MELCloud Home account, for example "Living Room AC". Devices added by earlier versions keep their name, your label and their area.
 
-**Entity ID Format:** `{domain}.melcloudhome_{short_id}_{entity_name}`
+Home Assistant shows each entity's name after the device name. The fan, the heat pump zones, the tank and the system power switch have names in the install's language; the English names are listed here.
 
-The `short_id` is derived from the MELCloud device UUID by taking the first 4 and last 4 characters (after removing hyphens).
+Home Assistant builds each new entity ID from the area, the device name and the entity name, following your entity ID setting. The integration doesn't promise an ID format, and existing entity IDs never change. To find a unit's entities, open its device page.
 
-**Example:** UUID `bf8d5119-abcd-1234-5678-9999abcd5119` → short ID `bf8d_5119`
+A fresh install with no areas gets IDs such as:
 
-**Device names** are automatically set to friendly names from your MELCloud Home account (e.g., "Living Room", "Bedroom") for easy identification in the UI.
+| Entity                    | Example ID                         |
+| ------------------------- | ---------------------------------- |
+| Air conditioner (climate) | `climate.living_room_ac`           |
+| A/C fan                   | `fan.living_room_ac_a_c_fan`       |
+| Heat pump Zone 1, Zone 2  | `climate.heat_pump_zone_1`, `climate.heat_pump_zone_2` |
+| Tank                      | `water_heater.heat_pump_tank`      |
+| System power              | `switch.heat_pump_system_power`    |
 
-**Note:** `entity_id` is set once, at first registration, and never recomputed. Entities registered before the #240 translation fix keep their original `entity_id` permanently; only entities registered for the first time after that fix get the corrected IDs shown below.
+If two units in different buildings share a name, the second unit's IDs get a `_2` suffix; rename one of them to tell them apart.
+
+**Serial number:** each device's serial number is its short ID, `melcloudhome_` followed by the first 4 and last 4 characters of the unit's UUID with the hyphens removed. For example, UUID `bf8d5119-abcd-1234-5678-9999abcd5119` gives `melcloudhome_bf8d_5119`. Installs set up by earlier versions have the same text in their entity IDs, so the serial number matches a device to them.
 
 ---
 
@@ -28,14 +36,14 @@ For each air conditioning unit, the following entities are created:
 
 ### Climate Entity
 
-- **Entity ID**: `climate.melcloudhome_{short_id}_climate`
+- **Name**: none of its own; it shows the device's name
+- **Area**: on Home Assistant 2026.11 or later, an area set on this entity without a name of its own raises a repair. Move the area to the device or give the entity a name.
 - **Features**: Power on/off, temperature control, HVAC modes, fan speeds, swing modes
 - **HVAC Action**: Heating/cooling/idle, inferred from room temperature against the setpoint (the API reports no heating or cooling state). A unit can keep heating at or above its setpoint, or cooling at or below it, and reads idle while it does.
 
 ### Fan Entity
 
-- **Entity ID**: `fan.melcloudhome_{short_id}_a_c_fan`
-- **Name**: `<device> A/C fan`
+- **Name**: A/C fan (translated on non-English installs)
 - **Created when**: The unit reports `number_of_fan_speeds` of 1 or more
 
 Carries fan speed as a percentage, the vertical vane as oscillation, and unit
@@ -63,25 +71,25 @@ surprises people.
 
 ### Sensors
 
-- **Room Temperature**: `sensor.melcloudhome_{short_id}_room_temperature`
-- **Actual Fan Speed**: `sensor.melcloudhome_{short_id}_actual_fan_speed` (`off`, `one`…`five`, never `auto`) — the speed the unit is running, as opposed to the climate entity's `fan_mode`, which is the requested one. Under `Auto` this is the only place the running speed is visible. Reported by the indoor unit, so it can be a few minutes behind after switching on or off, and it follows the fan rather than the compressor — a low speed does not mean cooling has stopped
-- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
-- **WiFi Signal**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic, dBm, polled every 30 minutes, with a `last_reading` attribute; see the WiFi Signal Sensor section below)
-- **Energy**: `sensor.melcloudhome_{short_id}_energy` (cumulative kWh)
-- **Frost Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_frost_protection_minimum` / `_maximum` (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
-- **Overheat Protection Minimum/Maximum**: `sensor.melcloudhome_{short_id}_overheat_protection_minimum` / `_maximum` (°C, diagnostic; only created once ever configured)
-- **Holiday Mode Start/End Date**: `sensor.melcloudhome_{short_id}_holiday_mode_start` / `_end` (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
+- **Room temperature**
+- **Actual fan speed** (`off`, `one`…`five`, never `auto`) — the speed the unit is running, as opposed to the climate entity's `fan_mode`, which is the requested one. Under `Auto` this is the only place the running speed is visible. Reported by the indoor unit, so it can be a few minutes behind after switching on or off, and it follows the fan rather than the compressor — a low speed does not mean cooling has stopped
+- **Outdoor temperature**
+- **WiFi signal** (diagnostic, dBm, polled every 30 minutes, with a `last_reading` attribute; see the WiFi Signal Sensor section below)
+- **Energy** (cumulative kWh)
+- **Frost protection minimum / maximum** (°C, diagnostic; created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
+- **Overheat protection minimum / maximum** (°C, diagnostic; only created once ever configured)
+- **Holiday mode start / end** (raw ISO string as returned by the API, not parsed into a timestamp device class; diagnostic, only created once ever configured). Live-tested twice: local wall-clock time passed through naively, not UTC — the building's own `timezone` field is not a reliable way to interpret it (see code comment in `sensor_ata.py`), so no conversion is attempted
 
 ### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+- **Error state**
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
-- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
-- **Frost Protection**: `binary_sensor.melcloudhome_{short_id}_frost_protection` (created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
+- **Connection state**
+- **Frost protection** (created when the API reports the `frostProtection` object — every ATA unit does, as a server-side default, whether or not the mode has ever been configured)
   - Attribute `active`: currently engaging (e.g. room has crossed the threshold) — see the min/max sensors above for the configured band
-- **Overheat Protection**: `binary_sensor.melcloudhome_{short_id}_overheat_protection` (only created once ever configured)
+- **Overheat protection** (only created once ever configured)
   - Attribute `active`
-- **Holiday Mode**: `binary_sensor.melcloudhome_{short_id}_holiday_mode` (only created once ever configured)
+- **Holiday mode** (only created once ever configured)
   - Attribute `active` — see the start/end date sensors above for the configured window
 
 All three reflect state read from the API only — the state is `on` when the mode is armed/configured (`enabled`), not only when it's currently engaging (`active`, exposed as an attribute); read-only, no control exposed yet.
@@ -152,24 +160,24 @@ For each heat pump system, the following entities are created:
 
 ### Climate Entity (Zone 1)
 
-- **Entity ID**: `climate.melcloudhome_{short_id}_zone_1`
+- **Name**: Zone 1
 - **Features**: Zone 1 heating control, temperature setting (10-30°C), preset modes, HVAC modes
 
 ### Climate Entity (Zone 2)
 
-- **Entity ID**: `climate.melcloudhome_{short_id}_zone_2` (if device supports Zone 2)
+- **Name**: Zone 2 (if device supports Zone 2)
 - **Features**: Same capabilities as Zone 1: HVAC modes, preset modes, temperature control (10-30°C)
 - **Created automatically** when `hasZone2=true` in device capabilities
 
 ### Water Heater Entity (DHW Tank)
 
-- **Entity ID**: `water_heater.melcloudhome_{short_id}_tank`
+- **Name**: Tank
 - **Features**: DHW tank temperature control (40-60°C), operation modes
 - **Note**: Water heater reflects system power state but cannot control it (use switch for power)
 
 ### Switch Entity (System Power)
 
-- **Entity ID**: `switch.melcloudhome_{short_id}_system_power`
+- **Name**: System power
 - **Features**: System power control (primary power control point)
 - **Note**: Climate OFF also controls system power (both delegate to same control method)
 
@@ -177,10 +185,10 @@ For each heat pump system, the following entities are created:
 
 **Temperature Sensors:**
 
-- **Zone 1 Temperature**: `sensor.melcloudhome_{short_id}_zone_1_temperature`
-- **Zone 2 Temperature**: `sensor.melcloudhome_{short_id}_zone_2_temperature` (if device supports Zone 2)
-- **Tank Temperature**: `sensor.melcloudhome_{short_id}_tank_temperature`
-- **Outdoor Temperature**: `sensor.melcloudhome_{short_id}_outdoor_temperature`
+- **Zone 1 temperature**
+- **Zone 2 temperature** (if device supports Zone 2)
+- **Tank temperature**
+- **Outdoor temperature**
   - Ambient temperature from the outdoor unit
   - Created for every ATW unit; shows `unknown` until a reading arrives. Sourced
     exclusively from the comfort-graph report, never the live polling response —
@@ -191,19 +199,19 @@ For each heat pump system, the following entities are created:
 
 **Operation Status:**
 
-- **Operation Status**: `sensor.melcloudhome_{short_id}_operation_status`
+- **Operation status**
   - Shows current 3-way valve position: "Stop", "HotWater", "HeatRoomTemperature", etc.
 
 **Telemetry Sensors (Flow/Return Temperatures):**
 
-- **Flow Temperature**: `sensor.melcloudhome_{short_id}_flow_temperature`
-- **Return Temperature**: `sensor.melcloudhome_{short_id}_return_temperature`
-- **Flow Temperature Zone 1**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_1` (if device supports Zone 2)
-- **Return Temperature Zone 1**: `sensor.melcloudhome_{short_id}_return_temperature_zone_1` (if device supports Zone 2)
-- **Flow Temperature Zone 2**: `sensor.melcloudhome_{short_id}_flow_temperature_zone_2` (if device supports Zone 2)
-- **Return Temperature Zone 2**: `sensor.melcloudhome_{short_id}_return_temperature_zone_2` (if device supports Zone 2)
-- **Flow Temperature Boiler**: `sensor.melcloudhome_{short_id}_flow_temperature_boiler` (if device reports a boiler)
-- **Return Temperature Boiler**: `sensor.melcloudhome_{short_id}_return_temperature_boiler` (if device reports a boiler)
+- **Flow temperature**
+- **Return temperature**
+- **Flow temperature zone 1** (if device supports Zone 2)
+- **Return temperature zone 1** (if device supports Zone 2)
+- **Flow temperature zone 2** (if device supports Zone 2)
+- **Return temperature zone 2** (if device supports Zone 2)
+- **Flow temperature boiler** (if device reports a boiler)
+- **Return temperature boiler** (if device reports a boiler)
 
 The unsuffixed Flow and Return pair is created for every heat pump. The rest are gated on
 capabilities, because MELCloud still sends a series for measures the hardware doesn't have —
@@ -251,7 +259,7 @@ to be created for every heat pump, where they read a constant 25 °C on devices 
 
 **WiFi Signal Sensor (air conditioners and heat pumps):**
 
-- **WiFi Signal (RSSI)**: `sensor.melcloudhome_{short_id}_wifi_signal` (diagnostic)
+- **WiFi signal** (diagnostic)
   - Signal strength in dBm (roughly -30 to -90; lower is weaker)
   - Update frequency: every 30 minutes
   - `last_reading`: the time the unit itself recorded the value. Some units upload a new value every few minutes. Others upload only when the value changes, and on those a steady signal can leave `last_reading` hours old while everything is working. The integration's diagnostics download shows `wifi_signal_last_poll_at` and `wifi_signal_last_error`: a recent poll with no error means the unit is quiet, and an error means the fetch is failing.
@@ -260,12 +268,12 @@ to be created for every heat pump, where they read a constant 25 °C on devices 
 
 **Energy Sensors (devices with energy capabilities):**
 
-- **Energy Consumed**: `sensor.melcloudhome_{short_id}_energy_consumed`
+- **Energy consumed**
   - Electrical energy consumed by heat pump (kWh)
   - Compatible with Home Assistant Energy Dashboard
-- **Energy Produced**: `sensor.melcloudhome_{short_id}_energy_produced`
+- **Energy produced**
   - Thermal energy produced by heat pump (kWh)
-- **COP (Coefficient of Performance)**: `sensor.melcloudhome_{short_id}_coefficient_of_performance`
+- **Coefficient of performance**
   - Heat pump efficiency ratio (produced/consumed)
   - Typical values: 2.5-4.0 (higher is more efficient)
   - Update frequency: Every 30 minutes
@@ -279,10 +287,10 @@ to be created for every heat pump, where they read a constant 25 °C on devices 
 
 ### Binary Sensors
 
-- **Error State**: `binary_sensor.melcloudhome_{short_id}_error_state`
+- **Error state**
   - Attribute `error_code`: device error code as reported by the API, `null` when no error. The API returns all settings values as strings, so a string is expected, but only the no-error case (empty string) has been observed so far — the exact format of active error codes is unconfirmed
-- **Connection**: `binary_sensor.melcloudhome_{short_id}_connection_state`
-- **Forced DHW Active**: `binary_sensor.melcloudhome_{short_id}_forced_dhw_active`
+- **Connection state**
+- **Forced DHW active**
 
 ### ATW Control Options
 
@@ -325,7 +333,7 @@ to be created for every heat pump, where they read a constant 25 °C on devices 
 
 One per MELCloud Home account (config entry), attached to a "MELCloud Home" service device:
 
-- **Real-time updates**: `binary_sensor.melcloud_home_real_time_updates` — diagnostic
+- **Real-time updates**: diagnostic
   connectivity sensor reporting whether the real-time WebSocket connection is up
   (`on` = connected). The `last_delta_at` attribute holds the timestamp of the last
   push update received. Only created when real-time updates are enabled (the default);
@@ -343,8 +351,8 @@ For complete operational details and state diagram, see [docs/architecture.md](a
 
 ---
 
-## Entity ID Recreation Warning
+## Recreating Entity IDs
 
-⚠️ **If you delete entities and use the "Recreate entity IDs" option**, Home Assistant will regenerate entity IDs based on the friendly device name instead of the stable UUID. This will change entity IDs from `climate.melcloudhome_bf8d_5119_climate` to `climate.living_room_climate`, breaking existing automations.
+The "Recreate entity IDs" option (↻) proposes Home Assistant's own ID for each entity, built from the current device name and label. A recreated ID can differ from the old one, so update any automation that uses it.
 
-**To preserve entity IDs:** Don't delete entities unless necessary. If you need to reset, delete and re-add the integration instead.
+Re-adding the integration restores a deleted device's label, area and entity IDs. The device's own name becomes the unit name.

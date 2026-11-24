@@ -1,7 +1,7 @@
 # ADR-013: Automatic Friendly Device Names
 
 **Date:** 2026-01-06
-**Status:** Accepted
+**Status:** Superseded by [ADR-030](030-follow-home-assistants-naming-model.md)
 **Deciders:** @andrew-blake
 
 ## Context
