@@ -1,6 +1,6 @@
 # ADR-030: Follow Home Assistant's Naming Model
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-24
 **Supersedes:** [ADR-003](003-entity-naming-strategy.md) (device name "{building} {unit}", building as suggested area), [ADR-010](010-entity-id-prefix-change.md) (the `melcloudhome_` entity ID prefix), [ADR-013](013-automatic-friendly-device-names.md) (friendly names written into `name_by_user`)
 **Amends:** [ADR-009](009-reconfigure-password-only.md) (its entity ID note)
@@ -51,11 +51,12 @@ Home Assistant now provides the stability v1.0.0 wanted: a registered entity kee
 - **Fresh installs get Home Assistant's format,** for example `climate.living_room_ac` and `water_heater.heat_pump_tank`. Translated names appear in the install's language, and any area the user assigns joins the ID.
 - **Two units with the same name in different buildings** get identical labels and a `_2` ID. The user renames one.
 - **On existing installs, a climate entity of an air conditioner that the user hasn't renamed loses " Climate" from its label.** Voice assistants and dashboards that show the default name follow, and so may the HomeKit accessory after a restart. IDs and automations don't change. If the user set an area on that entity itself, Home Assistant 2026.11 raises a repair, because an entity without a name of its own can't have its own area: moving the area to the device or naming the entity clears it.
-- **Entities that appear later on existing installs get Home Assistant's format too.** On Home Assistant 2026.6 or later, on any install that kept the suggested building area, that repeats the building: `sensor.my_home_my_home_living_room_ac_energy`, from the area plus the label earlier versions wrote. Earlier code gave such entities `sensor.my_home_melcloudhome_a1b2_9abc_energy`, which isn't the documented format either. Before 2026.6 earlier code gave the documented `sensor.melcloudhome_a1b2_9abc_energy`, and now the entity is named from the device label: `sensor.my_home_living_room_ac_energy`. Users can change either with Home Assistant's entity ID setting or a rename.
+- **Entities that appear later on existing installs get Home Assistant's format too.** On Home Assistant 2026.6 or later, on any install that kept the suggested building area, that repeats the building: `sensor.my_home_my_home_living_room_ac_energy`, from the area plus the label earlier versions wrote. Earlier code gave such entities `sensor.my_home_melcloudhome_a1b2_9abc_energy`, which isn't the documented format either. Before 2026.6 earlier code gave the documented `sensor.melcloudhome_a1b2_9abc_energy`, and now the entity is named from the device label: `sensor.my_home_living_room_ac_energy`. Users can change either by editing the entity ID in the entity's settings.
 - **Units added after the upgrade are named after the unit and get no area,** next to older devices labelled "{building} {unit}".
 - **Re-adding the integration renames its devices to the unit name.** Home Assistant forgets a removed device's name but restores its label, area and entity IDs. Saved old labels don't survive a re-add in any case.
 - **A label the user resets shows the device's own name.** That's the unit name on new devices and `melcloudhome_a1b2_9abc` on existing ones. Renaming existing devices would clear their entities' saved labels, so they keep that name.
 - **Users whose saved labels were already cleared can't get them back.**
+- **Two config entries that see the same unit are unsupported.** That happens when an owner account and a guest account are both added. Their entities' unique IDs already clash, so the second entry fails to set them up. On Home Assistant before 2026.11, device lookup isn't scoped to a config entry, so the second entry's first setup also renames the first entry's device to the unit name. From 2026.11 each entry has its own device.
 - **Diagnostics can't be matched to MELCloud by full ID any more.** Units appear under their short ID, the serial number on the device page, so a dump still matches a user's devices and older entity IDs. Buildings appear under a one-way pseudonym.
 - **The documentation stops promising an ID format.** It points users to the device page and the serial number.
 
