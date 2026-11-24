@@ -408,3 +408,63 @@ async def test_readd_restores_label_and_area_and_names_device_after_unit(
         "Dining AC",
         area.id,
     )
+
+
+@pytest.mark.asyncio
+async def test_existing_install_gaining_a_unit_names_only_the_new_device(
+    hass: HomeAssistant,
+) -> None:
+    """One known device and one new unit in the same setup (the discovery reload).
+
+    The known device keeps its name, label and area and only gains its serial
+    number; the new device is named after its unit.
+    """
+    from homeassistant.helpers import area_registry as ar, device_registry as dr
+
+    new_id = "22222222-2222-2222-2222-222222222222"
+    context = _context_with(
+        _building(
+            "Test Home",
+            [
+                create_mock_ata_unit(unit_id=DINING_ID, name="Dining Room"),
+                create_mock_ata_unit(unit_id=new_id, name="Living Room"),
+            ],
+        )
+    )
+    area = ar.async_get(hass).async_get_or_create("Test Home")
+    entry = create_mock_entry()
+    entry.add_to_hass(hass)
+    devices = dr.async_get(hass)
+    old = devices.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, DINING_ID)},
+        name="melcloudhome_abc1_6789",
+        manufacturer="Mitsubishi Electric",
+        model="Air-to-Air Heat Pump (via MELCloud Home)",
+    )
+    devices.async_update_device(
+        old.id, name_by_user="Test Home Dining Room", area_id=area.id
+    )
+    await hass.async_block_till_done()
+    updates: list = []
+    hass.bus.async_listen(
+        dr.EVENT_DEVICE_REGISTRY_UPDATED,
+        lambda event: (
+            updates.append(event.data) if event.data["action"] == "update" else None
+        ),
+    )
+
+    with patched_client(context):
+        await _set_up(hass, entry)
+
+    known = _device(hass, entry, DINING_ID)
+    assert (known.name, known.name_by_user, known.area_id) == (
+        "melcloudhome_abc1_6789",
+        "Test Home Dining Room",
+        area.id,
+    )
+    assert [set(u["changes"]) for u in updates if u["device_id"] == old.id] == [
+        {"serial_number"}
+    ]
+    new = _device(hass, entry, new_id)
+    assert (new.name, new.name_by_user, new.area_id) == ("Living Room", None, None)
