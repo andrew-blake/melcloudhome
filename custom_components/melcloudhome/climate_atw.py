@@ -78,7 +78,7 @@ class ATWClimateBase(
         self._attr_name = f"Zone {zone_number}"
 
         # Device info using shared helper (groups with water_heater/sensors)
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # Supported features
         self._attr_supported_features = (

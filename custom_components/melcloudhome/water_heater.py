@@ -89,7 +89,7 @@ class ATWWaterHeater(
         self._attr_name = "Tank"
 
         # Device info using shared helper (groups with climate/sensors)
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # Supported features (use switch for power control)
         self._attr_supported_features = (

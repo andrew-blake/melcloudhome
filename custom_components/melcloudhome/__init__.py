@@ -9,7 +9,6 @@ in the dev environment. Integration testing happens via deployment to actual HA.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -22,9 +21,6 @@ if TYPE_CHECKING:
 from .api.client import MELCloudHomeClient
 
 _LOGGER = logging.getLogger(__name__)
-
-# Pattern for auto-generated device names (used by device name migration)
-UUID_DEVICE_NAME_PATTERN = re.compile(r"^melcloudhome_[0-9a-f]{4}_[0-9a-f]{4}$")
 
 
 def _create_discovery_listener(
@@ -119,122 +115,37 @@ def _create_discovery_listener(
     return _device_discovery_listener
 
 
-async def _clear_friendly_device_names(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> dict[str, str]:
-    """Temporarily clear name_by_user from all devices before platform setup.
-
-    This ensures that when entities are created during platform setup,
-    they use the UUID-based device name (from 'name' field) for entity IDs,
-    not the friendly name_by_user.
-
-    Saves all name_by_user values for restoration after platform setup
-    via _restore_device_names(). This preserves user customizations.
-
-    Returns:
-        Mapping of device_id -> name_by_user for restoration.
-    """
-    from homeassistant.helpers import device_registry as dr
-
-    from .const import DOMAIN
-
-    device_reg = dr.async_get(hass)
-    saved_names: dict[str, str] = {}
-
-    for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id):
-        if not any(identifier[0] == DOMAIN for identifier in device.identifiers):
-            continue
-
-        if device.name_by_user is not None:
-            saved_names[device.id] = device.name_by_user
-            device_reg.async_update_device(
-                device.id,
-                name_by_user=None,
-            )
-            _LOGGER.debug(
-                "Cleared name_by_user from device: %s (was: %s)",
-                device.name,
-                device.name_by_user,
-            )
-
-    if saved_names:
-        _LOGGER.info(
-            "Cleared name_by_user from %d device(s) before platform setup",
-            len(saved_names),
-        )
-
-    return saved_names
-
-
-async def _restore_device_names(
+def _create_unit_devices(
     hass: HomeAssistant,
     entry: ConfigEntry,
     coordinator: MELCloudHomeCoordinator,
-    saved_names: dict[str, str],
 ) -> None:
-    """Restore device names after platform setup.
+    """Create each unit's device before platform setup, naming new ones (ADR-030).
 
-    For devices that had name_by_user before platform setup (saved by
-    _clear_friendly_device_names), restores their previous names exactly.
-    For new devices, sets name_by_user to the API-based friendly name.
+    HA builds an entity's ID from its device's name when the entity first
+    registers, so a new device must be named before the platforms run. The
+    name is the unit's, written once at creation: a later name write would
+    clear the labels users saved on its entities (compat_name, HA 2026.11).
+    Existing devices only get the other fields, e.g. the serial number.
+    Loops per unit, so the account's service device is never touched.
     """
     from homeassistant.helpers import device_registry as dr
 
     from .const import DOMAIN
+    from .helpers import device_fields
 
     device_reg = dr.async_get(hass)
-
-    # Build mapping: unit_id -> friendly_name for new devices
-    friendly_names: dict[str, str] = {}
+    known = {
+        identifier
+        for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id)
+        for identifier in device.identifiers
+    }
     for building in coordinator.data.buildings:
-        for unit in building.air_to_air_units:
-            friendly_names[unit.id] = f"{building.name} {unit.name}"
-        for unit in building.air_to_water_units:
-            friendly_names[unit.id] = f"{building.name} {unit.name}"
-
-    restored_count = 0
-    migrated_count = 0
-    for device in dr.async_entries_for_config_entry(device_reg, entry.entry_id):
-        # Restore previously saved name_by_user
-        if device.id in saved_names:
-            device_reg.async_update_device(
-                device.id,
-                name_by_user=saved_names[device.id],
+        for unit in [*building.air_to_air_units, *building.air_to_water_units]:
+            name = {} if (DOMAIN, unit.id) in known else {"name": unit.name}
+            device_reg.async_get_or_create(
+                config_entry_id=entry.entry_id, **device_fields(unit), **name
             )
-            restored_count += 1
-            continue
-
-        # For new devices: set API-friendly name
-        unit_id = None
-        for identifier in device.identifiers:
-            if identifier[0] == DOMAIN:
-                unit_id = identifier[1]
-                break
-
-        if unit_id is None:
-            continue
-
-        if not UUID_DEVICE_NAME_PATTERN.match(device.name):
-            continue
-
-        friendly_name = friendly_names.get(unit_id)
-        if friendly_name and device.name_by_user is None:
-            device_reg.async_update_device(
-                device.id,
-                name_by_user=friendly_name,
-            )
-            migrated_count += 1
-            _LOGGER.debug(
-                "Set friendly name on new device: %s -> %s",
-                device.name,
-                friendly_name,
-            )
-
-    if restored_count > 0:
-        _LOGGER.info("Restored name_by_user on %d device(s)", restored_count)
-    if migrated_count > 0:
-        _LOGGER.info("Set friendly names on %d new device(s)", migrated_count)
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -338,17 +249,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=None,  # No parameters
         )
 
-    # Clear name_by_user from all devices BEFORE platform setup
-    # This ensures new entities use UUID-based device names for entity IDs
-    # Saved names are restored after platform setup to preserve user customizations
-    saved_names = await _clear_friendly_device_names(hass, entry)
+    # Name new devices before their entities register; a unit that appears
+    # later reloads the entry (discovery listener), which runs this again.
+    _create_unit_devices(hass, entry, coordinator)
 
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
-
-    # Restore saved names and set friendly names on new devices AFTER platform setup
-    # Entity IDs are now locked in with UUID prefixes, this only affects UI display
-    await _restore_device_names(hass, entry, coordinator, saved_names)
 
     # Set up coordinator listener for new device discovery
     entry.async_on_unload(

@@ -8,7 +8,8 @@ through an entry point; see ha_testing.py.
 import asyncio
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -344,19 +345,13 @@ async def setup_atw_integration(hass: "HomeAssistant") -> "MockConfigEntry":
         return entry
 
 
-async def _setup_integration_custom(
-    hass: "HomeAssistant",
-    mock_context: Any,
-    *,
-    configure_client: Callable[..., None] | None = None,
-    options: dict[str, Any] | None = None,
-) -> "tuple[MockConfigEntry, Any]":
-    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+@contextmanager
+def patched_client(mock_context: Any) -> Iterator[Any]:
+    """Patch MELCloudHomeClient for as long as the block runs.
 
-    from custom_components.melcloudhome.const import DOMAIN
-
-    from .ha_testing import MockConfigEntry
-
+    Use it directly when a test reloads, removes or re-adds the entry: each
+    setup builds a new client, so the patch must outlive the first setup.
+    """
     with patch(MOCK_CLIENT_PATH) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock()
@@ -367,16 +362,37 @@ async def _setup_integration_custom(
         # value" filter. Tests that need a reading set it.
         mock_client.get_wifi_signal = AsyncMock(return_value=None)
         type(mock_client).is_authenticated = PropertyMock(return_value=True)
+        yield mock_client
 
+
+def create_mock_entry(options: dict[str, Any] | None = None) -> "MockConfigEntry":
+    """A config entry for the test account, not yet added to hass."""
+    from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+
+    from custom_components.melcloudhome.const import DOMAIN
+
+    from .ha_testing import MockConfigEntry
+
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
+        options=options or {},
+        unique_id="test@example.com",
+    )
+
+
+async def _setup_integration_custom(
+    hass: "HomeAssistant",
+    mock_context: Any,
+    *,
+    configure_client: Callable[..., None] | None = None,
+    options: dict[str, Any] | None = None,
+) -> "tuple[MockConfigEntry, Any]":
+    with patched_client(mock_context) as mock_client:
         if configure_client is not None:
             configure_client(mock_client)
 
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            options=options or {},
-            unique_id="test@example.com",
-        )
+        entry = create_mock_entry(options)
         entry.add_to_hass(hass)
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

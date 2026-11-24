@@ -58,7 +58,7 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         self._attr_name = "Climate"
 
         # Device info using shared helper
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # HVAC modes
         self._attr_hvac_modes = [

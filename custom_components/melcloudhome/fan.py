@@ -114,7 +114,7 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         # Named for the air conditioner: a Home app user who did not install
         # the integration should not read this as a room fan.
         self._attr_name = "A/C fan"
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # Slider resolution comes from this. The HomeKit bridge uses
         # 100 / speed_count as its step, giving one detent per real speed.

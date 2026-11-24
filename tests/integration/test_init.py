@@ -7,6 +7,7 @@ which provides mock Home Assistant fixtures. They run in Docker or CI.
 Run with: make test-integration
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -15,6 +16,12 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.melcloudhome.const import DOMAIN
 
+from .conftest import (
+    create_mock_ata_unit,
+    create_mock_atw_unit,
+    create_mock_entry,
+    patched_client,
+)
 from .ha_testing import MockConfigEntry
 
 # Mock where the name is looked up, not where it's defined
@@ -232,303 +239,172 @@ async def test_websocket_opt_out_respected(hass: HomeAssistant) -> None:
         client.async_get_ws_hash.assert_not_awaited()
 
 
-def _create_mock_unit(unit_id: str, name: str) -> MagicMock:
-    """Create a mock ATA unit."""
-    unit = MagicMock()
-    unit.id = unit_id
-    unit.name = name
-    unit.power = True
-    unit.operation_mode = "Cooling"
-    unit.set_temperature = 22.0
-    unit.room_temperature = 21.0
-    unit.set_fan_speed = "Auto"
-    unit.actual_fan_speed = "Two"
-    unit.vane_vertical_direction = "Auto"
-    unit.vane_horizontal_direction = "Auto"
-    unit.in_standby_mode = False
-    unit.is_in_error = False
-    unit.wifi_signal_reading = None
-    unit.energy_consumed = None
-    # Add capabilities mock
-    capabilities = MagicMock()
-    capabilities.has_energy_consumed_meter = False
-    unit.capabilities = capabilities
-    return unit
+# =============================================================================
+# Device names (#403, ADR-030): the unit's name, written once at creation.
+# The integration never writes name_by_user; the label is the user's.
+# =============================================================================
+
+DINING_ID = "abc12345-1234-5678-9abc-def123456789"
 
 
-def _create_mock_atw_unit(unit_id: str, name: str) -> MagicMock:
-    """Create a mock ATW unit."""
-    unit = MagicMock()
-    unit.id = unit_id
-    unit.name = name
-    unit.power = True
-    unit.in_standby_mode = False
-    unit.operation_status = "Idle"
-    unit.operation_mode_zone1 = "HeatThermostat"
-    unit.set_temperature_zone1 = 22.0
-    unit.room_temperature_zone1 = 21.0
-    unit.capabilities.has_zone2 = False
-    unit.operation_mode_zone2 = None
-    unit.set_temperature_zone2 = None
-    unit.room_temperature_zone2 = None
-    unit.set_tank_water_temperature = 50.0
-    unit.tank_water_temperature = 48.0
-    unit.forced_hot_water_mode = False
-    unit.is_in_error = False
-    unit.error_code = None
-    unit.wifi_signal_reading = None
-    unit.ftc_model = 3
-    # Add capabilities mock
-    capabilities = MagicMock()
-    unit.capabilities = capabilities
-    return unit
+def _context_with(*buildings: Any) -> Any:
+    from custom_components.melcloudhome.api.models import UserContext
+
+    return UserContext(buildings=list(buildings))
 
 
-def _create_mock_building(
-    name: str, ata_units: list, atw_units: list | None = None
-) -> MagicMock:
-    """Create a mock building with units."""
-    building = MagicMock()
-    building.id = f"building-{name.lower().replace(' ', '-')}"
-    building.name = name
-    building.air_to_air_units = ata_units
-    building.air_to_water_units = atw_units or []
-    return building
+def _building(name: str, ata: list, atw: list | None = None) -> Any:
+    from custom_components.melcloudhome.api.models import Building
 
-
-def _create_mock_context_with_units(buildings: list) -> MagicMock:
-    """Create a mock UserContext with buildings."""
-    context = MagicMock()
-    context.buildings = buildings
-    return context
-
-
-@pytest.mark.asyncio
-async def test_device_name_migration_uuid_pattern(
-    hass: HomeAssistant,
-) -> None:
-    """Test migration updates UUID-pattern device names."""
-    from homeassistant.helpers import device_registry as dr
-
-    # Create mock data with one ATA unit (using proper UUID format)
-    unit = _create_mock_unit("abc12345-1234-5678-9abc-def123456789", "Dining Room")
-    building = _create_mock_building("Test Home", [unit])
-    context = _create_mock_context_with_units([building])
-
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        client = mock_client.return_value
-        client.get_wifi_signal = AsyncMock(return_value=None)
-        client.login = AsyncMock()
-        client.close = AsyncMock()
-        client.get_user_context = AsyncMock(return_value=context)
-        type(client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-
-        # Setup integration
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Get device registry
-        device_reg = dr.async_get(hass)
-        devices = dr.async_entries_for_config_entry(device_reg, entry.entry_id)
-
-        # Find the device
-        device = None
-        for dev in devices:
-            if (DOMAIN, "abc12345-1234-5678-9abc-def123456789") in dev.identifiers:
-                device = dev
-                break
-
-        assert device is not None, "Device not found"
-
-        # Verify device name matches UUID pattern (technical name)
-        # UUID abc12345-1234-5678-9abc-def123456789 -> abc1...6789
-        assert device.name == "melcloudhome_abc1_6789"
-
-        # Verify name_by_user was set to friendly name
-        assert device.name_by_user == "Test Home Dining Room"
-
-
-@pytest.mark.asyncio
-async def test_device_name_migration_respects_user_customization(
-    hass: HomeAssistant,
-) -> None:
-    """Test migration skips devices with name_by_user already set."""
-    from homeassistant.helpers import device_registry as dr
-
-    # Create mock data (using proper UUID format)
-    unit = _create_mock_unit("abc12345-1234-5678-9abc-def123456789", "Dining Room")
-    building = _create_mock_building("Test Home", [unit])
-    context = _create_mock_context_with_units([building])
-
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        client = mock_client.return_value
-        client.get_wifi_signal = AsyncMock(return_value=None)
-        client.login = AsyncMock()
-        client.close = AsyncMock()
-        client.get_user_context = AsyncMock(return_value=context)
-        type(client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
-
-        # Setup integration (first time - will set name_by_user)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Get device and manually set name_by_user to custom value
-        device_reg = dr.async_get(hass)
-        devices = dr.async_entries_for_config_entry(device_reg, entry.entry_id)
-        device = None
-        for dev in devices:
-            if (DOMAIN, "abc12345-1234-5678-9abc-def123456789") in dev.identifiers:
-                device = dev
-                break
-
-        assert device is not None
-        assert device.name_by_user == "Test Home Dining Room"
-
-        # User customizes the name
-        device_reg.async_update_device(device.id, name_by_user="My Custom Name")
-        await hass.async_block_till_done()
-
-        # Reload integration
-        await hass.config_entries.async_unload(entry.entry_id)
-        await hass.async_block_till_done()
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Get device again
-        device = device_reg.async_get(device.id)
-
-        # Verify custom name was preserved
-        assert device.name_by_user == "My Custom Name"
-
-
-@pytest.mark.asyncio
-async def test_device_name_migration_multiple_devices(
-    hass: HomeAssistant,
-) -> None:
-    """Test migration handles multiple ATA and ATW devices correctly."""
-    from homeassistant.helpers import device_registry as dr
-
-    # Create mock data with 2 ATA + 1 ATW devices (using proper UUID format)
-    ata_unit1 = _create_mock_unit("11111111-1111-1111-1111-111111111111", "Dining Room")
-    ata_unit2 = _create_mock_unit("22222222-2222-2222-2222-222222222222", "Living Room")
-    atw_unit = _create_mock_atw_unit(
-        "33333333-3333-3333-3333-333333333333", "Heat Pump"
+    return Building(
+        id=f"building-{name.lower().replace(' ', '-')}",
+        name=name,
+        air_to_air_units=ata,
+        air_to_water_units=atw or [],
     )
-    building = _create_mock_building("Test Home", [ata_unit1, ata_unit2], [atw_unit])
-    context = _create_mock_context_with_units([building])
 
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        client = mock_client.return_value
-        client.get_wifi_signal = AsyncMock(return_value=None)
-        client.login = AsyncMock()
-        client.close = AsyncMock()
-        client.get_user_context = AsyncMock(return_value=context)
-        type(client).is_authenticated = PropertyMock(return_value=True)
 
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
-        )
-        entry.add_to_hass(hass)
+def _device(hass: HomeAssistant, entry: Any, unit_id: str) -> Any:
+    from homeassistant.helpers import device_registry as dr
 
-        # Setup integration
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+    return next(
+        d
+        for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        if (DOMAIN, unit_id) in d.identifiers
+    )
 
-        # Get device registry
-        device_reg = dr.async_get(hass)
-        devices = dr.async_entries_for_config_entry(device_reg, entry.entry_id)
 
-        # Find all devices
-        ata_device1 = None
-        ata_device2 = None
-        atw_device = None
-        for dev in devices:
-            if (DOMAIN, "11111111-1111-1111-1111-111111111111") in dev.identifiers:
-                ata_device1 = dev
-            elif (DOMAIN, "22222222-2222-2222-2222-222222222222") in dev.identifiers:
-                ata_device2 = dev
-            elif (DOMAIN, "33333333-3333-3333-3333-333333333333") in dev.identifiers:
-                atw_device = dev
+async def _set_up(hass: HomeAssistant, entry: Any) -> None:
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
 
-        # Verify all devices found and migrated
-        assert ata_device1 is not None
-        assert ata_device1.name_by_user == "Test Home Dining Room"
 
-        assert ata_device2 is not None
-        assert ata_device2.name_by_user == "Test Home Living Room"
-
-        assert atw_device is not None
-        assert atw_device.name_by_user == "Test Home Heat Pump"
+async def _reload(hass: HomeAssistant, entry: Any) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
 
 
 @pytest.mark.asyncio
-async def test_device_name_migration_idempotent(
-    hass: HomeAssistant,
-) -> None:
-    """Test repeated setup doesn't re-migrate already migrated devices."""
+async def test_new_devices_are_named_after_their_units(hass: HomeAssistant) -> None:
+    """Each new device gets its unit's name and no label (ATA and ATW)."""
+    ids = {
+        "11111111-1111-1111-1111-111111111111": "Dining Room",
+        "22222222-2222-2222-2222-222222222222": "Living Room",
+        "33333333-3333-3333-3333-333333333333": "Heat Pump",
+    }
+    ata = [create_mock_ata_unit(unit_id=u, name=n) for u, n in list(ids.items())[:2]]
+    atw = [
+        create_mock_atw_unit(
+            unit_id="33333333-3333-3333-3333-333333333333", name="Heat Pump"
+        )
+    ]
+    with patched_client(_context_with(_building("Test Home", ata, atw))):
+        entry = create_mock_entry()
+        entry.add_to_hass(hass)
+        await _set_up(hass, entry)
+
+    for unit_id, name in ids.items():
+        device = _device(hass, entry, unit_id)
+        assert (device.name, device.name_by_user) == (name, None)
+
+
+@pytest.mark.asyncio
+async def test_user_label_survives_reloads(hass: HomeAssistant) -> None:
+    """A label the user sets stays through reloads.
+
+    This only guards against a one-way label write: the old erase-and-restore
+    also put labels back, so it is not evidence that the erase is gone.
+    """
     from homeassistant.helpers import device_registry as dr
 
-    # Create mock data (using proper UUID format)
-    unit = _create_mock_unit("abc12345-1234-5678-9abc-def123456789", "Dining Room")
-    building = _create_mock_building("Test Home", [unit])
-    context = _create_mock_context_with_units([building])
-
-    with patch(MOCK_CLIENT_PATH) as mock_client:
-        client = mock_client.return_value
-        client.get_wifi_signal = AsyncMock(return_value=None)
-        client.login = AsyncMock()
-        client.close = AsyncMock()
-        client.get_user_context = AsyncMock(return_value=context)
-        type(client).is_authenticated = PropertyMock(return_value=True)
-
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={CONF_EMAIL: "test@example.com", CONF_PASSWORD: "password"},
-            unique_id="test@example.com",
+    context = _context_with(
+        _building(
+            "Test Home", [create_mock_ata_unit(unit_id=DINING_ID, name="Dining Room")]
         )
+    )
+    with patched_client(context):
+        entry = create_mock_entry()
         entry.add_to_hass(hass)
+        await _set_up(hass, entry)
+        device = _device(hass, entry, DINING_ID)
+        dr.async_get(hass).async_update_device(device.id, name_by_user="My Custom Name")
+        await _reload(hass, entry)
+        await _reload(hass, entry)
 
-        # Setup integration (first time)
-        await hass.config_entries.async_setup(entry.entry_id)
+    device = _device(hass, entry, DINING_ID)
+    assert (device.name, device.name_by_user) == ("Dining Room", "My Custom Name")
+
+
+@pytest.mark.asyncio
+async def test_reset_label_shows_the_device_name(hass: HomeAssistant) -> None:
+    """A label the user clears stays clear: entities show the device name."""
+    from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+    context = _context_with(
+        _building(
+            "Test Home", [create_mock_ata_unit(unit_id=DINING_ID, name="Dining Room")]
+        )
+    )
+    with patched_client(context):
+        entry = create_mock_entry()
+        entry.add_to_hass(hass)
+        await _set_up(hass, entry)
+        devices = dr.async_get(hass)
+        device = _device(hass, entry, DINING_ID)
+        devices.async_update_device(device.id, name_by_user="Temporary")
+        devices.async_update_device(device.id, name_by_user=None)
+        await _reload(hass, entry)
+
+    assert _device(hass, entry, DINING_ID).name_by_user is None
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{DINING_ID}_room_temperature"
+    )
+    state = hass.states.get(entity_id)
+    assert state.attributes["friendly_name"] == "Dining Room Room temperature"
+
+
+@pytest.mark.asyncio
+async def test_readd_restores_label_and_area_and_names_device_after_unit(
+    hass: HomeAssistant,
+) -> None:
+    """Re-adding an entry whose devices came from an older version.
+
+    HA keeps a deleted device's label and area (not its name) and restores
+    them when the device comes back; the name becomes the unit's name.
+    """
+    from homeassistant.helpers import area_registry as ar, device_registry as dr
+
+    context = _context_with(
+        _building(
+            "Test Home", [create_mock_ata_unit(unit_id=DINING_ID, name="Dining Room")]
+        )
+    )
+    area = ar.async_get(hass).async_get_or_create("Dining")
+    with patched_client(context):
+        entry = create_mock_entry()
+        entry.add_to_hass(hass)
+        # What older versions left: a short-ID name, plus the user's label and area.
+        devices = dr.async_get(hass)
+        old = devices.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, DINING_ID)},
+            name="melcloudhome_abc1_6789",
+            manufacturer="Mitsubishi Electric",
+        )
+        devices.async_update_device(old.id, name_by_user="Dining AC", area_id=area.id)
+        await _set_up(hass, entry)
+        assert _device(hass, entry, DINING_ID).name == "melcloudhome_abc1_6789"
+
+        await hass.config_entries.async_remove(entry.entry_id)
         await hass.async_block_till_done()
 
-        # Get device
-        device_reg = dr.async_get(hass)
-        devices = dr.async_entries_for_config_entry(device_reg, entry.entry_id)
-        device = None
-        for dev in devices:
-            if (DOMAIN, "abc12345-1234-5678-9abc-def123456789") in dev.identifiers:
-                device = dev
-                break
+        entry = create_mock_entry()
+        entry.add_to_hass(hass)
+        await _set_up(hass, entry)
 
-        assert device is not None
-        first_name = device.name_by_user
-        assert first_name == "Test Home Dining Room"
-
-        # Reload integration (second time)
-        await hass.config_entries.async_unload(entry.entry_id)
-        await hass.async_block_till_done()
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-        # Get device again
-        device = device_reg.async_get(device.id)
-
-        # Verify name unchanged (migration skipped because name_by_user already set)
-        assert device.name_by_user == first_name
+    device = _device(hass, entry, DINING_ID)
+    assert (device.name, device.name_by_user, device.area_id) == (
+        "Dining Room",
+        "Dining AC",
+        area.id,
+    )
