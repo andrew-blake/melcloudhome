@@ -9,6 +9,7 @@ from .diagnostics_shared import (
     serialize_outdoor_temp_fields,
     serialize_wifi_signal_fields,
 )
+from .helpers import short_unit_id
 
 
 def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
@@ -21,7 +22,7 @@ def serialize_atw_unit(unit: AirToWaterUnit) -> dict[str, Any]:
         Dictionary with ATW-specific diagnostic fields
     """
     return {
-        "id": unit.id,
+        "id": short_unit_id(unit.id),
         "name": "***REDACTED***",
         "power": unit.power,
         "in_standby_mode": unit.in_standby_mode,

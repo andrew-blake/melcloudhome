@@ -68,6 +68,16 @@ def with_debounced_refresh(
     return decorator
 
 
+def short_unit_id(unit_id: str) -> str:
+    """The unit's short ID, melcloudhome_{first4}_{last4} of its UUID.
+
+    Shown as the device's serial number, and the form older entity IDs carry,
+    so diagnostics use it too: a dump stays matchable to the device page.
+    """
+    clean = unit_id.replace("-", "")
+    return f"melcloudhome_{clean[:4]}_{clean[-4:]}"
+
+
 def create_device_info(unit: DeviceUnit, building: Building) -> DeviceInfo:
     """Create standardized device info for ATA or ATW devices.
 

@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from .api.models_ata import AirToAirUnit
 from .api.models_atw import AirToWaterUnit
+
+
+def pseudonymize_building_id(building_id: str) -> str:
+    """A stable stand-in for a building UUID, shaped so a reader sees it's fake.
+
+    Same input, same output across dumps; same shape as the tests'
+    pseudonymize_uuid and tools/anonymize_har.py.
+    """
+    digest = hashlib.sha256(building_id.lower().encode()).hexdigest()[:12]
+    return f"aaaaaaaa-aaaa-aaaa-aaaa-{digest}"
 
 
 def serialize_outdoor_temp_fields(

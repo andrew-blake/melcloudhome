@@ -25,10 +25,11 @@ rewrite inside the state machine, but `State.json_fragment` is a cached_property
 that the fast path never invalidates, so `/api/states` serves a stale value for
 it and any column here would mislead.
 
-`--redact` drops the building-name prefix from each entity_id and keeps the
-UUID-derived short id, the same rule the integration's own diagnostics uses. Use
-it for anything you publish: some devices are shared by other people and one
-building name is a street address.
+`--redact` replaces each entity_id with the device's serial number (the unit's
+short ID) plus the entity's own name, the key the integration's own diagnostics
+uses. Use it for anything you publish: entity IDs can hold any building, unit or
+area name, some devices are shared by other people, and one building name is a
+street address.
 """
 
 from __future__ import annotations
@@ -91,20 +92,54 @@ def fetch_states(url: str, token: str, insecure: bool = False) -> list[dict]:
         return states
 
 
-def redact_entity_id(entity_id: str) -> str:
-    """Drop the real-name prefix, keep everything from `melcloudhome_` onwards.
+# Each of the integration's sensors with its device's serial number and display
+# name. /api/states carries no unique ID or device, so ask HA's template API.
+DEVICE_TEMPLATE = """{% set ns = namespace(rows=[]) %}
+{%- for e in integration_entities('melcloudhome') if e.startswith('sensor.') -%}
+{%- set d = device_id(e) -%}
+{%- set ns.rows = ns.rows + [[e, device_attr(d, 'serial_number'),
+     device_attr(d, 'name_by_user') or device_attr(d, 'name')]] -%}
+{%- endfor %}{{ ns.rows | tojson }}"""
 
-    Same rule as the integration's own diagnostics redaction: the prefix comes
-    from a building or device name someone chose, while the short id after the
-    marker is derived from the device UUID and names nobody. Keeping it is what
-    makes a redacted table still correlate row-to-device.
+
+def fetch_devices(
+    url: str, token: str, insecure: bool = False
+) -> dict[str, tuple[str | None, str | None]]:
+    """entity_id -> (device serial number, device display name)."""
+    req = urllib.request.Request(  # noqa: S310 - operator-supplied URL
+        f"{url.rstrip('/')}/api/template",
+        data=json.dumps({"template": DEVICE_TEMPLATE}).encode(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    context = ssl._create_unverified_context() if insecure else None  # noqa: S323
+    with urllib.request.urlopen(req, timeout=20, context=context) as resp:  # noqa: S310
+        rows = json.loads(resp.read().decode())
+    return {entity_id: (serial, name) for entity_id, serial, name in rows}
+
+
+def _slug(text: str) -> str:
+    return "_".join("".join(c if c.isalnum() else " " for c in text.lower()).split())
+
+
+def redact_entity_id(
+    entity_id: str, friendly_name: str, serial: str | None, device_name: str | None
+) -> str:
+    """Key a row the way diagnostics keys entities: short ID + entity name.
+
+    Entity IDs belong to HA and the user, so they can hold any building, unit
+    or area name (ADR-030). The serial number is the unit's short ID; the
+    entity's own name is its label minus the device's. A user-renamed entity
+    prints no name. Devices from before the serial number keep the old rule:
+    everything from the `melcloudhome_` short ID in the ID onwards.
     """
     domain, _, object_id = entity_id.partition(".")
-    marker = "melcloudhome_"
-    index = object_id.find(marker)
-    if index <= 0:
-        return entity_id
-    return f"{domain}.{object_id[index:]}"
+    if serial is None:
+        index = object_id.find("melcloudhome_")
+        return f"{domain}.{object_id[index:]}" if index >= 0 else f"{domain}.redacted"
+    prefix = f"{device_name} " if device_name else ""
+    if prefix and friendly_name.startswith(prefix):
+        return f"{domain}.{serial}_{_slug(friendly_name[len(prefix) :])}"
+    return f"{domain}.{serial}_renamed"
 
 
 def main() -> None:
@@ -129,6 +164,7 @@ def main() -> None:
 
     token = args.token or mint_dev_token(args.container, args.url)
     states = fetch_states(args.url, token, args.insecure)
+    devices = fetch_devices(args.url, token, args.insecure)
 
     now = datetime.now(UTC)
     backed: list[tuple[str, ...]] = []
@@ -136,10 +172,16 @@ def main() -> None:
 
     for state in states:
         entity_id = state["entity_id"]
-        if not entity_id.startswith("sensor.") or "melcloudhome" not in entity_id:
+        if entity_id not in devices:
             continue
         attrs = state["attributes"]
-        name = redact_entity_id(entity_id) if args.redact else entity_id
+        name = (
+            redact_entity_id(
+                entity_id, attrs.get("friendly_name", ""), *devices[entity_id]
+            )
+            if args.redact
+            else entity_id
+        )
 
         def mins(stamp: str | None) -> str:
             if not stamp:
