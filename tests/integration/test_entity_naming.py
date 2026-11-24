@@ -493,6 +493,11 @@ async def test_reload_keeps_compat_name(hass: HomeAssistant) -> None:
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
+        # Every device from an older version carries a label it wrote, which
+        # is what the old per-setup clear and restore rewrote.
+        dr.async_get(hass).async_update_device(
+            _unit_device(hass, TEST_ATA_UNIT_ID).id, name_by_user="My Home Test Unit"
+        )
         registry = er.async_get(hass)
         entity_id = _entity_id(hass, "climate", TEST_ATA_UNIT_ID)
         # What the v1.24 migration leaves for an entity the user renamed to
