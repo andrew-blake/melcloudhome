@@ -208,7 +208,7 @@ def _provenance(unit: Unit) -> dict[str, Any]:
     separates a genuinely steady circuit from a feed that stopped (ADR-022).
     """
     rows = []
-    for measure in WATER_TEMPS:
+    for measure in (m for m in WATER_TEMPS if f"_{m}" in unit.entities):
         entity = unit.eid(f"_{measure}")
         rows.append(
             f"| {measure.replace('_', ' ')} "
