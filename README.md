@@ -111,6 +111,8 @@ The "Real-time updates" sensor (under the MELCloud Home service device, Diagnost
 
 New devices are named after the unit in your MELCloud Home account, for example "Living Room AC". Devices added by earlier versions keep their name, your label and their area.
 
+The name is set once, when the device is created: renaming a unit in the MELCloud Home app doesn't rename its device in Home Assistant.
+
 Home Assistant builds each new entity ID from the area, the device name and the entity name, following your entity ID setting. A fresh install with no areas gets IDs such as `climate.living_room_ac` and `water_heater.heat_pump_tank`. If two units in different buildings share a name, the second gets a `_2` suffix; rename one of them to tell them apart.
 
 Existing entity IDs never change, so automations keep working. To find a unit's entities, open its device page.
