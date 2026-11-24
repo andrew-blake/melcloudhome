@@ -162,6 +162,8 @@ Example: `feat: Add support for ATW heat pump devices`
 
 ADRs document significant architectural decisions and their rationale. When making major architectural changes, consider adding an ADR.
 
+**Translations** (`custom_components/melcloudhome/translations/`): keep every placeholder such as `{zone}` exactly as in `en.json`, or Home Assistant drops the string. "A/C fan" means the air conditioner's fan, not a room fan (ADR-025): HomeKit and voice users see this name without the rest of the device.
+
 ## API Discovery and Reverse Engineering
 
 The MELCloud Home API was reverse engineered by capturing traffic from the official mobile app. This enables contributing device support without owning the hardware.

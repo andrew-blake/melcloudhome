@@ -8,6 +8,8 @@ serial number, and each entity's own name. It also pins that an existing
 install keeps every entity ID, device name, label and saved entity label.
 """
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -42,7 +44,8 @@ _ACCOUNT = {("binary_sensor", "MELCloud Home", "Real-time updates")}
 _ATA = _ACCOUNT | {
     ("binary_sensor", "Test Unit", "Connection state"),
     ("binary_sensor", "Test Unit", "Error state"),
-    ("climate", "Test Unit", "Climate"),
+    # Main feature: no name of its own, it takes the device name (Bronze rule).
+    ("climate", "Test Unit", None),
     ("fan", "Test Unit", "A/C fan"),
     ("sensor", "Test Unit", "Actual fan speed"),
     ("sensor", "Test Unit", "Outdoor temperature"),
@@ -62,7 +65,7 @@ _ATW = _ACCOUNT | {
     ("sensor", "Test ATW Unit", "Tank temperature"),
     ("sensor", "Test ATW Unit", "WiFi signal"),
     ("sensor", "Test ATW Unit", "Zone 1 temperature"),
-    ("switch", "Test ATW Unit", "System Power"),
+    ("switch", "Test ATW Unit", "System power"),
     ("water_heater", "Test ATW Unit", "Tank"),
 }
 
@@ -187,6 +190,44 @@ async def test_same_named_units_in_two_buildings_share_a_name(
     assert first.name == second.name == "Living Room AC"
     first_climate = _entity_id(hass, "climate", TEST_ATA_UNIT_ID)
     assert _entity_id(hass, "climate", second_id) == f"{first_climate}_2"
+
+
+@pytest.mark.asyncio
+async def test_fresh_install_names_come_from_translations(hass: HomeAssistant) -> None:
+    """Fan, switch, tank and zone names are the install's language (#240).
+
+    _attr_name wins over translation_key, and in English it matches the
+    translation, so only another language shows a leftover _attr_name. Spanish,
+    because German "Zone {zone}" reads the same as the English.
+    """
+    path = Path(__file__).parents[2] / "custom_components/melcloudhome/translations"
+    spanish = json.loads((path / "es.json").read_text(encoding="utf-8"))["entity"]
+    english = json.loads((path / "en.json").read_text(encoding="utf-8"))["entity"]
+    keys = (
+        ("fan", f"{TEST_ATA_UNIT_ID}_ac_fan", "melcloudhome"),
+        ("switch", f"{TEST_ATW_UNIT_ID}_system_power", "system_power"),
+        ("water_heater", f"{TEST_ATW_UNIT_ID}_tank", "tank"),
+        ("climate", f"{TEST_ATW_UNIT_ID}_zone_1", "zone"),
+    )
+    hass.config.language = "es"
+    context = UserContext(
+        buildings=[
+            Building(
+                id="b1",
+                name="My Home",
+                air_to_air_units=[create_mock_ata_unit()],
+                air_to_water_units=[create_mock_atw_unit()],
+            )
+        ]
+    )
+    await setup_ata_integration_custom(hass, context)
+
+    registry = er.async_get(hass)
+    for domain, unique_id, key in keys:
+        expected = spanish[domain][key]["name"].replace("{zone}", "1")
+        assert expected != english[domain][key]["name"].replace("{zone}", "1")
+        entity = registry.async_get(_entity_id(hass, domain, unique_id))
+        assert (entity.translation_key, entity.original_name) == (key, expected)
 
 
 # ---------------------------------------------------------------------------
@@ -467,3 +508,47 @@ async def test_reload_keeps_compat_name(hass: HomeAssistant) -> None:
 
         assert registry.async_get(entity_id).compat_name == "Lounge AC"
         assert hass.states.get(entity_id).attributes["friendly_name"] == "Lounge AC"
+
+
+@pytest.mark.asyncio
+async def test_existing_climate_with_its_own_area_gets_a_repair(
+    hass: HomeAssistant,
+) -> None:
+    """Accepted cost (#403, Decision 1): HA 2026.11 raises a repair.
+
+    The un-renamed ATA climate loses its own name (main feature, name None).
+    HA 2026.11 doesn't allow an entity with no name of its own to have an
+    area of its own, so an area the user set on the climate entity itself
+    raises entity_own_area_without_own_name. The ID and area stay.
+    """
+    if not HAS_COMPAT:
+        pytest.skip("the own-area rule arrived in HA 2026.11")
+    from homeassistant.helpers import area_registry as ar, issue_registry as ir
+
+    entry = create_mock_entry()
+    entry.add_to_hass(hass)
+    _seed_main_install(hass, entry)
+    registry = er.async_get(hass)
+    entity_id = _entity_id(hass, "climate", TEST_ATA_UNIT_ID)
+    lounge = ar.async_get(hass).async_get_or_create("Lounge")
+    registry.async_update_entity(entity_id, area_id=lounge.id)
+
+    with patched_client(_existing_context()):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    entity = registry.async_get(entity_id)
+    assert (entity.entity_id, entity.area_id, entity.name) == (
+        entity_id,
+        lounge.id,
+        None,
+    )
+    issues = [
+        issue_id
+        for domain, issue_id in ir.async_get(hass).issues
+        if domain == "homeassistant"
+        and issue_id.startswith("entity_own_area_without_own_name")
+    ]
+    assert len(issues) == 1
+    label = hass.states.get(entity_id).attributes["friendly_name"]
+    assert label == "My Home Living Room AC"

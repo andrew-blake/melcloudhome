@@ -111,9 +111,9 @@ class ATAFan(ATAEntityBase, FanEntity):  # type: ignore[misc]
         self._cancel_speed_write: CALLBACK_TYPE | None = None
         self._pending_percentage: int | None = None
 
-        # Named for the air conditioner: a Home app user who did not install
-        # the integration should not read this as a room fan.
-        self._attr_name = "A/C fan"
+        # Named "A/C fan" (translation_key) for the air conditioner: a Home app
+        # user who did not install the integration should not read it as a
+        # room fan (ADR-025).
         self._attr_device_info = create_device_info(unit)
 
         # Slider resolution comes from this. The HomeKit bridge uses

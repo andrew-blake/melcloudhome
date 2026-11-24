@@ -27,7 +27,7 @@
         }
       },
       "reauth_confirm": {
-        "title": "ตรวจสอบสิทธิ์การบูรณาการอีกครั้ง",
+        "title": "การยืนยันตัวตนหมดอายุสำหรับ {name}",
         "description": "โปรดอัปเดตรหัสผ่านของคุณสำหรับ {email}",
         "data": {
           "password": "รหัสผ่าน"
@@ -57,13 +57,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "ห้อง",
-              "flow": "การไหล",
-              "curve": "โค้ง"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "อัตโนมัติ",
@@ -94,6 +87,18 @@
               "centre": "กลาง",
               "rightcentre": "กลาง-ขวา",
               "right": "ขวา"
+            }
+          }
+        }
+      },
+      "zone": {
+        "name": "โซน {zone}",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "ห้อง",
+              "flow": "การไหล",
+              "curve": "โค้ง"
             }
           }
         }
@@ -212,6 +217,7 @@
     },
     "fan": {
       "melcloudhome": {
+        "name": "พัดลมเครื่องปรับอากาศ",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -219,6 +225,16 @@
             }
           }
         }
+      }
+    },
+    "switch": {
+      "system_power": {
+        "name": "เปิด/ปิดระบบ"
+      }
+    },
+    "water_heater": {
+      "tank": {
+        "name": "ถังน้ำร้อน"
       }
     }
   },

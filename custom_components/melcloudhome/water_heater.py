@@ -67,6 +67,7 @@ class ATWWaterHeater(
     """
 
     _attr_has_entity_name = True  # Use device name + entity name pattern
+    _attr_translation_key = "tank"
     _attr_native_temperature_unit = _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_DHW
     _attr_max_temp = ATW_TEMP_MAX_DHW
@@ -84,9 +85,6 @@ class ATWWaterHeater(
         self._building_id = building.id
         self._attr_unique_id = f"{unit.id}_tank"
         self._entry = entry
-
-        # Short entity name (device name provides UUID prefix)
-        self._attr_name = "Tank"
 
         # Device info using shared helper (groups with climate/sensors)
         self._attr_device_info = create_device_info(unit)

@@ -57,13 +57,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "Ambiente",
-              "flow": "Flusso",
-              "curve": "Curva"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "Auto",
@@ -94,6 +87,18 @@
               "centre": "Centro",
               "rightcentre": "Centro-destra",
               "right": "Destra"
+            }
+          }
+        }
+      },
+      "zone": {
+        "name": "Zona {zone}",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Ambiente",
+              "flow": "Flusso",
+              "curve": "Curva"
             }
           }
         }
@@ -212,6 +217,7 @@
     },
     "fan": {
       "melcloudhome": {
+        "name": "Ventola del climatizzatore",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -219,6 +225,16 @@
             }
           }
         }
+      }
+    },
+    "switch": {
+      "system_power": {
+        "name": "Accensione sistema"
+      }
+    },
+    "water_heater": {
+      "tank": {
+        "name": "Serbatoio"
       }
     }
   },

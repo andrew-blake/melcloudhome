@@ -57,13 +57,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "Δωμάτιο",
-              "flow": "Ροή",
-              "curve": "Καμπύλη"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "Αυτόματο",
@@ -94,6 +87,18 @@
               "centre": "Κέντρο",
               "rightcentre": "Δεξιά Κέντρο",
               "right": "Δεξιά"
+            }
+          }
+        }
+      },
+      "zone": {
+        "name": "Ζώνη {zone}",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Δωμάτιο",
+              "flow": "Ροή",
+              "curve": "Καμπύλη"
             }
           }
         }
@@ -212,6 +217,7 @@
     },
     "fan": {
       "melcloudhome": {
+        "name": "Ανεμιστήρας κλιματιστικού",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -219,6 +225,16 @@
             }
           }
         }
+      }
+    },
+    "switch": {
+      "system_power": {
+        "name": "Λειτουργία συστήματος"
+      }
+    },
+    "water_heater": {
+      "tank": {
+        "name": "Δεξαμενή"
       }
     }
   },

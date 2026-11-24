@@ -31,9 +31,6 @@ from .ha_testing import async_fire_time_changed
 # then some; a second copy here would only drift out of step with it.
 from .test_climate_ata import _configure_ata_controls
 
-# melcloudhome_<first4><last4> from create_device_info, plus the slug of
-# _attr_name. Confirmed: slugify("melcloudhome_a1b2_9abc A/C fan", separator="_")
-# gives this, and the same call on "... Climate" gives the climate constant.
 _FAN_ENTITY = ("fan", "a1b2c3d4-5678-9abc-def0-123456789abc_ac_fan")
 
 
