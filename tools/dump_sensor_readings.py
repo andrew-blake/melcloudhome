@@ -26,20 +26,23 @@ that the fast path never invalidates, so `/api/states` serves a stale value for
 it and any column here would mislead.
 
 `--redact` replaces each entity_id with the device's serial number (the unit's
-short ID) plus the entity's own name, the key the integration's own diagnostics
-uses. Use it for anything you publish: entity IDs can hold any building, unit or
-area name, some devices are shared by other people, and one building name is a
-street address.
+short ID) plus the sensor's device class, numbered where a unit has several of
+one class. Use it for anything you publish: entity IDs and labels can hold any
+building, unit, area or name a user typed, some devices are shared by other
+people, and one building name is a street address.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import ssl
 import subprocess
 import sys
 import urllib.request
+from collections import Counter
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 DEV_CONTAINER = "ha-melcloud-dev"
@@ -94,18 +97,19 @@ def fetch_states(url: str, token: str, insecure: bool = False) -> list[dict]:
 
 # Each of the integration's sensors with its device's serial number and display
 # name. /api/states carries no unique ID or device, so ask HA's template API.
+# Each of the integration's sensors with its device's serial number. /api/states
+# carries no unique ID or device, so ask HA's template API.
 DEVICE_TEMPLATE = """{% set ns = namespace(rows=[]) %}
 {%- for e in integration_entities('melcloudhome') if e.startswith('sensor.') -%}
-{%- set d = device_id(e) -%}
-{%- set ns.rows = ns.rows + [[e, device_attr(d, 'serial_number'),
-     device_attr(d, 'name_by_user') or device_attr(d, 'name')]] -%}
+{%- set ns.rows = ns.rows + [[e, device_attr(device_id(e), 'serial_number')]] -%}
 {%- endfor %}{{ ns.rows | tojson }}"""
+SHORT_ID = re.compile(r"melcloudhome_[0-9a-f]{4}_[0-9a-f]{4}")
 
 
-def fetch_devices(
+def fetch_serials(
     url: str, token: str, insecure: bool = False
-) -> dict[str, tuple[str | None, str | None]]:
-    """entity_id -> (device serial number, device display name)."""
+) -> dict[str, str | None]:
+    """entity_id -> its device's serial number (the unit's short ID)."""
     req = urllib.request.Request(  # noqa: S310 - operator-supplied URL
         f"{url.rstrip('/')}/api/template",
         data=json.dumps({"template": DEVICE_TEMPLATE}).encode(),
@@ -114,32 +118,35 @@ def fetch_devices(
     context = ssl._create_unverified_context() if insecure else None  # noqa: S323
     with urllib.request.urlopen(req, timeout=20, context=context) as resp:  # noqa: S310
         rows = json.loads(resp.read().decode())
-    return {entity_id: (serial, name) for entity_id, serial, name in rows}
+    return dict(rows)
 
 
-def _slug(text: str) -> str:
-    return "_".join("".join(c if c.isalnum() else " " for c in text.lower()).split())
+def redacted_keys(
+    rows: Sequence[tuple[str, str | None, str | None]],
+) -> dict[str, str]:
+    """entity_id -> `sensor.<short id>_<device class>[_<n>]` for each row.
 
-
-def redact_entity_id(
-    entity_id: str, friendly_name: str, serial: str | None, device_name: str | None
-) -> str:
-    """Key a row the way diagnostics keys entities: short ID + entity name.
-
-    Entity IDs belong to HA and the user, so they can hold any building, unit
-    or area name (ADR-030). The serial number is the unit's short ID; the
-    entity's own name is its label minus the device's. A user-renamed entity
-    prints no name. Devices from before the serial number keep the old rule:
-    everything from the `melcloudhome_` short ID in the ID onwards.
+    rows are (entity_id, device_class, serial number). Entity IDs and friendly
+    names belong to HA and the user and can hold any building, unit, area or
+    label the user typed (ADR-030; on HA 2026.11 a renamed entity's friendly
+    name is "{device} {label}"), so the key uses neither. The device class is
+    an HA enum, and the short ID is the device's serial number, or the one in
+    an ID older versions created. Rows sharing a key are numbered in entity_id
+    order.
     """
-    domain, _, object_id = entity_id.partition(".")
-    if serial is None:
-        index = object_id.find("melcloudhome_")
-        return f"{domain}.{object_id[index:]}" if index >= 0 else f"{domain}.redacted"
-    prefix = f"{device_name} " if device_name else ""
-    if prefix and friendly_name.startswith(prefix):
-        return f"{domain}.{serial}_{_slug(friendly_name[len(prefix) :])}"
-    return f"{domain}.{serial}_renamed"
+    bases: dict[str, str] = {}
+    for entity_id, device_class, serial in sorted(rows):
+        domain = entity_id.partition(".")[0]
+        match = SHORT_ID.search(entity_id)
+        short = serial or (match.group(0) if match else "redacted")
+        bases[entity_id] = f"{domain}.{short}_{device_class or domain}"
+    counts = Counter(bases.values())
+    seen: Counter[str] = Counter()
+    keys = {}
+    for entity_id, base in bases.items():
+        seen[base] += 1
+        keys[entity_id] = f"{base}_{seen[base]}" if counts[base] > 1 else base
+    return keys
 
 
 def main() -> None:
@@ -164,7 +171,18 @@ def main() -> None:
 
     token = args.token or mint_dev_token(args.container, args.url)
     states = fetch_states(args.url, token, args.insecure)
-    devices = fetch_devices(args.url, token, args.insecure)
+    serials = fetch_serials(args.url, token, args.insecure)
+    keys = redacted_keys(
+        [
+            (
+                s["entity_id"],
+                s["attributes"].get("device_class"),
+                serials[s["entity_id"]],
+            )
+            for s in states
+            if s["entity_id"] in serials
+        ]
+    )
 
     now = datetime.now(UTC)
     backed: list[tuple[str, ...]] = []
@@ -172,16 +190,10 @@ def main() -> None:
 
     for state in states:
         entity_id = state["entity_id"]
-        if entity_id not in devices:
+        if entity_id not in serials:
             continue
         attrs = state["attributes"]
-        name = (
-            redact_entity_id(
-                entity_id, attrs.get("friendly_name", ""), *devices[entity_id]
-            )
-            if args.redact
-            else entity_id
-        )
+        name = keys[entity_id] if args.redact else entity_id
 
         def mins(stamp: str | None) -> str:
             if not stamp:
