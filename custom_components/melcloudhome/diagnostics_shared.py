@@ -7,6 +7,7 @@ from typing import Any
 
 from .api.models_ata import AirToAirUnit
 from .api.models_atw import AirToWaterUnit
+from .helpers import short_unit_id
 
 
 def pseudonymize_building_id(building_id: str) -> str:
@@ -17,6 +18,14 @@ def pseudonymize_building_id(building_id: str) -> str:
     """
     digest = hashlib.sha256(building_id.lower().encode()).hexdigest()[:12]
     return f"aaaaaaaa-aaaa-aaaa-aaaa-{digest}"
+
+
+def _short_ids(text: str | None, unit_id: str) -> str | None:
+    """Error text with the unit's full ID swapped for its short ID (ADR-030).
+
+    An exception can quote a request URL that carries unitId=<uuid>.
+    """
+    return text.replace(unit_id, short_unit_id(unit_id)) if text else text
 
 
 def serialize_outdoor_temp_fields(
@@ -30,7 +39,7 @@ def serialize_outdoor_temp_fields(
         "outdoor_temp_recorded_at": (
             reading.recorded_at.isoformat() if reading else None
         ),
-        "outdoor_temp_last_error": unit.outdoor_temp_last_error,
+        "outdoor_temp_last_error": _short_ids(unit.outdoor_temp_last_error, unit.id),
         "outdoor_temp_last_error_at": (
             unit.outdoor_temp_last_error_at.isoformat()
             if unit.outdoor_temp_last_error_at
@@ -63,7 +72,7 @@ def serialize_wifi_signal_fields(
             if unit.wifi_signal_last_poll_at
             else None
         ),
-        "wifi_signal_last_error": unit.wifi_signal_last_error,
+        "wifi_signal_last_error": _short_ids(unit.wifi_signal_last_error, unit.id),
         "wifi_signal_last_error_at": (
             unit.wifi_signal_last_error_at.isoformat()
             if unit.wifi_signal_last_error_at

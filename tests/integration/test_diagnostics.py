@@ -458,3 +458,39 @@ async def test_diagnostics_separates_a_quiet_unit_from_a_failing_wifi_fetch(
     assert unit["wifi_signal"] == -56
     assert unit["wifi_signal_last_error"] is None
     assert unit["wifi_signal_last_error_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_error_text_carries_no_full_unit_id(
+    hass: HomeAssistant,
+) -> None:
+    """An exception can quote a request URL with unitId=<uuid> (ADR-030: no full IDs)."""
+    from .conftest import TEST_ATW_UNIT_ID
+
+    url = f"https://example.invalid/report?unitId={TEST_ATW_UNIT_ID}"
+
+    def configure(client):
+        client.get_atw_outdoor_temperature = AsyncMock(side_effect=ValueError(url))
+        client.get_wifi_signal = AsyncMock(side_effect=ValueError(url))
+
+    entry, _ = await setup_atw_integration_custom(
+        hass,
+        create_mock_atw_user_context(
+            [
+                create_mock_atw_building(
+                    units=[create_mock_atw_unit(has_outdoor_temp_sensor=True)]
+                )
+            ]
+        ),
+        configure_client=configure,
+        options={CONF_ENABLE_WEBSOCKET: False},
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+    for field in ("outdoor_temp_last_error", "wifi_signal_last_error"):
+        assert unit[field] == (
+            "ValueError: https://example.invalid/report?unitId=melcloudhome_0efc_9abc"
+        ), field
+    assert TEST_ATW_UNIT_ID not in json.dumps(diagnostics, default=str)
