@@ -96,8 +96,8 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "room": "Pièce",
-              "flow": "Flux",
+              "room": "Ambiance",
+              "flow": "Température de départ",
               "curve": "Courbe"
             }
           }

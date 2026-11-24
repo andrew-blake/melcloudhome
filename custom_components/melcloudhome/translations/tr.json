@@ -92,13 +92,13 @@
         }
       },
       "zone": {
-        "name": "Alan {zone}",
+        "name": "Bölge {zone}",
         "state_attributes": {
           "preset_mode": {
             "state": {
               "room": "Oda",
               "flow": "Akış",
-              "curve": "Kıvrım"
+              "curve": "Eğri"
             }
           }
         }
@@ -147,10 +147,10 @@
         "name": "Tatil modu bitişi"
       },
       "zone_1_temperature": {
-        "name": "Alan 1 sıcaklığı"
+        "name": "Bölge 1 sıcaklığı"
       },
       "zone_2_temperature": {
-        "name": "Alan 2 sıcaklığı"
+        "name": "Bölge 2 sıcaklığı"
       },
       "tank_temperature": {
         "name": "Tank sıcaklığı"
@@ -165,16 +165,16 @@
         "name": "Dönüş sıcaklığı"
       },
       "flow_temperature_zone1": {
-        "name": "Alan 1 akış sıcaklığı"
+        "name": "Bölge 1 akış sıcaklığı"
       },
       "return_temperature_zone1": {
-        "name": "Alan 1 dönüş sıcaklığı"
+        "name": "Bölge 1 dönüş sıcaklığı"
       },
       "flow_temperature_zone2": {
-        "name": "Alan 2 akış sıcaklığı"
+        "name": "Bölge 2 akış sıcaklığı"
       },
       "return_temperature_zone2": {
-        "name": "Alan 2 dönüş sıcaklığı"
+        "name": "Bölge 2 dönüş sıcaklığı"
       },
       "flow_temperature_boiler": {
         "name": "Kaynatıcı akış sıcaklığı"

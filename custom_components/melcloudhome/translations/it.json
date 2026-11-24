@@ -96,7 +96,7 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "room": "Ambiente",
+              "room": "Stanza",
               "flow": "Flusso",
               "curve": "Curva"
             }
