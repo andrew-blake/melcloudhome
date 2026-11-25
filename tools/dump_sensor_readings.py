@@ -95,8 +95,6 @@ def fetch_states(url: str, token: str, insecure: bool = False) -> list[dict]:
         return states
 
 
-# Each of the integration's sensors with its device's serial number and display
-# name. /api/states carries no unique ID or device, so ask HA's template API.
 # Each of the integration's sensors with its device's serial number. /api/states
 # carries no unique ID or device, so ask HA's template API.
 DEVICE_TEMPLATE = """{% set ns = namespace(rows=[]) %}
