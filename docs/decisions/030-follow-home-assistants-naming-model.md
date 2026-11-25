@@ -17,7 +17,7 @@ Home Assistant changes broke the arrangement (#403):
 
 - **2026.6** puts the device's area in front of new entity IDs. The integration suggested the building as the area, so fresh installs got `climate.my_home_melcloudhome_a1b2_9abc_climate`.
 - **2026.8** lets users choose which parts make up new entity IDs. The post-setup dialog rebuilds a device's IDs when the user renames the device or changes its area.
-- **2026.11** puts the device name in front of every entity name. Its registry upgrade saves a renamed entity's old label (`compat_name`), and any write to a device's `name_by_user` or `name` clears that saved label on every entity of the device. The per-startup erase and restore is such a write. Measured on a real upgrade from 2026.10.4: an entity renamed "Lounge AC" showed "My Home Living Room AC Lounge AC" after the first 2026.11 boot. Re-entering the name doesn't bring it back.
+- **2026.11** puts the device name in front of every entity name. Its registry upgrade saves a renamed entity's old label (`compat_name`), but any write to a device's `name_by_user` or `name` clears that saved label on every entity of the device. The per-startup erase and restore is such a write. Measured on a real upgrade from 2026.10.4: an entity renamed "Lounge AC" showed "My Home Living Room AC Lounge AC" after the first 2026.11 boot. Re-entering the name doesn't bring it back.
 
 Diagnostics redaction found entity IDs by the `melcloudhome_` text. IDs the dialog rebuilt don't contain it, so they reached the diagnostics output with the building and the user's device name in them (measured). The output also carried every unit's and building's full MELCloud ID.
 
