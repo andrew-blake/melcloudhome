@@ -123,6 +123,10 @@ for.
 3. Each `Risks accepted` bullet: keep it when the risk is one the merger
    inherits. Cut any way back other than reverting the PR or a tracked
    follow-up.
+4. Every ", and", ", so", "along with" or "next to" that joins two clauses: keep it only
+   when the clauses are parallel. When the second follows from the first, name
+   the relation (when, because, so) or split the sentence; when it adds a
+   different fact, give that fact its own sentence.
 
 `Testing` and the disclosure boxes are exempt: their length tracks what was
 verified. Report the word count before and after the cut.
