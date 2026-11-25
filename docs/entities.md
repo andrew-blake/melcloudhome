@@ -30,6 +30,8 @@ If two units in different buildings share a name, the second unit's IDs get a `_
 
 Units are often named after their room. On Home Assistant 2026.11, giving such a device the area of the same name in the setup dialog repeats the room in its entity IDs: a unit called "Living Room" in the area Living Room gets `climate.living_room_living_room`. The names shown on dashboards don't repeat it. Home Assistant's own MELCloud Home integration names devices the same way and gives the same IDs.
 
+If you use areas, rename each device to what it is, for example "Air conditioner", when you pick its area in the setup dialog. This is [Home Assistant's own advice](https://www.home-assistant.io/docs/configuration/customizing-devices/). The new name applies only in Home Assistant: the MELCloud Home app keeps its own. The area shows the room. Renaming at setup gives clean entity IDs straight away; renaming later means recreating the IDs and updating any automations that use them.
+
 To get IDs without the repeat, use any of these:
 
 - **In the setup dialog:** rename the device as you pick its area, for example to "Air conditioner". Its IDs become `climate.living_room_air_conditioner` and `fan.living_room_air_conditioner_a_c_fan`.

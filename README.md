@@ -115,7 +115,7 @@ The name is set once, when the device is created: renaming a unit in the MELClou
 
 Home Assistant builds each new entity ID from the area, the device name and the entity name, following your entity ID setting. A fresh install with no areas gets IDs such as `climate.living_room_ac` and `water_heater.heat_pump_tank`. If two units in different buildings share a name, the second gets a `_2` suffix; rename one of them to tell them apart.
 
-On Home Assistant 2026.11, a unit named after its room and given that room as its area gets IDs that repeat the room, such as `climate.living_room_living_room`. To avoid it, rename the device in the setup dialog as you pick its area; [docs/entities.md](docs/entities.md#a-unit-named-after-its-room) lists the other ways.
+If you use areas, rename each device to what it is (for example "Air conditioner") when you pick its area in the setup dialog; [docs/entities.md](docs/entities.md#a-unit-named-after-its-room) explains why and lists the fixes for later.
 
 Existing entity IDs never change, so automations keep working. To find a unit's entities, open its device page.
 
