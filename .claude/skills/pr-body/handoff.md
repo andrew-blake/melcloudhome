@@ -8,6 +8,13 @@ Mechanics for producing and handing over a PR body. The writing rules are in
 Whoever did the work cannot un-know how it went, and that knowledge shapes the
 body around the session. So the author gathers, and a subagent writes.
 
+**Dispatch the writer on Fable** (Agent `model: "fable"`), never another
+model. On this PR's writer brief, Fable writers following this skill produced
+no clause joins that hide a cause or bolt on a fact (0 in 4 bodies, from 15
+without the check); Opus writers still produced 4, and Sonnet writers ignored
+the check (8 with it, 8 without). Evidence:
+`_claude/skill-dev/pr-body/2026-11-25-false-coordination/RESULTS.md`.
+
 Pass it exactly this:
 
 - the branch, and nothing about its base; the writer resolves that itself
