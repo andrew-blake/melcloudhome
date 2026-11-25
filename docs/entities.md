@@ -26,6 +26,16 @@ A fresh install with no areas gets IDs such as:
 
 If two units in different buildings share a name, the second unit's IDs get a `_2` suffix; rename one of them to tell them apart.
 
+### A unit named after its room
+
+Units are often named after their room. On Home Assistant 2026.11, giving such a device the area of the same name in the setup dialog repeats the room in its entity IDs: a unit called "Living Room" in the area Living Room gets `climate.living_room_living_room`. The names shown on dashboards don't repeat it. Home Assistant's own MELCloud Home integration names devices the same way and gives the same IDs.
+
+To get IDs without the repeat, use any of these:
+
+- **In the setup dialog:** rename the device as you pick its area, for example to "Air conditioner". Its IDs become `climate.living_room_air_conditioner` and `fan.living_room_air_conditioner_a_c_fan`.
+- **Later, on the device page:** rename the device and set its area, then open ⋮ → **Recreate entity IDs**. Renaming alone keeps the old IDs. Home Assistant warns that automations using the old IDs need updating.
+- **One entity at a time:** edit the entity ID in the entity's settings, for example to `climate.living_room`.
+
 **Serial number:** each device's serial number is its short ID, `melcloudhome_` followed by the first 4 and last 4 characters of the unit's UUID with the hyphens removed. For example, UUID `bf8d5119-abcd-1234-5678-9999abcd5119` gives `melcloudhome_bf8d_5119`. Installs set up by earlier versions have the same text in their entity IDs, so the serial number matches a device to them.
 
 ---
