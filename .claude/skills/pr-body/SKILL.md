@@ -96,10 +96,41 @@ Rules, all drawn from this repo's merged titles:
 
 Then, in order:
 
-1. `## Summary`: **required.** Opens with the problem the change solves, as it
-   stands without the change, from the linked issue or the brief's problem
-   statement. Then what changed, from the diff, citing the related `#number`
-   inline. One pointer to the ADR, plan or issue that holds the evidence.
+1. `## Summary`: **required.** Opens with a **TL;DR:** block of at most 100
+   words: one to four sentences, or a lead sentence plus short bullets when
+   several problems share one cause. In plain words, with no internal
+   identifiers (no field, function or class names, no ADR numbers), it states:
+
+   - what changed to cause the problem. This is often outside the
+     integration's control, such as a Home Assistant release or a cloud API
+     change; when the cause is entirely ours, name our earlier change.
+   - which assumption of ours that change broke
+   - the symptom users or reviewers see
+   - the fix this PR makes
+   - what doesn't change
+
+   When several problems share a cause, each bullet carries one problem and
+   what this PR does about it. Every fix goes inside the TL;DR block, never in
+   a paragraph after it. Attribute each effect to what causes it: when our
+   code does something on a new Home Assistant version, say our code does it,
+   never that upgrading Home Assistant does. The clause-join row in Common
+   mistakes applies here too.
+
+   After the TL;DR, the problem as it stands without the change, from the
+   linked issue or the brief's problem statement, as the detail. Then what
+   changed, from the diff, citing the related `#number` inline. One pointer to
+   the ADR, plan or issue that holds the evidence.
+
+   The TL;DR of #403, as an example:
+
+   > **TL;DR:** Home Assistant 2026.6 to 2026.11 changed entity naming, breaking this integration's assumption that it could fix the ID format itself:
+   >
+   > - On 2026.11, rewriting device names at startup makes Home Assistant drop the names users gave their entities. This PR stops the rewrite.
+   > - New IDs include the area, so the building, also the suggested area and part of each device name, appeared twice (#403). New devices get the unit's name and no area.
+   > - Rebuilt IDs lacked the text diagnostics redaction relied on, so names leaked. Diagnostics now use unique IDs.
+   >
+   > Existing entity IDs don't change.
+
 2. `## Key changes`: **when the diff touches more than five files.** One bullet
    per behaviour a reviewer can verify in the diff. Below that, fold it into the
    Summary.
@@ -109,6 +140,8 @@ Then, in order:
    Internal changes nobody outside the repo can observe do not belong here.
    Each bullet carries a fact the Summary does not state. When the Summary's
    opening sentence is the whole user-visible change, the section is absent.
+   Merge bullets that share a remedy or repeat each other, and fold minor
+   items into one bullet.
 4. `## Risks accepted`: **when merging accepts a known risk**, such as an
    assumption shipped without evidence, a downside taken deliberately. Each
    bullet says what the risk is, what it costs if it lands, and how it would
@@ -116,7 +149,8 @@ Then, in order:
    a follow-up that is tracked, written as "tracked" with the issue linked when
    there is one. A code change nobody has designed or tracked is a follow-up
    that does not exist yet, so it stays out of the body. This is what a
-   maintainer hunts for months later when the risk lands.
+   maintainer hunts for months later when the risk lands. Merge risks that
+   repeat each other or share a cause.
 5. `## AI Disclosure`: **required.** Reproduce the template's two boxes and
    leave **both unchecked**. The second reads "I reviewed and ran the change
    myself", a claim about the human author that nobody else can make for them.
@@ -140,10 +174,13 @@ Then, in order:
      suite ran in a venv), and a `/security-review` on a diff with no auth,
      API-client or workflow change.
 
-   Each box is one claim on one line. A suite's result is "passed" and the
-   environment it ran in (the HA version); CI shows the counts at the head. The
-   evidence behind a claim (each mutation tried, timings, value comparisons,
-   what a scrub left) lives in the record. Refer to the head as "the head",
+   Each box is one claim on one line, at most about 25 words. A box says what
+   the check showed, not how it ran. A suite's result is "passed" and the
+   environment it ran in (the HA version); CI shows the counts at the head.
+   Numbers, per-variant results and per-model tables live in the record, as
+   does the evidence behind a claim (each mutation tried, timings, value
+   comparisons, what a scrub left). Trim a box's wording, never the box: a
+   real check keeps its box. Refer to the head as "the head",
    without a commit hash: the branch's hashes disappear when the PR is
    squash-merged.
 
@@ -209,8 +246,9 @@ Design rationale for a tool lives in that tool's docstring.
 ## Proportion
 
 Measure the prose sections. The Testing list and the disclosure boxes sit
-outside the count: their length tracks how much was verified, and trimming them
-to hit a number is the one cut that loses a reviewer something.
+outside the word count: their number tracks how much was verified, so never
+drop a real check to hit a number. Each box is still held to one short claim
+(Testing, above).
 
 Weigh it against review surface rather than raw lines. Deleted fixtures,
 cassettes and generated files inflate `--shortstat` without adding anything to
@@ -225,8 +263,9 @@ two-line i18n fix, is 40), 200 for a
 
 The other two sections are justified by whether their content is real, not by a
 word budget: a user-visible change nobody would otherwise notice, and a risk
-somebody inherits by merging, are both worth their length. Cutting them to hit a
-number removes the part of the body a reviewer most needs.
+somebody inherits by merging, are both worth their length. That makes them
+exempt from a number, not from tightening: merge bullets that repeat each other
+or share a remedy, and fold minor items together.
 
 So when a body reads long, the question is whether `Summary` and `Key changes`
 have drifted past the corpus for a comparable review surface. File count
@@ -245,27 +284,28 @@ unavailable.
 Observed in baseline testing, every one of these from an author who had the diff
 in front of them.
 
-| mistake                                                                                                            | fix                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Restating a sensitive value the reason merely refers to                                                            | Name the category                                                                                                              |
-| Opening with how the problem was discovered                                                                        | Open with the problem as it stands, then what changed                                                                          |
-| An absence claim ("not written down", "nothing records X", "nowhere")                                              | Name where it lives now and where it is missing from; the PR history or another file usually holds it                          |
-| A Summary that restates the diff in prose                                                                          | Lead with the problem; the diff carries the wording of the change                                                              |
-| Framing: a sentence that announces, counts or signposts ("The skill sizes a body to its change.")                  | Delete it; if no fact goes with it, it was framing                                                                             |
-| Over-compression: a dangling participle or a verb with no clear subject ("…, keeping evidence the tests simulate") | Give every verb a subject, or split the sentence                                                                               |
-| A sentence a reviewer must read twice, or one carrying several changes                                             | One claim per sentence, its reason included; fold a fragment that only states a fact into the sentence it supports             |
-| A term only the skill or session defines ("dispatched writer", "fixture brief", "hand-back")                       | Say what the thing is in plain words                                                                                           |
-| Reproducing the ADR's measurement table                                                                            | One clause plus the link                                                                                                       |
-| "moved from X to Y", "previously", "used to"                                                                       | State current behaviour only                                                                                                   |
-| Any negation carrying the emphasis: `X, not Y`, `X rather than Y`, `isn't an option`, `is not the argument`        | Say what is true, positively. Contrast two real options by naming both                                                         |
-| Rebutting a position the PR never raises                                                                           | Delete the paragraph                                                                                                           |
-| Explaining why a card, flag or graph exists                                                                        | Put it in the docstring                                                                                                        |
-| Arguing for the method instead of reporting what ran                                                               | Say what ran and what it showed. A Testing preamble that defends the approach is commentary                                    |
-| An em dash                                                                                                         | A colon where it introduces an elaboration, commas or brackets where it wraps an aside. A body full of them reads as generated |
-| A sentence that defers to a source ("`docs/entities.md` says so")                                                  | State the fact, or link the source; a source cited this way vouches for more than it says                                      |
-| `since` meaning "because"                                                                                          | `because`, or two sentences                                                                                                    |
-| A trailing reassurance after a cost ("it shows only as log noise")                                                 | End the bullet at the cost                                                                                                     |
-| A cause, cost or remedy that neither the brief nor the diff holds                                                  | Leave it out of the body and list it in the hand-back                                                                          |
-| Hard-wrapping paragraphs or bullets                                                                                | One line each; GitHub renders the wrap as line breaks                                                                          |
-| Every box checked when verification is partial                                                                     | Leave the box unchecked and say why                                                                                            |
-| Overwriting a body that was handed over for editing                                                                | Read it first, keep the author's wording, report the change                                                                    |
+| mistake                                                                                                                                                                                                                                                                                                                                                       | fix                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Restating a sensitive value the reason merely refers to                                                                                                                                                                                                                                                                                                       | Name the category                                                                                                                                                                                                               |
+| Opening with how the problem was discovered                                                                                                                                                                                                                                                                                                                   | Open with the problem as it stands, then what changed                                                                                                                                                                           |
+| An absence claim ("not written down", "nothing records X", "nowhere")                                                                                                                                                                                                                                                                                         | Name where it lives now and where it is missing from; the PR history or another file usually holds it                                                                                                                           |
+| A Summary that restates the diff in prose                                                                                                                                                                                                                                                                                                                     | Lead with the problem; the diff carries the wording of the change                                                                                                                                                               |
+| Framing: a sentence that announces, counts or signposts ("The skill sizes a body to its change.")                                                                                                                                                                                                                                                             | Delete it; if no fact goes with it, it was framing                                                                                                                                                                              |
+| Over-compression: a dangling participle or a verb with no clear subject ("…, keeping evidence the tests simulate")                                                                                                                                                                                                                                            | Give every verb a subject, or split the sentence                                                                                                                                                                                |
+| A comma + "and"/"so" joining a second clause that follows from the first or adds an unrelated fact, or a trailing "along with"/"next to" adding a different fact ("IDs depend on the HA version and the dialog, and a rebuilt ID can repeat the building"; "IDs depend on the HA version and the dialog, and on 2026.11 the integration erases saved labels") | Name the relation (when, because, so) or split the sentence: "When the dialog rebuilds an ID, it can repeat the building"; "IDs depend on the HA version and the dialog. On 2026.11, the integration also erases saved labels." |
+| A sentence a reviewer must read twice, or one carrying several changes                                                                                                                                                                                                                                                                                        | One claim per sentence, its reason included; fold a fragment that only states a fact into the sentence it supports                                                                                                              |
+| A term only the skill or session defines ("dispatched writer", "fixture brief", "hand-back")                                                                                                                                                                                                                                                                  | Say what the thing is in plain words                                                                                                                                                                                            |
+| Reproducing the ADR's measurement table                                                                                                                                                                                                                                                                                                                       | One clause plus the link                                                                                                                                                                                                        |
+| "moved from X to Y", "previously", "used to"                                                                                                                                                                                                                                                                                                                  | State current behaviour only                                                                                                                                                                                                    |
+| Any negation carrying the emphasis: `X, not Y`, `X rather than Y`, `isn't an option`, `is not the argument`                                                                                                                                                                                                                                                   | Say what is true, positively. Contrast two real options by naming both                                                                                                                                                          |
+| Rebutting a position the PR never raises                                                                                                                                                                                                                                                                                                                      | Delete the paragraph                                                                                                                                                                                                            |
+| Explaining why a card, flag or graph exists                                                                                                                                                                                                                                                                                                                   | Put it in the docstring                                                                                                                                                                                                         |
+| Arguing for the method instead of reporting what ran                                                                                                                                                                                                                                                                                                          | Say what ran and what it showed. A Testing preamble that defends the approach is commentary                                                                                                                                     |
+| An em dash                                                                                                                                                                                                                                                                                                                                                    | A colon where it introduces an elaboration, commas or brackets where it wraps an aside. A body full of them reads as generated                                                                                                  |
+| A sentence that defers to a source ("`docs/entities.md` says so")                                                                                                                                                                                                                                                                                             | State the fact, or link the source; a source cited this way vouches for more than it says                                                                                                                                       |
+| `since` meaning "because"                                                                                                                                                                                                                                                                                                                                     | `because`, or two sentences                                                                                                                                                                                                     |
+| A trailing reassurance after a cost ("it shows only as log noise")                                                                                                                                                                                                                                                                                            | End the bullet at the cost                                                                                                                                                                                                      |
+| A cause, cost or remedy that neither the brief nor the diff holds                                                                                                                                                                                                                                                                                             | Leave it out of the body and list it in the hand-back                                                                                                                                                                           |
+| Hard-wrapping paragraphs or bullets                                                                                                                                                                                                                                                                                                                           | One line each; GitHub renders the wrap as line breaks                                                                                                                                                                           |
+| Every box checked when verification is partial                                                                                                                                                                                                                                                                                                                | Leave the box unchecked and say why                                                                                                                                                                                             |
+| Overwriting a body that was handed over for editing                                                                                                                                                                                                                                                                                                           | Read it first, keep the author's wording, report the change                                                                                                                                                                     |

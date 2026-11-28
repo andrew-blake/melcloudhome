@@ -54,11 +54,12 @@ class ATAClimate(ATAEntityBase, ClimateEntity):  # type: ignore[misc]
         self._attr_unique_id = unit.id
         self._entry = entry
 
-        # Short entity name (device name provides UUID prefix)
-        self._attr_name = "Climate"
+        # HA's has-entity-name rule: "The main feature of a device gets the
+        # name None, so it takes the name of the device itself."
+        self._attr_name = None
 
         # Device info using shared helper
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # HVAC modes
         self._attr_hvac_modes = [

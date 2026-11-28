@@ -8,43 +8,47 @@
     {
      "type": "sections",
      "max_columns": 4,
-     "title": "My Home House Heat Pump (mock)",
+     "title": "Dual Zone Heat Pump (mock)",
      "sections": [
       {
        "type": "grid",
        "cards": [
         {
          "type": "heading",
-         "heading": "My Home House Heat Pump (mock) - live",
+         "heading": "Dual Zone Heat Pump (mock) - live",
          "heading_style": "title"
         },
         {
          "type": "tile",
-         "entity": "climate.my_home_melcloudhome_bf2d_5666_zone_1"
+         "entity": "climate.dual_zone_heat_pump_zone_1"
         },
         {
          "type": "tile",
-         "entity": "water_heater.my_home_melcloudhome_bf2d_5666_tank"
+         "entity": "climate.dual_zone_heat_pump_zone_2"
         },
         {
          "type": "tile",
-         "entity": "switch.my_home_melcloudhome_bf2d_5666_system_power"
+         "entity": "water_heater.dual_zone_heat_pump_tank"
         },
         {
          "type": "tile",
-         "entity": "sensor.my_home_melcloudhome_bf2d_5666_operation_status"
+         "entity": "switch.dual_zone_heat_pump_system_power"
         },
         {
          "type": "tile",
-         "entity": "binary_sensor.my_home_melcloudhome_bf2d_5666_forced_dhw_active"
+         "entity": "sensor.dual_zone_heat_pump_operation_status"
         },
         {
          "type": "tile",
-         "entity": "sensor.my_home_melcloudhome_bf2d_5666_outdoor_temperature"
+         "entity": "binary_sensor.dual_zone_heat_pump_forced_dhw_active"
         },
         {
          "type": "tile",
-         "entity": "sensor.my_home_melcloudhome_bf2d_5666_tank_temperature"
+         "entity": "sensor.dual_zone_heat_pump_outdoor_temperature"
+        },
+        {
+         "type": "tile",
+         "entity": "sensor.dual_zone_heat_pump_tank_temperature"
         }
        ]
       },
@@ -61,14 +65,14 @@
          "chart_type": "line",
          "period": "5minute",
          "entities": [
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler"
+          "sensor.dual_zone_heat_pump_flow_temperature",
+          "sensor.dual_zone_heat_pump_return_temperature",
+          "sensor.dual_zone_heat_pump_flow_temperature_zone_1",
+          "sensor.dual_zone_heat_pump_return_temperature_zone_1",
+          "sensor.dual_zone_heat_pump_flow_temperature_zone_2",
+          "sensor.dual_zone_heat_pump_return_temperature_zone_2",
+          "sensor.dual_zone_heat_pump_flow_temperature_boiler",
+          "sensor.dual_zone_heat_pump_return_temperature_boiler"
          ],
          "stat_types": [
           "mean"
@@ -84,14 +88,14 @@
          "hours_to_show": 24,
          "title": "Raw states (24h) - gaps are unknown, not a steady value",
          "entities": [
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2",
-          "sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler",
-          "sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler"
+          "sensor.dual_zone_heat_pump_flow_temperature",
+          "sensor.dual_zone_heat_pump_return_temperature",
+          "sensor.dual_zone_heat_pump_flow_temperature_zone_1",
+          "sensor.dual_zone_heat_pump_return_temperature_zone_1",
+          "sensor.dual_zone_heat_pump_flow_temperature_zone_2",
+          "sensor.dual_zone_heat_pump_return_temperature_zone_2",
+          "sensor.dual_zone_heat_pump_flow_temperature_boiler",
+          "sensor.dual_zone_heat_pump_return_temperature_boiler"
          ],
          "grid_options": {
           "columns": "full"
@@ -100,7 +104,7 @@
         {
          "type": "markdown",
          "title": "Reading provenance",
-         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature', 'last_reading') or '-' }} |\n| flow temperature zone 1 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_1', 'last_reading') or '-' }} |\n| return temperature zone 1 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_1', 'last_reading') or '-' }} |\n| flow temperature zone 2 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_zone_2', 'last_reading') or '-' }} |\n| return temperature zone 2 | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_zone_2', 'last_reading') or '-' }} |\n| flow temperature boiler | {{ states('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_flow_temperature_boiler', 'last_reading') or '-' }} |\n| return temperature boiler | {{ states('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler') }} | {{ state_attr('sensor.my_home_melcloudhome_bf2d_5666_return_temperature_boiler', 'last_reading') or '-' }} |",
+         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.dual_zone_heat_pump_flow_temperature') }} | {{ state_attr('sensor.dual_zone_heat_pump_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.dual_zone_heat_pump_return_temperature') }} | {{ state_attr('sensor.dual_zone_heat_pump_return_temperature', 'last_reading') or '-' }} |\n| flow temperature zone1 | {{ states('sensor.dual_zone_heat_pump_flow_temperature_zone_1') }} | {{ state_attr('sensor.dual_zone_heat_pump_flow_temperature_zone_1', 'last_reading') or '-' }} |\n| return temperature zone1 | {{ states('sensor.dual_zone_heat_pump_return_temperature_zone_1') }} | {{ state_attr('sensor.dual_zone_heat_pump_return_temperature_zone_1', 'last_reading') or '-' }} |\n| flow temperature zone2 | {{ states('sensor.dual_zone_heat_pump_flow_temperature_zone_2') }} | {{ state_attr('sensor.dual_zone_heat_pump_flow_temperature_zone_2', 'last_reading') or '-' }} |\n| return temperature zone2 | {{ states('sensor.dual_zone_heat_pump_return_temperature_zone_2') }} | {{ state_attr('sensor.dual_zone_heat_pump_return_temperature_zone_2', 'last_reading') or '-' }} |\n| flow temperature boiler | {{ states('sensor.dual_zone_heat_pump_flow_temperature_boiler') }} | {{ state_attr('sensor.dual_zone_heat_pump_flow_temperature_boiler', 'last_reading') or '-' }} |\n| return temperature boiler | {{ states('sensor.dual_zone_heat_pump_return_temperature_boiler') }} | {{ state_attr('sensor.dual_zone_heat_pump_return_temperature_boiler', 'last_reading') or '-' }} |",
          "grid_options": {
           "columns": "full"
          }
@@ -120,8 +124,8 @@
          "chart_type": "line",
          "period": "hour",
          "entities": [
-          "sensor.my_home_melcloudhome_bf2d_5666_energy_consumed",
-          "sensor.my_home_melcloudhome_bf2d_5666_energy_produced"
+          "sensor.dual_zone_heat_pump_energy_consumed",
+          "sensor.dual_zone_heat_pump_energy_produced"
          ],
          "stat_types": [
           "sum"
@@ -137,7 +141,7 @@
          "chart_type": "line",
          "period": "5minute",
          "entities": [
-          "sensor.my_home_melcloudhome_bf2d_5666_coefficient_of_performance"
+          "sensor.dual_zone_heat_pump_coefficient_of_performance"
          ],
          "stat_types": [
           "mean",
@@ -155,7 +159,7 @@
          "chart_type": "line",
          "period": "hour",
          "entities": [
-          "sensor.my_home_melcloudhome_bf2d_5666_wifi_signal"
+          "sensor.dual_zone_heat_pump_wifi_signal"
          ],
          "stat_types": [
           "mean"
@@ -173,47 +177,43 @@
     {
      "type": "sections",
      "max_columns": 4,
-     "title": "Shared Building Dual Zone Heat Pump (mock)",
+     "title": "House Heat Pump (mock)",
      "sections": [
       {
        "type": "grid",
        "cards": [
         {
          "type": "heading",
-         "heading": "Shared Building Dual Zone Heat Pump (mock) - live",
+         "heading": "House Heat Pump (mock) - live",
          "heading_style": "title"
         },
         {
          "type": "tile",
-         "entity": "climate.shared_building_melcloudhome_aed2_9abc_zone_1"
+         "entity": "climate.house_heat_pump_zone_1"
         },
         {
          "type": "tile",
-         "entity": "climate.shared_building_melcloudhome_aed2_9abc_zone_2"
+         "entity": "water_heater.house_heat_pump_tank"
         },
         {
          "type": "tile",
-         "entity": "water_heater.shared_building_melcloudhome_aed2_9abc_tank"
+         "entity": "switch.house_heat_pump_system_power"
         },
         {
          "type": "tile",
-         "entity": "switch.shared_building_melcloudhome_aed2_9abc_system_power"
+         "entity": "sensor.house_heat_pump_operation_status"
         },
         {
          "type": "tile",
-         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_operation_status"
+         "entity": "binary_sensor.house_heat_pump_forced_dhw_active"
         },
         {
          "type": "tile",
-         "entity": "binary_sensor.shared_building_melcloudhome_aed2_9abc_forced_dhw_active"
+         "entity": "sensor.house_heat_pump_outdoor_temperature"
         },
         {
          "type": "tile",
-         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_outdoor_temperature"
-        },
-        {
-         "type": "tile",
-         "entity": "sensor.shared_building_melcloudhome_aed2_9abc_tank_temperature"
+         "entity": "sensor.house_heat_pump_tank_temperature"
         }
        ]
       },
@@ -230,14 +230,8 @@
          "chart_type": "line",
          "period": "5minute",
          "entities": [
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler"
+          "sensor.house_heat_pump_flow_temperature",
+          "sensor.house_heat_pump_return_temperature"
          ],
          "stat_types": [
           "mean"
@@ -253,14 +247,8 @@
          "hours_to_show": 24,
          "title": "Raw states (24h) - gaps are unknown, not a steady value",
          "entities": [
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2",
-          "sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler",
-          "sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler"
+          "sensor.house_heat_pump_flow_temperature",
+          "sensor.house_heat_pump_return_temperature"
          ],
          "grid_options": {
           "columns": "full"
@@ -269,7 +257,7 @@
         {
          "type": "markdown",
          "title": "Reading provenance",
-         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature', 'last_reading') or '-' }} |\n| flow temperature zone 1 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_1', 'last_reading') or '-' }} |\n| return temperature zone 1 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_1', 'last_reading') or '-' }} |\n| flow temperature zone 2 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_zone_2', 'last_reading') or '-' }} |\n| return temperature zone 2 | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_zone_2', 'last_reading') or '-' }} |\n| flow temperature boiler | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_flow_temperature_boiler', 'last_reading') or '-' }} |\n| return temperature boiler | {{ states('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler') }} | {{ state_attr('sensor.shared_building_melcloudhome_aed2_9abc_return_temperature_boiler', 'last_reading') or '-' }} |",
+         "content": "| measure | value | last_reading |\n|---|---|---|\n| flow temperature | {{ states('sensor.house_heat_pump_flow_temperature') }} | {{ state_attr('sensor.house_heat_pump_flow_temperature', 'last_reading') or '-' }} |\n| return temperature | {{ states('sensor.house_heat_pump_return_temperature') }} | {{ state_attr('sensor.house_heat_pump_return_temperature', 'last_reading') or '-' }} |",
          "grid_options": {
           "columns": "full"
          }
@@ -289,8 +277,8 @@
          "chart_type": "line",
          "period": "hour",
          "entities": [
-          "sensor.shared_building_melcloudhome_aed2_9abc_energy_consumed",
-          "sensor.shared_building_melcloudhome_aed2_9abc_energy_produced"
+          "sensor.house_heat_pump_energy_consumed",
+          "sensor.house_heat_pump_energy_produced"
          ],
          "stat_types": [
           "sum"
@@ -306,7 +294,7 @@
          "chart_type": "line",
          "period": "5minute",
          "entities": [
-          "sensor.shared_building_melcloudhome_aed2_9abc_coefficient_of_performance"
+          "sensor.house_heat_pump_coefficient_of_performance"
          ],
          "stat_types": [
           "mean",
@@ -324,7 +312,7 @@
          "chart_type": "line",
          "period": "hour",
          "entities": [
-          "sensor.shared_building_melcloudhome_aed2_9abc_wifi_signal"
+          "sensor.house_heat_pump_wifi_signal"
          ],
          "stat_types": [
           "mean"
@@ -359,8 +347,8 @@
          "hours_to_show": 24,
          "title": "Actual fan speed (24h) - never Auto, Off means powered down",
          "entities": [
-          "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
-          "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed"
+          "sensor.bedroom_ac_actual_fan_speed",
+          "sensor.living_room_ac_actual_fan_speed"
          ],
          "grid_options": {
           "columns": "full",
@@ -377,10 +365,10 @@
          "hours_to_show": 24,
          "target": {
           "entity_id": [
-           "sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed",
-           "sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed",
-           "climate.my_home_melcloudhome_0efc_87db_climate",
-           "climate.my_home_melcloudhome_bf8d_5119_climate"
+           "sensor.bedroom_ac_actual_fan_speed",
+           "sensor.living_room_ac_actual_fan_speed",
+           "climate.bedroom_ac",
+           "climate.living_room_ac"
           ]
          },
          "grid_options": {
@@ -390,7 +378,7 @@
         {
          "type": "markdown",
          "title": "Current",
-         "content": "| unit | power / mode | requested | actual |\n|---|---|---|---|\n| My Home Living Room AC (mock) | {{ states('climate.my_home_melcloudhome_0efc_87db_climate') }} | {{ state_attr('climate.my_home_melcloudhome_0efc_87db_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_0efc_87db_actual_fan_speed') }} |\n| My Home Bedroom AC (mock) | {{ states('climate.my_home_melcloudhome_bf8d_5119_climate') }} | {{ state_attr('climate.my_home_melcloudhome_bf8d_5119_climate', 'fan_mode') }} | {{ states('sensor.my_home_melcloudhome_bf8d_5119_actual_fan_speed') }} |",
+         "content": "| unit | power / mode | requested | actual |\n|---|---|---|---|\n| Bedroom AC (mock) | {{ states('climate.bedroom_ac') }} | {{ state_attr('climate.bedroom_ac', 'fan_mode') }} | {{ states('sensor.bedroom_ac_actual_fan_speed') }} |\n| Living Room AC (mock) | {{ states('climate.living_room_ac') }} | {{ state_attr('climate.living_room_ac', 'fan_mode') }} | {{ states('sensor.living_room_ac_actual_fan_speed') }} |",
          "grid_options": {
           "columns": "full"
          }

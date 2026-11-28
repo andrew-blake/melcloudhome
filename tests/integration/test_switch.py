@@ -34,7 +34,7 @@ async def test_switch_entity_created_with_correct_attributes(
     state = hass.states.get(entity_id_for(hass, TEST_SWITCH_SYSTEM_POWER))
     assert state is not None
     assert state.state == STATE_ON
-    assert "System Power" in state.attributes[ATTR_FRIENDLY_NAME]
+    assert "System power" in state.attributes[ATTR_FRIENDLY_NAME]
 
 
 @pytest.mark.asyncio

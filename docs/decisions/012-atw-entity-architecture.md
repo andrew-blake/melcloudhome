@@ -30,6 +30,8 @@ Air-to-Water (ATW) heat pumps are physically **one device** with **two capabilit
 | **sensor** | Various | Temperature readings, status | N/A |
 | **binary_sensor** | `{device}_error`, `{device}_forced_dhw` | Status monitoring | N/A |
 
+> **Status note:** read the "Entity ID" column as entity names. Home Assistant builds the entity IDs, and the integration promises no format; see [ADR-030](030-follow-home-assistants-naming-model.md).
+
 ### Power Control Architecture
 
 **Critical decision:** Switch is primary, climate delegates, water heater is read-only.

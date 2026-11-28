@@ -3,13 +3,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "mdi:home-thermometer",
-              "flow": "mdi:thermometer-lines",
-              "curve": "mdi:chart-bell-curve"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "mdi:fan-auto",
@@ -40,6 +33,17 @@
               "centre": "mdi:minus",
               "rightcentre": "mdi:arrow-right",
               "right": "mdi:arrow-right-bold"
+            }
+          }
+        }
+      },
+      "zone": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "mdi:home-thermometer",
+              "flow": "mdi:thermometer-lines",
+              "curve": "mdi:chart-bell-curve"
             }
           }
         }

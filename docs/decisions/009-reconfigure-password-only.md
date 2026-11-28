@@ -32,6 +32,8 @@ The reconfigure flow:
 
 2. **Entity ID stability**: Entity IDs are based on device UUIDs (e.g., `climate.melcloud_0efc_76db`), not the email. Deleting and re-adding the integration with a different email will preserve entity IDs and history as long as the same physical devices are discovered.
 
+   > **Status note:** amended by [ADR-030](030-follow-home-assistants-naming-model.md). Re-adding the integration keeps entity IDs because Home Assistant restores a deleted device's entity IDs. New installs don't build IDs from UUIDs.
+
 3. **Simpler implementation**: Changing `unique_id` requires special handling (`async_update_entry` with explicit `unique_id` parameter) and conflict checking against other entries. Password-only updates use the standard `async_update_reload_and_abort` helper.
 
 4. **Rare use case**: Email changes are uncommon. Users typically:

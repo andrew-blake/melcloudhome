@@ -57,13 +57,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "Phòng",
-              "flow": "Cấp",
-              "curve": "Đường cong"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "Tự động",
@@ -94,6 +87,18 @@
               "centre": "Giữa",
               "rightcentre": "Phải giữa",
               "right": "Phải"
+            }
+          }
+        }
+      },
+      "zone": {
+        "name": "Vùng {zone}",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Phòng",
+              "flow": "Cấp",
+              "curve": "Đường cong"
             }
           }
         }
@@ -212,6 +217,7 @@
     },
     "fan": {
       "melcloudhome": {
+        "name": "Quạt điều hòa",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -219,6 +225,16 @@
             }
           }
         }
+      }
+    },
+    "switch": {
+      "system_power": {
+        "name": "Nguồn hệ thống"
+      }
+    },
+    "water_heater": {
+      "tank": {
+        "name": "Bể nước nóng"
       }
     }
   },

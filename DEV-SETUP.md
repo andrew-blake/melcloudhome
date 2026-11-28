@@ -26,6 +26,7 @@ make dev-up
 ```
 
 This starts:
+
 - **Mock MELCloud API** on `http://localhost:8080`
 - **Home Assistant** on `http://localhost:8123`
 
@@ -70,12 +71,14 @@ The "Connect to Mock Server" checkbox connects to the mock server instead of pro
 
 The mock server provides four pre-configured test devices, defined inline in `tools/mock_melcloud_server.py`:
 
+The example entity IDs assume a fresh setup with no areas assigned. Home Assistant builds the IDs, so an area or a device name set in the setup dialog changes them.
+
 **ATA Devices (Air-to-Air Heat Pumps):**
 
 1. **Living Room AC**
    - UUID: `0efc1234-5678-9abc-def0-1234567887db`
-   - Entity prefix: `melcloudhome_0efc_87db`
-   - Example entity: `climate.melcloudhome_0efc_87db_climate`
+   - Serial number: `melcloudhome_0efc_87db`
+   - Example entity: `climate.living_room_ac`
    - Model: MSZ-AP35VG
    - Capabilities: Heat, Cool, Dry, Fan, Auto modes
    - Fan speeds: Auto, Low, Medium, High, Very High
@@ -84,8 +87,8 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 2. **Bedroom AC**
    - UUID: `bf8d5678-90ab-cdef-0123-456789ab5119`
-   - Entity prefix: `melcloudhome_bf8d_5119`
-   - Example entity: `climate.melcloudhome_bf8d_5119_climate`
+   - Serial number: `melcloudhome_bf8d_5119`
+   - Example entity: `climate.bedroom_ac`
    - Model: MSZ-LN25VG
    - Same capabilities as Living Room AC
    - Current: 18°C → Target: 20°C
@@ -94,11 +97,11 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 3. **House Heat Pump**
    - UUID: `bf2d256c-42ac-4799-a6d8-c6ab433e5666`
-   - Entity prefix: `melcloudhome_bf2d_5666`
+   - Serial number: `melcloudhome_bf2d_5666`
    - Example entities:
-     - `climate.melcloudhome_bf2d_5666_zone_1`
-     - `water_heater.melcloudhome_bf2d_5666_tank`
-     - `switch.melcloudhome_bf2d_5666_system_power`
+     - `climate.house_heat_pump_zone_1`
+     - `water_heater.house_heat_pump_tank`
+     - `switch.house_heat_pump_system_power`
    - Mock device (ftcModel: 3)
    - Zone 1 (underfloor heating): Target 25°C, Current 23°C
    - Hot water tank: Target 50°C, Current 48°C
@@ -107,7 +110,7 @@ The mock server provides four pre-configured test devices, defined inline in `to
 
 4. **Dual Zone Heat Pump**
    - UUID: `aed21234-5678-9abc-def0-123456789abc`
-   - Entity prefix: `melcloudhome_aed2_9abc`
+   - Serial number: `melcloudhome_aed2_9abc`
    - Mock device (ftcModel: 5), two heating zones (`hasZone2: true`)
    - Zone 1: Target 19°C, Current 21°C — Zone 2: Target 21°C, Current 21°C
    - Hot water tank: Target 40°C, Current 40°C
@@ -136,6 +139,7 @@ make dev-logs
 ```
 
 **Make commands available:**
+
 - `make dev-up` - Start dev environment
 - `make dev-restart` - Restart HA (reload code changes)
 - `make dev-logs` - View HA logs
@@ -158,6 +162,7 @@ make dev-reset
 ```
 
 This restores the dev environment to a clean snapshot with:
+
 - User account already created (dev/dev)
 - Onboarding completed
 
@@ -204,6 +209,7 @@ make dev-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 ```
 
 **What gets saved:**
+
 - Complete `.storage` directory (all entity/device registries, auth, etc.)
 - Separate copies of entity and device registries for easy inspection
 
@@ -220,6 +226,7 @@ make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 ```
 
 **Use cases:**
+
 - Save state before/after major changes for comparison testing
 - Create known-good checkpoints during development
 - Revert to a baseline after testing
@@ -227,6 +234,7 @@ make dev-restore-snapshot SNAPSHOT=dev-config-snapshots/baseline-v1.3.4
 - Upgrade verification testing (save before, compare after)
 
 **Notes:**
+
 - Snapshot command requires Home Assistant container to be running
 - Restore command stops containers, restores state, starts only HA (not mock server)
 - Use `make dev-up` after restore if you need the mock server
@@ -242,6 +250,7 @@ This completely wipes the environment and starts from scratch. You'll need to cr
 ## Mock Server Details
 
 The mock server provides:
+
 - **2 ATA devices** (Air-to-Air / AC units)
   - Living Room AC
   - Bedroom AC
@@ -272,6 +281,7 @@ curl -X PUT http://localhost:8080/monitor/atwunit/atw-house-heatpump \
 ### Change admin credentials:
 
 Create `.env` file:
+
 ```bash
 HASS_USERNAME=admin
 HASS_PASSWORD=mypassword
@@ -297,20 +307,23 @@ kill -9 $(lsof -ti:8123)
 ```
 
 Or change the port in `docker-compose.dev.yml`:
+
 ```yaml
 ports:
-  - "9123:8123"  # Use port 9123 instead
+  - "9123:8123" # Use port 9123 instead
 ```
 
 ### Integration not showing up
 
 1. Check the custom component is mounted:
+
    ```bash
    docker compose -f docker-compose.dev.yml exec homeassistant \
      ls -la /config/custom_components/melcloudhome
    ```
 
 2. Check logs for errors:
+
    ```bash
    docker compose -f docker-compose.dev.yml logs homeassistant | grep melcloudhome
    ```
@@ -332,6 +345,7 @@ make dev-reset-full  # Complete wipe (slow)
 **Symptom:** Can't see the "Connect to Mock Server" checkbox when adding the integration.
 
 **Solution:** Enable Advanced Mode in your Home Assistant profile:
+
 1. Click your profile (bottom left)
 2. Enable "Advanced Mode" toggle
 3. Return to integration setup
@@ -371,13 +385,13 @@ These files are stored in `dev-config/` and persist between restarts.
 
 **Key differences from your remote HA instance:**
 
-| Aspect | Dev Environment | Production |
-|--------|----------------|------------|
-| **API endpoint** | Mock server (localhost:8080) | Real MELCloud API |
-| **Devices** | 2 ATA + 1 ATW (simulated) | Your actual devices |
-| **Data** | In-memory state | Real sensor data |
-| **Config** | dev-config/ (local) | Remote server |
-| **Auth** | No validation | Real OAuth tokens |
+| Aspect           | Dev Environment              | Production          |
+| ---------------- | ---------------------------- | ------------------- |
+| **API endpoint** | Mock server (localhost:8080) | Real MELCloud API   |
+| **Devices**      | 2 ATA + 1 ATW (simulated)    | Your actual devices |
+| **Data**         | In-memory state              | Real sensor data    |
+| **Config**       | dev-config/ (local)          | Remote server       |
+| **Auth**         | No validation                | Real OAuth tokens   |
 
 The mock server is perfect for testing integration logic, UI, and state management without physical hardware.
 

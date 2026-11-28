@@ -1,7 +1,7 @@
 # ADR-003: Entity Naming and Device Registry Strategy
 
 **Date:** 2025-01-17
-**Status:** Accepted
+**Status:** Superseded by [ADR-030](030-follow-home-assistants-naming-model.md)
 **Deciders:** @andrew-blake
 
 ## Context

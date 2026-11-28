@@ -8,6 +8,13 @@ Mechanics for producing and handing over a PR body. The writing rules are in
 Whoever did the work cannot un-know how it went, and that knowledge shapes the
 body around the session. So the author gathers, and a subagent writes.
 
+**Dispatch the writer on Fable** (Agent `model: "fable"`), never another
+model. On this PR's writer brief, Fable writers following this skill produced
+no clause joins that hide a cause or bolt on a fact (0 in 4 bodies, from 15
+without the check); Opus writers still produced 4, and Sonnet writers ignored
+the check (8 with it, 8 without). Evidence:
+`_claude/skill-dev/pr-body/2026-11-25-false-coordination/RESULTS.md`.
+
 Pass it exactly this:
 
 - the branch, and nothing about its base; the writer resolves that itself
@@ -37,6 +44,10 @@ removed"; the individual mutations stay in the plan or ADR. The routine gates
 The brief carries no exceptions to the skill's public-text rules. When a brief
 and the skill disagree on a name or a count, the writer follows the skill and
 reports the conflict in its hand-back.
+
+**Re-run the cheap gates at the head before dispatching the writer**
+(`make pre-commit`, `make test`, `make test-integration-floor`), so every
+ticked gate box holds at the head and needs no scope qualifier.
 
 **Facts you can establish, establish.** Run `make test-api`,
 `make test-integration`, `make test-e2e`, `make pre-commit`, and grep the diff
@@ -93,6 +104,9 @@ Its title cannot tell you whether a human confirmed those lines or a previous
 agent asserted them.
 
 The agent reads this skill, composes from the diff, and reports back the path.
+Its Summary opens with the TL;DR that `SKILL.md` specifies, in at most 100 plain
+words: the outside change, the assumption it broke, each problem with what this
+PR does about it, and what doesn't change. The fixes stay inside the TL;DR.
 
 ## Review what the writer reports
 
@@ -123,9 +137,18 @@ for.
 3. Each `Risks accepted` bullet: keep it when the risk is one the merger
    inherits. Cut any way back other than reverting the PR or a tracked
    follow-up.
+4. Every ", and", ", so", "along with" or "next to" that joins two clauses: keep it only
+   when the clauses are parallel. When the second follows from the first, name
+   the relation (when, because, so) or split the sentence; when it adds a
+   different fact, give that fact its own sentence.
 
-`Testing` and the disclosure boxes are exempt: their length tracks what was
-verified. Report the word count before and after the cut.
+5. Each `Testing` box: count its claims and words. More than one claim, or
+   more than about 25 words, means splitting or trimming its wording; never
+   dropping a real check.
+6. Facts repeated across sections (Summary, users, risks, Testing): keep each
+   in the one section that owns it.
+
+Report the word count before and after the cut.
 
 A sentence you keep, add or rewrite after the hand-back gets the writer's rules
 in full: check it against the common-mistakes table and re-run

@@ -57,13 +57,6 @@
     "climate": {
       "melcloudhome": {
         "state_attributes": {
-          "preset_mode": {
-            "state": {
-              "room": "Rum",
-              "flow": "Framledning",
-              "curve": "Kurva"
-            }
-          },
           "fan_mode": {
             "state": {
               "auto": "Auto",
@@ -94,6 +87,18 @@
               "centre": "Mitten",
               "rightcentre": "Höger-mitten",
               "right": "Höger"
+            }
+          }
+        }
+      },
+      "zone": {
+        "name": "Zon {zone}",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "room": "Rum",
+              "flow": "Framledning",
+              "curve": "Kurva"
             }
           }
         }
@@ -212,6 +217,7 @@
     },
     "fan": {
       "melcloudhome": {
+        "name": "Luftkonditioneringens fläkt",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -219,6 +225,16 @@
             }
           }
         }
+      }
+    },
+    "switch": {
+      "system_power": {
+        "name": "System på/av"
+      }
+    },
+    "water_heater": {
+      "tank": {
+        "name": "Varmvattentank"
       }
     }
   },

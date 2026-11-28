@@ -107,15 +107,23 @@ The "Real-time updates" sensor (under the MELCloud Home service device, Diagnost
 
 ## Important Notes
 
-### Stable Entity IDs
+### Device Names and Entity IDs
 
-This integration uses **UUID-based entity IDs** to ensure automations never break when device names change. Entity IDs follow the format `{domain}.melcloudhome_{short_id}_{entity_name}` where `short_id` is derived from the device UUID.
+New devices are named after the unit in your MELCloud Home account, for example "Living Room AC". Devices added by earlier versions keep their name, your label and their area.
 
-**Device names** are set to friendly names from your MELCloud Home account (e.g., "Living Room").
+The name is set once, when the device is created: renaming a unit in the MELCloud Home app doesn't rename its device in Home Assistant.
 
-**⚠️ Warning:** If you delete entities and use the "Recreate entity IDs" option, entity IDs will change to name-based IDs (e.g., `climate.living_room_climate`), breaking automations. To preserve IDs, delete and re-add the integration instead.
+Home Assistant builds each new entity ID from the area, the device name and the entity name, following your entity ID setting. A fresh install with no areas gets IDs such as `climate.living_room_ac` and `water_heater.heat_pump_tank`. If two units in different buildings share a name, the second gets a `_2` suffix; rename one of them to tell them apart.
 
-See [docs/entities.md](docs/entities.md) for complete entity ID reference.
+If you use areas, rename each device to what it is (for example "Air conditioner") when you pick its area in the setup dialog; [docs/entities.md](docs/entities.md#a-unit-named-after-its-room) explains why and lists the fixes for later.
+
+Existing entity IDs never change, so automations keep working. To find a unit's entities, open its device page.
+
+Each device's serial number is its short ID, such as `melcloudhome_0efc_76db`. It identifies the unit and matches the entity IDs of installs set up by earlier versions.
+
+**Recreate entity IDs:** the ↻ option proposes Home Assistant's own ID, built from the current device name and label. A recreated ID can differ from the old one, so update any automation that uses it.
+
+See [docs/entities.md](docs/entities.md) for the full entity reference.
 
 ## Entities
 
@@ -138,7 +146,7 @@ The integration creates the following entities for each device:
 
 *Energy monitoring auto-detected from device capabilities
 
-**Complete entity reference:** See [docs/entities.md](docs/entities.md) for detailed entity IDs, control options, and configuration examples.
+**Complete entity reference:** See [docs/entities.md](docs/entities.md) for entity names, control options, and configuration examples.
 
 **Apple HomeKit:** See [docs/homekit.md](docs/homekit.md) for what the fan entity looks like in the Home app, how to get it bridged, and the behaviour that surprises people.
 

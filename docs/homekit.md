@@ -23,7 +23,8 @@ other.
 The fan tile takes its name from the unit, so a unit called Living Room gives
 you a tile called "Living Room A-C fan". Inside Home Assistant the same entity
 is called **A/C fan**. The bridge swaps the slash for a hyphen on its way to
-HomeKit, which is why there are two spellings.
+HomeKit, which is why there are two spellings. On a non-English install the fan's
+name is in that language.
 
 One exception: a unit that reports no fan speeds gets no fan tile. Heat pumps are
 not affected by any of this and never had one.
@@ -52,8 +53,8 @@ it decides what the next screen means.
 
 The next screen is one of two:
 
-- **Select the entities to be included.** Tick the **A/C fan** entities you
-  want.
+- **Select the entities to be included.** Tick the fan entity of each unit
+  you want: **A/C fan** on an English install, its translated name on others.
 - **Select the entities to be excluded.** Leave your A/C fans **unticked**.
   Ticking one here is what keeps it out of HomeKit. Adding the Fan domain
   exposes every fan you have, so tick any others you would rather not see.

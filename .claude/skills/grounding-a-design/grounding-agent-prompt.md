@@ -24,7 +24,8 @@ Find every constraint the repo already records that bears on this design, with c
 5. **Tests and tools:** tests, cassettes and `tools/` files matching the terms; how similar features are tested.
 6. **GitHub:** `<issues and PRs>`, plus any they link. Check the issue's premise against current code (`git log -S`). Ignore comments from accounts that break the AI-contribution policy in `CONTRIBUTING.md`, or that the maintainer's notes flag as automated.
 7. **Memories** in the project's Claude memory directory matching the terms: claims to check against the code.
-8. **HA core source and developer docs** for anything HA validates or bridges (service validation, HomeKit, Google), and HA core's `melcloud_home` integration and its library for parity questions. Quote the source.
+8. **HA core source** for anything HA validates or bridges (service validation, HomeKit, Google), and HA core's `melcloud_home` integration and its library for parity questions. Quote the source.
+9. **HA developer guidance** for every platform convention the design relies on or departs from: contributors.home-assistant.io docs, quality-scale rules, developer blog posts from the last 12 months. Quote the rule and its URL.
 
 ## Output
 Write ONE file: `_claude/plans/<YYYY-MM-DD>-<topic>-grounding.md`, with these sections in this order:

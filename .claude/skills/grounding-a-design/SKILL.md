@@ -11,6 +11,8 @@ Designs that contradict this repo's ADRs, plans, reviews and issue threads get r
 
 **Reviewing a design that has a grounding file** (`_claude/plans/*-grounding.md`): audit it. Spot-check its citations, then look for what it couldn't know: newer measurements, logs, code changed since. Skip to step 5.
 
+**A revision that adds mechanisms is a new design.** Re-run step 2 with the new mechanism terms before writing the revision, and step 3 for any new platform convention. An earlier grounding file covers only the terms it searched.
+
 ## Step 1: Check the premise
 
 Read the whole issue thread, newest comment first (`gh issue view N --json body,comments`): it outranks memories and older notes. If the issue cites code, read that code. If it claims something exists or was built, check history (`git log -S<symbol>`, `git show`). Titles state what the reporter wanted. Comments from accounts that break the AI-contribution policy in `CONTRIBUTING.md`, or that the maintainer's notes flag as automated, are noise. If the premise fails, still do step 2.
@@ -38,6 +40,7 @@ Grep each for your terms; read what matches. Skip a source only with the reason 
 - **Live measurements** in progress (soaks, logs) and the scripts producing them
 - Tests, cassettes, `tools/mock_melcloud_server.py`; memories, checked against code
 - **HA core source** for anything HA validates or bridges (service validation, HomeKit, Google); core's `melcloud_home` for parity issues. Not local: read it on GitHub, cite an ADR's recorded verification with its HA version, or label the point *unverified*.
+- **HA developer guidance** for every platform convention the design relies on or departs from (entity IDs and names, devices, areas, config flows, translations): the developer docs at contributors.home-assistant.io (formerly developers.home-assistant.io), the quality-scale rule pages, and developer blog posts from the last 12 months. Quote the rule with its URL. A design that departs from a "should" says so and why. Not reachable: label the point *unverified*.
 
 ## Step 4: Delegate the reading when it's large
 
@@ -56,3 +59,5 @@ Cite the constraint behind each decision. Mark claims *measured*, *read* or *jud
 | "Filenames show which apply" | Baselines missed constraints that way. |
 | "The memory says X" | A dated claim. Check the code. |
 | "Stated a risk naming an unopened ADR" | Open it, or label it *unverified*. |
+| "I read HA's source, so I know the rules" | Source shows what works; docs show what's allowed and where HA is heading. #403 approved self-set entity IDs that HA's docs advise against. |
+| "The grounding file already exists" | It covers only its own search terms. #403's revision reused one and missed ADR-025. |

@@ -48,7 +48,7 @@ class ATWClimateBase(
     """
 
     _attr_has_entity_name = True
-    _attr_translation_key = "melcloudhome"  # For preset mode translations
+    _attr_translation_key = "zone"  # Name "Zone {zone}" and preset translations
     _attr_native_temperature_unit = _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_min_temp = ATW_TEMP_MIN_ZONE
     _attr_max_temp = ATW_TEMP_MAX_ZONE
@@ -74,11 +74,10 @@ class ATWClimateBase(
             hvac_modes.append(HVACMode.COOL)
         self._attr_hvac_modes = hvac_modes
 
-        # Short entity name (device name provides UUID prefix)
-        self._attr_name = f"Zone {zone_number}"
+        self._attr_translation_placeholders = {"zone": str(zone_number)}
 
         # Device info using shared helper (groups with water_heater/sensors)
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
         # Supported features
         self._attr_supported_features = (

@@ -97,7 +97,7 @@ class ATAEntityBase(CoordinatorEntity):  # type: ignore[misc]
     - self._building_id: str
     - self._entry: ConfigEntry
     - self._attr_unique_id
-    - self._attr_name
+    - self._attr_translation_key (or _attr_name = None for a main feature)
     - self._attr_device_info
     """
 

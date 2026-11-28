@@ -205,36 +205,16 @@ Files are organized by device type: `client_ata.py` (Air-to-Air), `client_atw.py
 
 ---
 
-## Entity ID Strategy
+## Entity Naming
 
-All entities use UUID-based device names for stable entity IDs (format: `melcloudhome_{short_id}_{entity_type}` where short_id is first 4 + last 4 chars of UUID). Friendly device names are set via `name_by_user` in device registry.
+Home Assistant and the user own entity IDs and names; the integration supplies names, identity and translations ([ADR-030](decisions/030-follow-home-assistants-naming-model.md)).
 
-**ATA (Air-to-Air) Entities:**
+- **Devices:** `_create_unit_devices` (`__init__.py`) creates each unit's device before platform setup. A new device gets the unit's name, once, through `async_get_or_create`. An existing device gets only the fields from `device_fields` (`helpers.py`), so its name, `name_by_user` and area are left alone. `DeviceInfo` from `create_device_info` carries no name, so platform setup never renames a device. The integration never writes `name_by_user` and sets no suggested area.
+- **Serial number:** every unit device carries `serial_number` = `short_unit_id(unit.id)`, `melcloudhome_{first4}_{last4}` of the UUID with hyphens removed. Existing devices gain it at the first startup after the upgrade.
+- **Entities:** every entity has `has_entity_name = True` and none sets `entity_id`. Home Assistant builds new IDs from the area, device name and entity name, following the user's entity ID setting; registered IDs never change. Code and tools find entities by unique ID or through the device registry.
+- **Names:** the ATA climate entity has `_attr_name = None`, so it shows the device name. Other names come from translation keys in `translations/*.json`, including the fan ("A/C fan"), the ATW zones ("Zone 1", "Zone 2"), the tank ("Tank") and the system power switch ("System power").
 
-- `climate.melcloudhome_{short_id}_climate` - Main climate control
-- `fan.melcloudhome_{short_id}_a_c_fan` - Fan speed, vane oscillation and unit power ([ADR-025](decisions/025-homekit-fan-entity.md))
-- `sensor.melcloudhome_{short_id}_room_temperature` - Current temperature
-- `sensor.melcloudhome_{short_id}_energy_*` - Energy consumption (daily/weekly/monthly)
-- `binary_sensor.melcloudhome_{short_id}_error` - Error state
-- `binary_sensor.melcloudhome_{short_id}_connection` - Connection status
-
-**ATW (Air-to-Water) Entities:**
-
-- `switch.melcloudhome_{short_id}_system_power` - System power control
-- `climate.melcloudhome_{short_id}_zone_1` - Zone 1 climate control
-- `climate.melcloudhome_{short_id}_zone_2` - Zone 2 climate control (if available)
-- `water_heater.melcloudhome_{short_id}_tank` - DHW tank control
-- `sensor.melcloudhome_{short_id}_zone_*_temperature` - Zone temperatures
-- `sensor.melcloudhome_{short_id}_tank_temperature` - DHW tank temperature
-- `sensor.melcloudhome_{short_id}_outside_temperature` - Outside temperature
-- `sensor.melcloudhome_{short_id}_flow_temperature` - Flow temperature
-- `sensor.melcloudhome_{short_id}_return_temperature` - Return temperature
-- `sensor.melcloudhome_{short_id}_energy_*` - Energy sensors (if supported)
-- `sensor.melcloudhome_{short_id}_wifi_signal` - WiFi signal strength (RSSI)
-- `sensor.melcloudhome_{short_id}_operation_status` - Current operation mode
-- `binary_sensor.melcloudhome_{short_id}_error` - Error state
-- `binary_sensor.melcloudhome_{short_id}_connection` - Connection status
-- `binary_sensor.melcloudhome_{short_id}_forced_dhw` - Forced DHW mode active
+[docs/entities.md](entities.md) lists every entity by name, with fresh-install ID examples.
 
 ---
 
@@ -412,18 +392,18 @@ graph TD
 
 Both paths run the same `async_setup_entry`, but they diverge in what already exists on disk, and that divergence is where most setup-related behaviour differences come from.
 
-**Shared sequence** (`__init__.py`): build client → `restore_tokens` → `coordinator.async_config_entry_first_refresh()` (`/context`, plus outdoor-temp polling) → `coordinator.async_setup()` (tracker `Store` loads, periodic timer registration, deferred fetch task) → seed `known_device_ids` → `_clear_friendly_device_names` → `async_forward_entry_setups` → `_restore_device_names`.
+**Shared sequence** (`__init__.py`): build client → `restore_tokens` → `coordinator.async_config_entry_first_refresh()` (`/context`, plus outdoor-temp polling) → `coordinator.async_setup()` (tracker `Store` loads, periodic timer registration, deferred fetch task) → seed `known_device_ids` → `_create_unit_devices` → `async_forward_entry_setups`.
 
 Entities are created at `async_forward_entry_setups`. Only `/context` blocks that; energy and telemetry are fetched afterwards in a background task (ADR-021).
 
 |                          | Fresh install                                                                                                                                                                                                                                                     | Restart                                                                                                                                                               |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | States before setup runs | none                                                                                                                                                                                                                                                              | HA's entity registry writes `unavailable` + `restored: True` for every known entity, so the full list appears greyed out before our code runs                         |
-| Entity IDs               | allocated now from the UUID scheme                                                                                                                                                                                                                                | read from the registry, hence stable                                                                                                                                  |
+| Entity IDs               | built now by Home Assistant from the area, device name and entity name                                                                                                                                                                                            | read from the registry, hence stable                                                                                                                                  |
 | Tracker `Store`s         | empty, no file                                                                                                                                                                                                                                                    | cumulative totals and hour values restored, then the retention/corrupt-value cleanup pass runs                                                                        |
 | Energy baseline          | `_is_first_initialization` is true, so `_initialize_unit_tracking` marks returned hours _seen_ without adding them to the cumulative — historical data must not inflate the meter. Cumulative starts at 0.0 and the first real increment lands on the _next_ poll | false — normal delta accounting resumes from the restored cumulative, which the sensor shows once the first fetch succeeds, even if the unit reported no hours (#343) |
 | Statistics zero point    | set from the first valid float                                                                                                                                                                                                                                    | read from the recorder database                                                                                                                                       |
-| Device names             | UUID-based                                                                                                                                                                                                                                                        | user's saved names restored                                                                                                                                           |
+| Device names             | `_create_unit_devices` names each new device after its unit                                                                                                                                                                                                       | unchanged; `_create_unit_devices` updates only the other fields, such as the serial number                                                                            |
 | Auth                     | full login                                                                                                                                                                                                                                                        | tokens restored from `entry.data`                                                                                                                                     |
 | Outdoor temp             | polls every unit (nothing to gate on)                                                                                                                                                                                                                             | polls every unit _again_ — `_last_outdoor_temp_poll` is in-memory only, so the 30-minute gate is defeated by every restart                                            |
 

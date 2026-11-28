@@ -9,6 +9,7 @@ from .diagnostics_shared import (
     serialize_outdoor_temp_fields,
     serialize_wifi_signal_fields,
 )
+from .helpers import short_unit_id
 
 
 def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
@@ -21,7 +22,7 @@ def serialize_ata_unit(unit: AirToAirUnit) -> dict[str, Any]:
         Dictionary with ATA-specific diagnostic fields
     """
     return {
-        "id": unit.id,
+        "id": short_unit_id(unit.id),
         "name": "***REDACTED***",
         "power": unit.power,
         "operation_mode": unit.operation_mode,

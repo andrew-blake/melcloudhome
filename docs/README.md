@@ -6,17 +6,17 @@ Key architectural decisions for the MELCloud Home integration:
 
 - [ADR-001: Bundled API Client Architecture](decisions/001-bundled-api-client.md) - Why we bundle the API client instead of separate package
 - [ADR-002: Authentication Refresh Strategy](decisions/002-authentication-refresh-strategy.md) - Session management approach (SUPERSEDED by ADR-017)
-- [ADR-003: Entity Naming Strategy](decisions/003-entity-naming-strategy.md) - Stable entity ID generation
+- [ADR-003: Entity Naming Strategy](decisions/003-entity-naming-strategy.md) - Stable entity ID generation (SUPERSEDED by ADR-030)
 - [ADR-004: Integration Refactoring](decisions/004-integration-refactoring.md) - Separation of concerns
 - [ADR-005: Divergence from Official MELCloud](decisions/005-divergence-from-official-melcloud.md) - Why we target different API
 - [ADR-006: Entity Description Pattern](decisions/006-entity-description-pattern.md) - Sensor/binary_sensor implementation
 - [ADR-007: Defer WebSocket Implementation](decisions/007-defer-websocket-implementation.md) - Real-time updates deferral (SUPERSEDED by ADR-019)
 - [ADR-008: Energy Monitoring Architecture](decisions/008-energy-monitoring-architecture.md) - Energy tracking with persistence
 - [ADR-009: Reconfigure Password-Only](decisions/009-reconfigure-password-only.md) - Config flow password updates
-- [ADR-010: Entity ID Prefix Change](decisions/010-entity-id-prefix-change.md) - Breaking change for stable IDs
+- [ADR-010: Entity ID Prefix Change](decisions/010-entity-id-prefix-change.md) - Breaking change for stable IDs (SUPERSEDED by ADR-030)
 - [ADR-011: Multi-Device-Type Architecture](decisions/011-multi-device-type-architecture.md) - ATA/ATW unified client (facade pattern)
 - [ADR-012: ATW Entity Architecture](decisions/012-atw-entity-architecture.md) - Power control and entity design for heat pumps
-- [ADR-013: Automatic Friendly Device Names](decisions/013-automatic-friendly-device-names.md) - UX improvement via name_by_user
+- [ADR-013: Automatic Friendly Device Names](decisions/013-automatic-friendly-device-names.md) - UX improvement via name_by_user (SUPERSEDED by ADR-030)
 - [ADR-014: ATW Telemetry Sensors](decisions/014-atw-telemetry-sensors.md) - Flow/return temperature sensors implementation
 - [ADR-015: Skip ATW Energy Monitoring](decisions/015-skip-atw-energy-monitoring.md) - Initial decision to skip energy (SUPERSEDED by ADR-016)
 - [ADR-016: Implement ATW Energy Monitoring](decisions/016-implement-atw-energy-monitoring.md) - Energy monitoring with capability-based detection (ERSC-VM2D)
@@ -32,6 +32,7 @@ Key architectural decisions for the MELCloud Home integration:
 - [ADR-026: Remove Control-Write Deduplication](decisions/026-remove-control-write-dedup.md) - every control command reaches the API; an accepted write is applied to the coordinator's copy at once, and writes arriving in one turn share a request (supersedes ADR-018)
 - [ADR-027: ATW Energy from the combined-energy Report](decisions/027-atw-energy-from-combined-energy.md) - heat pump energy from `/report/v1/combined-energy`, which has the hour in progress; ATA stays on telemetry; energy polls at a fixed per-install minute near the end of each half hour
 - [ADR-028: Wi-Fi Signal from the Telemetry Series](decisions/028-wifi-signal-from-telemetry.md) - Wi-Fi signal for both device types from the telemetry rssi series every 30 minutes, after `/context` rssi froze; an empty response keeps the previous reading
+- [ADR-030: Follow Home Assistant's Naming Model](decisions/030-follow-home-assistants-naming-model.md) - devices named after the unit, entity IDs left to Home Assistant, translated entity names, short unit ID as serial number (supersedes ADR-003, ADR-010, ADR-013)
 
 ## Architecture
 

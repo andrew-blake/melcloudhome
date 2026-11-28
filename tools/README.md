@@ -243,12 +243,14 @@ See also:
 **Location:** [`mitmproxy/`](mitmproxy/)
 
 **Key capabilities:**
+
 - Capture real mobile app ↔ MELCloud API traffic for device-support requests
 - Inspect OAuth 2.0 PKCE auth flow (`auth.melcloudhome.com` + federated Cognito)
 - Replay captures against a mock server for regression testing
 - Contribute device support without owning the hardware
 
 **Quick start:**
+
 ```bash
 uv sync --group reverse-engineering              # installs mitmdump
 uv run mitmdump -s tools/mitmproxy/capture.py    # filter + save MELCloud traffic
@@ -257,6 +259,7 @@ uv run mitmdump -s tools/mitmproxy/capture.py    # filter + save MELCloud traffi
 See [`mitmproxy/README.md`](mitmproxy/README.md) for the iOS setup (proxy + CA certificate installation) and [`../docs/research/REVERSE_ENGINEERING.md`](../docs/research/REVERSE_ENGINEERING.md) for the full device-support workflow.
 
 **Use cases:**
+
 - User reports unsupported controller → Ask for an anonymised mitmproxy capture, replay it through the mock server.
 - Silent payload drop (200 OK, no state change) → Capture the official app sending the same control and compare schemas.
 - Debugging live integration issues → Point the dev HA through mitmproxy and watch what the integration actually sends.
@@ -268,6 +271,8 @@ See [`mitmproxy/README.md`](mitmproxy/README.md) for the iOS setup (proxy + CA c
 ### `list_entities.sh`
 
 List and inspect MELCloud Home entities via Home Assistant API. Useful for debugging and monitoring integration status.
+
+It matches entity IDs that contain `melcloud`, so it finds the `melcloudhome_` IDs that existing installs keep. A fresh install's IDs, such as `climate.living_room_ac`, don't match.
 
 **Usage:**
 
@@ -292,15 +297,15 @@ List and inspect MELCloud Home entities via Home Assistant API. Useful for debug
 
 ═══ CLIMATE Platform (1 entities) ═══
 
-climate.melcloud_0efc_76db
+climate.melcloudhome_0efc_76db_climate
   ✓ State: heat
 
 ═══ SENSOR Platform (2 entities) ═══
 
-sensor.melcloud_0efc_76db_room_temperature
+sensor.melcloudhome_0efc_76db_room_temperature
   ✓ State: 19.0
 
-sensor.melcloud_bf8d_5119_room_temperature
+sensor.melcloudhome_bf8d_5119_room_temperature
   ✓ State: 17.5
 
 ═══ Summary ═══
@@ -310,6 +315,8 @@ Total MELCloud entities: 3
 ### `test_turn_on_off.sh`
 
 Test TURN_ON/TURN_OFF feature flags and functionality for climate entities. Verifies HA 2025.1+ compliance.
+
+It matches entity IDs that start with `climate.melcloud_`, so it finds neither `climate.melcloudhome_` IDs nor a fresh install's IDs.
 
 **Usage:**
 
@@ -379,7 +386,7 @@ The output holds unit IDs, so it defaults to the gitignored `_claude/ws-logs/`. 
 
 ### `dump_sensor_readings.py`
 
-Tabulates every melcloudhome sensor alongside its `last_reading` attribute — the time the *unit*
+Tabulates every melcloudhome sensor alongside its `last_reading` attribute — the time the _unit_
 recorded the value ([ADR-022](../docs/decisions/022-reading-provenance.md)). Comparing `reading age`
 against HA's own `changed`/`updated` is how you tell a genuinely steady reading from one frozen by a
 poll that stopped succeeding. The History UI will not chart a custom attribute, so this is how you
@@ -414,7 +421,8 @@ periods, the first ATW unit's native `OutdoorTemperature` context field (a
 control group that bypasses trendsummary), and Home Assistant's currently
 reported outdoor temperature — including the `last_reading` attribute, so the
 integration's claimed staleness can be validated against the raw API. Units
-are discovered from `/context`; HA entity IDs are derived from unit UUIDs.
+are discovered from `/context`; HA entity IDs are built from unit UUIDs in the
+`melcloudhome_` form that existing installs keep, so a fresh install's IDs don't match.
 
 ```bash
 source .env
@@ -475,20 +483,22 @@ long-lived access token.
 **Usage:**
 
 ```bash
-uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors
+uv run tools/find_corrupt_energy_readings.py                       # auto-discovers sensor.melcloudhome_* energy sensors (existing installs)
 uv run tools/find_corrupt_energy_readings.py --days 1095            # scan further back (default: 730 days)
 uv run tools/find_corrupt_energy_readings.py --threshold-kwh 50     # lower the sensitivity
-uv run tools/find_corrupt_energy_readings.py --entity sensor.melcloudhome_0efc_76db_energy
+uv run tools/find_corrupt_energy_readings.py --entity sensor.living_room_ac_energy
 uv run tools/find_corrupt_energy_readings.py --all --csv bad_points.csv  # scan every cumulative sensor, export to CSV
 uv run tools/find_corrupt_energy_readings.py --insecure              # self-signed local cert
 ```
+
+Auto-discovery matches the `sensor.melcloudhome_` prefix that existing installs keep. On an install whose energy sensors have other IDs, pass `--entity` or `--all`.
 
 **Fixing a flagged point:**
 
 For each entity/timestamp the script flags:
 
 1. Open **Developer Tools → Statistics** in Home Assistant
-2. Search for the entity (e.g. `sensor.melcloudhome_b657_22c6_energy`) and click
+2. Search for the entity (e.g. `sensor.living_room_ac_energy`) and click
    the **ramp icon** on its row ("Adjust a statistic")
 3. Pick the flagged hour from the list (times are shown in your local timezone —
    the script prints UTC)
@@ -498,7 +508,7 @@ For each entity/timestamp the script flags:
 
 **Known limitation — the entity's own history chart:** "Adjust a statistic"
 corrects the consumption series the **Energy Dashboard** reads, and that is
-the fix that matters. The *entity's* history chart (open the sensor →
+the fix that matters. The _entity's_ history chart (open the sensor →
 History) plots a different series — the sensor's recorded state — and will
 still show the spike after your adjustment. Recent history clears by itself
 when it ages past the recorder purge window (10 days by default). History
@@ -508,4 +518,4 @@ spike there is permanent. This is cosmetic only: nothing is computed from
 those values, and your Energy Dashboard, sensor readings, and automations
 are unaffected.
 
-**Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's *entire* history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.
+**Complementary tip:** the "Adjust a statistic" dialog itself has an **Outliers** button (bottom-left, before you pick a specific hour) that ranks the 10 largest deltas in that entity's _entire_ history, using 5-minute data where available — finer-grained than this script's hourly scan. It's a bare magnitude ranking though (no plausibility check, no signature matching, capped at 10, one entity at a time), so it's a good quick sanity-check per entity but doesn't replace running this script across a whole install.

@@ -160,7 +160,9 @@ async def poll_once(client, units, out_dir, ha_url, ha_token, insecure, lookback
             )
             await asyncio.sleep(1)
 
-    # HA's own currently-reported state per unit
+    # HA's own currently-reported state per unit. Builds prod's existing IDs
+    # (melcloudhome_<short id>), which never change; an install set up since
+    # #403 has HA-native IDs and needs these looked up by unique ID instead.
     ha_rows = []
     for label, unit_id in units.items():
         suffix = entity_suffix(unit_id)

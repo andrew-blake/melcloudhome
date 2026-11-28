@@ -64,7 +64,7 @@ make test                        # All tests with coverage
 
 - **Bundled API client:** Library in `api/` subfolder - facade pattern composing ATA + ATW clients
 - **Multi-device architecture:** Platform routers dispatch to device-specific implementations
-- **Entity IDs:** UUID-based for stability - see `docs/entities.md`
+- **Entity IDs:** Entities are looked up by unique ID; HA owns entity IDs - see `docs/entities.md`
 
 ### API Documentation
 

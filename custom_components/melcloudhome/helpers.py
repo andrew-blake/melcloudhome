@@ -68,39 +68,44 @@ def with_debounced_refresh(
     return decorator
 
 
-def create_device_info(unit: DeviceUnit, building: Building) -> DeviceInfo:
-    """Create standardized device info for ATA or ATW devices.
+def short_unit_id(unit_id: str) -> str:
+    """The unit's short ID, melcloudhome_{first4}_{last4} of its UUID.
 
-    All entities for the same device MUST use identical identifiers
-    to be grouped under one device in the Home Assistant UI.
-
-    Works for both AirToAirUnit and AirToWaterUnit - automatically
-    determines correct model string based on unit type.
-
-    Args:
-        unit: ATA or ATW device object
-        building: Building containing the device
-
-    Returns:
-        DeviceInfo dict with identifiers, name, manufacturer, model, area
+    Shown as the device's serial number, and the form older entity IDs carry,
+    so diagnostics use it too: a dump stays matchable to the device page.
     """
-    # Extract UUID fragments for stable device naming
-    unit_id_clean = unit.id.replace("-", "")
-    device_name = f"melcloudhome_{unit_id_clean[:4]}_{unit_id_clean[-4:]}"
+    clean = unit_id.replace("-", "")
+    return f"melcloudhome_{clean[:4]}_{clean[-4:]}"
 
-    # Determine model string based on device type
+
+def device_fields(unit: DeviceUnit) -> dict[str, Any]:
+    """Device registry fields for an ATA or ATW unit, without a name.
+
+    All entities for the same device MUST use identical identifiers to be
+    grouped under one device in the Home Assistant UI.
+    """
     if isinstance(unit, AirToWaterUnit):
         model = "Air-to-Water Heat Pump (Ecodan via MELCloud Home)"
     else:  # AirToAirUnit
         model = "Air-to-Air Heat Pump (via MELCloud Home)"
 
-    return DeviceInfo(
-        identifiers={(DOMAIN, unit.id)},
-        name=device_name,
-        manufacturer="Mitsubishi Electric",
-        model=model,
-        suggested_area=building.name,
-    )
+    return {
+        "identifiers": {(DOMAIN, unit.id)},
+        "manufacturer": "Mitsubishi Electric",
+        "model": model,
+        "serial_number": short_unit_id(unit.id),
+    }
+
+
+def create_device_info(unit: DeviceUnit) -> DeviceInfo:
+    """Device info for an entity of an ATA or ATW unit.
+
+    No name and no suggested_area (ADR-030): setup names each new device once,
+    before its entities register (_create_unit_devices in __init__.py). HA
+    writes a DeviceInfo name on every startup, and on 2026.11 a device name
+    write clears the labels users saved on its entities (compat_name).
+    """
+    return DeviceInfo(**device_fields(unit))
 
 
 def initialize_entity_base(
@@ -159,7 +164,7 @@ def initialize_entity_base(
     entity._attr_unique_id = f"{unit.id}_{description.key}"
 
     # Device info using shared helper
-    entity._attr_device_info = create_device_info(unit, building)
+    entity._attr_device_info = create_device_info(unit)
 
 
 # =================================================================

@@ -6,6 +6,7 @@ language. Lives in the api tier because it needs neither HA nor Docker.
 """
 
 import json
+import re
 from pathlib import Path
 
 TRANSLATIONS_DIR = (
@@ -63,3 +64,51 @@ def test_english_covers_every_config_flow_string() -> None:
         "service_unavailable",
         "unknown",
     }
+
+
+def _leaves(obj: object, prefix: str = "") -> dict[str, str]:
+    """Flatten a translations dict to {dotted path: string}."""
+    if isinstance(obj, str):
+        return {prefix: obj}
+    leaves: dict[str, str] = {}
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            leaves |= _leaves(value, f"{prefix}.{key}" if prefix else key)
+    return leaves
+
+
+def _placeholders(text: str) -> set[str]:
+    return set(re.findall(r"\{(\w+)\}", text))
+
+
+def test_every_translation_keeps_the_english_placeholders() -> None:
+    """HA drops a translated string whose placeholders differ, and logs an ERROR.
+
+    helpers/translation.py compares each string's placeholder set with the
+    English one; key parity alone can't see a translated {zone} gone missing.
+    """
+    english = _leaves(
+        json.loads((TRANSLATIONS_DIR / "en.json").read_text(encoding="utf-8"))
+    )
+    for file in sorted(TRANSLATIONS_DIR.glob("*.json")):
+        strings = _leaves(json.loads(file.read_text(encoding="utf-8")))
+        for path, text in strings.items():
+            assert _placeholders(text) == _placeholders(english[path]), (
+                f"{file.name} {path}: {text!r}"
+            )
+
+
+def test_zone_presets_live_under_the_zone_key() -> None:
+    """ATW zones (translation_key "zone") own the presets; ATA climate has none.
+
+    Key parity passes even if the presets never moved, so pin where they are.
+    """
+    presets = {"room", "flow", "curve"}
+    english = json.loads((TRANSLATIONS_DIR / "en.json").read_text(encoding="utf-8"))
+    icons = json.loads(
+        (TRANSLATIONS_DIR.parent / "icons.json").read_text(encoding="utf-8")
+    )
+    for climate in (english["entity"]["climate"], icons["entity"]["climate"]):
+        zone_states = climate["zone"]["state_attributes"]["preset_mode"]["state"]
+        assert set(zone_states) == presets
+        assert "preset_mode" not in climate["melcloudhome"]["state_attributes"]

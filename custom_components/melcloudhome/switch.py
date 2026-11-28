@@ -52,6 +52,7 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
     """
 
     _attr_has_entity_name = True  # Use device name + entity name pattern
+    _attr_translation_key = "system_power"
 
     def __init__(
         self,
@@ -67,11 +68,8 @@ class ATWSystemPowerSwitch(ATWEntityBase, SwitchEntity):  # type: ignore[misc]
         self._attr_unique_id = f"{unit.id}_system_power"
         self._entry = entry
 
-        # Short entity name (device name provides UUID prefix)
-        self._attr_name = "System Power"
-
         # Device info using shared helper (groups with climate/water_heater/sensors)
-        self._attr_device_info = create_device_info(unit, building)
+        self._attr_device_info = create_device_info(unit)
 
     @property
     def is_on(self) -> bool | None:

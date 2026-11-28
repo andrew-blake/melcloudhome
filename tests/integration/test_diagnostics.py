@@ -7,7 +7,9 @@ Reference: docs/testing-best-practices.md
 Run with: make test-integration
 """
 
+import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -21,6 +23,7 @@ from homeassistant.helpers import (
 )
 from homeassistant.util import dt as dt_util
 
+from custom_components.melcloudhome.api.models import Building, UserContext
 from custom_components.melcloudhome.api.parsing import Reading
 from custom_components.melcloudhome.const import CONF_ENABLE_WEBSOCKET, DOMAIN
 from custom_components.melcloudhome.diagnostics import (
@@ -29,14 +32,12 @@ from custom_components.melcloudhome.diagnostics import (
 
 from .conftest import (
     MOCK_CLIENT_PATH,
-    TEST_ATA_UNIT_ID,
     create_mock_ata_building,
     create_mock_ata_unit,
     create_mock_ata_user_context,
     create_mock_atw_building,
     create_mock_atw_unit,
     create_mock_atw_user_context,
-    entity_id_for,
     setup_ata_integration_custom,
     setup_atw_integration_custom,
     wire_connected_ws,
@@ -46,6 +47,10 @@ from .ha_testing import (
     MockConfigEntry,
     async_fire_time_changed,
 )
+
+UNIT_1 = "1111aaaa-0000-4000-8000-00000000aaaa"
+UNIT_2 = "2222bbbb-0000-4000-8000-00000000bbbb"
+BUILDING_1 = "b1d61111-0000-4000-8000-000000000001"
 
 
 @pytest.mark.asyncio
@@ -146,16 +151,12 @@ async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
     assert "entities" in diagnostics
     entities = diagnostics["entities"]
 
-    climate = _diagnostics_entry(
-        entities, entity_id_for(hass, ("climate", TEST_ATA_UNIT_ID))
-    )
+    # Keyed by domain + unique ID, the unit UUID replaced by its short ID.
+    climate = entities["climate.melcloudhome_a1b2_9abc"]
     assert climate["state"] == "heat"
     assert "attributes" in climate
 
-    temp_sensor = _diagnostics_entry(
-        entities,
-        entity_id_for(hass, ("sensor", f"{TEST_ATA_UNIT_ID}_room_temperature")),
-    )
+    temp_sensor = entities["sensor.melcloudhome_a1b2_9abc_room_temperature"]
     assert temp_sensor["state"] == "20.0"
 
 
@@ -163,7 +164,7 @@ async def test_diagnostics_includes_entity_states(hass: HomeAssistant) -> None:
 async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> None:
     """Test diagnostics includes detailed user context with buildings and units."""
     unit1 = create_mock_ata_unit(
-        unit_id="unit-1",
+        unit_id=UNIT_1,
         name="Living Room",
         power=True,
         operation_mode="Heat",
@@ -172,7 +173,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
         has_energy_meter=True,
     )
     unit2 = create_mock_ata_unit(
-        unit_id="unit-2",
+        unit_id=UNIT_2,
         name="Bedroom",
         power=False,
         operation_mode="Cool",
@@ -183,7 +184,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     mock_context = create_mock_ata_user_context(
         [
             create_mock_ata_building(
-                building_id="building-1", name="Home", units=[unit1, unit2]
+                building_id=BUILDING_1, name="Home", units=[unit1, unit2]
             )
         ]
     )
@@ -198,7 +199,11 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     assert len(user_context["buildings"]) == 1
 
     building_data = user_context["buildings"][0]
-    assert building_data["id"] == "building-1"
+    # sha256 pseudonym, shaped like tests/conftest.py:pseudonymize_uuid
+    assert building_data["id"] == (
+        "aaaaaaaa-aaaa-aaaa-aaaa-"
+        + hashlib.sha256(BUILDING_1.encode()).hexdigest()[:12]
+    )
     assert building_data["name"] == "Building-1"
     assert building_data["ata_unit_count"] == 2
     assert building_data["atw_unit_count"] == 0
@@ -206,7 +211,7 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     units = building_data["ata_units"]
     assert len(units) == 2
 
-    assert units[0]["id"] == "unit-1"
+    assert units[0]["id"] == "melcloudhome_1111_aaaa"
     assert units[0]["name"] == "***REDACTED***"
     assert units[0]["power"] is True
     assert units[0]["operation_mode"] == "Heat"
@@ -215,13 +220,17 @@ async def test_diagnostics_includes_user_context_data(hass: HomeAssistant) -> No
     assert units[0]["has_energy_consumed_meter"] is True
     assert "wifi_signal_last_poll_at" in units[0]  # shared Wi-Fi serialiser
 
-    assert units[1]["id"] == "unit-2"
+    assert units[1]["id"] == "melcloudhome_2222_bbbb"
     assert units[1]["name"] == "***REDACTED***"
     assert units[1]["power"] is False
     assert units[1]["operation_mode"] == "Cool"
     assert units[1]["set_temperature"] == 19.0
     assert units[1]["room_temperature"] == 21.0
     assert units[1]["has_energy_consumed_meter"] is False
+
+    blob = json.dumps(diagnostics, default=str)
+    for raw in (UNIT_1, UNIT_2, BUILDING_1):
+        assert raw not in blob
 
 
 @pytest.mark.asyncio
@@ -298,24 +307,90 @@ async def test_diagnostics_includes_atw_outdoor_temp_source_fields(
     assert atw_unit["outdoor_temp_last_error_at"] is not None
 
 
-def _diagnostics_entry(entities: dict, entity_id: str) -> dict:
-    """The diagnostics entry for `entity_id`, under its key as dumped.
+@pytest.mark.asyncio
+async def test_diagnostics_carry_no_names_and_no_full_ids(hass: HomeAssistant) -> None:
+    """No entity ID, name, label, area, email or full unit/building ID in a dump.
 
-    Diagnostics redacts anything before the "melcloudhome_" marker, and from
-    HA 2026.6 every generated ID has the device's area there, so the key is
-    matched on the domain and the part from the marker on.
+    Entity IDs are HA's and the user's (ADR-030): they can hold any building,
+    unit or area name, so diagnostics key entities by unique ID instead, with
+    the unit's UUID replaced by its short ID.
     """
-    domain, object_id = entity_id.split(".", 1)
-    tail = object_id[object_id.index("melcloudhome_") :]
-    matches = [
-        key
-        for key in entities
-        if (key.startswith(f"{domain}.") and key.endswith(f"_{tail}"))
-        or key == entity_id
+    ata_id = "11112222-3333-4444-5555-666677778888"
+    atw_id = "aaaa1111-2222-3333-4444-555566667777"
+    cottage_id = "c0771a9e-0000-4000-8000-00000000c071"
+    barn_id = "ba4b0000-0000-4000-8000-00000000ba4b"
+    context = UserContext(
+        buildings=[
+            Building(
+                id=cottage_id,
+                name="Test Cottage",
+                air_to_air_units=[
+                    create_mock_ata_unit(unit_id=ata_id, name="Bathroom")
+                ],
+            ),
+            Building(
+                id=barn_id,
+                name="Holiday Barn",
+                air_to_water_units=[
+                    create_mock_atw_unit(unit_id=atw_id, name="Heat Pump")
+                ],
+            ),
+        ]
+    )
+    entry, _ = await setup_ata_integration_custom(hass, context)
+
+    devices = dr.async_get(hass)
+    entities = er.async_get(hass)
+    area = ar.async_get(hass).async_get_or_create("Conservatory")
+    ata_device = _device(hass, entry, ata_id)
+    devices.async_update_device(
+        ata_device.id, name_by_user="Granny Flat AC", area_id=area.id
+    )
+    for domain, unique_id, new_id in (
+        ("climate", ata_id, "climate.test_cottage_bathroom_climate"),
+        (
+            "sensor",
+            f"{ata_id}_room_temperature",
+            "sensor.conservatory_granny_flat_ac_room",
+        ),
+        ("climate", f"{atw_id}_zone_1", "climate.lounge_ac"),
+        ("water_heater", f"{atw_id}_tank", "water_heater.holiday_barn_heat_pump_tank"),
+    ):
+        entity_id = entities.async_get_entity_id(domain, DOMAIN, unique_id)
+        entities.async_update_entity(entity_id, new_entity_id=new_id)
+    await hass.async_block_till_done()
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    blob = json.dumps(diagnostics, default=str).lower()
+
+    registered = er.async_entries_for_config_entry(entities, entry.entry_id)
+    # Every entity ID, except the nameless short-ID form older versions gave
+    # (climate.melcloudhome_1111_8888), which is also its diagnostics key.
+    nameless = re.compile(r"^[a-z_]+\.melcloudhome_[0-9a-f]{4}_[0-9a-f]{4}(_|$)")
+    forbidden = [e.entity_id for e in registered if not nameless.match(e.entity_id)] + [
+        "test cottage",
+        "test_cottage",
+        "holiday barn",
+        "holiday_barn",
+        "bathroom",
+        "heat pump",
+        "heat_pump",
+        "granny flat",
+        "granny_flat",
+        "conservatory",
+        "lounge",
+        "test@example.com",
+        ata_id,
+        atw_id,
+        cottage_id,
+        barn_id,
     ]
-    assert len(matches) == 1, f"{entity_id}: diagnostics keys {matches}"
-    entry: dict = entities[matches[0]]
-    return entry
+    assert [f for f in forbidden if f.lower() in blob] == []
+
+    with_state = [e for e in registered if hass.states.get(e.entity_id)]
+    assert len(diagnostics["entities"]) == len(with_state)
+    assert "climate.melcloudhome_1111_8888" in diagnostics["entities"]
+    assert "climate.melcloudhome_aaaa_7777_zone_1" in diagnostics["entities"]
 
 
 def _device(hass: HomeAssistant, entry, unit_id: str) -> dr.DeviceEntry:
@@ -331,163 +406,6 @@ def _device(hass: HomeAssistant, entry, unit_id: str) -> dr.DeviceEntry:
     ]
     assert len(devices) == 1
     return devices[0]
-
-
-def _assert_leak_redacted(
-    entities: dict, leaked_entity_id: str, raw_substring: str
-) -> None:
-    """Shared assertion for the leak-redaction tests below."""
-    assert leaked_entity_id not in entities
-    assert raw_substring not in json.dumps(entities)
-
-    redacted_keys = [k for k in entities if k.endswith("_leaked_sensor")]
-    assert len(redacted_keys) == 1
-    assert redacted_keys[0].startswith("sensor.redacted_device_")
-
-
-async def _register_leaked_entity(
-    hass: HomeAssistant, entry, unit_id: str, device_id: str, prefix: str
-):
-    """Register an entity whose object_id has `prefix` baked in before the
-    real `melcloudhome_{shortid}_...` object_id this integration always
-    generates - matching the actual shape of every real leak observed live
-    (e.g. `mollebacksgatan_10_melcloudhome_ec56_6442_outdoor_temperature`),
-    not an arbitrary made-up suffix."""
-    short_id = f"{unit_id[:4]}_{unit_id[-4:]}"
-    entity_reg = er.async_get(hass)
-    leaked = entity_reg.async_get_or_create(
-        "sensor",
-        DOMAIN,
-        f"{unit_id}_leaked_sensor",
-        suggested_object_id=f"{prefix}_melcloudhome_{short_id}_leaked_sensor",
-        device_id=device_id,
-        config_entry=entry,
-    )
-    hass.states.async_set(leaked.entity_id, "42")
-    return leaked
-
-
-@pytest.mark.asyncio
-async def test_diagnostics_redacts_device_name_from_entity_id_key(
-    hass: HomeAssistant,
-) -> None:
-    """A legacy/recreated entity_id with the real device name baked in gets redacted."""
-    unit_id = "11112222-3333-4444-5555-666677778888"
-    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
-    mock_context = create_mock_ata_user_context(
-        [
-            create_mock_ata_building(
-                building_id="building-1", name="Test Cottage", units=[unit]
-            )
-        ]
-    )
-    entry, _ = await setup_ata_integration_custom(hass, mock_context)
-
-    device = _device(hass, entry, unit_id)
-    assert device.name_by_user == "Test Cottage Bathroom"
-
-    leaked = await _register_leaked_entity(
-        hass, entry, unit_id, device.id, "test_cottage_bathroom"
-    )
-
-    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_cottage")
-
-
-@pytest.mark.asyncio
-async def test_diagnostics_redacts_area_name_from_entity_id_key(
-    hass: HomeAssistant,
-) -> None:
-    """A leaked entity_id matching only the (shorter) area slug, not the
-    longer name_by_user slug, still gets redacted - this integration always
-    sets name_by_user to "{building} {unit}", so a leaked entity_id using
-    just the area/building name alone (the real-world case found live
-    2026-08-19) would slip past a name_by_user-only check."""
-    unit_id = "aaaa1111-2222-3333-4444-555566667777"
-    unit = create_mock_ata_unit(unit_id=unit_id, name="Bathroom")
-    mock_context = create_mock_ata_user_context(
-        [
-            create_mock_ata_building(
-                building_id="building-2", name="Test Building", units=[unit]
-            )
-        ]
-    )
-    entry, _ = await setup_ata_integration_custom(hass, mock_context)
-
-    device_reg = dr.async_get(hass)
-    device = _device(hass, entry, unit_id)
-    assert device.name_by_user == "Test Building Bathroom"
-
-    area_reg = ar.async_get(hass)
-    area = area_reg.async_get_or_create("Test Building")
-    device_reg.async_update_device(device.id, area_id=area.id)
-    device = _device(hass, entry, unit_id)
-    assert device.area_id == area.id
-
-    leaked = await _register_leaked_entity(
-        hass, entry, unit_id, device.id, "test_building"
-    )
-
-    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    _assert_leak_redacted(diagnostics["entities"], leaked.entity_id, "test_building")
-
-
-@pytest.mark.asyncio
-async def test_diagnostics_redacts_unknown_mechanism_leak(hass: HomeAssistant) -> None:
-    """The whole point of the structural (regex) redaction: it doesn't need
-    to know *why* a name leaked. A device with no `name_by_user` and no area
-    assigned still gets an arbitrary leaked prefix redacted - simulating a
-    mechanism neither of the two tests above cover (e.g. a future HA
-    behavior, or a naming scheme from a much older integration version)."""
-    unit_id = "cccc9999-8888-7777-6666-555544443333"
-    unit = create_mock_ata_unit(unit_id=unit_id, name="Landing")
-    mock_context = create_mock_ata_user_context(
-        [
-            create_mock_ata_building(
-                building_id="building-3", name="No Area Building", units=[unit]
-            )
-        ]
-    )
-    entry, _ = await setup_ata_integration_custom(hass, mock_context)
-
-    device_reg = dr.async_get(hass)
-    device = _device(hass, entry, unit_id)
-    # Clear name_by_user and any auto-suggested area - neither known
-    # mechanism is in play here, only the arbitrary leaked prefix below.
-    device_reg.async_update_device(device.id, name_by_user=None, area_id=None)
-    device = _device(hass, entry, unit_id)
-    assert not device.name_by_user and not device.area_id
-
-    leaked = await _register_leaked_entity(
-        hass, entry, unit_id, device.id, "some_ancient_naming_scheme"
-    )
-
-    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    _assert_leak_redacted(
-        diagnostics["entities"], leaked.entity_id, "some_ancient_naming_scheme"
-    )
-
-
-@pytest.mark.asyncio
-async def test_diagnostics_single_device_type_entity_ids_unaffected(
-    hass: HomeAssistant,
-) -> None:
-    """An ID with nothing before "melcloudhome_" is dumped unchanged; any
-    other is redacted. Which case a run sees depends on the HA version: from
-    2026.6 every generated ID carries the device's area before the marker."""
-    mock_context = create_mock_ata_user_context()
-    entry, _ = await setup_ata_integration_custom(hass, mock_context)
-
-    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
-    entities = diagnostics["entities"]
-
-    registered = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    with_marker = [e.entity_id for e in registered if "melcloudhome_" in e.entity_id]
-    assert with_marker
-    for entity_id in with_marker:
-        unprefixed = entity_id.split(".", 1)[1].startswith("melcloudhome_")
-        assert (entity_id in entities) is unprefixed, entity_id
-        _diagnostics_entry(entities, entity_id)
 
 
 @pytest.mark.asyncio
@@ -540,3 +458,39 @@ async def test_diagnostics_separates_a_quiet_unit_from_a_failing_wifi_fetch(
     assert unit["wifi_signal"] == -56
     assert unit["wifi_signal_last_error"] is None
     assert unit["wifi_signal_last_error_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_error_text_carries_no_full_unit_id(
+    hass: HomeAssistant,
+) -> None:
+    """An exception can quote a request URL with unitId=<uuid> (ADR-030: no full IDs)."""
+    from .conftest import TEST_ATW_UNIT_ID
+
+    url = f"https://example.invalid/report?unitId={TEST_ATW_UNIT_ID}"
+
+    def configure(client):
+        client.get_atw_outdoor_temperature = AsyncMock(side_effect=ValueError(url))
+        client.get_wifi_signal = AsyncMock(side_effect=ValueError(url))
+
+    entry, _ = await setup_atw_integration_custom(
+        hass,
+        create_mock_atw_user_context(
+            [
+                create_mock_atw_building(
+                    units=[create_mock_atw_unit(has_outdoor_temp_sensor=True)]
+                )
+            ]
+        ),
+        configure_client=configure,
+        options={CONF_ENABLE_WEBSOCKET: False},
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    unit = diagnostics["user_context"]["buildings"][0]["atw_units"][0]
+    for field in ("outdoor_temp_last_error", "wifi_signal_last_error"):
+        assert unit[field] == (
+            "ValueError: https://example.invalid/report?unitId=melcloudhome_0efc_9abc"
+        ), field
+    assert TEST_ATW_UNIT_ID not in json.dumps(diagnostics, default=str)
