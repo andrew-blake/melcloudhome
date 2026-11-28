@@ -10,11 +10,13 @@
 
 Home Assistant custom integration for **MELCloud Home**.
 
-## What's New in v2.6.4
+## What's New in v2.7.0
 
-**Ready for Home Assistant 2026.11.** Home Assistant 2026.11 logs deprecation warnings at startup from the air conditioner, heat pump and hot water tank entities, and says support for the way they report temperatures ends in 2027.11. This release updates them, so the warnings stop. Reported by puppycod in [#400](https://github.com/andrew-blake/melcloudhome/issues/400).
+**Entity names set before Home Assistant 2026.11 are kept.** Home Assistant 2026.11 puts the device name in front of entity names, and saves the earlier name of any renamed entity. Earlier versions of this integration made Home Assistant forget those saved names at the first restart ([#403](https://github.com/andrew-blake/melcloudhome/issues/403)). Install this version before upgrading Home Assistant to 2026.11. Names already forgotten can't be brought back.
 
-**Air conditioners show heating or cooling until the room reaches the setpoint.** In Heat or Cool, an air conditioner showed its action as idle for the last 0.5 °C before the setpoint, while the unit was still working ([#404](https://github.com/andrew-blake/melcloudhome/issues/404)).
+**New devices are named after the unit in the MELCloud Home account.** Home Assistant builds their entity IDs from the chosen area, the device name and the entity name. Existing entity IDs don't change, so automations keep working.
+
+**Some default labels change.** An air conditioner's climate entity now shows the device's name. The A/C fan and the heat pump's system power switch, tank and zones are named in the Home Assistant language.
 
 See [CHANGELOG.md](CHANGELOG.md) for full history.
 

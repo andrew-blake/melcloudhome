@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [2.7.0] - 2026-11-28
+
+### Fixed
+
+- **Entity names set before Home Assistant 2026.11 are kept.** Earlier versions of this integration made Home Assistant forget them at the first restart. Install this version before upgrading Home Assistant to 2026.11. Names already forgotten can't be brought back. Removing the integration and adding it again also forgets them for good. (#403)
+
+### Changed
+
+- **Existing entity IDs don't change**, so automations keep working. New devices are named after the unit in the MELCloud Home account and get no area. Home Assistant builds their entity IDs.
+- **Some default entity names change.** An air conditioner's climate entity that was never renamed now shows the device's name: "Living Room AC Climate" becomes "Living Room AC". The A/C fan, and the heat pump's system power switch, tank and zones, are named in the Home Assistant language. In English, "System Power" becomes "System power". On Home Assistant 2026.11, an air conditioner's climate entity with an area of its own shows a repair. To clear it, set the area on the device, or give the entity a name.
+- **The Apple Home app keeps the tile names it got when each accessory was paired.** To change a tile's name, rename it in the Home app.
+- Renaming a device, entity IDs that repeat the room, and units that share a name are covered in [docs/entities.md](docs/entities.md). An entity added later to an existing install can get an ID that repeats the building name, which can be edited in the entity's settings. Each device page shows a serial number that identifies the unit. Diagnostics downloads no longer contain unit or building names or full IDs.
+
 ## [2.6.4] - 2026-11-21
 
 ### Fixed
